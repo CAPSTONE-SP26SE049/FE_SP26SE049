@@ -1,4 +1,4 @@
-import sceneryGif from "../assets/scenery/Whisk_emzlftm1qdnjrtnw0yminwotadn1qtl0ywmk1sm.gif"
+import sceneryGif from "../assets/2Hải Dương_ Quần thể Côn Sơn - Kiếp Bạc (Cảnh cổ trang_Lịch sử).png"
 import { gameObject } from "../hooks/useGameObjects"
 
 interface SkyProps {

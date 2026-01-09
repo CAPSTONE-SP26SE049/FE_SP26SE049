@@ -123,15 +123,14 @@ export default function useControls(
         gameObjects.camera.current.style.left = playerPosition.playerPosRef.current.x + 'px'
     }
 
-    // Background cố định, không di chuyển theo player
+    // Background không di chuyển container, chỉ background bên trong di chuyển
     // function setSkyXPos() : void {
-    //     const skyOffset = playerPosition.playerPosRef.current.x / 10
-    //     gameObjects.sky.current.style.left = skyOffset + 'px'
+    //     gameObjects.sky.current.style.left = playerPosition.playerPosRef.current.x + 'px'
     // }
 
     function render() : void {
         setCameraXPos()
-        // setSkyXPos() // Background cố định
+        // Background được xử lý bên trong Sky component
     }
 
     return { move, jump, jumpOnce }

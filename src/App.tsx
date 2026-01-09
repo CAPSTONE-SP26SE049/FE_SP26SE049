@@ -23,7 +23,7 @@ import checkForCollision from './utils/checkForCollision'
 import Level3 from './levels/Level3'
 import Camera from './components/Camera'
 import VoiceQuiz from './components/VoiceQuiz'
-import { playCountdownTick, playCountdownWarning } from './utils/soundUtils'
+import { playCountdownTick, playCountdownWarning, playJumpSound, playBackgroundMusic, stopBackgroundMusic, playWinSound } from './utils/soundUtils'
 
 
 
@@ -48,6 +48,16 @@ function App() {
 	// Doc Title
 	useEffect( () => {
 		document.title = 'Mario React'
+	}, [])
+
+	// Phát nhạc nền khi game bắt đầu
+	useEffect(() => {
+		playBackgroundMusic()
+		
+		// Dừng nhạc nền khi component unmount
+		return () => {
+			stopBackgroundMusic()
+		}
 	}, [])
 
 	// KeyPress controller -  Controls which keys are pressed
@@ -121,6 +131,8 @@ function App() {
 			// Reset quiz về câu hỏi đầu tiên
 			setQuizResetKey(prev => prev + 1)
 			setCorrectAnswersCount(0)
+			// Phát lại nhạc nền khi reset game
+			playBackgroundMusic()
 		}
 	}, [playerPosition.position.x, playerPosition.position.y])
 
@@ -142,6 +154,8 @@ function App() {
 				clearInterval(countdownIntervalRef.current)
 				countdownIntervalRef.current = null
 			}
+			// Dừng nhạc nền khi game over
+			stopBackgroundMusic()
 			// Lưu số câu trả lời đúng TRƯỚC KHI game over để đảm bảo giá trị đúng
 			const count = unlockedColumns.current.size
 			console.log('Timer 0 - Saving correctAnswersCount:', count)
@@ -166,12 +180,14 @@ function App() {
 		}
 	}, [game.isGameOver, correctAnswersCount])
 
-	// Lưu số câu trả lời đúng khi game won
+	// Lưu số câu trả lời đúng khi game won và phát âm thanh
 	useEffect(() => {
 		if (game.isGameWon) {
 			const count = unlockedColumns.current.size
 			console.log('Game Won - unlockedColumns size:', count)
 			setCorrectAnswersCount(count)
+			// Phát âm thanh khi đến đích
+			playWinSound()
 		}
 	}, [game.isGameWon])
 
@@ -289,6 +305,8 @@ function App() {
 					maxJumpHeight.current = platform.jumpHeight
 					controls.jumpOnce()
 					jumpedColumns.current.add(nextColumnIndex)
+					// Phát âm thanh khi nhảy qua chướng ngại vật
+					playJumpSound()
 				} else {
 					console.log("Too far from platform, will jump when closer. Distance:", distanceToPlatform, "Column:", nextColumnIndex)
 				}
@@ -369,6 +387,8 @@ function App() {
 							maxJumpHeight.current = platform.jumpHeight
 							controls.jumpOnce()
 							jumpedColumns.current.add(i)
+							// Phát âm thanh khi nhảy qua chướng ngại vật
+							playJumpSound()
 							console.log("Jumped over column", i, "distance:", distanceToPlatform)
 							break // Chỉ xử lý một cột mỗi frame
 						} else {

@@ -112,10 +112,9 @@ export default function useGameContext(
             }))
         }
         
-        // Cập nhật camera (sky giữ cố định, không di chuyển)
+        // Cập nhật camera và background theo player
         gameObjects.camera.current.style.left = playerPosition.playerPosRef.current.x + 'px'
-        // Background cố định, không di chuyển theo player
-        // gameObjects.sky.current.style.left = skyOffset + 'px'
+        gameObjects.sky.current.style.left = playerPosition.playerPosRef.current.x + 'px'
     }
     
     return { 

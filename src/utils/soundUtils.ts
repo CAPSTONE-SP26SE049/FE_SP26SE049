@@ -105,3 +105,94 @@ export function playCountdownWarning() {
 	}
 }
 
+// Biến để lưu trữ audio element của nhạc nền
+let backgroundMusic: HTMLAudioElement | null = null
+
+/**
+ * Phát nhạc nền xuyên suốt trò chơi
+ */
+export function playBackgroundMusic() {
+	try {
+		// Nếu đã có nhạc nền đang phát, không tạo mới
+		if (backgroundMusic && !backgroundMusic.paused) {
+			return
+		}
+		
+		// Nếu đã có nhưng đang pause, reset về đầu và phát lại
+		if (backgroundMusic && backgroundMusic.paused) {
+			backgroundMusic.currentTime = 0 // Reset về đầu bài hát
+			backgroundMusic.play().catch(error => {
+				console.log("Could not resume background music:", error)
+			})
+			return
+		}
+		
+		backgroundMusic = new Audio('/broken-phones-by-prettysleepy-art-12685.mp3')
+		backgroundMusic.volume = 0.3 // Volume thấp hơn để không che mất âm thanh jump
+		backgroundMusic.loop = true // Lặp lại liên tục
+		
+		// Thử phát ngay, nếu lỗi thì thử lại sau khi user tương tác
+		backgroundMusic.play().catch(error => {
+			console.log("Could not play background music (may need user interaction):", error)
+			// Thử lại sau khi user click vào trang
+			const playOnInteraction = () => {
+				if (backgroundMusic) {
+					backgroundMusic.play().catch(err => {
+						console.log("Could not play background music after interaction:", err)
+					})
+				}
+				document.removeEventListener('click', playOnInteraction)
+				document.removeEventListener('touchstart', playOnInteraction)
+			}
+			document.addEventListener('click', playOnInteraction, { once: true })
+			document.addEventListener('touchstart', playOnInteraction, { once: true })
+		})
+	} catch (error) {
+		console.log("Could not play background music:", error)
+	}
+}
+
+/**
+ * Dừng nhạc nền
+ */
+export function stopBackgroundMusic() {
+	try {
+		if (backgroundMusic) {
+			backgroundMusic.pause()
+			backgroundMusic.currentTime = 0
+		}
+	} catch (error) {
+		console.log("Could not stop background music:", error)
+	}
+}
+
+/**
+ * Phát âm thanh khi Mario nhảy qua chướng ngại vật
+ * Volume cao hơn để nghe rõ khi có nhạc nền
+ */
+export function playJumpSound() {
+	try {
+		const audio = new Audio('/jump-up-245782.mp3')
+		audio.volume = 0.7 // Tăng volume để nghe rõ hơn khi có nhạc nền
+		audio.play().catch(error => {
+			console.log("Could not play jump sound:", error)
+		})
+	} catch (error) {
+		console.log("Could not play jump sound:", error)
+	}
+}
+
+/**
+ * Phát âm thanh khi nhân vật đến đích (win game)
+ */
+export function playWinSound() {
+	try {
+		const audio = new Audio('/bouncing_sound_effects_in_game-3-363533.mp3')
+		audio.volume = 0.6
+		audio.play().catch(error => {
+			console.log("Could not play win sound:", error)
+		})
+	} catch (error) {
+		console.log("Could not play win sound:", error)
+	}
+}
