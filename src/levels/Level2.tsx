@@ -10,14 +10,20 @@ export default function Level2({ gameObjects, level } : LevelProps) : JSX.Elemen
 
     return level.current === 2 ? (
         <>
-            <Platform platform={platforms.level2[0].ref} x={500} y={250} width={50} />
-            <Platform platform={platforms.level2[1].ref} x={900} y={500} width={50} />
-            <Platform platform={platforms.level2[2].ref} x={1500} y={400} width={100} />
-            <Platform platform={platforms.level2[3].ref} x={3000} y={49} type="pipe" width={200} />
-            <Platform platform={platforms.level2[4].ref} x={3700} y={250} width={100} />
-            <Platform platform={platforms.level2[5].ref} x={6000} y={250} />
+            {/* 10 cột xanh, khoảng cách ~2300px (7.5s với speed=5) */}
+            <Platform platform={platforms.level2[0].ref}  x={800}   y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[1].ref}  x={3100}  y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[2].ref}  x={5400}  y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[3].ref}  x={7700}  y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[4].ref}  x={10000} y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[5].ref}  x={12300} y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[6].ref}  x={14600} y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[7].ref}  x={16900} y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[8].ref}  x={19200} y={49} type="pipe" width={200} />
+            <Platform platform={platforms.level2[9].ref}  x={21500} y={49} type="pipe" width={200} />
 
-            <Goomba goomba={goombas.level2[0]} id="1" x={600} />
+            {/* Vật cản đã bị ẩn - chỉ giữ lại cột xanh (Platform) */}
+            {/* <Goomba goomba={goombas.level2[0]} id="1" x={600} />
             <Goomba goomba={goombas.level2[1]} id="2" x={700} />
             <Goomba goomba={goombas.level2[2]} id="3" x={800} />
             <Goomba goomba={goombas.level2[3]} id="4" x={1000} />
@@ -30,7 +36,7 @@ export default function Level2({ gameObjects, level } : LevelProps) : JSX.Elemen
             <Goomba goomba={goombas.level2[10]} id="11" x={6000} />
             <Goomba goomba={goombas.level2[11]} id="12" x={6200} />
 
-            <GiantGoomba giantGoomba={giantGoombas.level2[0]} x={7500} />
+            <GiantGoomba giantGoomba={giantGoombas.level2[0]} x={7500} /> */}
         </>
     ) : (
         <></>

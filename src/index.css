@@ -5,7 +5,7 @@
 @layer base {
 
 	* {
-		font-family: 'Press Start 2P';
+		font-family: 'VT323', monospace;
 	}
 
 	#ground {
