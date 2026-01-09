@@ -13,7 +13,9 @@ interface UseControlsProps {
 }
 
 interface UseControls {
-    move : Function
+    move : Function,
+    jump : Function,
+    jumpOnce : Function  // Hàm nhảy một lần đảm bảo đạt max height
 }
 
 export default function useControls(
@@ -105,6 +107,18 @@ export default function useControls(
         }
     }
 
+    // Hàm nhảy một lần, đảm bảo đạt max height ngay lập tức để nhảy qua cột
+    function jumpOnce() : void {
+        // Kiểm tra nếu đang nhảy thì không nhảy lại
+        if( isJumpedAtMaxHeight.current ) return
+        if( gravity.velocity.current > 10 ) return
+
+        // Đặt ngay lập tức lên max height để đảm bảo nhảy qua được cột
+        gravity.set(maxJumpHeight.current)
+        isJumpedAtMaxHeight.current = true
+        setTimeout( () => isJumpedAtMaxHeight.current = false, 400 )
+    }
+
     function setCameraXPos() : void {
         gameObjects.camera.current.style.left = playerPosition.playerPosRef.current.x + 'px'
     }
@@ -119,5 +133,5 @@ export default function useControls(
         setSkyXPos()
     }
 
-    return { move }
+    return { move, jump, jumpOnce }
 }
