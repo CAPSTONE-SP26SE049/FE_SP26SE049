@@ -436,7 +436,7 @@ export default function VoiceQuiz({ onCorrectAnswer, onNextQuestion, visible, sh
 	if (!currentQuestion) return null
 
 	return (
-		<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999999] w-[400px] bg-white/90 backdrop-blur border border-slate-300 shadow-lg rounded-lg p-4 text-sm text-slate-900">
+		<div className="absolute top-4 left-4 z-[999999] w-[400px] bg-white/90 backdrop-blur border border-slate-300 shadow-lg rounded-lg p-4 text-sm text-slate-900">
 			<div className="font-bold mb-3 text-base">
 				Luyện phát âm N / L · Câu {currentQuestionIndex + 1}/{questions.length}
 			</div>

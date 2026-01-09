@@ -91,8 +91,6 @@ function App() {
 	const isTimerActive = useRef(false)
 	// Key để reset quiz khi game reset
 	const [quizResetKey, setQuizResetKey] = useState(0)
-	// Lưu số câu trả lời đúng khi game kết thúc để hiển thị sao
-	const [correctAnswersCount, setCorrectAnswersCount] = useState(0)
 
 
 
@@ -120,7 +118,6 @@ function App() {
 			}
 			// Reset quiz về câu hỏi đầu tiên
 			setQuizResetKey(prev => prev + 1)
-			setCorrectAnswersCount(0)
 		}
 	}, [playerPosition.position.x, playerPosition.position.y])
 
@@ -142,38 +139,9 @@ function App() {
 				clearInterval(countdownIntervalRef.current)
 				countdownIntervalRef.current = null
 			}
-			// Lưu số câu trả lời đúng TRƯỚC KHI game over để đảm bảo giá trị đúng
-			const count = unlockedColumns.current.size
-			console.log('Timer 0 - Saving correctAnswersCount:', count)
-			setCorrectAnswersCount(count)
-			// Đợi một chút để state được update trước khi gọi endGame
-			setTimeout(() => {
-				gameRef.current?.endGame()
-			}, 0)
+			gameRef.current.endGame()
 		}
 	}, [countdownTimer])
-
-	// Ẩn quiz khi game over và đảm bảo correctAnswersCount được set
-	useEffect(() => {
-		if (game.isGameOver) {
-			setIsQuizVisible(false)
-			// Đảm bảo correctAnswersCount được set (nếu chưa được set từ timer)
-			const count = unlockedColumns.current.size
-			if (correctAnswersCount !== count) {
-				console.log('Game Over effect - Setting correctAnswersCount:', count)
-				setCorrectAnswersCount(count)
-			}
-		}
-	}, [game.isGameOver, correctAnswersCount])
-
-	// Lưu số câu trả lời đúng khi game won
-	useEffect(() => {
-		if (game.isGameWon) {
-			const count = unlockedColumns.current.size
-			console.log('Game Won - unlockedColumns size:', count)
-			setCorrectAnswersCount(count)
-		}
-	}, [game.isGameWon])
 
 	// Hàm xử lý khi bị đẩy lùi
 	function handlePushBack() {

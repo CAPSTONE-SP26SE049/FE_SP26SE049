@@ -1,4 +1,7 @@
-import sceneryGif from "../assets/scenery/Whisk_emzlftm1qdnjrtnw0yminwotadn1qtl0ywmk1sm.gif"
+import cloudImg from "../assets/clouds.png"
+import hillImg from "../assets/hill.png"
+import hillsEyesImg from "../assets/hills-eyes.png"
+import hoGuomImg from "../assets/hoguom.png"
 import { gameObject } from "../hooks/useGameObjects"
 
 interface SkyProps {
@@ -37,6 +40,23 @@ export default function Sky({sky} : SkyProps) {
 					zIndex: 0
 				}}
 			/>
+
+			<img 
+				src={hillImg}
+				className="absolute bottom-[49px] left-[100px] h-[200px] max-w-none"
+			/>
+
+			<img 
+				src={hillsEyesImg}
+				className="absolute bottom-[49px] left-[1500px] h-[400px] max-w-none"
+			/>
+
+			{/* Phong cảnh Hồ Gươm (pixel) - đặt gần đầu map để dễ thấy */}
+			<img
+				src={hoGuomImg}
+				className="absolute bottom-[49px] left-[2000px] h-[260px] max-w-none"
+			/>
+
 		</div>
 	)
 }
