@@ -30,3 +30,28 @@ export function isTopCollide(a: HTMLDivElement, b: HTMLDivElement) : boolean {
         ( aRect.right > bRect.left )
     );
 }
+
+export function isSideOrBottomCollide(mario: HTMLDivElement, platform: HTMLDivElement) : boolean {
+    if(!mario || !platform) return false
+
+    const marioRect = mario.getBoundingClientRect()
+    const platformRect = platform.getBoundingClientRect()
+
+    // Kiểm tra va chạm tổng quát
+    const isColliding = !(
+        ((marioRect.top + marioRect.height) < platformRect.top) ||
+        (marioRect.top > (platformRect.top + platformRect.height)) ||
+        ((marioRect.left + marioRect.width) < platformRect.left) ||
+        (marioRect.left > (platformRect.left + platformRect.width))
+    )
+
+    if (!isColliding) return false
+
+    // Kiểm tra xem có phải va chạm từ trên xuống không (cho phép đứng trên)
+    const isTopCollision = Math.abs(platformRect.top - marioRect.bottom) < 15 &&
+                           marioRect.left < platformRect.right &&
+                           marioRect.right > platformRect.left
+
+    // Nếu không phải va chạm từ trên xuống, thì là va chạm từ bên cạnh hoặc từ dưới
+    return !isTopCollision
+}

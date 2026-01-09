@@ -7,8 +7,9 @@ interface GameProps {
 export default function Game({children} : GameProps) {
 	return (
 		<>
-			<div id="game" className='grid items-center justify-center h-[90vh]'>
-				<div className='relative border border-slate-400 w-screen h-full  overflow-hidden'>
+			<div id="game" className='fixed inset-0 w-screen h-screen'>
+				{/* Màn hình game full màn hình */}
+				<div className='relative w-full h-full overflow-hidden border border-slate-400'>
 					{children}
 				</div>
 			</div>
