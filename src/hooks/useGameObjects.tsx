@@ -43,29 +43,41 @@ export default function useGameObjects() : UseGameObjects {
 	const platforms = {
 
 		level1: [
-			{ ref : useRef() as gameObject, jumpHeight: 500 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
+			{ ref : useRef() as gameObject, jumpHeight : 500 },
 		] as Platform[],
 
 		level2: [
-			{ ref : useRef() as gameObject, jumpHeight: 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 800 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 500 }
+			{ ref : useRef() as gameObject, jumpHeight: 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
 		] as Platform[],
 
 		level3: [
-			{ ref : useRef() as gameObject, jumpHeight: 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 800 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 700 },
-			{ ref : useRef() as gameObject, jumpHeight : 500 }
+			{ ref : useRef() as gameObject, jumpHeight: 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
+			{ ref : useRef() as gameObject, jumpHeight : 300 },
 		] as Platform[],
 
 	}
@@ -112,6 +124,7 @@ export default function useGameObjects() : UseGameObjects {
 		],
 
 		level3 : [
+			useRef() as gameObject,
 			useRef() as gameObject,
 			useRef() as gameObject,
 			useRef() as gameObject,

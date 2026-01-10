@@ -29,16 +29,8 @@ export default function Mario({mario, gravity} : MarioProps) : ReactElement {
 		// Run left
 		marioImg.current = marioRunImg
 
-	} else if( !game.controller.keys.up && game.controller.keys.right  ) {
-		// Run right
-		marioImg.current = marioRunImg
-
-	} else if( !game.controller.keys.left && !game.controller.keys.right && !game.controller.keys.up) {
-		// Stand still
-		marioImg.current = marioStillImg
-
 	} else {
-		// Default
+		// Tự động di chuyển sang phải hoặc đứng yên - luôn hiển thị chạy sang phải
 		marioImg.current = marioRunImg
 	}
 	
