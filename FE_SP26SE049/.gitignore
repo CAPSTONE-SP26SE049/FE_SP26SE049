@@ -1,0 +1,30 @@
+.DS_Store
+Thumbs.db
+
+# --- FRONTEND (NodeJS / React) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- BACKEND (.NET / C#) ---
+backend/**/bin/
+backend/**/obj/
+backend/.vs/
+backend/**/appsettings.Development.json
+backend/*.user
+
+# --- AI SERVICE (Python) ---
+ai-service/__pycache__/
+ai-service/venv/
+ai-service/.venv/
+ai-service/*.pyc
+ai-service/.env
+
+# --- IDE (Cấu hình Editor) ---
+.vscode/
+.idea/
