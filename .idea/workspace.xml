@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="c6fc1d63-d648-477e-b01e-6dc338e163e3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/acorn" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/acorn" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/autoprefixer" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/autoprefixer" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/browserslist" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/browserslist" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/cssesc" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/cssesc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/esbuild" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/esbuild" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/eslint" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/eslint" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/jiti" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/jiti" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/js-yaml" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/js-yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/jsesc" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/jsesc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/json5" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/json5" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/loose-envify" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/loose-envify" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/nanoid" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/nanoid" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/node-which" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/node-which" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/parser" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/parser" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/resolve" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/resolve" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/rimraf" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/rimraf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/rollup" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/rollup" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/semver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/semver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/sucrase" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/sucrase" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/sucrase-node" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/sucrase-node" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tailwind" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tailwind" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tailwindcss" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tailwindcss" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsc" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsserver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsserver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/vite" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/vite" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-HCK7JYCI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/chunk-HCK7JYCI.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/react-dom_client.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/react-dom_client.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/react-dom_client.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/react-dom_client.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/react.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/react.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/react_jsx-dev-runtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/react_jsx-dev-runtime.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/react_jsx-dev-runtime.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/react_jsx-dev-runtime.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/@babel/core/node_modules/.bin/semver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/@babel/core/node_modules/.bin/semver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/@babel/helper-compilation-targets/node_modules/.bin/semver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/@babel/helper-compilation-targets/node_modules/.bin/semver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/esbuild/bin/esbuild" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/esbuild/bin/esbuild" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_/Users/penpen1112003/WebstormProjects/FE_SP26SE049" value="3837uVbnCnC0KCj8IN6sgOoyUUE" />
+    </persistenceIdMap>
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="75" />
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="haunv1" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Pen1112003&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/CAPSTONE-SP26SE049/FE_SP26SE049.git&quot;,
+    &quot;accountId&quot;: &quot;317c3b9b-2b5a-4d54-90c0-bf76d5ea8bd1&quot;
+  }
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="3837uVbnCnC0KCj8IN6sgOoyUUE" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;development&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/penpen1112003/WebstormProjects/FE_SP26SE049/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecapSpentCounter">
+    <option name="endsOfQuotaMs" value="1770742850140" />
+    <option name="spentUsd" value="0.00392825" />
+  </component>
+  <component name="RecapUselessUpdatesCounter">
+    <option name="suspendCountdown" value="6" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/assets" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-WS-253.29346.143" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c6fc1d63-d648-477e-b01e-6dc338e163e3" name="Changes" comment="" />
+      <created>1768016625952</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1768016625952</updated>
+      <workItem from="1768016629222" duration="709000" />
+      <workItem from="1770558687261" duration="39000" />
+      <workItem from="1770558752303" duration="827000" />
+      <workItem from="1770778956607" duration="105000" />
+      <workItem from="1770779074573" duration="73000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
+  </component>
+</project>

@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-nunito bg-gray-100 text-gray-700 antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-green hover:bg-green-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-green-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-brand-blue font-bold py-3 px-6 rounded-2xl border-2 border-gray-200 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all uppercase tracking-wide;
+  }
+  .btn-danger {
+    @apply bg-brand-red hover:bg-red-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-red-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
+  }
+  .card {
+    @apply bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-sm;
+  }
+}
