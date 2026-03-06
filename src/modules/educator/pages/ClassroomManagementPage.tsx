@@ -119,6 +119,13 @@ const ClassroomManagementPage: React.FC = () => {
 
     const columns = [
         {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
             title: 'Tên Lớp Học',
             dataIndex: 'name',
             key: 'name',
@@ -227,7 +234,11 @@ const ClassroomManagementPage: React.FC = () => {
                     <Form.Item
                         name="name"
                         label="Tên Lớp"
-                        rules={[{ required: true, message: 'Vui lòng nhập tên lớp học' }]}
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập tên lớp học' },
+                            { min: 3, message: 'Tên lớp phải ít nhất 3 ký tự' },
+                            { max: 50, message: 'Tên lớp không quá 50 ký tự' }
+                        ]}
                     >
                         <Input placeholder="Ví dụ: Lớp Phát âm Miền Bắc - Sáng T2" />
                     </Form.Item>

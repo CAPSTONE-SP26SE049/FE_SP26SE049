@@ -99,7 +99,7 @@ const AssessmentMatrix = () => {
 
   const columns = [
     {
-      title: 'Condition (Error Type)',
+      title: 'Điều kiện (Loại lỗi sai)',
       dataIndex: 'errorType',
       key: 'errorType',
       render: (value) => {
@@ -108,13 +108,13 @@ const AssessmentMatrix = () => {
       },
     },
     {
-      title: 'Threshold (> %)',
+      title: 'Ngưỡng đạt (> %)',
       dataIndex: 'threshold',
       key: 'threshold',
       render: (value) => `> ${value}%`,
     },
     {
-      title: 'Action (Target Route)',
+      title: 'Hành động điều hướng (Lộ trình đích)',
       key: 'action',
       render: (_, record) => {
         const regionLabel =
@@ -133,7 +133,7 @@ const AssessmentMatrix = () => {
       },
     },
     {
-      title: 'Priority',
+      title: 'Độ ưu tiên',
       dataIndex: 'priority',
       key: 'priority',
       sorter: (a, b) => a.priority - b.priority,
@@ -193,18 +193,18 @@ const AssessmentMatrix = () => {
       >
         <Form layout="vertical" form={form}>
           <Form.Item
-            label="Error Type"
+            label="Loại lỗi sai"
             name="errorType"
-            rules={[{ required: true, message: 'Please select an error type' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn loại lỗi sai' }]}
           >
-            <Select options={ERROR_TYPES} placeholder="Select error type" />
+            <Select options={ERROR_TYPES} placeholder="Chọn loại lỗi sai" />
           </Form.Item>
 
           <Form.Item
-            label="Fail Percentage (>% )"
+            label="Ngưỡng đạt (> %)"
             name="threshold"
             rules={[
-              { required: true, message: 'Please enter fail percentage' },
+              { required: true, message: 'Vui lòng nhập phần trăm ngưỡng đạt' },
             ]}
           >
             <InputNumber
@@ -216,28 +216,28 @@ const AssessmentMatrix = () => {
           </Form.Item>
 
           <Form.Item
-            label="Target Region"
+            label="Vùng miền (Lộ trình đích)"
             name="targetRegion"
-            rules={[{ required: true, message: 'Please select target region' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn vùng miền' }]}
           >
             <Select
               options={TARGET_REGIONS}
-              placeholder="Select target region"
+              placeholder="Chọn vùng miền đích"
             />
           </Form.Item>
 
           <Form.Item
-            label="Checkpoint"
+            label="Bài học (Checkpoint)"
             name="checkpoint"
-            rules={[{ required: true, message: 'Please select checkpoint' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn bài học checkpoint' }]}
           >
-            <Select options={CHECKPOINTS} placeholder="Select checkpoint" />
+            <Select options={CHECKPOINTS} placeholder="Chọn bài học checkpoint" />
           </Form.Item>
 
           <Form.Item
-            label="Priority"
+            label="Độ ưu tiên"
             name="priority"
-            rules={[{ required: true, message: 'Please set priority' }]}
+            rules={[{ required: true, message: 'Vui lòng thiết lập độ ưu tiên' }]}
           >
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>

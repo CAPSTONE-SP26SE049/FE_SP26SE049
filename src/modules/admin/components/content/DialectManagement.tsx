@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, message, Space, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined } from '@ant-design/icons';
+import { Trash2 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
-
-const REGION_MAP: Record<string, string> = {
-    'SOUTH': 'Miền Nam',
-    'NORTH': 'Miền Bắc',
-    'CENTRAL': 'Miền Trung'
-};
 
 const DialectManagement: React.FC = () => {
     const [dialects, setDialects] = useState<any[]>([]);
@@ -79,28 +74,41 @@ const DialectManagement: React.FC = () => {
 
     const columns = [
         {
-            title: 'Tên Vùng Miền',
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
+            title: 'Mã Vùng (Code)',
             dataIndex: 'name',
             key: 'name',
-            render: (name: string) => REGION_MAP[name?.toUpperCase()] || name
+            render: (text: string) => <strong>{text}</strong>
         },
-        { title: 'Mô Tả', dataIndex: 'description', key: 'description' },
         {
-            title: 'Hành Động',
+            title: 'Tên Hiển Thị (Tiếng Việt)',
+            dataIndex: 'description',
+            key: 'description',
+            render: (text: string) => <span className="text-blue-600 font-medium">{text}</span>
+        },
+        {
+            title: 'Hành động',
             key: 'action',
             render: (_: any, record: any) => (
                 <Space size="middle">
                     <Button
                         type="text"
-                        icon={<EditOutlined />}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border-none"
                         onClick={() => handleOpenModal(record)}
-                    />
+                        className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-all border-none"
+                    >
+                        <EditOutlined style={{ fontSize: 16 }} />
+                    </Button>
                     <Popconfirm title="Chắc chắn xóa vùng miền này?" onConfirm={() => handleDelete(record.id)}>
                         <Button
                             type="text"
                             danger
-                            icon={<DeleteOutlined />}
+                            icon={<Trash2 size={16} />}
                             className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border-none"
                         />
                     </Popconfirm>
@@ -112,14 +120,16 @@ const DialectManagement: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">Danh sách Vùng Miền (Dialects)</h3>
+                <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold">Danh sách vùng miền (Dialects)</h3>
+                </div>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={() => handleOpenModal()}
                     className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-5 rounded-lg border-none shadow-sm"
                 >
-                    Thêm Vùng Miền
+                    Thêm vùng miền
                 </Button>
             </div>
             <Table
@@ -128,20 +138,38 @@ const DialectManagement: React.FC = () => {
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 5 }}
+                locale={{ emptyText: 'Chưa có dữ liệu' }}
             />
 
             <Modal
-                title={editingId ? "Sửa Vùng Miền" : "Thêm Vùng Miền Mới"}
+                title={editingId ? "Sửa vùng miền" : "Thêm vùng miền mới"}
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
                 footer={null}
             >
                 <Form layout="vertical" form={form} onFinish={handleSubmit}>
-                    <Form.Item name="name" label="Tên Vùng Miền" rules={[{ required: true, message: 'Vui lòng nhập tên' }]}>
-                        <Input />
+                    <Form.Item
+                        name="name"
+                        label="Mã vùng miền (VD: NORTH, MIEN_TAY)"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập mã vùng' },
+                            { pattern: /^[A-Z0-9_]+$/, message: 'Mã vùng chỉ gồm chữ Hoa, số và dấu gạch dưới' },
+                            { min: 3, message: 'Mã vùng ít nhất 3 ký tự' },
+                            { max: 20, message: 'Mã vùng không quá 20 ký tự' }
+                        ]}
+                    >
+                        <Input placeholder="Nhập mã viết hoa không dấu..." disabled={!!editingId} />
                     </Form.Item>
-                    <Form.Item name="description" label="Mô Tả">
-                        <Input.TextArea rows={3} />
+                    <Form.Item
+                        name="description"
+                        label="Tên hiển thị (Tiếng Việt - VD: Miền Bắc)"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập tên hiển thị' },
+                            { min: 3, message: 'Tên hiển thị ít nhất 3 ký tự' },
+                            { max: 100, message: 'Tên hiển thị không quá 100 ký tự' }
+                        ]}
+                    >
+                        <Input placeholder="Nhập tên tiếng Việt hiển thị trên giao diện..." />
                     </Form.Item>
                     <div className="flex justify-end gap-2 mt-4">
                         <Button onClick={() => setIsModalVisible(false)} className="rounded-lg h-10 px-6">Hủy</Button>
@@ -151,7 +179,7 @@ const DialectManagement: React.FC = () => {
                             loading={loading}
                             className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-8 rounded-lg border-none shadow-md"
                         >
-                            {editingId ? "Lưu Thay Đổi" : "Tạo Mới"}
+                            {editingId ? "Lưu thay đổi" : "Tạo mới"}
                         </Button>
                     </div>
                 </Form>

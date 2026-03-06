@@ -52,7 +52,9 @@ export const SnapshotDiffRenderer: React.FC<SnapshotRendererProps> = ({ oldSnaps
                 {renderRow('Tên bài học', oldSnapshot?.name || oldSnapshot?.title, newSnapshot?.name || newSnapshot?.title, 'words')}
                 {renderRow('Mô tả', oldSnapshot?.description, newSnapshot?.description, 'words')}
                 {renderRow('Thứ tự', oldSnapshot?.levelOrder, newSnapshot?.levelOrder, 'words')}
+                {renderRow('Số sao tối thiểu', oldSnapshot?.minStarsRequired, newSnapshot?.minStarsRequired, 'words')}
                 {renderRow('Ngưỡng AI', oldSnapshot?.aiThreshold, newSnapshot?.aiThreshold, 'words')}
+                {renderRow('Error Tag', oldSnapshot?.errorTag?.name, newSnapshot?.errorTag?.name, 'words')}
                 {renderRow('Audio URL', oldSnapshot?.audioUrl, newSnapshot?.audioUrl, 'words')}
             </div>
         );

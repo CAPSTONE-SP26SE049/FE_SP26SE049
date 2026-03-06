@@ -3,12 +3,13 @@ import {
     Card, List, Button, Tag, Avatar, Modal, message,
     Tabs, Input, Descriptions, Rate, Spin, Timeline
 } from 'antd'
+import { Eye } from 'lucide-react'
 import {
     CheckOutlined, CloseOutlined, FileTextOutlined,
-    PlayCircleOutlined, EyeOutlined, SoundOutlined,
+    PlayCircleOutlined, SoundOutlined,
     HistoryOutlined, SyncOutlined
 } from '@ant-design/icons'
-import { adminService } from '../services/adminService'
+import { adminService, type ReviewContentRequest } from '../services/adminService'
 import DialectManagement from '../components/content/DialectManagement'
 import LevelManagement from '../components/content/LevelManagement'
 import ChallengeManagement from '../components/content/ChallengeManagement'
@@ -127,18 +128,31 @@ const ContentApprovalPage = () => {
 
     // --- Actions ---
     const handleApprove = (id: string, type: string) => {
+        let comment = '';
         Modal.confirm({
             title: 'Phê duyệt nội dung này?',
-            content: 'Nội dung sẽ được xuất bản công khai cho học viên.',
+            content: (
+                <div className="mt-4">
+                    <p className="text-gray-600 mb-2">Bạn có muốn để lại lời nhắn hoặc nhận xét cho Educator không? (Tùy chọn)</p>
+                    <Input.TextArea
+                        placeholder="Nhập ghi chú phê duyệt..."
+                        rows={3}
+                        maxLength={200}
+                        showCount
+                        onChange={(e) => { comment = e.target.value; }}
+                    />
+                </div>
+            ),
             okText: 'Phê duyệt',
             cancelText: 'Hủy',
             okButtonProps: { className: 'bg-green-600 hover:bg-green-500 border-none rounded-lg' },
             onOk: async () => {
                 try {
+                    const payload: ReviewContentRequest = { status: 'APPROVED', comment: comment };
                     if (type === 'level') {
-                        await adminService.reviewLevel(id, { status: 'APPROVED' })
+                        await adminService.reviewLevel(id, payload)
                     } else {
-                        await adminService.reviewChallenge(id, { status: 'APPROVED' })
+                        await adminService.reviewChallenge(id, payload)
                     }
                     message.success('Đã phê duyệt thành công!')
                     setDetailModalVisible(false)
@@ -158,12 +172,28 @@ const ContentApprovalPage = () => {
 
     const handleConfirmReject = async () => {
         if (!rejectingItem) return
+
+        const trimmedReason = rejectionReason.trim();
+        if (!trimmedReason) {
+            message.warning('Vui lòng nhập lý do từ chối để Educator có thể sửa lại bài.');
+            return;
+        }
+        if (trimmedReason.length > 200) {
+            message.warning('Lý do từ chối không được vượt quá 200 ký tự.');
+            return;
+        }
+
         try {
             setLoading(true)
+            const payload: ReviewContentRequest = {
+                status: 'REJECTED',
+                rejectionReason: rejectionReason, // Maintain for backward compatibility
+                comment: rejectionReason        // New preferred field
+            }
             if (rejectingItem.type === 'level') {
-                await adminService.reviewLevel(rejectingItem.id, { status: 'REJECTED', rejectionReason })
+                await adminService.reviewLevel(rejectingItem.id, payload)
             } else {
-                await adminService.reviewChallenge(rejectingItem.id, { status: 'REJECTED', rejectionReason })
+                await adminService.reviewChallenge(rejectingItem.id, payload)
             }
             message.success('Đã từ chối nội dung.')
             setRejectModalVisible(false)
@@ -264,7 +294,7 @@ const ContentApprovalPage = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Quản Lý Nội Dung</h2>
+                <h2 className="text-2xl font-bold text-gray-800">Nội dung</h2>
                 <Button
                     type="primary"
                     icon={<SyncOutlined />}
@@ -280,7 +310,7 @@ const ContentApprovalPage = () => {
                 <Tabs defaultActiveKey="1" items={[
                     {
                         key: '1',
-                        label: 'Chờ Phê Duyệt',
+                        label: 'Chờ phê duyệt',
                         children: (
                             <List
                                 className="content-approval-list"
@@ -301,9 +331,9 @@ const ContentApprovalPage = () => {
                                             </Button>,
                                             <Button
                                                 key="view"
-                                                icon={<EyeOutlined />}
+                                                icon={<Eye size={18} />}
                                                 onClick={() => handleViewDetail(item)}
-                                                className="rounded-lg border-blue-200 text-blue-600 hover:border-blue-500 hover:text-blue-500"
+                                                className="flex items-center justify-center rounded-lg border-blue-200 text-blue-600 hover:border-blue-500 hover:text-blue-500"
                                             >
                                                 Xem chi tiết
                                             </Button>,
@@ -357,22 +387,22 @@ const ContentApprovalPage = () => {
                     },
                     {
                         key: '2',
-                        label: 'Vùng Miền (Dialects)',
+                        label: 'Vùng miền (Dialects)',
                         children: <DialectManagement />
                     },
                     {
                         key: '3',
-                        label: 'Cấp Độ (Levels)',
+                        label: 'Cấp độ (Levels)',
                         children: <LevelManagement />
                     },
                     {
                         key: '4',
-                        label: 'Thử Thách (Challenges)',
+                        label: 'Thử thách (Challenges)',
                         children: <ChallengeManagement />
                     },
                     {
                         key: '5',
-                        label: 'Lỗi Phát Âm (Error Tags)',
+                        label: 'Lỗi phát âm (Error Tags)',
                         children: <ErrorTagManagement />
                     }
                 ]} />
@@ -389,7 +419,7 @@ const ContentApprovalPage = () => {
                         />
                         <div>
                             <div className="font-semibold text-gray-800">
-                                {selectedItem?.type === 'level' ? 'Chi Tiết Bài Học' : 'Chi Tiết Bài Tập'}
+                                {selectedItem?.type === 'level' ? 'Chi tiết bài học' : 'Chi tiết bài tập'}
                             </div>
                             <div className="text-xs text-gray-400 font-normal">
                                 {selectedItem?.displayTitle}
@@ -458,6 +488,8 @@ const ContentApprovalPage = () => {
                         rows={4}
                         placeholder="Nhập lý do từ chối..."
                         value={rejectionReason}
+                        maxLength={200}
+                        showCount
                         onChange={(e) => setRejectionReason(e.target.value)}
                     />
                 </div>

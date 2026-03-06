@@ -26,17 +26,17 @@ const AdminLayout = () => {
         {
             key: '/admin',
             icon: <DashboardOutlined />,
-            label: <Link to="/admin">Dashboard</Link>,
+            label: <Link to="/admin">Tổng quan</Link>,
         },
         {
             key: '/admin/users',
             icon: <UserOutlined />,
-            label: <Link to="/admin/users">Quản lý Người dùng</Link>,
+            label: <Link to="/admin/users">Quản lý người dùng</Link>,
         },
         {
             key: '/admin/approvals',
             icon: <FileProtectOutlined />,
-            label: <Link to="/admin/approvals">Phê duyệt Nội dung</Link>,
+            label: <Link to="/admin/approvals">Phê duyệt nội dung</Link>,
         },
         {
             type: 'divider',
@@ -44,7 +44,7 @@ const AdminLayout = () => {
         {
             key: '/admin/settings',
             icon: <SettingOutlined />,
-            label: <Link to="/admin/settings">Cài đặt Hệ thống</Link>,
+            label: <Link to="/admin/settings">Cài đặt hệ thống</Link>,
         },
     ] as any
 

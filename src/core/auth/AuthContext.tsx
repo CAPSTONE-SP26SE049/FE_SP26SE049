@@ -26,7 +26,7 @@ export interface AuthSession {
 interface AuthContextValue {
   session: AuthSession | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<AuthSession>
+  login: (email: string, password: string, remember?: boolean) => Promise<AuthSession>
   logout: () => Promise<void>
 }
 
@@ -36,7 +36,7 @@ const REFRESH_TOKEN_KEY = 'REFRESH_TOKEN'
 const USER_INFO_KEY = 'USER_INFO'
 
 function readSessionFromStorage(): AuthSession | null {
-  const raw = window.sessionStorage.getItem(SESSION_KEY)
+  const raw = window.sessionStorage.getItem(SESSION_KEY) || window.localStorage.getItem(SESSION_KEY)
   if (!raw) return null
   try {
     return JSON.parse(raw) as AuthSession
@@ -45,18 +45,31 @@ function readSessionFromStorage(): AuthSession | null {
   }
 }
 
-function writeSessionToStorage(session: AuthSession | null) {
+function writeSessionToStorage(session: AuthSession | null, remember: boolean = false) {
+  const storage = remember ? window.localStorage : window.sessionStorage;
+  const otherStorage = remember ? window.sessionStorage : window.localStorage;
+
   if (!session) {
-    window.sessionStorage.removeItem(SESSION_KEY)
-    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY)
-    window.sessionStorage.removeItem(REFRESH_TOKEN_KEY)
-    window.sessionStorage.removeItem(USER_INFO_KEY)
+    storage.removeItem(SESSION_KEY)
+    storage.removeItem(ACCESS_TOKEN_KEY)
+    storage.removeItem(REFRESH_TOKEN_KEY)
+    storage.removeItem(USER_INFO_KEY)
+    otherStorage.removeItem(SESSION_KEY)
+    otherStorage.removeItem(ACCESS_TOKEN_KEY)
+    otherStorage.removeItem(REFRESH_TOKEN_KEY)
+    otherStorage.removeItem(USER_INFO_KEY)
     return
   }
-  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
-  window.sessionStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
-  window.sessionStorage.setItem(USER_INFO_KEY, JSON.stringify(session.user))
+
+  storage.setItem(SESSION_KEY, JSON.stringify(session))
+  storage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
+  storage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
+  storage.setItem(USER_INFO_KEY, JSON.stringify(session.user))
+
+  otherStorage.removeItem(SESSION_KEY)
+  otherStorage.removeItem(ACCESS_TOKEN_KEY)
+  otherStorage.removeItem(REFRESH_TOKEN_KEY)
+  otherStorage.removeItem(USER_INFO_KEY)
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -72,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     () => ({
       session,
       isAuthenticated: Boolean(session?.accessToken),
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, remember: boolean = false) => {
         // Gọi API login thật từ authService
         const result: any = await loginAPI(email, password)
         const data = result.data
@@ -91,12 +104,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         setSession(fullSession)
-        writeSessionToStorage(fullSession)
+        writeSessionToStorage(fullSession, remember)
         return fullSession
       },
       logout: async () => {
         try {
-          const raw = window.sessionStorage.getItem(SESSION_KEY)
+          const raw = window.sessionStorage.getItem(SESSION_KEY) || window.localStorage.getItem(SESSION_KEY)
           if (raw) {
             const sessionData = JSON.parse(raw) as AuthSession
             const token = sessionData.refreshToken || window.sessionStorage.getItem(REFRESH_TOKEN_KEY)
@@ -108,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.error('Logout API error:', error)
         } finally {
           setSession(null)
-          writeSessionToStorage(null)
+          writeSessionToStorage(null, false)
           window.location.href = '/login'
         }
       },

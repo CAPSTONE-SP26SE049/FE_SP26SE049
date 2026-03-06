@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Table, Card, Input, Tag, Space, Button, Tooltip, Avatar, Modal, Form, message } from 'antd'
-import { SearchOutlined, EditOutlined, StopOutlined, CheckCircleOutlined, UserOutlined, PlusOutlined } from '@ant-design/icons'
+import { Table, Card, Input, Tag, Space, Button, Tooltip, Avatar, Modal, Form, message, Select } from 'antd'
+import { SearchOutlined, UserOutlined, PlusOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, StopOutlined, EditOutlined } from '@ant-design/icons'
+import { Lock, Unlock } from 'lucide-react'
 import { adminService } from '../services/adminService'
 
 const UserManagementPage = () => {
@@ -14,6 +15,7 @@ const UserManagementPage = () => {
     const [isEditModalVisible, setIsEditModalVisible] = useState(false)
     const [editingUser, setEditingUser] = useState<any>(null)
     const [editForm] = Form.useForm()
+    const [dialects, setDialects] = useState<any[]>([])
 
     const fetchUsers = async () => {
         try {
@@ -29,8 +31,19 @@ const UserManagementPage = () => {
         }
     }
 
+    const fetchDialects = async () => {
+        try {
+            const res = await adminService.getDialects()
+            const data = res?.data || (Array.isArray(res) ? res : [])
+            setDialects(data)
+        } catch (error) {
+            console.error('Failed to fetch dialects:', error)
+        }
+    }
+
     React.useEffect(() => {
         fetchUsers()
+        fetchDialects()
     }, [])
 
     const handleCreateEducator = async (values: { email: string; fullName: string }) => {
@@ -98,7 +111,14 @@ const UserManagementPage = () => {
 
     const columns = [
         {
-            title: 'Người Dùng',
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
+            title: 'Người dùng',
             dataIndex: 'fullName',
             key: 'fullName',
             render: (text: string, record: any) => (
@@ -112,7 +132,7 @@ const UserManagementPage = () => {
             ),
         },
         {
-            title: 'Vai Trò',
+            title: 'Vai trò',
             dataIndex: 'roleCode',
             key: 'roleCode',
             render: (role: any) => {
@@ -123,7 +143,7 @@ const UserManagementPage = () => {
             },
         },
         {
-            title: 'Trạng Thái',
+            title: 'Trạng thái',
             dataIndex: 'isActive',
             key: 'isActive',
             render: (status: string, record: any) => {
@@ -147,26 +167,26 @@ const UserManagementPage = () => {
             },
         },
         {
-            title: 'Ngày Tham Gia',
+            title: 'Ngày tham gia',
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A'
         },
         {
-            title: 'Hành Động',
+            title: 'Hành động',
             key: 'action',
             render: (_: any, record: any) => (
                 <Space size="middle">
                     <Tooltip title="Chỉnh sửa">
-                        <Button type="text" icon={<EditOutlined />} className="text-blue-600" onClick={() => handleOpenEditModal(record)} />
+                        <Button type="text" className="text-blue-600 flex items-center justify-center p-0 w-8 h-8" icon={<EditOutlined style={{ fontSize: 18 }} />} onClick={() => handleOpenEditModal(record)} />
                     </Tooltip>
                     {(record.isActive !== undefined ? record.isActive : record.status === 'active') ? (
                         <Tooltip title="Khóa tài khoản">
-                            <Button type="text" danger icon={<StopOutlined />} onClick={() => handleToggleStatus(record)} />
+                            <Button type="text" danger className="flex items-center justify-center p-0 w-8 h-8" icon={<Lock size={18} />} onClick={() => handleToggleStatus(record)} />
                         </Tooltip>
                     ) : (
                         <Tooltip title="Mở khóa">
-                            <Button type="text" className="text-green-600" icon={<CheckCircleOutlined />} onClick={() => handleToggleStatus(record)} />
+                            <Button type="text" className="text-green-600 flex items-center justify-center p-0 w-8 h-8" icon={<Unlock size={18} />} onClick={() => handleToggleStatus(record)} />
                         </Tooltip>
                     )}
                 </Space>
@@ -183,8 +203,12 @@ const UserManagementPage = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Quản Lý Người Dùng</h2>
-                <Button type="primary" className="!bg-blue-600 !border-none hover:!bg-blue-500 !text-white" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>Thêm Giáo Viên</Button>
+                <h2 className="text-2xl font-bold text-gray-800">Người dùng</h2>
+                <div className="flex gap-3">
+                    <Button icon={<DownloadOutlined />} onClick={() => message.info('Tính năng Export Excel đang phát triển')}>Export Excel</Button>
+                    <Button icon={<UploadOutlined />} onClick={() => message.info('Tính năng Import Excel đang phát triển')}>Import Excel</Button>
+                    <Button type="primary" className="!bg-blue-600 !border-none hover:!bg-blue-500 !text-white" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>Thêm giáo viên</Button>
+                </div>
             </div>
 
             <Card variant="borderless" className="shadow-sm rounded-xl">
@@ -202,11 +226,12 @@ const UserManagementPage = () => {
                     rowKey="id"
                     pagination={{ pageSize: 5 }}
                     loading={loading}
+                    locale={{ emptyText: 'Chưa có dữ liệu' }}
                 />
             </Card>
 
             <Modal
-                title="Tạo Tài Khoản Giáo Viên"
+                title="Tạo tài khoản giáo viên"
                 open={isModalVisible}
                 onCancel={() => {
                     setIsModalVisible(false)
@@ -217,8 +242,12 @@ const UserManagementPage = () => {
                 <Form layout="vertical" form={form} onFinish={handleCreateEducator}>
                     <Form.Item
                         name="fullName"
-                        label="Họ và Tên"
-                        rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                        label="Họ và tên"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập họ và tên' },
+                            { min: 3, message: 'Tên phải ít nhất 3 ký tự' },
+                            { max: 50, message: 'Tên không quá 50 ký tự' }
+                        ]}
                     >
                         <Input placeholder="Nguyễn Văn A" />
                     </Form.Item>
@@ -227,7 +256,8 @@ const UserManagementPage = () => {
                         label="Email"
                         rules={[
                             { required: true, message: 'Vui lòng nhập email' },
-                            { type: 'email', message: 'Email không hợp lệ' },
+                            { type: 'email', message: 'Vui lòng nhập đúng định dạng email' },
+                            { max: 100, message: 'Email không quá 100 ký tự' }
                         ]}
                     >
                         <Input placeholder="teacher.nguyen@example.com" />
@@ -235,14 +265,14 @@ const UserManagementPage = () => {
                     <div className="flex justify-end gap-2 mt-6">
                         <Button onClick={() => setIsModalVisible(false)}>Hủy</Button>
                         <Button type="primary" htmlType="submit" className="!bg-blue-600 !border-none hover:!bg-blue-500 !text-white" loading={submitting}>
-                            Tạo Tài Khoản
+                            Tạo tài khoản
                         </Button>
                     </div>
                 </Form>
             </Modal>
 
             <Modal
-                title="Chỉnh Sửa Người Dùng"
+                title="Chỉnh sửa người dùng"
                 open={isEditModalVisible}
                 onCancel={() => {
                     setIsEditModalVisible(false)
@@ -254,27 +284,43 @@ const UserManagementPage = () => {
                 <Form layout="vertical" form={editForm} onFinish={handleUpdateUser}>
                     <Form.Item
                         name="fullName"
-                        label="Họ và Tên"
-                        rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                        label="Họ và tên"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập họ và tên' },
+                            { min: 3, message: 'Tên phải ít nhất 3 ký tự' },
+                            { max: 50, message: 'Tên không quá 50 ký tự' }
+                        ]}
                     >
                         <Input placeholder="Nguyễn Văn A" />
                     </Form.Item>
                     <Form.Item
                         name="phone"
-                        label="Số Điện Thoại"
+                        label="Số điện thoại"
+                        rules={[
+                            { pattern: /^(0[3|5|7|8|9])[0-9]{8}$/, message: 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)' }
+                        ]}
                     >
                         <Input placeholder="0901234567" />
                     </Form.Item>
                     <Form.Item
                         name="region"
-                        label="Vùng Miền"
+                        label="Vùng miền"
+                        rules={[
+                            { required: true, message: 'Vui lòng chọn vùng miền' }
+                        ]}
                     >
-                        <Input placeholder="NORTH" />
+                        <Select placeholder="Chọn vùng miền">
+                            {dialects.map(d => (
+                                <Select.Option key={d.id} value={d.name}>
+                                    {d.description || d.name}
+                                </Select.Option>
+                            ))}
+                        </Select>
                     </Form.Item>
                     <div className="flex justify-end gap-2 mt-6">
                         <Button onClick={() => setIsEditModalVisible(false)}>Hủy</Button>
                         <Button type="primary" htmlType="submit" className="!bg-blue-600 !border-none hover:!bg-blue-500 !text-white" loading={submitting}>
-                            Lưu Thay Đổi
+                            Lưu thay đổi
                         </Button>
                     </div>
                 </Form>

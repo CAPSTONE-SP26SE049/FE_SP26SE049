@@ -57,14 +57,14 @@ const AdminDashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Tổng Quan Hệ Thống</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Tổng quan</h2>
 
       {/* KPI Cards */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card variant="borderless" className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <Statistic
-              title="Tổng Người Dùng"
+              title="Tổng người dùng"
               value={overview.totalUsers || 0}
               prefix={<UserOutlined />}
               styles={{ content: { color: '#3f8600' } }}
@@ -74,7 +74,7 @@ const AdminDashboardPage = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card variant="borderless" className="shadow-sm rounded-xl hover:shadow-md transition-shadow" loading={loading}>
             <Statistic
-              title="Lượt Tập Phát Âm"
+              title="Lượt tập phát âm"
               value={overview.totalAttempts || 0}
               prefix={<BookOutlined />}
               styles={{ content: { color: '#1890ff' } }}
@@ -84,7 +84,7 @@ const AdminDashboardPage = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card variant="borderless" className="shadow-sm rounded-xl hover:shadow-md transition-shadow" loading={loading}>
             <Statistic
-              title="Điểm Số Trung Bình"
+              title="Điểm số trung bình"
               value={overview.averageScore || 0}
               precision={1}
               prefix={<CheckCircleOutlined />}
@@ -95,7 +95,7 @@ const AdminDashboardPage = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card variant="borderless" className="shadow-sm rounded-xl hover:shadow-md transition-shadow" loading={loading}>
             <Statistic
-              title="Người Dùng Active (7 ngày)"
+              title="Người dùng hoạt động (7 ngày)"
               value={overview.activeUsers7Days || 0}
               prefix={<UserOutlined />}
               styles={{ content: { color: '#cf1322' } }}
@@ -107,7 +107,7 @@ const AdminDashboardPage = () => {
       {/* Analytics Expansion */}
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={12}>
-          <Card title="Chỉ Số Tương Tác (Engagement)" variant="borderless" className="shadow-sm rounded-xl h-full" loading={loading}>
+          <Card title="Chỉ số tương tác (Engagement)" variant="borderless" className="shadow-sm rounded-xl h-full" loading={loading}>
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
                 <span className="text-gray-600">Daily Active Users (DAU)</span>
@@ -126,7 +126,7 @@ const AdminDashboardPage = () => {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Error Heatmaps (Tỷ lệ phát âm sai phổ biến)" variant="borderless" className="shadow-sm rounded-xl h-full" loading={loading}>
+          <Card title="Tỷ lệ phát âm sai (Error report)" variant="borderless" className="shadow-sm rounded-xl h-full" loading={loading}>
             <div className="space-y-4">
               {Object.keys(heatmaps || {}).length > 0 ? (
                 Object.entries(heatmaps).map(([key, value]: [string, any]) => (
@@ -152,7 +152,7 @@ const AdminDashboardPage = () => {
         {/* Recent Approvals */}
         <Col xs={24} lg={12}>
           <Card
-            title="Nội Dung Chờ Phê Duyệt Gần Đây"
+            title="Nội dung chờ phê duyệt gần đây"
             variant="borderless"
             className="shadow-sm rounded-xl"
             extra={<a href="/admin/approvals" className="text-blue-600 hover:text-blue-500 font-medium bg-blue-50 px-3 py-1 rounded-md transition-colors text-sm border border-blue-100">Xem tất cả</a>}
@@ -181,7 +181,7 @@ const AdminDashboardPage = () => {
 
         {/* System Monitoring */}
         <Col xs={24} lg={12}>
-          <Card title="Trạng Thái Hệ Thống" variant="borderless" className="shadow-sm rounded-xl" loading={loading}>
+          <Card title="Trạng thái hệ thống" variant="borderless" className="shadow-sm rounded-xl" loading={loading}>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span>Server Status</span>
@@ -215,7 +215,7 @@ const AdminDashboardPage = () => {
       {/* User Feedback */}
       <Row gutter={[24, 24]}>
         <Col xs={24}>
-          <Card title="Phản Hồi & Báo Lỗi Gần Đây" variant="borderless" className="shadow-sm rounded-xl" loading={loading}>
+          <Card title="Phản hồi & báo lỗi gần đây" variant="borderless" className="shadow-sm rounded-xl" loading={loading}>
             <div className="space-y-2">
               {feedbacks.slice(0, 5).map((item: any, index: number) => (
                 <div key={index} className="flex justify-between w-full py-2 border-b border-gray-100 last:border-0 text-sm">

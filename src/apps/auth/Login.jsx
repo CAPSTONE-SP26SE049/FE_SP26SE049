@@ -18,7 +18,7 @@ export default function Login() {
   const onFinish = async (values) => {
     setLoading(true)
     try {
-      const session = await login(values.email, values.password)
+      const session = await login(values.email, values.password, values.remember)
 
       if (session.user.role === 'ADMIN') {
         navigate('/admin', { replace: true })

@@ -19,6 +19,7 @@ export interface LevelRequest {
     description: string;
     minStarsRequired: number;
     errorTagId?: string;
+    comment?: string;
 }
 
 export interface ChallengeRequest {
@@ -28,11 +29,13 @@ export interface ChallengeRequest {
     phoneticTranscriptionIpa?: string;
     referenceAudioUrl?: string;
     focusPhonemes?: string;
+    comment?: string;
 }
 
 export interface ReviewContentRequest {
     status: 'APPROVED' | 'REJECTED';
     rejectionReason?: string;
+    comment?: string;
 }
 
 export const adminService = {
@@ -63,7 +66,10 @@ export const adminService = {
         return apiClient.post('/admin/content/levels', data);
     },
     updateLevel: async (id: string, data: LevelRequest) => {
-        return apiClient.put(`/admin/content/levels/${id}`, data);
+        return apiClient.put(`/admin/content/levels/${id}`, {
+            ...data,
+            name: data.name // Ensure 'name' is used if 'title' was previous backend expectation
+        });
     },
     deleteLevel: async (id: string) => {
         return apiClient.delete(`/admin/content/levels/${id}`);
@@ -109,9 +115,12 @@ export const adminService = {
     getErrorTags: async () => {
         return apiClient.get('/public/error-tags');
     },
-    createErrorTag: async (tagCode: string, name: string, description: string) => {
-        return apiClient.post('/admin/error-tags', null, {
-            params: { tagCode, name, description }
+    createErrorTag: async (tagCode: string, name: string, description: string, regions: string[]) => {
+        return apiClient.post('/admin/error-tags', { tagCode, name, description, regions });
+    },
+    updateErrorTag: async (id: string, data: { tagCode?: string; name?: string; description?: string; regions?: string[] }) => {
+        return apiClient.put(`/admin/error-tags/${id}`, null, {
+            params: data
         });
     },
     deleteErrorTag: async (id: string) => {

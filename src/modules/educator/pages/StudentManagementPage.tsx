@@ -109,6 +109,13 @@ const StudentManagementPage = () => {
 
     const columns = [
         {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
             title: 'Học Sinh',
             key: 'name',
             render: (_: any, record: any) => (
@@ -264,7 +271,8 @@ const StudentManagementPage = () => {
                         label="Email Học Sinh"
                         rules={[
                             { required: true, message: 'Vui lòng nhập email học sinh' },
-                            { type: 'email', message: 'Email không hợp lệ' }
+                            { type: 'email', message: 'Vui lòng nhập đúng định dạng email' },
+                            { max: 100, message: 'Email không quá 100 ký tự' }
                         ]}
                     >
                         <Input placeholder="student.example@gmail.com" />
@@ -289,9 +297,13 @@ const StudentManagementPage = () => {
                     <Form.Item
                         name="content"
                         label="Nội dung nhận xét"
-                        rules={[{ required: true, message: 'Vui lòng nhập nội dung!' }]}
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập nội dung nhận xét!' },
+                            { min: 10, message: 'Nhận xét phải ít nhất 10 ký tự' },
+                            { max: 500, message: 'Nhận xét không quá 500 ký tự' }
+                        ]}
                     >
-                        <Input.TextArea rows={4} placeholder="Nhập nhận xét của bạn về tiến độ học tập của học sinh..." />
+                        <Input.TextArea rows={4} placeholder="Nhập nhận xét của bạn về tiến độ học tập của học sinh..." showCount maxLength={500} />
                     </Form.Item>
                 </Form>
             </Modal>

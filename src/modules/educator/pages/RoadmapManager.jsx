@@ -22,14 +22,14 @@ import {
   Tooltip,
   Alert,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { educatorService } from '../services/educatorService'
 import { message } from 'antd'
 import SnapshotDiffRenderer from '../../../components/common/SnapshotDiffRenderer'
 
 // Removed hardcoded ERROR_TAG_OPTIONS
 
-const getStatusTag = (status, rejectionReason) => {
+const getStatusTag = (status, rejectionReason, comment) => {
   if (!status) return null
   switch (status.toUpperCase()) {
     case 'APPROVED':
@@ -38,7 +38,7 @@ const getStatusTag = (status, rejectionReason) => {
       return <Tag color="warning">Chờ duyệt</Tag>
     case 'REJECTED':
       return (
-        <Tooltip title={`Lý do: ${rejectionReason || 'Không có'}`}>
+        <Tooltip title={`Lý do: ${comment || rejectionReason || 'Không có'}`}>
           <Tag color="error" style={{ cursor: 'help' }}>Từ chối</Tag>
         </Tooltip>
       )
@@ -48,42 +48,22 @@ const getStatusTag = (status, rejectionReason) => {
   }
 }
 
-const REGIONS = [
-  { label: 'Miền Nam', value: 'SOUTH' },
-  { label: 'Miền Trung', value: 'CENTRAL' },
-  { label: 'Miền Bắc', value: 'NORTH' },
-]
-
-const REGION_CONFIG = {
-  south: {
-    key: 'south',
-    label: 'Miền Nam ',
-    color: 'green',
-  },
-  central: {
-    key: 'central',
-    label: 'Miền Trung',
-    color: 'purple',
-  },
-  north: {
-    key: 'north',
-    label: 'Miền Bắc',
-    color: 'red',
-  },
-}
+// Removed hardcoded REGIONS and REGION_CONFIG in favor of dynamic dialects
 
 // Fallback dialect IDs in case a region has no existing levels to copy from
 // Removed hardcoded REGION_DIALECT_MAP in favor of dynamic fetching.
 
 const RoadmapManager = () => {
-  const [activeRegion, setActiveRegion] = useState('SOUTH') // Changed initial state to 'SOUTH'
+  const [selectedDialect, setSelectedDialect] = useState(null) // Replaces activeRegion for 2-step navigation
   const [editingLevel, setEditingLevel] = useState(null)
   const [form] = Form.useForm()
 
-  const [levels, setLevels] = useState([]) // Renamed regionLevels to levels
+  const [levels, setLevels] = useState([])
   const [loading, setLoading] = useState(false)
   const [dialects, setDialects] = useState([])
   const [errorTags, setErrorTags] = useState([])
+  const [allErrorTags, setAllErrorTags] = useState([])
+  const [dialectStats, setDialectStats] = useState({})
 
   // Rejected content tracking
   const [rejectedLevels, setRejectedLevels] = useState([])
@@ -121,30 +101,86 @@ const RoadmapManager = () => {
 
   const fetchDialects = async () => {
     try {
+      setLoading(true)
       const res = await educatorService.getDialects()
       const data = res?.data || (Array.isArray(res) ? res : [])
-      if (data.length > 0) setDialects(data)
+      setDialects(data)
     } catch (error) {
       console.error('Failed to fetch dialects:', error)
+      message.error('Không thể tải danh sách vùng miền')
+    } finally {
+      // Don't turn off loading here, let fetchDialectStats do it
     }
   }
 
-  const fetchErrorTags = async () => {
+  const fetchDialectStats = async (dialectsList) => {
     try {
-      const res = await educatorService.getErrorTags()
+      const stats = {};
+      await Promise.all(
+        dialectsList.map(async (dialect) => {
+          let levelCount = 0;
+          let challengeCount = 0;
+          try {
+            const levelsRes = await educatorService.getCurriculumByRegion(dialect.name);
+            const levels = levelsRes?.data || (Array.isArray(levelsRes) ? levelsRes : []);
+            levelCount = levels.length;
+
+            await Promise.all(
+              levels.map(async (level) => {
+                try {
+                  const challengesRes = await educatorService.getChallengesByLevel(level.id);
+                  const challenges = challengesRes?.data || (Array.isArray(challengesRes) ? challengesRes : []);
+                  challengeCount += challenges.length;
+                } catch (e) {
+                  // ignore individual errors
+                }
+              })
+            );
+          } catch (e) {
+            // ignore
+          }
+          stats[dialect.id] = { levelCount, challengeCount };
+        })
+      );
+      setDialectStats(stats);
+    } catch (error) {
+      console.error("Failed to fetch dialect stats", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fetchErrorTags = async (dialectId) => {
+    if (!dialectId) return []
+    try {
+      const res = await educatorService.getErrorTags(dialectId)
       const data = res?.data || (Array.isArray(res) ? res : [])
-      if (data.length > 0) setErrorTags(data)
+      const finalTags = Array.isArray(data) ? data : []
+      setErrorTags(finalTags)
+      return finalTags
     } catch (error) {
       console.error('Failed to fetch error tags:', error)
+      return []
+    }
+  }
+
+  const fetchAllErrorTags = async () => {
+    try {
+      const res = await educatorService.getErrorTags() // No dialectId = all tags
+      const data = res?.data || (Array.isArray(res) ? res : [])
+      setAllErrorTags(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Failed to fetch all error tags:', error)
     }
   }
 
   const fetchAllRejectedLevels = async () => {
     try {
       setRejectedLoading(true)
-      const regions = ['SOUTH', 'CENTRAL', 'NORTH']
+      // Use dynamic codes from dialects if available, fallback to basic ones
+      const regionNames = dialects.length > 0 ? dialects.map(d => d.name) : ['SOUTH', 'CENTRAL', 'NORTH']
       const results = await Promise.all(
-        regions.map(r => educatorService.getCurriculumByRegion(r).catch(() => ({ status: 'error', data: [] })))
+        regionNames.map(r => educatorService.getCurriculumByRegion(r).catch(() => ({ status: 'error', data: [] })))
       )
       const allLevels = results.flatMap(res => {
         const data = res?.data || (Array.isArray(res) ? res : [])
@@ -165,7 +201,7 @@ const RoadmapManager = () => {
       const data = res?.data || (Array.isArray(res) ? res : [])
       setLevels(Array.isArray(data) ? data : [])
     } catch (error) {
-      message.error('Failed to fetch curriculum data')
+      message.error('Lỗi khi tải dữ liệu lộ trình')
     } finally {
       setLoading(false)
     }
@@ -173,13 +209,24 @@ const RoadmapManager = () => {
 
   React.useEffect(() => {
     fetchDialects()
-    fetchErrorTags()
-    fetchAllRejectedLevels()
+    fetchAllErrorTags()
   }, [])
 
   React.useEffect(() => {
-    fetchLevels(activeRegion)
-  }, [activeRegion])
+    if (dialects.length > 0) {
+      fetchAllRejectedLevels()
+      if (Object.keys(dialectStats).length === 0) {
+        fetchDialectStats(dialects);
+      }
+    }
+  }, [dialects])
+
+  React.useEffect(() => {
+    if (selectedDialect) {
+      fetchLevels(selectedDialect.name)
+      fetchErrorTags(selectedDialect.id)
+    }
+  }, [selectedDialect])
 
   const fetchChallenges = async (levelId) => {
     try {
@@ -204,14 +251,17 @@ const RoadmapManager = () => {
       description: level.description,
       levelOrder: level.levelOrder,
       minStarsRequired: level.minStarsRequired,
-      errorTagId: level.errorTag?.id,
+      errorTagId: level.errorTagId || (level.errorTag && typeof level.errorTag === 'object' ? level.errorTag.id : level.errorTag),
       aiThreshold: level.aiThreshold,
       audioUrl: level.audioUrl,
+      comment: '', // Reset comment for new edit session
     })
 
-    // Fetch challenges for this level
+    // Fetch challenges and error tags for this level
     if (level.id) {
       fetchChallenges(level.id)
+      const levelDialectId = level.dialect?.id || getDialectIdForRegion(activeRegion)
+      fetchErrorTags(levelDialectId)
     } else {
       setLevelChallenges([])
     }
@@ -220,12 +270,17 @@ const RoadmapManager = () => {
   const handleAddNode = () => {
     // Determine the next level order
     const nextOrder = levels.length > 0 ? Math.max(...levels.map(l => l.levelOrder)) + 1 : 1
+    const dialectId = selectedDialect?.id
+
     setEditingLevel({ isNew: true })
     form.resetFields()
     form.setFieldsValue({
       levelOrder: nextOrder,
       minStarsRequired: 0,
     })
+
+    // Fetch error tags for the new level's region
+    fetchErrorTags(dialectId)
   }
 
   const handleSave = async () => {
@@ -234,20 +289,10 @@ const RoadmapManager = () => {
       setLoading(true)
 
       if (editingLevel.isNew) {
-        // Find dialect ID dynamically from fetched dialects based on activeRegion
-        let dialectId = levels.length > 0 && levels[0]?.dialect?.id ? levels[0].dialect.id : null;
-
-        if (!dialectId && dialects.length > 0) {
-          // Map internal region key to backend name or search
-          const matchedDialect = dialects.find(d =>
-            d.region?.toUpperCase() === activeRegion.toUpperCase() ||
-            d.name?.toUpperCase().includes(activeRegion.toUpperCase())
-          )
-          dialectId = matchedDialect?.id
-        }
+        const dialectId = selectedDialect?.id
 
         if (!dialectId) {
-          throw new Error(`Không thể xác định ID Vùng miền cho ${activeRegion}. Vui lòng kiểm tra lại cấu hình Dialect.`);
+          throw new Error(`Không thể xác định ID Vùng miền, Vui lòng kiểm tra lại.`);
         }
 
         await educatorService.createLevel({
@@ -255,17 +300,20 @@ const RoadmapManager = () => {
           levelOrder: values.levelOrder,
           name: values.name,
           description: values.description || '',
-          minStarsRequired: values.minStarsRequired || 0
+          minStarsRequired: values.minStarsRequired || 0,
+          errorTagId: values.errorTagId,
+          comment: values.comment
         })
         message.success('Tạo bài học thành công')
       } else {
         await educatorService.updateLevel(editingLevel.id || editingLevel.key, {
-          title: values.name,
+          name: values.name,
           description: values.description,
           levelOrder: values.levelOrder,
           minStarsRequired: values.minStarsRequired,
           errorTagId: values.errorTagId,
           aiThreshold: values.aiThreshold,
+          comment: values.comment,
         })
 
         // Upload audio url if provided
@@ -279,7 +327,7 @@ const RoadmapManager = () => {
         }
       }
 
-      fetchLevels(activeRegion)
+      fetchLevels(selectedDialect?.name)
       setEditingLevel(null) // Close modal
     } catch (error) {
       console.error('Failed to save level:', error)
@@ -310,7 +358,7 @@ const RoadmapManager = () => {
           setLoading(true)
           await educatorService.deleteLevel(id)
           message.success('Đã xóa bài học thành công')
-          fetchLevels(activeRegion)
+          fetchLevels(selectedDialect?.name)
         } catch (error) {
           console.error('Failed to delete level:', error)
           message.error('Không thể xóa bài học')
@@ -328,7 +376,8 @@ const RoadmapManager = () => {
 
       const payload = {
         levelId: editingLevel.id,
-        ...values
+        ...values,
+        focusPhonemes: Array.isArray(values.focusPhonemes) ? values.focusPhonemes.join(', ') : values.focusPhonemes
       }
 
       if (editingChallenge && editingChallenge.id) {
@@ -369,46 +418,115 @@ const RoadmapManager = () => {
 
   const handleEditChallenge = (challenge) => {
     setEditingChallenge(challenge)
-    challengeForm.setFieldsValue(challenge)
+    challengeForm.setFieldsValue({
+      ...challenge,
+      focusPhonemes: challenge.focusPhonemes ?
+        (Array.isArray(challenge.focusPhonemes) ?
+          challenge.focusPhonemes.map(p => typeof p === 'object' ? p.id : p) :
+          challenge.focusPhonemes.split(',').map(s => s.trim())
+        ) : [],
+      comment: '', // Reset comment for new edit session
+    })
   }
 
-  if (loading && levels.length === 0) {
+  if (loading && dialects.length === 0) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Spin size="large" description="Đang tải lộ trình học tập..." />
+      <div className="flex justify-center items-center h-48">
+        <Spin size="large" description="Đang tải dữ liệu..." />
       </div>
     )
   }
 
+  // STEP 1: Region Selection Table
+  if (!selectedDialect) {
+    return (
+      <div className="roadmap-region-selection">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800 m-0">Lộ Trình Học Tập - Chọn Phương Ngữ</h2>
+        </div>
+        <Card variant="borderless" style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', background: '#fff' }}>
+          <Table
+            dataSource={dialects}
+            rowKey="id"
+            loading={loading}
+            pagination={false}
+            onRow={(record) => ({
+              onClick: () => setSelectedDialect(record),
+              style: { cursor: 'pointer' }
+            })}
+            columns={[
+              {
+                title: 'STT',
+                key: 'stt',
+                width: 70,
+                align: 'center',
+                render: (_, __, index) => index + 1,
+              },
+              {
+                title: 'Khu vực / Tên phương ngữ',
+                dataIndex: 'description',
+                key: 'description',
+                align: 'center',
+                render: (text) => <span className="font-semibold text-blue-600 text-lg">{text}</span>
+              },
+              {
+                title: 'Số cấp độ / bài kiểm tra',
+                key: 'levelCount',
+                align: 'center',
+                render: (_, record) => {
+                  const count = dialectStats[record.id]?.levelCount;
+                  return count !== undefined ? <Tag color="blue">{count}</Tag> : <Spin size="small" />;
+                }
+              },
+              {
+                title: 'Số thử thách',
+                key: 'challengeCount',
+                align: 'center',
+                render: (_, record) => {
+                  const count = dialectStats[record.id]?.challengeCount;
+                  return count !== undefined ? <Tag color="green">{count}</Tag> : <Spin size="small" />;
+                }
+              }
+            ]}
+          />
+        </Card>
+      </div>
+    )
+  }
+
+  // STEP 2: Roadmap Management
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-gray-800 m-0">Lộ Trình Học Tập</h2>
           <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddNode}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-5 rounded-lg border-none hover:shadow-md shadow-sm shadow-blue-200"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => setSelectedDialect(null)}
+            className="rounded-lg h-9 px-4"
           >
-            Thêm Bài Học Mới
+            Trở Về
           </Button>
+          <h2 className="text-xl font-bold text-gray-800 m-0">
+            Lộ Trình: <span className="text-blue-600">{selectedDialect.description || selectedDialect.name}</span>
+          </h2>
         </div>
-        <Tabs
-          activeKey={activeRegion}
-          onChange={setActiveRegion}
-          items={REGIONS.map((r) => ({ key: r.value, label: r.label }))}
-          className="custom-roadmap-tabs"
-        />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAddNode}
+          className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-9 px-4 rounded-lg border-none shadow-sm shadow-blue-200"
+        >
+          Thêm Bài Học Mới
+        </Button>
       </div>
 
       {/* ===== Nội dung bị từ chối ===== */}
       {(rejectedLoading || rejectedLevels.length > 0) && showRejected && (
         <Card
-          className="mb-6 rounded-xl"
+          className="mb-4 rounded-xl"
           style={{ background: 'linear-gradient(135deg, #fff5f5 0%, #fff 100%)', borderColor: '#fca5a5', border: '1px solid #fca5a5' }}
         >
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🚫</span>
               <div>
@@ -425,7 +543,7 @@ const RoadmapManager = () => {
           ) : (
             <div className="space-y-3">
               {rejectedLevels.map(level => (
-                <div key={level.id} className="bg-white rounded-xl border border-red-100 p-4 shadow-sm">
+                <div key={level.id} className="bg-white rounded-xl border border-red-100 p-3 shadow-sm">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -440,7 +558,7 @@ const RoadmapManager = () => {
                         message="Lý do từ chối từ Admin:"
                         description={
                           <span className="font-medium">
-                            {level.rejectionReason || 'Admin chưa nhập lý do cụ thể.'}
+                            {level.comment || level.rejectionReason || 'Admin chưa nhập lý do cụ thể.'}
                           </span>
                         }
                       />
@@ -448,7 +566,7 @@ const RoadmapManager = () => {
                     <Button
                       type="default"
                       icon={<HistoryOutlined />}
-                      className="rounded-lg h-9 px-3 mt-1 flex-shrink-0"
+                      className="rounded-lg h-8 px-3 mt-0 flex-shrink-0"
                       onClick={() => openHistoryModal(level.originalId || level.parentId || level.id)}
                     >
                       Lịch sử
@@ -456,7 +574,7 @@ const RoadmapManager = () => {
                     <Button
                       type="primary"
                       icon={<EditOutlined />}
-                      className="bg-blue-600 hover:bg-blue-500 border-none rounded-lg h-9 px-4 mt-1 flex-shrink-0"
+                      className="bg-blue-600 hover:bg-blue-500 border-none rounded-lg h-8 px-4 mt-0 flex-shrink-0"
                       onClick={() => handleNodeClick(level)}
                     >
                       Sửa &amp; Gửi lại
@@ -473,93 +591,89 @@ const RoadmapManager = () => {
         variant="borderless"
         style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', background: '#fff' }}
       >
-        <div style={{ padding: '20px 0' }}>
-          <Timeline
-            mode="alternate"
-            items={Array.isArray(levels) ? levels.map((level, index) => ({
-              key: level.id || index,
-              icon: (
-                <div
-                  style={{
-                    width: 12,
-                    height: 12,
-                    background: '#1890ff',
-                    borderRadius: '50%',
-                    border: '2px solid #fff',
-                    boxShadow: '0 0 0 2px #1890ff',
-                  }}
-                />
-              ),
-              content: (
-                <div
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    padding: '12px',
-                  }}
-                  onClick={() => handleNodeClick(level)}
-                >
-                  <Card
+        <Table
+          dataSource={Array.isArray(levels) ? levels : []}
+          rowKey={(record) => record.id}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          onRow={(record) => ({
+            onClick: () => handleNodeClick(record),
+            style: { cursor: 'pointer' }
+          })}
+          columns={[
+            {
+              title: 'Tên bài học',
+              dataIndex: 'name',
+              key: 'name',
+              filterSearch: true,
+              onFilter: (value, record) => record.name.toLowerCase().includes(value.toLowerCase()),
+              render: (text) => <span style={{ fontWeight: 600, color: '#1890ff' }}>{text}</span>,
+            },
+            {
+              title: 'Mô tả',
+              dataIndex: 'description',
+              key: 'description',
+              ellipsis: true,
+            },
+            {
+              title: 'Ngưỡng AI',
+              dataIndex: 'aiThreshold',
+              key: 'aiThreshold',
+              render: (val) => <Tag color="orange" variant="filled">{val}%</Tag>,
+              width: 120,
+            },
+            {
+              title: 'Lỗi tập trung',
+              dataIndex: 'errorTag',
+              key: 'errorTag',
+              render: (tag, record) => {
+                if (!tag) return '-';
+
+                // If tag is an object (from direct level fetch), use its name
+                if (typeof tag === 'object' && tag.name) return <Tag color="cyan" variant="filled">{tag.name}</Tag>;
+
+                // Otherwise (if it's a UUID or tag object without name), try resolving from allErrorTags or use record.errorTagId
+                const tagId = typeof tag === 'object' ? tag.id : tag;
+                const resolvedTag = allErrorTags.find(t => t.id === tagId || t.tagCode === tagId);
+
+                return <Tag color="cyan" variant="filled">{resolvedTag ? resolvedTag.name : tagId}</Tag>;
+              }
+            },
+            {
+              title: 'Trạng thái',
+              key: 'status',
+              render: (_, record) => getStatusTag(record.status, record.rejectionReason, record.comment),
+              width: 150,
+            },
+            {
+              title: 'Thao tác',
+              key: 'actions',
+              width: 120,
+              render: (_, record) => (
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  <Tooltip title="Lịch sử duyệt">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<HistoryOutlined />}
+                      onClick={() => openHistoryModal(record.originalId || record.parentId || record.id)}
+                      className="bg-gray-50 hover:bg-gray-200 text-gray-600 transition-all rounded-md"
+                    />
+                  </Tooltip>
+                  <Button
+                    type="text"
+                    danger
                     size="small"
-                    hoverable
-                    className="rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div
-                        style={{ fontWeight: 700, fontSize: 16, color: '#1890ff' }}
-                      >
-                        {level.name}
-                      </div>
-                      <div className="flex gap-2">
-                        <Tooltip title="Xem lịch sử duyệt">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<HistoryOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openHistoryModal(level.originalId || level.parentId || level.id);
-                            }}
-                            className="bg-gray-50 hover:bg-gray-200 text-gray-600 transition-all rounded-md"
-                          />
-                        </Tooltip>
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNode(level.id);
-                          }}
-                          className="opacity-100 hover:scale-120 transition-all text-red-500 hover:text-red-700 font-bold"
-                          style={{ background: 'rgba(255, 77, 79, 0.05)', borderRadius: '6px' }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: 8, color: '#595959', fontSize: 13 }}>
-                      {level.description}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Tag color="blue" variant="filled">Thứ tự: {level.levelOrder}</Tag>
-                      <Tag color="orange" variant="filled">Ngưỡng AI: {level.aiThreshold}%</Tag>
-                      {getStatusTag(level.status, level.rejectionReason)}
-                    </div>
-                    {level.status?.toUpperCase() === 'REJECTED' && (
-                      <Alert
-                        className="mt-2 rounded-lg"
-                        type="error"
-                        showIcon
-                        message="Nội dung bị từ chối"
-                        description={level.rejectionReason || 'Admin chưa cung cấp lý do cụ thể.'}
-                      />
-                    )}
-                  </Card>
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleDeleteNode(record.id)}
+                    className="opacity-100 hover:scale-120 transition-all text-red-500 hover:text-red-700 font-bold"
+                    style={{ background: 'rgba(255, 77, 79, 0.05)', borderRadius: '6px' }}
+                  />
                 </div>
-              )
-            })) : []}
-          />
-        </div>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal
@@ -577,7 +691,7 @@ const RoadmapManager = () => {
               key: 'config',
               label: 'Cấu hình bài học',
               children: (
-                <div className="py-2">
+                <div className="py-1">
                   <Form
                     form={form}
                     layout="vertical"
@@ -587,16 +701,24 @@ const RoadmapManager = () => {
                     <Form.Item
                       label="Tên bài học"
                       name="name"
-                      rules={[{ required: true, message: 'Vui lòng nhập tên bài học' }]}
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập tên bài học' },
+                        { min: 3, message: 'Tên bài học phải ít nhất 3 ký tự' },
+                        { max: 100, message: 'Tên bài học không quá 100 ký tự' }
+                      ]}
                     >
                       <Input placeholder="Nhập tên bài học..." />
                     </Form.Item>
 
-                    <Form.Item label="Mô tả bài học" name="description">
-                      <Input.TextArea placeholder="Nhập mô tả chi tiết..." rows={2} />
+                    <Form.Item
+                      label="Mô tả bài học"
+                      name="description"
+                      rules={[{ max: 500, message: 'Mô tả không quá 500 ký tự' }]}
+                    >
+                      <Input.TextArea placeholder="Nhập mô tả chi tiết..." rows={2} showCount maxLength={500} />
                     </Form.Item>
 
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       <Form.Item
                         label="Thứ tự bài học"
                         name="levelOrder"
@@ -610,6 +732,7 @@ const RoadmapManager = () => {
                       <Form.Item
                         label="Số sao yêu cầu"
                         name="minStarsRequired"
+                        rules={[{ required: true, message: 'Chọn số sao' }]}
                         className="flex-1"
                         tooltip="Số lượng sao tối thiểu người học cần đạt được ở bài học trước để mở khóa bài học này."
                       >
@@ -617,12 +740,25 @@ const RoadmapManager = () => {
                       </Form.Item>
                     </div>
 
-                    <Form.Item label="Lỗi tập trung (Error Tag)" name="errorTagId">
-                      <Select placeholder="Chọn loại lỗi luyện tập" loading={errorTags.length === 0} allowClear>
-                        {errorTags.map(opt => (
-                          <Select.Option key={opt.id} value={opt.id}>{opt.name}</Select.Option>
-                        ))}
-                      </Select>
+                    <Form.Item
+                      label="Lỗi tập trung (Error Tag)"
+                      name="errorTagId"
+                      rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
+                    >
+                      <Select
+                        placeholder="Chọn loại lỗi luyện tập"
+                        allowClear
+                        showSearch
+                        optionFilterProp="children"
+                        loading={loading}
+                        options={errorTags.map(tag => ({
+                          label: `${tag.name}${tag.description ? ` - ${tag.description}` : ''}`,
+                          value: tag.id
+                        }))}
+                        filterOption={(input, option) =>
+                          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
+                      />
                     </Form.Item>
 
                     <Form.Item
@@ -630,8 +766,8 @@ const RoadmapManager = () => {
                       tooltip="Mức độ chính xác tối thiểu (%) mà AI yêu cầu học viên phải đạt được để vượt qua các thử thách trong bài học này."
                       style={{ marginBottom: '24px' }}
                     >
-                      <div className="flex items-center gap-4">
-                        <Form.Item name="aiThreshold" noStyle rules={[{ required: true }]}>
+                      <div className="flex items-center gap-3">
+                        <Form.Item name="aiThreshold" noStyle rules={[{ required: true, message: 'Vui lòng chọn ngưỡng đạt' }]}>
                           <Slider
                             min={0}
                             max={100}
@@ -655,11 +791,24 @@ const RoadmapManager = () => {
                       label="Link Audio Mẫu (Audio URL)"
                       name="audioUrl"
                       tooltip="Đường dẫn đến file âm thanh mẫu chuẩn của bài học này (Drive, S3,...)"
+                      rules={[{ type: 'url', message: 'Vui lòng nhập link hợp lệ (http/https)' }]}
                     >
                       <Input placeholder="https://example.com/audio.mp3" />
                     </Form.Item>
 
-                    <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+                    <Form.Item
+                      label="Ghi chú thay đổi"
+                      name="comment"
+                      tooltip="Nhập lý do hoặc nội dung thay đổi cho bài học này (Bắt buộc khi cập nhật)."
+                      rules={[
+                        { required: !editingLevel?.isNew, message: 'Vui lòng nhập ghi chú thay đổi' },
+                        { max: 200, message: 'Ghi chú không quá 200 ký tự' }
+                      ]}
+                    >
+                      <Input.TextArea placeholder="Chi tiết các thay đổi..." rows={2} showCount maxLength={500} />
+                    </Form.Item>
+
+                    <div className="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
                       <Button onClick={() => setEditingLevel(null)} className="rounded-lg h-10 px-6 font-medium">Hủy</Button>
                       <Button
                         type="primary"
@@ -679,8 +828,8 @@ const RoadmapManager = () => {
               label: 'Danh sách bài tập',
               disabled: editingLevel?.isNew,
               children: (
-                <div className="py-2">
-                  <div className="flex justify-between items-center mb-4">
+                <div className="py-1">
+                  <div className="flex justify-between items-center mb-3">
                     <span className="text-gray-500 italic text-xs">Quản lý các từ/câu luyện tập bên trong bài học này.</span>
                     <Button
                       type="primary"
@@ -700,6 +849,13 @@ const RoadmapManager = () => {
                     rowKey="id"
                     pagination={{ pageSize: 5 }}
                     columns={[
+                      {
+                        title: 'STT',
+                        key: 'stt',
+                        width: 60,
+                        align: 'center',
+                        render: (_, __, index) => index + 1,
+                      },
                       { title: 'Nội dung', dataIndex: 'contentText', key: 'contentText' },
                       {
                         title: 'Loại',
@@ -708,6 +864,23 @@ const RoadmapManager = () => {
                         render: t => <Tag color={t === 'WORD' ? 'blue' : t === 'SENTENCE' ? 'green' : 'purple'}>{t}</Tag>,
                         width: 100
                       },
+                      {
+                        title: 'Âm vị/Lỗi',
+                        key: 'focusPhonemes',
+                        render: (_, record) => {
+                          if (!record.focusPhonemes) return '-';
+                          const tags = Array.isArray(record.focusPhonemes) ? record.focusPhonemes :
+                            (typeof record.focusPhonemes === 'string' ? record.focusPhonemes.split(',').filter(s => s.trim()) : []);
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {tags.map((tag, i) => {
+                                const tagName = typeof tag === 'object' ? tag.name : tag;
+                                return <Tag color="cyan" key={i} className="text-[10px] m-0">{tagName}</Tag>
+                              })}
+                            </div>
+                          );
+                        }
+                      },
                       { title: 'Phiên âm', dataIndex: 'phoneticTranscriptionIpa', key: 'phoneticTranscriptionIpa' },
                       {
                         title: 'Trạng thái',
@@ -715,10 +888,10 @@ const RoadmapManager = () => {
                         width: 130,
                         render: (s, record) => (
                           <div>
-                            {getStatusTag(s, record.rejectionReason)}
-                            {s?.toUpperCase() === 'REJECTED' && record.rejectionReason && (
+                            {getStatusTag(s, record.rejectionReason, record.comment)}
+                            {s?.toUpperCase() === 'REJECTED' && (record.comment || record.rejectionReason) && (
                               <div className="text-red-500 text-xs mt-1 leading-snug">
-                                🚫 {record.rejectionReason}
+                                🚫 {record.comment || record.rejectionReason}
                               </div>
                             )}
                           </div>
@@ -741,7 +914,7 @@ const RoadmapManager = () => {
                               size="small"
                               icon={<HistoryOutlined />}
                               className="flex items-center justify-center w-7 h-7 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all border-none"
-                              onClick={() => handleViewHistory(record, 'challenge')}
+                              onClick={() => openHistoryModal(record.id)}
                             />
                             <Popconfirm title="Xóa bài tập này?" onConfirm={() => handleDeleteChallenge(record.id)}>
                               <Button
@@ -782,22 +955,70 @@ const RoadmapManager = () => {
         centered
       >
         <Form layout="vertical" form={challengeForm} onFinish={handleChallengeSave} style={{ marginTop: 16 }}>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <Form.Item className="flex-1" name="type" label="Loại Thử Thách" rules={[{ required: true, message: 'Bắt buộc' }]}>
               <Select options={[{ label: 'Từ đơn (WORD)', value: 'WORD' }, { label: 'Câu (SENTENCE)', value: 'SENTENCE' }, { label: 'Đoạn văn (PARAGRAPH)', value: 'PARAGRAPH' }]} />
             </Form.Item>
-            <Form.Item className="flex-1" name="focusPhonemes" label="Âm Vị Tập Trung">
-              <Input placeholder="VD: N, L" />
+            <Form.Item
+              className="flex-1"
+              name="focusPhonemes"
+              label="Âm Vị Tập Trung"
+              rules={[{ required: true, message: 'Chọn ít nhất một âm vị' }]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Chọn âm vị..."
+                allowClear
+                showSearch
+                optionFilterProp="children"
+                loading={loading}
+                options={errorTags.map(tag => ({
+                  label: `${tag.name}${tag.description ? ` - ${tag.description}` : ''}`,
+                  value: tag.id
+                }))}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
             </Form.Item>
           </div>
-          <Form.Item name="contentText" label="Nội Dung Text" rules={[{ required: true, message: 'Nhập nội dung' }]}>
+          <Form.Item
+            name="contentText"
+            label="Nội Dung Text"
+            rules={[
+              { required: true, message: 'Vui lòng nhập nội dung text' },
+              { max: 1000, message: 'Nội dung không quá 1000 ký tự' }
+            ]}
+          >
             <Input placeholder="VD: Năng lực" />
           </Form.Item>
-          <Form.Item name="phoneticTranscriptionIpa" label="Phiên Âm IPA" rules={[{ required: true, message: 'Nhập phiên âm IPA' }]}>
+          <Form.Item
+            name="phoneticTranscriptionIpa"
+            label="Phiên Âm IPA"
+            rules={[
+              { required: true, message: 'Vui lòng nhập phiên âm IPA' },
+              { pattern: /^[^\s]+(\s[^\s]+)*$/, message: 'Định dạng IPA không hợp lệ' }
+            ]}
+          >
             <Input placeholder="VD: naŋ˧ lak̚˧" />
           </Form.Item>
-          <Form.Item name="referenceAudioUrl" label="Link Audio Mẫu">
+          <Form.Item
+            name="referenceAudioUrl"
+            label="Link Audio Mẫu"
+            rules={[{ type: 'url', message: 'Vui lòng nhập link hợp lệ (http/https)' }]}
+          >
             <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item
+            name="comment"
+            label="Ghi chú thay đổi"
+            tooltip="Nhập lý do hoặc nội dung thay đổi cho bài tập này (Bắt buộc khi cập nhật)."
+            rules={[
+              { required: !!editingChallenge?.id, message: 'Vui lòng nhập ghi chú thay đổi' },
+              { max: 200, message: 'Ghi chú không quá 200 ký tự' }
+            ]}
+          >
+            <Input.TextArea placeholder="Nhập ghi chú..." rows={2} showCount maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>

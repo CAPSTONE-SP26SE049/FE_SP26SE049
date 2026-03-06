@@ -229,7 +229,7 @@ const StudentAnalyticsPage: React.FC = () => {
                         label="Nội Dung Nhận Xét"
                         rules={[{ required: true, message: 'Vui lòng nhập nội dung nhận xét' }]}
                     >
-                        <Input.TextArea rows={4} placeholder="Nhập lời khuyên, hướng dẫn luyện tập hoặc khích lệ..." />
+                        <Input.TextArea rows={4} placeholder="Nhập lời khuyên, hướng dẫn luyện tập hoặc khích lệ..." showCount maxLength={500} />
                     </Form.Item>
                 </Form>
             </Modal>

@@ -37,7 +37,14 @@ const ChallengeManagement: React.FC = () => {
 
     const columns = [
         {
-            title: 'Nội Dung (Text)',
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
+            title: 'Nội dung (Text)',
             dataIndex: 'contentText',
             key: 'contentText',
             render: (v: string) => <span className="font-medium">{v}</span>,
@@ -48,32 +55,32 @@ const ChallengeManagement: React.FC = () => {
             key: 'type',
             width: 120,
             render: (t: string) => (
-                <Tag color={t === 'WORD' ? 'blue' : t === 'SENTENCE' ? 'green' : 'purple'}>{t}</Tag>
+                <span className={t === 'WORD' ? 'text-blue-600' : t === 'SENTENCE' ? 'text-green-600' : 'text-purple-600 font-medium'}>{t}</span>
             ),
         },
         {
-            title: 'Cấp Độ',
+            title: 'Cấp độ',
             key: 'level',
             render: (_: any, record: any) => {
                 const level = levels.find((l: any) => l.id === (record.levelId || record.level?.id));
-                return <Tag color="geekblue">{level?.name || record.levelId || '—'}</Tag>;
+                return <span className="text-gray-700 font-medium">{level?.name || record.levelId || '—'}</span>;
             },
         },
         {
-            title: 'Phiên Âm IPA',
+            title: 'Phiên âm IPA',
             dataIndex: 'phoneticTranscriptionIpa',
             key: 'phoneticTranscriptionIpa',
             render: (v: string) => <code className="text-xs bg-gray-100 px-1 rounded">{v || '—'}</code>,
         },
         {
-            title: 'Âm Vị',
+            title: 'Âm vị',
             dataIndex: 'focusPhonemes',
             key: 'focusPhonemes',
             width: 100,
             render: (v: string) => v || '—',
         },
         {
-            title: 'Trạng Thái',
+            title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
             width: 120,
@@ -88,8 +95,8 @@ const ChallengeManagement: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-lg font-bold m-0">Danh sách Thử Thách (Challenges)</h3>
-                    <p className="text-gray-400 text-xs mt-0.5">Chỉ xem — Educator là người tạo nội dung. Admin phê duyệt tại tab <strong>Chờ Phê Duyệt</strong>.</p>
+                    <h3 className="text-lg font-bold m-0">Danh sách thử thách (Challenges)</h3>
+                    <p className="text-gray-400 text-xs mt-0.5">Chỉ xem — Educator là người tạo nội dung. Admin phê duyệt tại tab <strong>Chờ phê duyệt</strong>.</p>
                 </div>
             </div>
             <Table
@@ -102,6 +109,7 @@ const ChallengeManagement: React.FC = () => {
                     record.status?.toUpperCase() === 'REJECTED' ? 'bg-red-50' :
                         record.status?.toUpperCase() === 'PENDING' ? 'bg-yellow-50' : ''
                 }
+                locale={{ emptyText: 'Chưa có dữ liệu' }}
             />
         </div>
     );

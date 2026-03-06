@@ -30,6 +30,7 @@ export interface CreateLevelRequest {
     description: string;
     minStarsRequired: number;
     errorTagId?: string;
+    comment?: string;
 }
 
 export interface UpdateLevelRequest {
@@ -39,6 +40,7 @@ export interface UpdateLevelRequest {
     minStarsRequired?: number;
     errorTagId?: string;
     aiThreshold?: number;
+    comment?: string;
 }
 
 export interface FeedbackRequest {
@@ -76,6 +78,7 @@ export interface ChallengeRequest {
     phoneticTranscriptionIpa: string;
     referenceAudioUrl?: string;
     focusPhonemes?: string;
+    comment?: string;
 }
 
 export const educatorService = {
@@ -133,8 +136,10 @@ export const educatorService = {
     getDialects: async () => {
         return apiClient.get('/dialects');
     },
-    getErrorTags: async () => {
-        return apiClient.get('/public/error-tags');
+    getErrorTags: async (dialectId?: string) => {
+        const params: any = {};
+        if (dialectId) params.dialectId = dialectId;
+        return apiClient.get('/educator/curriculum/error-tags', { params });
     },
     uploadReferenceAudio: async (levelId: string, audioUrl: string) => {
         return apiClient.post(`/educator/curriculum/levels/${levelId}/audio`, null, {
