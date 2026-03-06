@@ -1,0 +1,163 @@
+import React, { useState, useEffect } from 'react';
+import { Table, Button, Modal, Form, Input, message, Space, Popconfirm } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { adminService } from '../../services/adminService';
+
+const REGION_MAP: Record<string, string> = {
+    'SOUTH': 'Miền Nam',
+    'NORTH': 'Miền Bắc',
+    'CENTRAL': 'Miền Trung'
+};
+
+const DialectManagement: React.FC = () => {
+    const [dialects, setDialects] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [form] = Form.useForm();
+
+    const fetchDialects = async () => {
+        try {
+            setLoading(true);
+            const res = await adminService.getDialects().catch(() => ({ status: 'success', data: [] }));
+            if (res.status === 'success') {
+                setDialects(res.data || []);
+            }
+        } catch (error) {
+            message.error('Lỗi khi tải danh sách Vùng Miền');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDialects();
+    }, []);
+
+    const handleOpenModal = (record?: any) => {
+        if (record) {
+            setEditingId(record.id);
+            form.setFieldsValue(record);
+        } else {
+            setEditingId(null);
+            form.resetFields();
+        }
+        setIsModalVisible(true);
+    };
+
+    const handleSubmit = async (values: any) => {
+        try {
+            setLoading(true);
+            if (editingId) {
+                await adminService.updateDialect(editingId, values);
+                message.success('Cập nhật thành công');
+            } else {
+                await adminService.createDialect(values);
+                message.success('Tạo vùng miền mới thành công');
+            }
+            setIsModalVisible(false);
+            fetchDialects();
+        } catch (error: any) {
+            message.error(error.message || 'Có lỗi xảy ra');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            setLoading(true);
+            await adminService.deleteDialect(id);
+            message.success('Đã xóa vùng miền');
+            fetchDialects();
+        } catch (error: any) {
+            message.error(error.message || 'Xóa thất bại');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const columns = [
+        {
+            title: 'Tên Vùng Miền',
+            dataIndex: 'name',
+            key: 'name',
+            render: (name: string) => REGION_MAP[name?.toUpperCase()] || name
+        },
+        { title: 'Mô Tả', dataIndex: 'description', key: 'description' },
+        {
+            title: 'Hành Động',
+            key: 'action',
+            render: (_: any, record: any) => (
+                <Space size="middle">
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border-none"
+                        onClick={() => handleOpenModal(record)}
+                    />
+                    <Popconfirm title="Chắc chắn xóa vùng miền này?" onConfirm={() => handleDelete(record.id)}>
+                        <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border-none"
+                        />
+                    </Popconfirm>
+                </Space>
+            ),
+        }
+    ];
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Danh sách Vùng Miền (Dialects)</h3>
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleOpenModal()}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-5 rounded-lg border-none shadow-sm"
+                >
+                    Thêm Vùng Miền
+                </Button>
+            </div>
+            <Table
+                columns={columns}
+                dataSource={dialects}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 5 }}
+            />
+
+            <Modal
+                title={editingId ? "Sửa Vùng Miền" : "Thêm Vùng Miền Mới"}
+                open={isModalVisible}
+                onCancel={() => setIsModalVisible(false)}
+                footer={null}
+            >
+                <Form layout="vertical" form={form} onFinish={handleSubmit}>
+                    <Form.Item name="name" label="Tên Vùng Miền" rules={[{ required: true, message: 'Vui lòng nhập tên' }]}>
+                        <Input />
+                    </Form.Item>
+                    <Form.Item name="description" label="Mô Tả">
+                        <Input.TextArea rows={3} />
+                    </Form.Item>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button onClick={() => setIsModalVisible(false)} className="rounded-lg h-10 px-6">Hủy</Button>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={loading}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-8 rounded-lg border-none shadow-md"
+                        >
+                            {editingId ? "Lưu Thay Đổi" : "Tạo Mới"}
+                        </Button>
+                    </div>
+                </Form>
+            </Modal>
+        </div>
+    );
+};
+
+export default DialectManagement;

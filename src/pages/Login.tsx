@@ -18,6 +18,7 @@ const Login = () => {
                         <div>
                             <input
                                 type="email"
+                                autoComplete="username"
                                 placeholder="Email hoặc Tên đăng nhập"
                                 className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
                             />
@@ -25,6 +26,7 @@ const Login = () => {
                         <div>
                             <input
                                 type="password"
+                                autoComplete="current-password"
                                 placeholder="Mật khẩu"
                                 className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
                             />

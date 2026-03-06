@@ -18,9 +18,9 @@ const Register = () => {
                     <div className="space-y-4">
                         {step === 1 && (
                             <>
-                                <input type="number" placeholder="Tuổi của bạn" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
-                                <input type="text" placeholder="Tên của bạn (Tùy chọn)" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
-                                <input type="email" placeholder="Email" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
+                                <input type="number" autoComplete="off" placeholder="Tuổi của bạn" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
+                                <input type="text" autoComplete="name" placeholder="Tên của bạn (Tùy chọn)" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
+                                <input type="email" autoComplete="email" placeholder="Email" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
                                 <Button className="w-full" onClick={() => setStep(2)}>TIẾP TỤC</Button>
                             </>
                         )}

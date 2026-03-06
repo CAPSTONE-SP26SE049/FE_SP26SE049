@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác nhận địa chỉ email</title>
+</head>
+<body style="font-family: 'Nunito', 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f7f9fa; margin: 0; padding: 0; color: #4b4b4b; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f7f9fa; padding: 40px 0;">
+        <tr>
+            <td align="center">
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 2px solid #e5e5e5; text-align: center;">
+                    <tr>
+                        <td align="center" style="background-color: #1cb0f6; padding: 32px 20px;">
+                            <!-- Header with Brand Blue -->
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; font-family: 'Nunito', Arial, sans-serif;">Chào mừng bạn!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 40px 32px;">
+                            <h2 style="font-size: 22px; color: #4b4b4b; margin: 0 0 16px 0; font-weight: 800;">Xác nhận địa chỉ email</h2>
+                            <p style="font-size: 16px; line-height: 1.6; color: #777777; margin: 0 0 32px 0;">
+                                Xin chào <strong>{{user_name}}</strong>,<br><br>
+                                Cảm ơn bạn đã tham gia cùng chúng tôi. Để hoàn tất việc đăng ký và bắt đầu trải nghiệm, vui lòng xác nhận địa chỉ email của bạn bằng cách nhấn vào nút bên dưới.
+                            </p>
+                            <!-- Primary Button using Brand Green -->
+                            <table border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td align="center" style="border-radius: 16px; background-color: #58cc02; border-bottom: 4px solid #46a302;">
+                                        <a href="{{verify_link}}" target="_blank" style="font-size: 18px; font-family: 'Nunito', Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 16px; padding: 16px 32px; display: inline-block; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Xác nhận Email</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin-top: 32px; font-size: 14px; color: #afafaf;">
+                                Nếu nút bấm không hoạt động, bạn có thể copy và dán đường dẫn sau vào trình duyệt:<br>
+                                <a href="{{verify_link}}" style="color: #1cb0f6; word-break: break-all; margin-top: 8px; display: inline-block;">{{verify_link}}</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="background-color: #f7f9fa; padding: 24px; border-top: 2px solid #e5e5e5;">
+                            <p style="font-size: 14px; color: #afafaf; margin: 0 0 8px 0; font-weight: 700;">© 2026 Bản quyền thuộc về chúng tôi.</p>
+                            <p style="font-size: 14px; color: #afafaf; margin: 0;">Bạn cần hỗ trợ? <a href="{{support_link}}" style="color: #1cb0f6; text-decoration: none; font-weight: 800;">Liên hệ ngay</a></p>
+                        </td>
+                    </tr>
+                </table>
+                <!-- Unsubscribe or safe ignore -->
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="text-align: center; margin-top: 16px;">
+                    <tr>
+                        <td align="center">
+                            <p style="font-size: 13px; color: #afafaf; margin: 0;">
+                                Nếu bạn không tạo tài khoản này, xin hãy bỏ qua email này một cách an toàn.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
