@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       login: async (email: string, password: string, remember: boolean = false) => {
         // Gọi API login thật từ authService
         const result: any = await loginAPI(email, password)
-        const data = result.data
+        const data = result.data ?? result
 
         const fullSession: AuthSession = {
           accessToken: data.accessToken,

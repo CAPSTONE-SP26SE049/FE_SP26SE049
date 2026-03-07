@@ -22,9 +22,10 @@ import {
   Tooltip,
   Alert,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
 import { educatorService } from '../services/educatorService'
 import { message } from 'antd'
+import { AlertCircle } from 'lucide-react'
 import SnapshotDiffRenderer from '../../../components/common/SnapshotDiffRenderer'
 
 // Removed hardcoded ERROR_TAG_OPTIONS
@@ -56,6 +57,7 @@ const getStatusTag = (status, rejectionReason, comment) => {
 const RoadmapManager = () => {
   const [selectedDialect, setSelectedDialect] = useState(null) // Replaces activeRegion for 2-step navigation
   const [editingLevel, setEditingLevel] = useState(null)
+  const [isViewOnly, setIsViewOnly] = useState(false)
   const [form] = Form.useForm()
 
   const [levels, setLevels] = useState([])
@@ -244,8 +246,9 @@ const RoadmapManager = () => {
     }
   }
 
-  const handleNodeClick = (level) => {
+  const handleNodeClick = (level, viewOnly = false) => {
     setEditingLevel(level)
+    setIsViewOnly(viewOnly)
     form.setFieldsValue({
       name: level.name,
       description: level.description,
@@ -260,7 +263,7 @@ const RoadmapManager = () => {
     // Fetch challenges and error tags for this level
     if (level.id) {
       fetchChallenges(level.id)
-      const levelDialectId = level.dialect?.id || getDialectIdForRegion(activeRegion)
+      const levelDialectId = level.dialect?.id || selectedDialect?.id // Use selectedDialect.id
       fetchErrorTags(levelDialectId)
     } else {
       setLevelChallenges([])
@@ -273,6 +276,7 @@ const RoadmapManager = () => {
     const dialectId = selectedDialect?.id
 
     setEditingLevel({ isNew: true })
+    setIsViewOnly(false) // New node is always editable
     form.resetFields()
     form.setFieldsValue({
       levelOrder: nextOrder,
@@ -295,16 +299,25 @@ const RoadmapManager = () => {
           throw new Error(`Không thể xác định ID Vùng miền, Vui lòng kiểm tra lại.`);
         }
 
-        await educatorService.createLevel({
+        const res = await educatorService.createLevel({
           dialectId: dialectId,
           levelOrder: values.levelOrder,
           name: values.name,
           description: values.description || '',
           minStarsRequired: values.minStarsRequired || 0,
           errorTagId: values.errorTagId,
-          comment: values.comment
+          aiThreshold: values.aiThreshold
         })
         message.success('Tạo bài học thành công')
+
+        if (values.audioUrl && res?.data?.id) {
+          try {
+            await educatorService.uploadReferenceAudio(res.data.id, values.audioUrl)
+          } catch (audioError) {
+            console.error('Failed to upload audio url during creation:', audioError)
+            message.warning('Đã tạo bài học, nhưng thêm link Audio thất bại.')
+          }
+        }
       } else {
         await educatorService.updateLevel(editingLevel.id || editingLevel.key, {
           name: values.name,
@@ -369,9 +382,8 @@ const RoadmapManager = () => {
     })
   }
 
-  const handleChallengeSave = async () => {
+  const handleChallengeSave = async (values) => {
     try {
-      const values = await challengeForm.validateFields()
       setLoading(true)
 
       const payload = {
@@ -413,6 +425,7 @@ const RoadmapManager = () => {
 
   const handleAddChallenge = () => {
     setEditingChallenge({ isNew: true })
+    setIsViewOnly(false) // New challenge is always editable
     challengeForm.resetFields()
   }
 
@@ -528,15 +541,17 @@ const RoadmapManager = () => {
         >
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🚫</span>
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-500">
+                <AlertCircle size={24} />
+              </div>
               <div>
                 <h3 className="text-red-700 font-bold text-base m-0">
-                  Nội dung bị từ chối ({rejectedLevels.length})
+                  Nội dung cần chỉnh sửa ({rejectedLevels.length})
                 </h3>
-                <p className="text-red-400 text-xs m-0">Vui lòng sửa lại và lưu để gửi lên Admin phê duyệt lại</p>
+                <p className="text-red-500 text-xs m-0">Có phản hồi từ Admin. Vui lòng cập nhật lại thông tin bài học.</p>
               </div>
             </div>
-            <Button type="text" size="small" onClick={() => setShowRejected(false)} className="text-gray-400">Ẩn</Button>
+            <Button type="text" size="small" onClick={() => setShowRejected(false)} className="text-gray-400 hover:text-gray-600 transition-colors">Đóng lại</Button>
           </div>
           {rejectedLoading ? (
             <div className="text-center py-4"><Spin /></div>
@@ -575,7 +590,7 @@ const RoadmapManager = () => {
                       type="primary"
                       icon={<EditOutlined />}
                       className="bg-blue-600 hover:bg-blue-500 border-none rounded-lg h-8 px-4 mt-0 flex-shrink-0"
-                      onClick={() => handleNodeClick(level)}
+                      onClick={() => handleNodeClick(level, false)}
                     >
                       Sửa &amp; Gửi lại
                     </Button>
@@ -597,7 +612,7 @@ const RoadmapManager = () => {
           loading={loading}
           pagination={{ pageSize: 10 }}
           onRow={(record) => ({
-            onClick: () => handleNodeClick(record),
+            onClick: () => handleNodeClick(record), // Default to edit view on row click
             style: { cursor: 'pointer' }
           })}
           columns={[
@@ -651,6 +666,24 @@ const RoadmapManager = () => {
               width: 120,
               render: (_, record) => (
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  <Tooltip title="Xem bài học">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => handleNodeClick(record, true)}
+                      className="bg-green-50 hover:bg-green-200 text-green-600 transition-all rounded-md"
+                    />
+                  </Tooltip>
+                  <Tooltip title="Sửa bài học">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => handleNodeClick(record, false)}
+                      className="bg-blue-50 hover:bg-blue-200 text-blue-600 transition-all rounded-md"
+                    />
+                  </Tooltip>
                   <Tooltip title="Lịch sử duyệt">
                     <Button
                       type="text"
@@ -660,15 +693,17 @@ const RoadmapManager = () => {
                       className="bg-gray-50 hover:bg-gray-200 text-gray-600 transition-all rounded-md"
                     />
                   </Tooltip>
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDeleteNode(record.id)}
-                    className="opacity-100 hover:scale-120 transition-all text-red-500 hover:text-red-700 font-bold"
-                    style={{ background: 'rgba(255, 77, 79, 0.05)', borderRadius: '6px' }}
-                  />
+                  <Tooltip title="Xóa bài học">
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteNode(record.id)}
+                      className="opacity-100 hover:scale-120 transition-all text-red-500 hover:text-red-700 font-bold"
+                      style={{ background: 'rgba(255, 77, 79, 0.05)', borderRadius: '6px' }}
+                    />
+                  </Tooltip>
                 </div>
               ),
             },
@@ -677,7 +712,7 @@ const RoadmapManager = () => {
       </Card>
 
       <Modal
-        title={<span style={{ fontWeight: 600 }}>{editingLevel?.isNew ? 'Thêm Bài Học Mới' : 'Chi Tiết Bài Học'}</span>}
+        title={<span style={{ fontWeight: 600 }}>{editingLevel?.isNew ? 'Thêm Bài Học Mới' : (isViewOnly ? 'Chi Tiết Bài Học' : 'Chỉnh Sửa Bài Học')}</span>}
         open={!!editingLevel}
         onCancel={() => setEditingLevel(null)}
         footer={null} // Use custom footer in tabs if needed, or handle save inside
@@ -697,6 +732,7 @@ const RoadmapManager = () => {
                     layout="vertical"
                     onFinish={handleSave}
                     style={{ marginTop: 8 }}
+                    disabled={isViewOnly}
                   >
                     <Form.Item
                       label="Tên bài học"
@@ -707,7 +743,7 @@ const RoadmapManager = () => {
                         { max: 100, message: 'Tên bài học không quá 100 ký tự' }
                       ]}
                     >
-                      <Input placeholder="Nhập tên bài học..." />
+                      <Input placeholder="Nhập tên bài học..." disabled={isViewOnly} />
                     </Form.Item>
 
                     <Form.Item
@@ -715,7 +751,7 @@ const RoadmapManager = () => {
                       name="description"
                       rules={[{ max: 500, message: 'Mô tả không quá 500 ký tự' }]}
                     >
-                      <Input.TextArea placeholder="Nhập mô tả chi tiết..." rows={2} showCount maxLength={500} />
+                      <Input.TextArea placeholder="Nhập mô tả chi tiết..." rows={2} showCount maxLength={500} disabled={isViewOnly} />
                     </Form.Item>
 
                     <div className="flex gap-3">
@@ -736,7 +772,7 @@ const RoadmapManager = () => {
                         className="flex-1"
                         tooltip="Số lượng sao tối thiểu người học cần đạt được ở bài học trước để mở khóa bài học này."
                       >
-                        <Rate count={5} character={<span style={{ fontSize: '24px' }}>★</span>} />
+                        <Rate count={5} character={<span style={{ fontSize: '24px' }}>★</span>} disabled={isViewOnly} />
                       </Form.Item>
                     </div>
 
@@ -751,8 +787,9 @@ const RoadmapManager = () => {
                         showSearch
                         optionFilterProp="children"
                         loading={loading}
+                        disabled={isViewOnly}
                         options={errorTags.map(tag => ({
-                          label: `${tag.name}${tag.description ? ` - ${tag.description}` : ''}`,
+                          label: tag.name,
                           value: tag.id
                         }))}
                         filterOption={(input, option) =>
@@ -773,6 +810,7 @@ const RoadmapManager = () => {
                             max={100}
                             className="flex-1"
                             marks={{ 0: '0%', 50: '50%', 80: '80%', 100: '100%' }}
+                            disabled={isViewOnly}
                           />
                         </Form.Item>
                         <Form.Item name="aiThreshold" noStyle>
@@ -782,6 +820,7 @@ const RoadmapManager = () => {
                             formatter={(value) => `${value}%`}
                             parser={(value) => value?.replace('%', '')}
                             style={{ width: '80px' }}
+                            disabled={isViewOnly}
                           />
                         </Form.Item>
                       </div>
@@ -793,31 +832,35 @@ const RoadmapManager = () => {
                       tooltip="Đường dẫn đến file âm thanh mẫu chuẩn của bài học này (Drive, S3,...)"
                       rules={[{ type: 'url', message: 'Vui lòng nhập link hợp lệ (http/https)' }]}
                     >
-                      <Input placeholder="https://example.com/audio.mp3" />
+                      <Input placeholder="https://example.com/audio.mp3" disabled={isViewOnly} />
                     </Form.Item>
-
-                    <Form.Item
-                      label="Ghi chú thay đổi"
-                      name="comment"
-                      tooltip="Nhập lý do hoặc nội dung thay đổi cho bài học này (Bắt buộc khi cập nhật)."
-                      rules={[
-                        { required: !editingLevel?.isNew, message: 'Vui lòng nhập ghi chú thay đổi' },
-                        { max: 200, message: 'Ghi chú không quá 200 ký tự' }
-                      ]}
-                    >
-                      <Input.TextArea placeholder="Chi tiết các thay đổi..." rows={2} showCount maxLength={500} />
-                    </Form.Item>
-
-                    <div className="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
-                      <Button onClick={() => setEditingLevel(null)} className="rounded-lg h-10 px-6 font-medium">Hủy</Button>
-                      <Button
-                        type="primary"
-                        onClick={() => form.submit()}
-                        loading={loading}
-                        className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-8 rounded-lg border-none shadow-md shadow-blue-100"
+                    {!editingLevel?.isNew && (
+                      <Form.Item
+                        label="Ghi chú thay đổi"
+                        name="comment"
+                        tooltip="Nhập lý do hoặc nội dung thay đổi cho bài học này (Bắt buộc khi cập nhật)."
+                        rules={[
+                          { required: true, message: 'Vui lòng nhập ghi chú thay đổi' },
+                          { max: 500, message: 'Ghi chú không quá 500 ký tự' }
+                        ]}
                       >
-                        Lưu Bài Học
+                        <Input.TextArea placeholder="Chi tiết các thay đổi..." rows={2} showCount maxLength={500} disabled={isViewOnly} />
+                      </Form.Item>
+                    )}
+                    <div className="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
+                      <Button onClick={() => setEditingLevel(null)} className="rounded-lg h-10 px-6 font-medium">
+                        Đóng
                       </Button>
+                      {!isViewOnly && (
+                        <Button
+                          type="primary"
+                          onClick={() => form.submit()}
+                          loading={loading}
+                          className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-8 rounded-lg border-none shadow-md shadow-blue-100"
+                        >
+                          Lưu Bài Học
+                        </Button>
+                      )}
                     </div>
                   </Form>
                 </div>
@@ -831,15 +874,17 @@ const RoadmapManager = () => {
                 <div className="py-1">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-gray-500 italic text-xs">Quản lý các từ/câu luyện tập bên trong bài học này.</span>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={handleAddChallenge}
-                      size="small"
-                      className="bg-blue-600 hover:bg-blue-500 border-none rounded-md px-3"
-                    >
-                      Thêm bài tập
-                    </Button>
+                    {!isViewOnly && (
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddChallenge}
+                        size="small"
+                        className="bg-blue-600 hover:bg-blue-500 border-none rounded-md px-3"
+                      >
+                        Thêm bài tập
+                      </Button>
+                    )}
                   </div>
 
                   <Table
@@ -902,29 +947,50 @@ const RoadmapManager = () => {
                         key: 'action',
                         render: (_, record) => (
                           <Space>
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<EditOutlined />}
-                              className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border-none"
-                              onClick={() => handleEditChallenge(record)}
-                            />
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<HistoryOutlined />}
-                              className="flex items-center justify-center w-7 h-7 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all border-none"
-                              onClick={() => openHistoryModal(record.id)}
-                            />
-                            <Popconfirm title="Xóa bài tập này?" onConfirm={() => handleDeleteChallenge(record.id)}>
+                            <Tooltip title="Xem chi tiết">
                               <Button
                                 type="text"
                                 size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                className="flex items-center justify-center w-7 h-7 rounded-md bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border-none"
+                                icon={<EyeOutlined />}
+                                className="flex items-center justify-center w-7 h-7 rounded-md bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all border-none"
+                                onClick={() => {
+                                  setIsViewOnly(true);
+                                  handleEditChallenge(record);
+                                }}
                               />
-                            </Popconfirm>
+                            </Tooltip>
+                            <Tooltip title="Sửa">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border-none"
+                                onClick={() => {
+                                  setIsViewOnly(false);
+                                  handleEditChallenge(record);
+                                }}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Lịch sử">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<HistoryOutlined />}
+                                className="flex items-center justify-center w-7 h-7 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all border-none"
+                                onClick={() => openHistoryModal(record.id)}
+                              />
+                            </Tooltip>
+                            {!isViewOnly && (
+                              <Popconfirm title="Xóa bài tập này?" onConfirm={() => handleDeleteChallenge(record.id)}>
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  className="flex items-center justify-center w-7 h-7 rounded-md bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border-none"
+                                />
+                              </Popconfirm>
+                            )}
                           </Space>
                         )
                       }
@@ -939,13 +1005,13 @@ const RoadmapManager = () => {
 
       {/* Challenge Edit Modal */}
       <Modal
-        title={editingChallenge?.isNew ? "Thêm Bài Tập Mới" : "Sửa Bài Tập"}
+        title={editingChallenge?.isNew ? "Thêm Bài Tập Mới" : (isViewOnly ? "Chi Tiết Bài Tập" : "Sửa Bài Tập")}
         open={!!editingChallenge}
         onCancel={() => setEditingChallenge(null)}
         onOk={() => challengeForm.submit()}
-        okText="Lưu bài tập"
-        cancelText="Hủy"
-        okButtonProps={{
+        okText={isViewOnly ? null : "Lưu bài tập"}
+        cancelText="Đóng"
+        okButtonProps={isViewOnly ? { style: { display: 'none' } } : {
           loading: loading,
           className: "bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-8 rounded-lg border-none shadow-md shadow-blue-100"
         }}
@@ -957,7 +1023,7 @@ const RoadmapManager = () => {
         <Form layout="vertical" form={challengeForm} onFinish={handleChallengeSave} style={{ marginTop: 16 }}>
           <div className="flex gap-3">
             <Form.Item className="flex-1" name="type" label="Loại Thử Thách" rules={[{ required: true, message: 'Bắt buộc' }]}>
-              <Select options={[{ label: 'Từ đơn (WORD)', value: 'WORD' }, { label: 'Câu (SENTENCE)', value: 'SENTENCE' }, { label: 'Đoạn văn (PARAGRAPH)', value: 'PARAGRAPH' }]} />
+              <Select options={[{ label: 'Từ đơn (WORD)', value: 'WORD' }, { label: 'Câu (SENTENCE)', value: 'SENTENCE' }, { label: 'Đoạn văn (PARAGRAPH)', value: 'PARAGRAPH' }]} disabled={isViewOnly} />
             </Form.Item>
             <Form.Item
               className="flex-1"
@@ -972,8 +1038,9 @@ const RoadmapManager = () => {
                 showSearch
                 optionFilterProp="children"
                 loading={loading}
+                disabled={isViewOnly}
                 options={errorTags.map(tag => ({
-                  label: `${tag.name}${tag.description ? ` - ${tag.description}` : ''}`,
+                  label: tag.name,
                   value: tag.id
                 }))}
                 filterOption={(input, option) =>
@@ -986,39 +1053,59 @@ const RoadmapManager = () => {
             name="contentText"
             label="Nội Dung Text"
             rules={[
-              { required: true, message: 'Vui lòng nhập nội dung text' },
-              { max: 1000, message: 'Nội dung không quá 1000 ký tự' }
+              { required: true, whitespace: true, message: 'Vui lòng nhập nội dung text' },
+              { max: 1000, message: 'Nội dung không quá 1000 ký tự' },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
+                  const wordCount = value.trim().split(/\s+/).length;
+                  if (wordCount > 50) {
+                    return Promise.reject(new Error(`Nội dung không được vượt quá 50 từ (hiện tại: ${wordCount} từ)`));
+                  }
+                  return Promise.resolve();
+                }
+              }
             ]}
           >
-            <Input placeholder="VD: Năng lực" />
+            <Input.TextArea
+              placeholder="VD: Năng lực"
+              disabled={isViewOnly}
+              rows={2}
+              showCount={{
+                formatter: ({ value }) => {
+                  const words = value ? value.trim().split(/\s+/).length : 0;
+                  return `${words} / 50 từ`;
+                }
+              }}
+            />
           </Form.Item>
           <Form.Item
             name="phoneticTranscriptionIpa"
             label="Phiên Âm IPA"
             rules={[
-              { required: true, message: 'Vui lòng nhập phiên âm IPA' },
+              { required: true, whitespace: true, message: 'Vui lòng nhập phiên âm IPA' },
               { pattern: /^[^\s]+(\s[^\s]+)*$/, message: 'Định dạng IPA không hợp lệ' }
             ]}
           >
-            <Input placeholder="VD: naŋ˧ lak̚˧" />
+            <Input placeholder="VD: naŋ˧ lak̚˧" disabled={isViewOnly} />
           </Form.Item>
           <Form.Item
             name="referenceAudioUrl"
             label="Link Audio Mẫu"
             rules={[{ type: 'url', message: 'Vui lòng nhập link hợp lệ (http/https)' }]}
           >
-            <Input placeholder="https://..." />
+            <Input placeholder="https://..." disabled={isViewOnly} />
           </Form.Item>
           <Form.Item
             name="comment"
             label="Ghi chú thay đổi"
             tooltip="Nhập lý do hoặc nội dung thay đổi cho bài tập này (Bắt buộc khi cập nhật)."
             rules={[
-              { required: !!editingChallenge?.id, message: 'Vui lòng nhập ghi chú thay đổi' },
+              { required: !!editingChallenge?.id, whitespace: true, message: 'Vui lòng nhập ghi chú thay đổi' },
               { max: 200, message: 'Ghi chú không quá 200 ký tự' }
             ]}
           >
-            <Input.TextArea placeholder="Nhập ghi chú..." rows={2} showCount maxLength={500} />
+            <Input.TextArea placeholder="Nhập ghi chú..." rows={2} showCount maxLength={500} disabled={isViewOnly} />
           </Form.Item>
         </Form>
       </Modal>

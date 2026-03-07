@@ -104,7 +104,14 @@ const DialectManagement: React.FC = () => {
                     >
                         <EditOutlined style={{ fontSize: 16 }} />
                     </Button>
-                    <Popconfirm title="Chắc chắn xóa vùng miền này?" onConfirm={() => handleDelete(record.id)}>
+                    <Popconfirm
+                        title="Chắc chắn xóa vùng miền này?"
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ style: { backgroundColor: '#1677ff', color: 'white' }, className: "hover:!bg-[#1677ff] hover:!text-white border-none" }}
+                        cancelButtonProps={{ className: "hover:!border-gray-300 hover:!text-gray-700 hover:!bg-transparent" }}
+                    >
                         <Button
                             type="text"
                             danger

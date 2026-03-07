@@ -30,7 +30,7 @@ export interface CreateLevelRequest {
     description: string;
     minStarsRequired: number;
     errorTagId?: string;
-    comment?: string;
+    aiThreshold?: number;
 }
 
 export interface UpdateLevelRequest {
