@@ -11,6 +11,8 @@ export interface AuthUser {
   role: Role
   region: string
   avatar: string
+  phone?: string
+  phoneNumber?: string
   streak?: number
   totalXp?: number
   completedLessons?: number
@@ -100,6 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             role: data.user.role as Role,
             region: data.user.region,
             avatar: data.user.avatar,
+            phone: data.user.phone,
+            phoneNumber: data.user.phoneNumber || data.user.phone,
           },
         }
 
