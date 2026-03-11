@@ -12,6 +12,10 @@ const UserManagementPage = () => {
     const [submitting, setSubmitting] = useState(false)
     const [form] = Form.useForm()
 
+    // Pagination state for explicit client-side pagination
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(5)
+
     const [isEditModalVisible, setIsEditModalVisible] = useState(false)
     const [editingUser, setEditingUser] = useState<any>(null)
     const [editForm] = Form.useForm()
@@ -20,10 +24,28 @@ const UserManagementPage = () => {
     const fetchUsers = async () => {
         try {
             setLoading(true)
-            const res = await adminService.getUsers().catch(() => ({ status: 'success', data: [] }))
-            if (res.status === 'success') {
-                setUsers(res.data || [])
+            const res: any = await adminService.getUsers().catch(() => null)
+            console.log("Admin Users API Response:", res)
+
+            if (!res) {
+                setUsers([])
+                return;
             }
+
+            // Extract the array robustly whether it is wrapped in `data` or returned directly
+            let fetchedUsers = [];
+            if (Array.isArray(res)) {
+                fetchedUsers = res;
+            } else if (res.data && Array.isArray(res.data)) {
+                fetchedUsers = res.data;
+            } else if (res.data && res.data.content && Array.isArray(res.data.content)) {
+                fetchedUsers = res.data.content; // In case Spring wraps it in a Page object
+            } else if (res.content && Array.isArray(res.content)) {
+                fetchedUsers = res.content;
+            }
+
+            console.log("Extracted Users Array for Table:", fetchedUsers)
+            setUsers(fetchedUsers)
         } catch (error) {
             console.error('Failed to fetch users:', error)
         } finally {
@@ -200,6 +222,11 @@ const UserManagementPage = () => {
             user.email?.toLowerCase().includes(searchText.toLowerCase())
     )
 
+    // Reset pagination when searching
+    React.useEffect(() => {
+        setCurrentPage(1)
+    }, [searchText])
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -224,7 +251,17 @@ const UserManagementPage = () => {
                     columns={columns}
                     dataSource={filteredData}
                     rowKey="id"
-                    pagination={{ pageSize: 5 }}
+                    pagination={{
+                        current: currentPage,
+                        pageSize: pageSize,
+                        total: filteredData.length,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['5', '10', '20', '50'],
+                        onChange: (page, size) => {
+                            setCurrentPage(page);
+                            setPageSize(size);
+                        }
+                    }}
                     loading={loading}
                     locale={{ emptyText: 'Chưa có dữ liệu' }}
                 />
