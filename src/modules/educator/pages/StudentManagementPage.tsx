@@ -222,9 +222,9 @@ const StudentManagementPage = () => {
                     style={{
                         height: '40px',
                         borderRadius: '10px',
-                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                        background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
                         border: 'none',
-                        boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
                     }}
                 >
                     Thêm Học Sinh
