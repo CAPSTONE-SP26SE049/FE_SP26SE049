@@ -7,7 +7,7 @@ export interface ClassroomRequest {
     startDate?: string;   // ISO 8601, e.g. "2026-03-12T05:02:22.177Z"
     endDate?: string;     // ISO 8601, e.g. "2026-03-15T05:02:22.177Z"
     isActive?: boolean;
-    maxStudents?: number;
+    currentStudents?: number;
 }
 
 export interface AddStudentRequest {

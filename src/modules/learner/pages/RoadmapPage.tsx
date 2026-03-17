@@ -169,10 +169,10 @@ const ClassroomCard = ({ classroom, index }: { classroom: Classroom; index: numb
               <span>Kết thúc: <span className="font-medium text-gray-700">{formatDate(classroom.endDate)}</span></span>
             </div>
           )}
-          {classroom.maxStudents != null && (
+          {classroom.currentStudents != null && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <TeamOutlined className="text-purple-400" />
-              <span>Tối đa: <span className="font-medium text-gray-700">{classroom.maxStudents} học viên</span></span>
+              <span>Tối đa: <span className="font-medium text-gray-700">{classroom.currentStudents} học viên</span></span>
             </div>
           )}
         </div>

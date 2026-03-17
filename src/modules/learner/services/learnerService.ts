@@ -9,7 +9,7 @@ export interface Classroom {
     startDate?: string;
     endDate?: string;
     isActive: boolean;
-    maxStudents?: number;
+    currentStudents?: number;
     createdAt: string;
     updatedAt?: string;
 }

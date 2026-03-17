@@ -117,7 +117,7 @@ const ClassroomManagementPage: React.FC = () => {
                 startDate: classroom.startDate ? dayjs(classroom.startDate) : null,
                 endDate: classroom.endDate ? dayjs(classroom.endDate) : null,
                 isActive: classroom.isActive ?? true,
-                maxStudents: classroom.maxStudents ?? null,
+                currentStudents: classroom.currentStudents ?? null,
             })
         } else {
             form.resetFields()
@@ -139,7 +139,7 @@ const ClassroomManagementPage: React.FC = () => {
                 isActive: values.isActive ?? true,
                 startDate: values.startDate ? values.startDate.toISOString() : undefined,
                 endDate: values.endDate ? values.endDate.toISOString() : undefined,
-                maxStudents: values.maxStudents ?? undefined,
+                currentStudents: values.currentStudents ?? undefined,
             }
 
             if (editingClass) {
@@ -261,11 +261,11 @@ const ClassroomManagementPage: React.FC = () => {
             render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '—'
         },
         {
-            title: 'HS tối đa',
-            dataIndex: 'maxStudents',
-            key: 'maxStudents',
+            title: 'HS hiện tại',
+            dataIndex: 'currentStudents',
+            key: 'currentStudents',
             align: 'center' as const,
-            sorter: (a: any, b: any) => (a.maxStudents ?? 0) - (b.maxStudents ?? 0),
+            sorter: (a: any, b: any) => (a.currentStudents ?? 0) - (b.currentStudents ?? 0),
             render: (val: number) =>
                 val != null
                     ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{val}</span>
@@ -532,7 +532,7 @@ const ClassroomManagementPage: React.FC = () => {
 
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <Form.Item
-                            name="maxStudents"
+                            name="currentStudents"
                             label="Số Học Sinh Tối Đa"
                             style={{ flex: 1 }}
                             rules={[

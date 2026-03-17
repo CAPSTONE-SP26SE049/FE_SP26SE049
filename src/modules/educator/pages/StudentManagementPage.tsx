@@ -77,10 +77,10 @@ const StudentManagementPage = () => {
         if (!classId) return
 
         // Kiểm tra giới hạn trước khi gọi API
-        const maxStudents = classroomInfo?.maxStudents
-        if (maxStudents != null && students.length >= maxStudents) {
+        const currentStudents = classroomInfo?.currentStudents
+        if (currentStudents != null && students.length >= currentStudents) {
             message.error({
-                content: `Lớp học đã đạt giới hạn tối đa ${maxStudents} học sinh. Không thể thêm thêm.`,
+                content: `Lớp học đã đạt giới hạn tối đa ${currentStudents} học sinh. Không thể thêm thêm.`,
                 duration: 4,
             })
             return
@@ -248,18 +248,18 @@ const StudentManagementPage = () => {
                         {classroomInfo && (
                             <span style={{ fontSize: 13, color: '#6b7280' }}>
                                 Lớp: <strong>{classroomInfo.name}</strong>
-                                {classroomInfo.maxStudents != null && (
+                                {classroomInfo.currentStudents != null && (
                                     <> &nbsp;•&nbsp;
                                         <TeamOutlined />&nbsp;
                                         <span style={{
                                             fontWeight: 600,
-                                            color: students.length >= classroomInfo.maxStudents
+                                            color: students.length >= classroomInfo.currentStudents
                                                 ? '#ef4444'
-                                                : students.length >= classroomInfo.maxStudents * 0.8
+                                                : students.length >= classroomInfo.currentStudents * 0.8
                                                     ? '#f59e0b'
                                                     : '#10b981'
                                         }}>
-                                            {students.length}/{classroomInfo.maxStudents}
+                                            {students.length}/{classroomInfo.currentStudents}
                                         </span> học sinh
                                     </>
                                 )}
@@ -269,8 +269,8 @@ const StudentManagementPage = () => {
                 </Space>
                 <Tooltip
                     title={
-                        classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents
-                            ? `Lớp đã đầy (tối đa ${classroomInfo.maxStudents} học sinh)`
+                        classroomInfo?.currentStudents != null && students.length >= classroomInfo.currentStudents
+                            ? `Lớp đã đầy (tối đa ${classroomInfo.currentStudents} học sinh)`
                             : ''
                     }
                 >
@@ -279,14 +279,14 @@ const StudentManagementPage = () => {
                         icon={<UserAddOutlined />}
                         onClick={() => setIsAddModalVisible(true)}
                         disabled={
-                            classroomInfo?.maxStudents != null &&
-                            students.length >= classroomInfo.maxStudents
+                            classroomInfo?.currentStudents != null &&
+                            students.length >= classroomInfo.currentStudents
                         }
                         style={{
                             height: '40px',
                             borderRadius: '10px',
                             background:
-                                classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents
+                                classroomInfo?.currentStudents != null && students.length >= classroomInfo.currentStudents
                                     ? undefined
                                     : 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
                             border: 'none',
@@ -299,24 +299,24 @@ const StudentManagementPage = () => {
             </div>
 
             {/* Cảnh báo gần đầy / đã đầy */}
-            {classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents && (
+            {classroomInfo?.currentStudents != null && students.length >= classroomInfo.currentStudents && (
                 <Alert
                     type="error"
                     showIcon
-                    message={`Lớp học đã đạt giới hạn tối đa ${classroomInfo.maxStudents} học sinh`}
+                    message={`Lớp học đã đạt giới hạn tối đa ${classroomInfo.currentStudents} học sinh`}
                     description="Không thể thêm học sinh mới. Vui lòng cập nhật lớp học để tăng giới hạn."
                     style={{ borderRadius: 10, marginBottom: 8 }}
                 />
             )}
-            {classroomInfo?.maxStudents != null
-                && students.length < classroomInfo.maxStudents
-                && students.length >= classroomInfo.maxStudents * 0.8
+            {classroomInfo?.currentStudents != null
+                && students.length < classroomInfo.currentStudents
+                && students.length >= classroomInfo.currentStudents * 0.8
                 && (
                     <Alert
                         type="warning"
                         showIcon
-                        message={`Lớp sắp đầy (${students.length}/${classroomInfo.maxStudents} học sinh)`}
-                        description={`Lớp học gần đạt giới hạn. Chỉ có thể thêm tối đa ${classroomInfo.maxStudents - students.length} học sinh nữa.`}
+                        message={`Lớp sắp đầy (${students.length}/${classroomInfo.currentStudents} học sinh)`}
+                        description={`Lớp học gần đạt giới hạn. Chỉ có thể thêm tối đa ${classroomInfo.currentStudents - students.length} học sinh nữa.`}
                         style={{ borderRadius: 10, marginBottom: 8 }}
                     />
                 )}
