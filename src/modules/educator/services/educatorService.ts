@@ -2,6 +2,12 @@ import apiClient from '../../../services/apiClient';
 
 export interface ClassroomRequest {
     name: string;
+    description?: string;
+    dialectId?: string;
+    startDate?: string;   // ISO 8601, e.g. "2026-03-12T05:02:22.177Z"
+    endDate?: string;     // ISO 8601, e.g. "2026-03-15T05:02:22.177Z"
+    isActive?: boolean;
+    maxStudents?: number;
 }
 
 export interface AddStudentRequest {
@@ -91,10 +97,13 @@ export const educatorService = {
     getClassrooms: async () => {
         return apiClient.get('/educator/classrooms');
     },
+    getClassroomById: async (id: string) => {
+        return apiClient.get(`/educator/classrooms/${id}`);
+    },
     createClassroom: async (data: ClassroomRequest) => {
         return apiClient.post('/educator/classrooms', data);
     },
-    updateClassroom: async (id: string, data: ClassroomRequest) => {
+    updateClassroom: async (id: string, data: Partial<ClassroomRequest>) => {
         return apiClient.patch(`/educator/classrooms/${id}`, data);
     },
     deleteClassroom: async (id: string) => {
@@ -175,5 +184,8 @@ export const educatorService = {
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/educator/content/${id}/history`);
+    },
+    getLevelsForSelection: async () => {
+        return apiClient.get('/educator/levels');
     }
 };

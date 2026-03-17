@@ -8,6 +8,8 @@ import {
   SettingOutlined,
   UserOutlined,
   TeamOutlined,
+  DatabaseOutlined,
+  BookOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 
@@ -34,6 +36,16 @@ const menuItems = [
     key: '/educator/roadmap',
     icon: <ReadOutlined />,
     label: <Link to="/educator/roadmap">Lộ trình học tập</Link>,
+  },
+  {
+    key: '/educator/challenges',
+    icon: <DatabaseOutlined />,
+    label: <Link to="/educator/challenges">Ngân hàng thử thách</Link>,
+  },
+  {
+    key: '/educator/chapters',
+    icon: <BookOutlined />,
+    label: <Link to="/educator/chapters">Quản lý chương học</Link>,
   },
   {
     key: '/educator/matrix',

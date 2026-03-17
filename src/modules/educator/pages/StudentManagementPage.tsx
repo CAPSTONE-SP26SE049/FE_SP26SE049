@@ -13,8 +13,10 @@ import {
     Tooltip,
     Popconfirm,
     Empty,
-    Card
+    Card,
+    Alert
 } from 'antd'
+import { TeamOutlined } from '@ant-design/icons'
 import {
     SearchOutlined,
     UserAddOutlined,
@@ -30,6 +32,7 @@ const StudentManagementPage = () => {
     const { classId } = useParams<{ classId: string }>()
     const navigate = useNavigate()
     const [students, setStudents] = useState<any[]>([])
+    const [classroomInfo, setClassroomInfo] = useState<any>(null)
     const [loading, setLoading] = useState(false)
     const [searchText, setSearchText] = useState('')
     const [isAddModalVisible, setIsAddModalVisible] = useState(false)
@@ -55,12 +58,34 @@ const StudentManagementPage = () => {
         }
     }
 
+    const fetchClassroomInfo = async () => {
+        if (!classId) return
+        try {
+            const res: any = await educatorService.getClassroomById(classId)
+            setClassroomInfo(res.data || res)
+        } catch (err) {
+            console.error('Failed to fetch classroom info:', err)
+        }
+    }
+
     useEffect(() => {
+        fetchClassroomInfo()
         fetchStudents()
     }, [classId])
 
     const handleAddStudent = async (values: { email: string }) => {
         if (!classId) return
+
+        // Kiểm tra giới hạn trước khi gọi API
+        const maxStudents = classroomInfo?.maxStudents
+        if (maxStudents != null && students.length >= maxStudents) {
+            message.error({
+                content: `Lớp học đã đạt giới hạn tối đa ${maxStudents} học sinh. Không thể thêm thêm.`,
+                duration: 4,
+            })
+            return
+        }
+
         try {
             setSubmitting(true)
             await educatorService.addStudentToClassroom(classId, values)
@@ -70,7 +95,11 @@ const StudentManagementPage = () => {
             fetchStudents()
         } catch (error: any) {
             console.error('Failed to add student:', error)
-            message.error(error.response?.data?.message || 'Lỗi khi thêm học sinh')
+            message.error(
+                error?.message ||
+                error?.response?.data?.message ||
+                'Lỗi khi thêm học sinh'
+            )
         } finally {
             setSubmitting(false)
         }
@@ -206,6 +235,7 @@ const StudentManagementPage = () => {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
                 <Space size="large">
                     <Button
@@ -213,23 +243,83 @@ const StudentManagementPage = () => {
                         onClick={() => navigate('/educator/classrooms')}
                         style={{ border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
                     />
-                    <h2 className="text-2xl font-bold text-gray-800 m-0">Danh Sách Học Sinh</h2>
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800 m-0">Danh Sách Học Sinh</h2>
+                        {classroomInfo && (
+                            <span style={{ fontSize: 13, color: '#6b7280' }}>
+                                Lớp: <strong>{classroomInfo.name}</strong>
+                                {classroomInfo.maxStudents != null && (
+                                    <> &nbsp;•&nbsp;
+                                        <TeamOutlined />&nbsp;
+                                        <span style={{
+                                            fontWeight: 600,
+                                            color: students.length >= classroomInfo.maxStudents
+                                                ? '#ef4444'
+                                                : students.length >= classroomInfo.maxStudents * 0.8
+                                                    ? '#f59e0b'
+                                                    : '#10b981'
+                                        }}>
+                                            {students.length}/{classroomInfo.maxStudents}
+                                        </span> học sinh
+                                    </>
+                                )}
+                            </span>
+                        )}
+                    </div>
                 </Space>
-                <Button
-                    type="primary"
-                    icon={<UserAddOutlined />}
-                    onClick={() => setIsAddModalVisible(true)}
-                    style={{
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
-                    }}
+                <Tooltip
+                    title={
+                        classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents
+                            ? `Lớp đã đầy (tối đa ${classroomInfo.maxStudents} học sinh)`
+                            : ''
+                    }
                 >
-                    Thêm Học Sinh
-                </Button>
+                    <Button
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        onClick={() => setIsAddModalVisible(true)}
+                        disabled={
+                            classroomInfo?.maxStudents != null &&
+                            students.length >= classroomInfo.maxStudents
+                        }
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            background:
+                                classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents
+                                    ? undefined
+                                    : 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                        }}
+                    >
+                        Thêm Học Sinh
+                    </Button>
+                </Tooltip>
             </div>
+
+            {/* Cảnh báo gần đầy / đã đầy */}
+            {classroomInfo?.maxStudents != null && students.length >= classroomInfo.maxStudents && (
+                <Alert
+                    type="error"
+                    showIcon
+                    message={`Lớp học đã đạt giới hạn tối đa ${classroomInfo.maxStudents} học sinh`}
+                    description="Không thể thêm học sinh mới. Vui lòng cập nhật lớp học để tăng giới hạn."
+                    style={{ borderRadius: 10, marginBottom: 8 }}
+                />
+            )}
+            {classroomInfo?.maxStudents != null
+                && students.length < classroomInfo.maxStudents
+                && students.length >= classroomInfo.maxStudents * 0.8
+                && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message={`Lớp sắp đầy (${students.length}/${classroomInfo.maxStudents} học sinh)`}
+                        description={`Lớp học gần đạt giới hạn. Chỉ có thể thêm tối đa ${classroomInfo.maxStudents - students.length} học sinh nữa.`}
+                        style={{ borderRadius: 10, marginBottom: 8 }}
+                    />
+                )}
 
             <Card
                 variant="borderless"

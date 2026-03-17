@@ -14,6 +14,8 @@ import StudentAnalyticsPage from '../modules/educator/pages/StudentAnalyticsPage
 import SettingsPage from '../modules/educator/pages/SettingsPage'
 import ClassroomManagementPage from '../modules/educator/pages/ClassroomManagementPage'
 import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
+import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
+import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
@@ -55,6 +57,8 @@ export const AppRoutes: React.FC = () => {
           <Route path="classrooms/:classId/students" element={<StudentManagementPage />} />
           <Route path="students" element={<StudentManagementPage />} />
           <Route path="roadmap" element={<RoadmapManager />} />
+          <Route path="challenges" element={<ChallengeBankPage />} />
+          <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="matrix" element={<AssessmentMatrix />} />
           <Route path="analytics" element={<StudentAnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
