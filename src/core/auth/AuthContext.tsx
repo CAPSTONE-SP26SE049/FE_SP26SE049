@@ -1,6 +1,6 @@
 import type React from 'react'
 import { createContext, useContext, useMemo, useState } from 'react'
-import { loginAPI, logoutAPI } from '../../services/authService'
+import { loginAPI, logoutAPI, socialLoginAPI } from '../../services/authService'
 
 export type Role = 'USER' | 'ADMIN' | 'EDUCATOR'
 
@@ -29,6 +29,7 @@ interface AuthContextValue {
   session: AuthSession | null
   isAuthenticated: boolean
   login: (email: string, password: string, remember?: boolean) => Promise<AuthSession>
+  socialLogin: (provider: string, token: string) => Promise<AuthSession>
   logout: () => Promise<void>
 }
 
@@ -109,6 +110,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         setSession(fullSession)
         writeSessionToStorage(fullSession, remember)
+        return fullSession
+      },
+      socialLogin: async (provider: string, token: string) => {
+        const result: any = await socialLoginAPI(provider, token)
+        const data = result.data ?? result
+
+        const fullSession: AuthSession = {
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            fullName: data.user.fullName,
+            role: data.user.role as Role,
+            region: data.user.region,
+            avatar: data.user.avatar,
+          },
+        }
+
+        setSession(fullSession)
+        writeSessionToStorage(fullSession, true) // Always remember for social login
         return fullSession
       },
       logout: async () => {
