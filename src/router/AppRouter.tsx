@@ -16,6 +16,7 @@ import ClassroomManagementPage from '../modules/educator/pages/ClassroomManageme
 import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
+import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
@@ -59,6 +60,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="roadmap" element={<RoadmapManager />} />
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
+          <Route path="quizzes" element={<QuizManagementPage />} />
           <Route path="matrix" element={<AssessmentMatrix />} />
           <Route path="analytics" element={<StudentAnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />

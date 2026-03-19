@@ -10,6 +10,7 @@ import {
   TeamOutlined,
   DatabaseOutlined,
   BookOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 
@@ -46,6 +47,11 @@ const menuItems = [
     key: '/educator/chapters',
     icon: <BookOutlined />,
     label: <Link to="/educator/chapters">Quản lý chương học</Link>,
+  },
+  {
+    key: '/educator/quizzes',
+    icon: <FileTextOutlined />,
+    label: <Link to="/educator/quizzes">Quản lý Quiz</Link>,
   },
   {
     key: '/educator/matrix',
