@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col } from 'antd';
+import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { educatorService } from '../services/educatorService';
 
 const ChapterManagementPage: React.FC = () => {
@@ -19,6 +19,11 @@ const ChapterManagementPage: React.FC = () => {
     const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
     const [creatingQuiz, setCreatingQuiz] = useState(false);
     const [selectedLevelForQuiz, setSelectedLevelForQuiz] = useState<any | null>(null);
+
+    // --- Filter & Sort State ---
+    const [searchText, setSearchText] = useState('');
+    const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
+    const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
     const fetchLevels = async () => {
         setLoading(true);
@@ -86,12 +91,12 @@ const ChapterManagementPage: React.FC = () => {
         try {
             await educatorService.createLevel({
                 dialectId: values.dialectId,
-                levelOrder: values.levelOrder,
+                levelOrder: values.levelOrder || 1,
                 name: values.name,
                 description: values.description || '',
                 minStarsRequired: values.minStarsRequired,
-                errorTagId: values.errorTagId,
-                aiThreshold: values.aiThreshold,
+                errorTagId: values.errorTagId || null,
+                aiThreshold: values.aiThreshold || 75,
             });
             message.success('Tạo chương học thành công');
             form.resetFields();
@@ -129,10 +134,10 @@ const ChapterManagementPage: React.FC = () => {
                 name: values.name,
                 description: values.description,
                 dialectId: values.dialectId ?? editingLevel.dialectId ?? editingLevel.dialect?.id,
-                levelOrder: values.levelOrder,
+                levelOrder: values.levelOrder || editingLevel.levelOrder || 1,
                 minStarsRequired: values.minStarsRequired,
-                errorTagId: values.errorTagId,
-                aiThreshold: values.aiThreshold,
+                errorTagId: values.errorTagId || (editingLevel.errorTag && typeof editingLevel.errorTag === 'object' ? editingLevel.errorTag.id : editingLevel.errorTag) || null,
+                aiThreshold: values.aiThreshold || editingLevel.aiThreshold || 75,
                 status: editingLevel.status || 'APPROVED',
                 rejectionReason: editingLevel.rejectionReason ?? null,
                 audioUrl: editingLevel.audioUrl ?? null,
@@ -160,7 +165,8 @@ const ChapterManagementPage: React.FC = () => {
             pointsPerQuestion: 10,
             readingCount: 0,
             listeningCount: 0,
-            pronunciationCount: 0,
+            speakingCount: 0,
+            writingCount: 0,
         });
         setIsCreateQuizModalOpen(true);
     };
@@ -171,8 +177,9 @@ const ChapterManagementPage: React.FC = () => {
         try {
             const readingCount = Number(values.readingCount || 0);
             const listeningCount = Number(values.listeningCount || 0);
-            const pronunciationCount = Number(values.pronunciationCount || 0);
-            const questionCount = readingCount + listeningCount + pronunciationCount;
+            const speakingCount = Number(values.speakingCount || 0);
+            const writingCount = Number(values.writingCount || 0);
+            const questionCount = readingCount + listeningCount + speakingCount + writingCount;
             if (questionCount <= 0) {
                 message.error('Vui lòng nhập số câu cho ít nhất một kỹ năng');
                 setCreatingQuiz(false);
@@ -193,7 +200,8 @@ const ChapterManagementPage: React.FC = () => {
             const questions = [
                 ...buildQuestions('READING', readingCount),
                 ...buildQuestions('LISTENING', listeningCount),
-                ...buildQuestions('PRONUNCIATION', pronunciationCount),
+                ...buildQuestions('SPEAKING', speakingCount),
+                ...buildQuestions('WRITING', writingCount),
             ].map((question, index) => ({
                 ...question,
                 questionOrder: index + 1,
@@ -222,6 +230,52 @@ const ChapterManagementPage: React.FC = () => {
         }
     };
 
+    // --- Helper to resolve region key from dialectId ---
+    const getRegionKey = (dialectId: string) => {
+        const dialect = dialects.find((item) => item.id === dialectId);
+        return (dialect?.name || '').toUpperCase();
+    };
+
+    // --- Filtered & Sorted data ---
+    const filteredLevels = useMemo(() => {
+        let data = [...levels];
+
+        // Search by name
+        if (searchText.trim()) {
+            const lower = searchText.trim().toLowerCase();
+            data = data.filter((item) =>
+                (item.name || '').toLowerCase().includes(lower)
+            );
+        }
+
+        // Filter by region
+        if (filterRegion) {
+            data = data.filter((item) => {
+                const regionKey = getRegionKey(item.dialectId);
+                return regionKey === filterRegion;
+            });
+        }
+
+        // Filter by status
+        if (filterStatus) {
+            if (filterStatus === 'DRAFT') {
+                data = data.filter((item) => !item.status || item.status === 'DRAFT');
+            } else {
+                data = data.filter((item) => item.status === filterStatus);
+            }
+        }
+
+        return data;
+    }, [levels, searchText, filterRegion, filterStatus, dialects]);
+
+    const activeFilterCount = [searchText.trim(), filterRegion, filterStatus].filter(Boolean).length;
+
+    const handleResetFilters = () => {
+        setSearchText('');
+        setFilterRegion(undefined);
+        setFilterStatus(undefined);
+    };
+
     const columns = [
         {
             title: 'STT',
@@ -241,15 +295,20 @@ const ChapterManagementPage: React.FC = () => {
             title: 'Tên chương học',
             dataIndex: 'name',
             key: 'name',
+            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
             render: (text: string) => <strong>{text}</strong>,
         },
         {
             title: 'Vùng',
             dataIndex: 'dialectId',
             key: 'dialectId',
+            sorter: (a: any, b: any) => {
+                const aRegion = getRegionKey(a.dialectId);
+                const bRegion = getRegionKey(b.dialectId);
+                return aRegion.localeCompare(bRegion);
+            },
             render: (dialectId: string) => {
-                const dialect = dialects.find((item) => item.id === dialectId);
-                const regionKey = (dialect?.name || '').toUpperCase();
+                const regionKey = getRegionKey(dialectId);
                 const info = REGION_LABEL[regionKey];
                 if (!info) return <Tag>Không có</Tag>;
                 return (
@@ -278,6 +337,7 @@ const ChapterManagementPage: React.FC = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
+            sorter: (a: any, b: any) => (a.status || 'DRAFT').localeCompare(b.status || 'DRAFT'),
             render: (value?: string) => {
                 if (value === 'APPROVED') return <Tag color="success">Đã duyệt</Tag>;
                 if (value === 'PENDING') return <Tag color="warning">Chờ duyệt</Tag>;
@@ -320,6 +380,108 @@ const ChapterManagementPage: React.FC = () => {
                     Thêm Chương Học
                 </Button>
             </div>
+
+            {/* ====== FILTER & SORT TOOLBAR ====== */}
+            <Card
+                style={{
+                    borderRadius: 14,
+                    marginBottom: 0,
+                    boxShadow: '0 2px 12px rgba(37,99,235,0.06)',
+                    border: '1px solid #e2e8f0',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
+                }}
+                bodyStyle={{ padding: '16px 20px' }}
+            >
+                <Row gutter={[16, 12]} align="middle">
+                    <Col xs={24} sm={24} md={8} lg={7}>
+                        <Input
+                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                            placeholder="Tìm kiếm theo tên chương học..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            allowClear
+                            style={{ borderRadius: 8, height: 38 }}
+                        />
+                    </Col>
+                    <Col xs={12} sm={12} md={5} lg={5}>
+                        <Select
+                            placeholder="Lọc theo vùng"
+                            value={filterRegion}
+                            onChange={(val) => setFilterRegion(val)}
+                            allowClear
+                            style={{ width: '100%', borderRadius: 8 }}
+                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
+                        >
+                            <Select.Option value="NORTH">
+                                <span style={{ color: '#1d4ed8', fontWeight: 600 }}>🔵 Miền Bắc</span>
+                            </Select.Option>
+                            <Select.Option value="CENTRAL">
+                                <span style={{ color: '#b45309', fontWeight: 600 }}>🟠 Miền Trung</span>
+                            </Select.Option>
+                            <Select.Option value="SOUTH">
+                                <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
+                            </Select.Option>
+                        </Select>
+                    </Col>
+                    <Col xs={12} sm={12} md={5} lg={5}>
+                        <Select
+                            placeholder="Lọc trạng thái"
+                            value={filterStatus}
+                            onChange={(val) => setFilterStatus(val)}
+                            allowClear
+                            style={{ width: '100%', borderRadius: 8 }}
+                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
+                        >
+                            <Select.Option value="APPROVED">
+                                <Tag color="success" style={{ margin: 0 }}>Đã duyệt</Tag>
+                            </Select.Option>
+                            <Select.Option value="PENDING">
+                                <Tag color="warning" style={{ margin: 0 }}>Chờ duyệt</Tag>
+                            </Select.Option>
+                            <Select.Option value="REJECTED">
+                                <Tag color="error" style={{ margin: 0 }}>Từ chối</Tag>
+                            </Select.Option>
+                            <Select.Option value="DRAFT">
+                                <Tag color="default" style={{ margin: 0 }}>Nháp</Tag>
+                            </Select.Option>
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={24} md={6} lg={7}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {activeFilterCount > 0 && (
+                                <Button
+                                    icon={<ClearOutlined />}
+                                    onClick={handleResetFilters}
+                                    style={{ borderRadius: 8, height: 38, borderColor: '#e2e8f0' }}
+                                >
+                                    Xóa bộ lọc
+                                </Button>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {activeFilterCount > 0 ? (
+                                    <Badge
+                                        count={activeFilterCount}
+                                        style={{
+                                            backgroundColor: '#2563eb',
+                                            fontSize: 11,
+                                            height: 20,
+                                            lineHeight: '20px',
+                                            borderRadius: 10,
+                                            padding: '0 7px',
+                                        }}
+                                    />
+                                ) : null}
+                                <span style={{ color: '#94a3b8', fontSize: 13 }}>
+                                    {filteredLevels.length}/{levels.length} chương
+                                </span>
+                            </div>
+                            <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
+                                <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
+                            </Tooltip>
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
 
             <Modal
                 title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}
@@ -371,7 +533,7 @@ const ChapterManagementPage: React.FC = () => {
                         <Form.Item
                             label="Thứ tự level"
                             name="levelOrder"
-                            rules={[{ required: true, message: 'Vui lòng nhập thứ tự level' }]}
+                            hidden
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
@@ -382,10 +544,10 @@ const ChapterManagementPage: React.FC = () => {
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold">
+                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
                             <InputNumber min={0} max={100} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item label="Error Tag ID" name="errorTagId">
+                        <Form.Item label="Error Tag ID" name="errorTagId" hidden>
                             <Input placeholder="ID error tag (nếu có)" />
                         </Form.Item>
                     </div>
@@ -400,12 +562,12 @@ const ChapterManagementPage: React.FC = () => {
                 style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
             >
                 <Table
-                    dataSource={levels}
+                    dataSource={filteredLevels}
                     columns={columns}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 10 }}
-                    locale={{ emptyText: 'Chưa có dữ liệu chương học' }}
+                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} chương học` }}
+                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
                     showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
                 />
             </Card>
@@ -461,7 +623,7 @@ const ChapterManagementPage: React.FC = () => {
                         <Form.Item
                             label="Thứ tự level"
                             name="levelOrder"
-                            rules={[{ required: true, message: 'Vui lòng nhập thứ tự level' }]}
+                            hidden
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
@@ -472,10 +634,10 @@ const ChapterManagementPage: React.FC = () => {
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold">
+                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
                             <InputNumber min={0} max={100} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item label="Error Tag" name="errorTagId">
+                        <Form.Item label="Error Tag" name="errorTagId" hidden>
                             <Select
                                 placeholder="Chọn loại lỗi"
                                 allowClear
@@ -515,84 +677,124 @@ const ChapterManagementPage: React.FC = () => {
                 }}
                 cancelText="Hủy bỏ"
                 centered
+                width={850}
             >
                 <Form
                     form={quizForm}
                     layout="vertical"
                     onFinish={handleCreateQuiz}
                 >
-                    <Form.Item
-                        label="Tên quiz"
-                        name="title"
-                        rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
-                    >
-                        <Input placeholder="Ví dụ: Thử thách Level 1" />
-                    </Form.Item>
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={2} placeholder="Mô tả bài quiz" />
-                    </Form.Item>
-                    <Form.Item label="Hướng dẫn" name="instructions">
-                        <Input.TextArea rows={2} placeholder="Hướng dẫn làm bài" />
-                    </Form.Item>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Điểm đạt"
-                            name="passingScore"
-                            rules={[{ required: true, message: 'Vui lòng nhập điểm đạt' }]}
-                        >
-                            <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Giới hạn phút"
-                            name="timeLimitMinutes"
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Điểm mỗi câu"
-                            name="pointsPerQuestion"
-                            rules={[{ required: true, message: 'Vui lòng nhập điểm mỗi câu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Độ khó"
-                            name="difficulty"
-                        >
-                            <Select
-                                options={[
-                                    { value: 'BEGINNER', label: 'Beginner' },
-                                    { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                    { value: 'ADVANCED', label: 'Advanced' },
-                                ]}
-                            />
-                        </Form.Item>
+                    <Row gutter={24}>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Tên quiz"
+                                name="title"
+                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
+                            >
+                                <Input placeholder="Ví dụ: Thử thách Level 1" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Độ khó"
+                                name="difficulty"
+                            >
+                                <Select
+                                    placeholder="Chọn độ khó"
+                                    options={[
+                                        { value: 'BEGINNER', label: 'Beginner' },
+                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
+                                        { value: 'ADVANCED', label: 'Advanced' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={24}>
+                        <Col span={12}>
+                            <Form.Item label="Mô tả" name="description">
+                                <Input.TextArea rows={2} placeholder="Mô tả bài quiz" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label="Hướng dẫn" name="instructions">
+                                <Input.TextArea rows={2} placeholder="Hướng dẫn làm bài" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <div style={{
+                        background: '#f8fafc',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        marginBottom: '20px'
+                    }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                            <Form.Item
+                                label="Điểm đạt (%)"
+                                name="passingScore"
+                                rules={[{ required: true, message: 'Vui lòng nhập điểm đạt' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={0} max={100} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                label="Giới hạn (phút)"
+                                name="timeLimitMinutes"
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={1} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                label="Điểm mỗi câu"
+                                name="pointsPerQuestion"
+                                rules={[{ required: true, message: 'Vui lòng nhập điểm mỗi câu' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={1} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                            <Form.Item
+                                label="Số câu Reading"
+                                name="readingCount"
+                                rules={[{ required: true, message: 'Bắt buộc' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                label="Số câu Listening"
+                                name="listeningCount"
+                                rules={[{ required: true, message: 'Bắt buộc' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                label="Số câu Speaking"
+                                name="speakingCount"
+                                rules={[{ required: true, message: 'Bắt buộc' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                label="Số câu Writing"
+                                name="writingCount"
+                                rules={[{ required: true, message: 'Bắt buộc' }]}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Số câu Reading"
-                            name="readingCount"
-                            rules={[{ required: true, message: 'Vui lòng nhập số câu Reading' }]}
-                        >
-                            <InputNumber min={0} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số câu Listening"
-                            name="listeningCount"
-                            rules={[{ required: true, message: 'Vui lòng nhập số câu Listening' }]}
-                        >
-                            <InputNumber min={0} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số câu Pronunciation"
-                            name="pronunciationCount"
-                            rules={[{ required: true, message: 'Vui lòng nhập số câu Pronunciation' }]}
-                        >
-                            <InputNumber min={0} style={{ width: '100%' }} />
-                        </Form.Item>
-                    </div>
-                    <Form.Item label="Ghi chú" name="comment">
-                        <Input.TextArea rows={2} placeholder="Ghi chú khi tạo quiz" />
+
+                    <Form.Item label="Ghi chú" name="comment" style={{ marginBottom: 0 }}>
+                        <Input.TextArea rows={1} placeholder="Ghi chú khi tạo quiz" />
                     </Form.Item>
                 </Form>
             </Modal>

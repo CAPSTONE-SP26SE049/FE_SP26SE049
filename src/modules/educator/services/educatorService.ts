@@ -134,6 +134,25 @@ export interface ChallengeRequest {
     comment?: string;
 }
 
+export interface ChallengeBank {
+    id: string;
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    isGlobal: boolean;
+    metadataJson: Record<string, any>;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ChallengeBankRequest {
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    isGlobal?: boolean;
+    metadataJson: Record<string, any>;
+}
+
 export const educatorService = {
     // --- Dashboard ---
     getDashboardSummary: async () => {
@@ -272,4 +291,22 @@ export const educatorService = {
     getQuizzesByLevel: async (levelId: string) => {
         return apiClient.get('/educator/quizzes', { params: { levelId } });
     },
+    updateQuiz: async (id: string, data: QuizCreateRequest) => {
+        return apiClient.put(`/educator/quizzes/${id}`, data);
+    },
+
+    // --- Challenge Bank ---
+    getChallengeBank: async () => {
+        return apiClient.get('/educator/challenge-bank');
+    },
+    createChallengeBankItem: async (data: ChallengeBankRequest) => {
+        return apiClient.post('/educator/challenge-bank', data);
+    },
+    assignChallengesToQuiz: async (quizId: string, challengeIds: string[]) => {
+        return apiClient.post(`/educator/quiz/${quizId}/challenges`, { challengeIds });
+    },
+    getQuizChallenges: async (quizId: string) => {
+        return apiClient.get(`/educator/quiz/${quizId}/challenges`);
+    },
 };
+
