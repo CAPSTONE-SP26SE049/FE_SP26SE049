@@ -132,6 +132,47 @@ export interface Challenge {
     updatedAt: string;
 }
 
+export interface Quiz {
+    id: string;
+    levelId: string;
+    title: string;
+    description: string;
+    instructions: string;
+    passingScore: number;
+    timeLimitMinutes?: number;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    questions: QuizQuestion[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface QuizQuestion {
+    id: string;
+    skillType: string;
+    difficulty: string;
+    questionOrder: number;
+    points: number;
+    contentData: any;
+}
+
+export interface QuizCreateRequest {
+    levelId: string;
+    title: string;
+    description: string;
+    instructions: string;
+    passingScore: number;
+    timeLimitMinutes?: number;
+    questions: QuizQuestionRequest[];
+}
+
+export interface QuizQuestionRequest {
+    skillType: string;
+    difficulty: string;
+    questionOrder: number;
+    points: number;
+    contentData: any;
+}
+
 export interface ChallengeRequest {
     levelId: string;
     type: string;
@@ -293,6 +334,20 @@ export const educatorService = {
     deleteChallenge: async (id: string) => {
         return apiClient.delete(`/educator/curriculum/challenges/${id}`);
     },
+    // --- Educator Quiz Management ---
+    getQuizzes: async () => {
+        return apiClient.get('/educator/quizzes');
+    },
+    getQuizDetails: async (id: string) => {
+        return apiClient.get(`/educator/quizzes/${id}`);
+    },
+    createQuiz: async (data: QuizCreateRequest) => {
+        return apiClient.post('/educator/quizzes', data);
+    },
+    updateQuiz: async (id: string, data: QuizCreateRequest) => {
+        return apiClient.put(`/educator/quizzes/${id}`, data);
+    },
+
     getContentHistory: async (id: string) => {
         return apiClient.get(`/educator/content/${id}/history`);
     },

@@ -1705,6 +1705,7 @@ const QuizManagementPage: React.FC = () => {
             `}</style>
         </div>
     );
+
 };
 
 export default QuizManagementPage;

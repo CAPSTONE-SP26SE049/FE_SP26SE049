@@ -14,16 +14,16 @@ import { educatorService } from '../services/educatorService'
 import { useEffect } from 'react'
 
 const ERROR_TYPES = [
-  { label: 'Phát âm L/N', value: 'ln' },
-  { label: 'Phát âm S/X', value: 'sx' },
-  { label: 'Thanh điệu (Tones)', value: 'tones' },
-  { label: 'Phát âm V/D', value: 'vd' },
+  { label: 'Phát âm L/N', value: 'L/N' },
+  { label: 'Phát âm S/X', value: 'S/X' },
+  { label: 'Thanh điệu (Tones)', value: 'TONES' },
+  { label: 'Phát âm V/D', value: 'V/D' },
 ]
 
 const TARGET_REGIONS = [
-  { label: 'Lộ trình Miền Bắc', value: 'north' },
-  { label: 'Lộ trình Miền Trung', value: 'central' },
-  { label: 'Lộ trình Miền Nam', value: 'south' },
+  { label: 'Lộ trình Miền Bắc', value: 'NORTH' },
+  { label: 'Lộ trình Miền Trung', value: 'CENTRAL' },
+  { label: 'Lộ trình Miền Nam', value: 'SOUTH' },
 ]
 
 const CHECKPOINTS = [

@@ -27,6 +27,7 @@ import { educatorService } from '../services/educatorService'
 import { message } from 'antd'
 import { AlertCircle } from 'lucide-react'
 import SnapshotDiffRenderer from '../../../components/common/SnapshotDiffRenderer'
+import QuizManagementComponent from '../components/QuizManagementComponent'
 
 // Removed hardcoded ERROR_TAG_OPTIONS
 
@@ -72,13 +73,6 @@ const RoadmapManager = () => {
   const [rejectedLoading, setRejectedLoading] = useState(false)
   const [showRejected, setShowRejected] = useState(true)
 
-  // Challenges state
-  const [levelChallenges, setLevelChallenges] = useState([])
-  const [challengesLoading, setChallengesLoading] = useState(false)
-  const [editingChallenge, setEditingChallenge] = useState(null)
-  const [challengeForm] = Form.useForm()
-
-  // History state
   const [historyModalVisible, setHistoryModalVisible] = useState(false)
   const [historyData, setHistoryData] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -121,27 +115,14 @@ const RoadmapManager = () => {
       await Promise.all(
         dialectsList.map(async (dialect) => {
           let levelCount = 0;
-          let challengeCount = 0;
           try {
             const levelsRes = await educatorService.getCurriculumByRegion(dialect.name);
             const levels = levelsRes?.data || (Array.isArray(levelsRes) ? levelsRes : []);
             levelCount = levels.length;
-
-            await Promise.all(
-              levels.map(async (level) => {
-                try {
-                  const challengesRes = await educatorService.getChallengesByLevel(level.id);
-                  const challenges = challengesRes?.data || (Array.isArray(challengesRes) ? challengesRes : []);
-                  challengeCount += challenges.length;
-                } catch (e) {
-                  // ignore individual errors
-                }
-              })
-            );
           } catch (e) {
             // ignore
           }
-          stats[dialect.id] = { levelCount, challengeCount };
+          stats[dialect.id] = { levelCount, challengeCount: 0 }; // Simplified since we move to quizzes
         })
       );
       setDialectStats(stats);
@@ -230,21 +211,6 @@ const RoadmapManager = () => {
     }
   }, [selectedDialect])
 
-  const fetchChallenges = async (levelId) => {
-    try {
-      setChallengesLoading(true)
-      const res = await educatorService.getChallengesByLevel(levelId)
-      console.log('fetchChallenges res:', res);
-      const data = res?.data || (Array.isArray(res) ? res : [])
-      console.log('fetchChallenges data:', data);
-      setLevelChallenges(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Failed to fetch challenges:', error)
-      // Don't show global message error here to avoid noise in the modal
-    } finally {
-      setChallengesLoading(false)
-    }
-  }
 
   const handleNodeClick = (level, viewOnly = false) => {
     setEditingLevel(level)
@@ -260,13 +226,10 @@ const RoadmapManager = () => {
       comment: '', // Reset comment for new edit session
     })
 
-    // Fetch challenges and error tags for this level
+    // Fetch error tags for this level
     if (level.id) {
-      fetchChallenges(level.id)
       const levelDialectId = level.dialect?.id || selectedDialect?.id // Use selectedDialect.id
       fetchErrorTags(levelDialectId)
-    } else {
-      setLevelChallenges([])
     }
   }
 
@@ -382,65 +345,6 @@ const RoadmapManager = () => {
     })
   }
 
-  const handleChallengeSave = async (values) => {
-    try {
-      setLoading(true)
-
-      const payload = {
-        levelId: editingLevel.id,
-        ...values,
-        focusPhonemes: Array.isArray(values.focusPhonemes) ? values.focusPhonemes.join(', ') : values.focusPhonemes
-      }
-
-      if (editingChallenge && editingChallenge.id) {
-        await educatorService.updateChallenge(editingChallenge.id, payload)
-        message.success('Cập nhật bài tập thành công')
-      } else {
-        await educatorService.createChallenge(payload)
-        message.success('Thêm bài tập thành công')
-      }
-
-      fetchChallenges(editingLevel.id)
-      setEditingChallenge(null)
-    } catch (error) {
-      console.error('Failed to save challenge:', error)
-      message.error('Không thể lưu bài tập')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDeleteChallenge = async (id) => {
-    try {
-      setLoading(true)
-      await educatorService.deleteChallenge(id)
-      message.success('Đã xóa bài tập')
-      fetchChallenges(editingLevel.id)
-    } catch (error) {
-      message.error('Xóa bài tập thất bại')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAddChallenge = () => {
-    setEditingChallenge({ isNew: true })
-    setIsViewOnly(false) // New challenge is always editable
-    challengeForm.resetFields()
-  }
-
-  const handleEditChallenge = (challenge) => {
-    setEditingChallenge(challenge)
-    challengeForm.setFieldsValue({
-      ...challenge,
-      focusPhonemes: challenge.focusPhonemes ?
-        (Array.isArray(challenge.focusPhonemes) ?
-          challenge.focusPhonemes.map(p => typeof p === 'object' ? p.id : p) :
-          challenge.focusPhonemes.split(',').map(s => s.trim())
-        ) : [],
-      comment: '', // Reset comment for new edit session
-    })
-  }
 
   if (loading && dialects.length === 0) {
     return (
@@ -483,7 +387,7 @@ const RoadmapManager = () => {
                 render: (text) => <span className="font-semibold text-blue-600 text-lg">{text}</span>
               },
               {
-                title: 'Số cấp độ / bài kiểm tra',
+                title: 'Số cấp độ',
                 key: 'levelCount',
                 align: 'center',
                 render: (_, record) => {
@@ -491,15 +395,6 @@ const RoadmapManager = () => {
                   return count !== undefined ? <Tag color="blue">{count}</Tag> : <Spin size="small" />;
                 }
               },
-              {
-                title: 'Số thử thách',
-                key: 'challengeCount',
-                align: 'center',
-                render: (_, record) => {
-                  const count = dialectStats[record.id]?.challengeCount;
-                  return count !== undefined ? <Tag color="green">{count}</Tag> : <Spin size="small" />;
-                }
-              }
             ]}
           />
         </Card>
@@ -867,248 +762,17 @@ const RoadmapManager = () => {
               )
             },
             {
-              key: 'challenges',
-              label: 'Danh sách bài tập',
+              key: 'quizzes',
+              label: 'Quản lý Bài kiểm tra',
               disabled: editingLevel?.isNew,
               children: (
-                <div className="py-1">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-gray-500 italic text-xs">Quản lý các từ/câu luyện tập bên trong bài học này.</span>
-                    {!isViewOnly && (
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={handleAddChallenge}
-                        size="small"
-                        className="bg-blue-600 hover:bg-blue-500 border-none rounded-md px-3"
-                      >
-                        Thêm bài tập
-                      </Button>
-                    )}
-                  </div>
-
-                  <Table
-                    size="small"
-                    dataSource={levelChallenges}
-                    loading={challengesLoading}
-                    rowKey="id"
-                    pagination={{ pageSize: 5 }}
-                    columns={[
-                      {
-                        title: 'STT',
-                        key: 'stt',
-                        width: 60,
-                        align: 'center',
-                        render: (_, __, index) => index + 1,
-                      },
-                      { title: 'Nội dung', dataIndex: 'contentText', key: 'contentText' },
-                      {
-                        title: 'Loại',
-                        dataIndex: 'type',
-                        key: 'type',
-                        render: t => <Tag color={t === 'WORD' ? 'blue' : t === 'SENTENCE' ? 'green' : 'purple'}>{t}</Tag>,
-                        width: 100
-                      },
-                      {
-                        title: 'Âm vị/Lỗi',
-                        key: 'focusPhonemes',
-                        render: (_, record) => {
-                          if (!record.focusPhonemes) return '-';
-                          const tags = Array.isArray(record.focusPhonemes) ? record.focusPhonemes :
-                            (typeof record.focusPhonemes === 'string' ? record.focusPhonemes.split(',').filter(s => s.trim()) : []);
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {tags.map((tag, i) => {
-                                const tagName = typeof tag === 'object' ? tag.name : tag;
-                                return <Tag color="cyan" key={i} className="text-[10px] m-0">{tagName}</Tag>
-                              })}
-                            </div>
-                          );
-                        }
-                      },
-                      { title: 'Phiên âm', dataIndex: 'phoneticTranscriptionIpa', key: 'phoneticTranscriptionIpa' },
-                      {
-                        title: 'Trạng thái',
-                        dataIndex: 'status',
-                        width: 130,
-                        render: (s, record) => (
-                          <div>
-                            {getStatusTag(s, record.rejectionReason, record.comment)}
-                            {s?.toUpperCase() === 'REJECTED' && (record.comment || record.rejectionReason) && (
-                              <div className="text-red-500 text-xs mt-1 leading-snug">
-                                🚫 {record.comment || record.rejectionReason}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      },
-                      {
-                        title: 'Thao tác',
-                        key: 'action',
-                        render: (_, record) => (
-                          <Space>
-                            <Tooltip title="Xem chi tiết">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EyeOutlined />}
-                                className="flex items-center justify-center w-7 h-7 rounded-md bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all border-none"
-                                onClick={() => {
-                                  setIsViewOnly(true);
-                                  handleEditChallenge(record);
-                                }}
-                              />
-                            </Tooltip>
-                            <Tooltip title="Sửa">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EditOutlined />}
-                                className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border-none"
-                                onClick={() => {
-                                  setIsViewOnly(false);
-                                  handleEditChallenge(record);
-                                }}
-                              />
-                            </Tooltip>
-                            <Tooltip title="Lịch sử">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<HistoryOutlined />}
-                                className="flex items-center justify-center w-7 h-7 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all border-none"
-                                onClick={() => openHistoryModal(record.id)}
-                              />
-                            </Tooltip>
-                            {!isViewOnly && (
-                              <Popconfirm title="Xóa bài tập này?" onConfirm={() => handleDeleteChallenge(record.id)}>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  className="flex items-center justify-center w-7 h-7 rounded-md bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border-none"
-                                />
-                              </Popconfirm>
-                            )}
-                          </Space>
-                        )
-                      }
-                    ]}
-                  />
-                </div>
+                <QuizManagementComponent levelId={editingLevel?.id} embedded />
               )
             }
           ]}
         />
       </Modal>
 
-      {/* Challenge Edit Modal */}
-      <Modal
-        title={editingChallenge?.isNew ? "Thêm Bài Tập Mới" : (isViewOnly ? "Chi Tiết Bài Tập" : "Sửa Bài Tập")}
-        open={!!editingChallenge}
-        onCancel={() => setEditingChallenge(null)}
-        onOk={() => challengeForm.submit()}
-        okText={isViewOnly ? null : "Lưu bài tập"}
-        cancelText="Đóng"
-        okButtonProps={isViewOnly ? { style: { display: 'none' } } : {
-          loading: loading,
-          className: "bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-8 rounded-lg border-none shadow-md shadow-blue-100"
-        }}
-        cancelButtonProps={{
-          className: "rounded-lg h-10 px-6 font-medium"
-        }}
-        centered
-      >
-        <Form layout="vertical" form={challengeForm} onFinish={handleChallengeSave} style={{ marginTop: 16 }}>
-          <div className="flex gap-3">
-            <Form.Item className="flex-1" name="type" label="Loại Thử Thách" rules={[{ required: true, message: 'Bắt buộc' }]}>
-              <Select options={[{ label: 'Từ đơn (WORD)', value: 'WORD' }, { label: 'Câu (SENTENCE)', value: 'SENTENCE' }, { label: 'Đoạn văn (PARAGRAPH)', value: 'PARAGRAPH' }]} disabled={isViewOnly} />
-            </Form.Item>
-            <Form.Item
-              className="flex-1"
-              name="focusPhonemes"
-              label="Âm Vị Tập Trung"
-              rules={[{ required: true, message: 'Chọn ít nhất một âm vị' }]}
-            >
-              <Select
-                mode="multiple"
-                placeholder="Chọn âm vị..."
-                allowClear
-                showSearch
-                optionFilterProp="children"
-                loading={loading}
-                disabled={isViewOnly}
-                options={errorTags.map(tag => ({
-                  label: tag.name,
-                  value: tag.id
-                }))}
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-              />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="contentText"
-            label="Nội Dung Text"
-            rules={[
-              { required: true, whitespace: true, message: 'Vui lòng nhập nội dung text' },
-              { max: 1000, message: 'Nội dung không quá 1000 ký tự' },
-              {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve();
-                  const wordCount = value.trim().split(/\s+/).length;
-                  if (wordCount > 50) {
-                    return Promise.reject(new Error(`Nội dung không được vượt quá 50 từ (hiện tại: ${wordCount} từ)`));
-                  }
-                  return Promise.resolve();
-                }
-              }
-            ]}
-          >
-            <Input.TextArea
-              placeholder="VD: Năng lực"
-              disabled={isViewOnly}
-              rows={2}
-              showCount={{
-                formatter: ({ value }) => {
-                  const words = value ? value.trim().split(/\s+/).length : 0;
-                  return `${words} / 50 từ`;
-                }
-              }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="phoneticTranscriptionIpa"
-            label="Phiên Âm IPA"
-            rules={[
-              { required: true, whitespace: true, message: 'Vui lòng nhập phiên âm IPA' },
-              { pattern: /^[^\s]+(\s[^\s]+)*$/, message: 'Định dạng IPA không hợp lệ' }
-            ]}
-          >
-            <Input placeholder="VD: naŋ˧ lak̚˧" disabled={isViewOnly} />
-          </Form.Item>
-          <Form.Item
-            name="referenceAudioUrl"
-            label="Link Audio Mẫu"
-            rules={[{ type: 'url', message: 'Vui lòng nhập link hợp lệ (http/https)' }]}
-          >
-            <Input placeholder="https://..." disabled={isViewOnly} />
-          </Form.Item>
-          <Form.Item
-            name="comment"
-            label="Ghi chú thay đổi"
-            tooltip="Nhập lý do hoặc nội dung thay đổi cho bài tập này (Bắt buộc khi cập nhật)."
-            rules={[
-              { required: !!editingChallenge?.id, whitespace: true, message: 'Vui lòng nhập ghi chú thay đổi' },
-              { max: 200, message: 'Ghi chú không quá 200 ký tự' }
-            ]}
-          >
-            <Input.TextArea placeholder="Nhập ghi chú..." rows={2} showCount maxLength={500} disabled={isViewOnly} />
-          </Form.Item>
-        </Form>
-      </Modal>
 
       {/* History Modal */}
       <Modal

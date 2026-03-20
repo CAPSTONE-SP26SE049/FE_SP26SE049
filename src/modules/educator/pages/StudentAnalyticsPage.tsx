@@ -47,11 +47,20 @@ const StudentAnalyticsPage: React.FC = () => {
         if (!studentId) return;
         try {
             setSubmittingFeedback(true)
-            await educatorService.submitFeedback(studentId, {
-                attemptId: "general_analysis", // Placeholder as this is general analytics, not a specific attempt
+            const payload: any = {
                 comment: values.comment,
                 priority: values.priority
-            })
+            }
+
+            // Try to use a real attemptId if available in analyticsData, otherwise fallback
+            // This is a safety measure to avoid 500 error if backend requires valid UUID
+            if (analyticsData.recentAttempts && analyticsData.recentAttempts.length > 0) {
+                payload.attemptId = analyticsData.recentAttempts[0].id
+            } else {
+                payload.attemptId = studentId // Fallback to studentId as attemptId if allowed or needed
+            }
+
+            await educatorService.submitFeedback(studentId, payload)
             message.success('Gửi nhận xét thành công')
             setFeedbackModalVisible(false)
             form.resetFields()
@@ -82,7 +91,7 @@ const StudentAnalyticsPage: React.FC = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <Spin size="large" tip="Đang tải dữ liệu phân tích..." />
+                <Spin size="large" description="Đang tải dữ liệu phân tích..." />
             </div>
         )
     }
@@ -133,7 +142,7 @@ const StudentAnalyticsPage: React.FC = () => {
                             title={<span className="text-blue-800 font-medium">Số Lượt Luyện Tập</span>}
                             value={chartData.reduce((acc: number, cur: any) => acc + cur.count, 0)}
                             prefix={<BookOutlined className="text-blue-500" />}
-                            valueStyle={{ color: '#1e40af', fontWeight: 'bold' }}
+                            styles={{ content: { color: '#1e40af', fontWeight: 'bold' } }}
                         />
                     </Card>
                 </Col>
@@ -144,15 +153,15 @@ const StudentAnalyticsPage: React.FC = () => {
                             value={chartData.length}
                             prefix={<UserOutlined className="text-red-500" />}
                             suffix={<span className="text-sm text-red-600">Âm vị</span>}
-                            valueStyle={{ color: '#991b1b', fontWeight: 'bold' }}
+                            styles={{ content: { color: '#991b1b', fontWeight: 'bold' } }}
                         />
                     </Card>
                 </Col>
             </Row>
 
             <Card title="Tần Suất Lỗi Theo Âm Vị" variant="borderless" className="shadow-sm rounded-xl">
-                <div className="h-[400px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[400px] w-full" style={{ minHeight: '400px' }}>
+                    <ResponsiveContainer width="100%" height="100%" aspect={2}>
                         <BarChart
                             data={chartData}
                             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}

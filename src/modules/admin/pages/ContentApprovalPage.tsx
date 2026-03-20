@@ -6,13 +6,13 @@ import {
 import { Eye } from 'lucide-react'
 import {
     CheckOutlined, CloseOutlined, FileTextOutlined,
-    PlayCircleOutlined, SoundOutlined,
-    HistoryOutlined, SyncOutlined
+    SoundOutlined,
+    HistoryOutlined, SyncOutlined, FileDoneOutlined
 } from '@ant-design/icons'
 import { adminService, type ReviewContentRequest } from '../services/adminService'
 import DialectManagement from '../components/content/DialectManagement'
 import LevelManagement from '../components/content/LevelManagement'
-import ChallengeManagement from '../components/content/ChallengeManagement'
+import QuizManagement from '../components/content/QuizManagement'
 import ErrorTagManagement from '../components/content/ErrorTagManagement'
 import SnapshotDiffRenderer from '../../../components/common/SnapshotDiffRenderer'
 
@@ -57,15 +57,14 @@ const ContentApprovalPage = () => {
     const fetchApprovals = async () => {
         try {
             setLoading(true)
-            const [levelsRes, challengesRes]: any[] = await Promise.all([
+            const [levelsRes, quizzesRes]: any[] = await Promise.all([
                 adminService.getPendingLevels().catch(() => ({ status: 'error', data: [] })),
-                adminService.getPendingChallenges().catch(() => ({ status: 'error', data: [] }))
+                adminService.getPendingQuizzes().catch(() => ({ status: 'error', data: [] }))
             ])
 
             let unifiedData: any[] = []
-
             const levelsData = levelsRes?.data || (Array.isArray(levelsRes) ? levelsRes : []);
-            const challengesData = challengesRes?.data || (Array.isArray(challengesRes) ? challengesRes : []);
+            const quizzesData = quizzesRes?.data || (Array.isArray(quizzesRes) ? quizzesRes : []);
 
             if (levelsData.length > 0) {
                 unifiedData = [...unifiedData, ...levelsData.map((item: any) => ({
@@ -77,11 +76,11 @@ const ContentApprovalPage = () => {
                 }))]
             }
 
-            if (challengesData.length > 0) {
-                unifiedData = [...unifiedData, ...challengesData.map((item: any) => ({
+            if (quizzesData.length > 0) {
+                unifiedData = [...unifiedData, ...quizzesData.map((item: any) => ({
                     ...item,
-                    type: 'challenge',
-                    displayTitle: `Bài tập (${item.type}): ${item.contentText}`,
+                    type: 'quiz',
+                    displayTitle: `Bài kiểm tra: ${item.title}`,
                     submittedBy: item.createdBy || 'Educator',
                     date: new Date(item.createdAt || Date.now()).toLocaleDateString('vi-VN')
                 }))]
@@ -151,8 +150,8 @@ const ContentApprovalPage = () => {
                     const payload: ReviewContentRequest = { status: 'APPROVED', comment: comment };
                     if (type === 'level') {
                         await adminService.reviewLevel(id, payload)
-                    } else {
-                        await adminService.reviewChallenge(id, payload)
+                    } else if (type === 'quiz') {
+                        await adminService.reviewQuiz(id, payload)
                     }
                     message.success('Đã phê duyệt thành công!')
                     setDetailModalVisible(false)
@@ -192,8 +191,8 @@ const ContentApprovalPage = () => {
             }
             if (rejectingItem.type === 'level') {
                 await adminService.reviewLevel(rejectingItem.id, payload)
-            } else {
-                await adminService.reviewChallenge(rejectingItem.id, payload)
+            } else if (rejectingItem.type === 'quiz') {
+                await adminService.reviewQuiz(rejectingItem.id, payload)
             }
             message.success('Đã từ chối nội dung.')
             setRejectModalVisible(false)
@@ -257,38 +256,54 @@ const ContentApprovalPage = () => {
             )
         }
 
-        // challenge
-        return (
-            <Descriptions column={2} bordered size="small" className="mt-2">
-                <Descriptions.Item label="Nội dung" span={2}>
-                    <strong className="text-base">{selectedItem.contentText || '—'}</strong>
-                </Descriptions.Item>
-                <Descriptions.Item label="Loại thử thách">
-                    <Tag color={selectedItem.type === 'WORD' ? 'blue' : selectedItem.type === 'SENTENCE' ? 'green' : 'purple'}>
-                        {selectedItem.type}
-                    </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Âm vị tập trung">
-                    {selectedItem.focusPhonemes || '—'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Phiên âm IPA" span={2}>
-                    <code className="bg-gray-100 px-2 py-0.5 rounded text-blue-700 text-sm">
-                        {selectedItem.phoneticTranscriptionIpa || '—'}
-                    </code>
-                </Descriptions.Item>
-                <Descriptions.Item label="Reference Audio" span={2}>
-                    {selectedItem.referenceAudioUrl
-                        ? <a href={selectedItem.referenceAudioUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 flex items-center gap-1"><SoundOutlined /> Nghe thử</a>
-                        : '—'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Người tạo">
-                    {selectedItem.submittedBy || '—'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngày gửi">
-                    {selectedItem.date || '—'}
-                </Descriptions.Item>
-            </Descriptions>
-        )
+        if (selectedItem.type === 'quiz') {
+            return (
+                <div className="mt-2 space-y-4">
+                    <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="Tiêu đề" span={2}>
+                            <strong>{selectedItem.title || '—'}</strong>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Mô tả" span={2}>
+                            {selectedItem.description || '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Hướng dẫn" span={2}>
+                            {selectedItem.instructions || '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Điểm đạt">
+                            <Tag color="blue">{selectedItem.passingScore}đ</Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Thời gian">
+                            {selectedItem.timeLimitMinutes ? `${selectedItem.timeLimitMinutes} phút` : 'Không giới hạn'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Người tạo">
+                            {selectedItem.submittedBy || '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Ngày gửi">
+                            {selectedItem.date || '—'}
+                        </Descriptions.Item>
+                    </Descriptions>
+
+                    <Card size="small" title="Danh sách câu hỏi" headStyle={{ background: '#f8f9fa' }}>
+                        <List
+                            size="small"
+                            dataSource={selectedItem.questions || []}
+                            renderItem={(q: any, idx: number) => (
+                                <List.Item>
+                                    <div className="w-full">
+                                        <div className="flex justify-between mb-1">
+                                            <Tag color="purple">{q.skillType}</Tag>
+                                            <span className="text-gray-400 text-xs text-right">#{idx + 1} - {q.points}đ</span>
+                                        </div>
+                                        <div className="text-gray-700">{q.contentData?.text || '—'}</div>
+                                    </div>
+                                </List.Item>
+                            )}
+                        />
+                    </Card>
+                </div>
+            )
+        }
+        return null;
     }
 
     return (
@@ -362,8 +377,8 @@ const ContentApprovalPage = () => {
                                             avatar={
                                                 <Avatar
                                                     size={48}
-                                                    icon={item.type === 'level' ? <FileTextOutlined /> : <PlayCircleOutlined />}
-                                                    className={item.type === 'level' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}
+                                                    icon={item.type === 'quiz' ? <FileDoneOutlined /> : <FileTextOutlined />}
+                                                    className={item.type === 'quiz' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}
                                                 />
                                             }
                                             title={<span className="text-lg font-medium text-gray-800">{item.displayTitle}</span>}
@@ -374,7 +389,7 @@ const ContentApprovalPage = () => {
                                                         <span className="font-semibold text-gray-700">{item.submittedBy}</span>
                                                     </div>
                                                     <div className="flex gap-3">
-                                                        <Tag color={item.type === 'level' ? 'blue' : 'orange'}>{item.type.toUpperCase()}</Tag>
+                                                        <Tag color={item.type === 'quiz' ? 'purple' : 'blue'}>{item.type.toUpperCase()}</Tag>
                                                         <span className="text-gray-400">{item.date}</span>
                                                     </div>
                                                 </div>
@@ -397,8 +412,8 @@ const ContentApprovalPage = () => {
                     },
                     {
                         key: '4',
-                        label: 'Thử thách (Challenges)',
-                        children: <ChallengeManagement />
+                        label: 'Bài kiểm tra (Quizzes)',
+                        children: <QuizManagement />
                     },
                     {
                         key: '5',
@@ -414,12 +429,12 @@ const ContentApprovalPage = () => {
                     <div className="flex items-center gap-3">
                         <Avatar
                             size={36}
-                            icon={selectedItem?.type === 'level' ? <FileTextOutlined /> : <PlayCircleOutlined />}
-                            className={selectedItem?.type === 'level' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}
+                            icon={selectedItem?.type === 'quiz' ? <FileDoneOutlined /> : <FileTextOutlined />}
+                            className={selectedItem?.type === 'quiz' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}
                         />
                         <div>
                             <div className="font-semibold text-gray-800">
-                                {selectedItem?.type === 'level' ? 'Chi tiết bài học' : 'Chi tiết bài tập'}
+                                {selectedItem?.type === 'level' ? 'Chi tiết bài học' : 'Chi tiết bài kiểm tra'}
                             </div>
                             <div className="text-xs text-gray-400 font-normal">
                                 {selectedItem?.displayTitle}
