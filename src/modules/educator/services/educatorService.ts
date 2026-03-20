@@ -110,6 +110,14 @@ export interface QuizCreateRequest {
     questions: QuizQuestionRequest[];
 }
 
+export interface CreateAssignmentRequest {
+    classroomId: string;
+    learningUnitId: string;
+    dueDate: string;
+    status?: 'OPEN' | 'CLOSED';
+    description?: string;
+}
+
 export interface Challenge {
     id: string;
     levelId: string;
@@ -193,6 +201,12 @@ export const educatorService = {
     },
     getClassroomPerformance: async (classId: string) => {
         return apiClient.get(`/educator/classrooms/${classId}/performance`);
+    },
+    getAssignmentsByEducator: async (educatorId: string) => {
+        return apiClient.get(`/assignments/educator/${educatorId}`);
+    },
+    createAssignment: async (data: CreateAssignmentRequest) => {
+        return apiClient.post('/educator/assignments', data);
     },
 
     // --- Curriculum Management ---

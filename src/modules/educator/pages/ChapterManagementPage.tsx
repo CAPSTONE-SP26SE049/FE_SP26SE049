@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col } from 'antd';
+import dayjs from 'dayjs';
+import { useLocation } from 'react-router-dom';
+import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker } from 'antd';
 import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { educatorService } from '../services/educatorService';
 
@@ -16,9 +18,14 @@ const ChapterManagementPage: React.FC = () => {
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
+    const [assignmentForm] = Form.useForm();
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assigning, setAssigning] = useState(false);
+    const [assignLevels, setAssignLevels] = useState<any[]>([]);
     const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
     const [creatingQuiz, setCreatingQuiz] = useState(false);
     const [selectedLevelForQuiz, setSelectedLevelForQuiz] = useState<any | null>(null);
+    const location = useLocation();
 
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
@@ -230,15 +237,82 @@ const ChapterManagementPage: React.FC = () => {
         }
     };
 
+    const loadAssignLevels = async () => {
+        setAssigning(true);
+        try {
+            const response: any = await educatorService.getLevelsForSelection();
+            const list = response?.data || response || [];
+            setAssignLevels(Array.isArray(list) ? list : []);
+        } catch (error) {
+            console.error('Error loading levels for assignment:', error);
+            message.error('Không thể tải danh sách chương học để gán');
+            setAssignLevels([]);
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleOpenAssignModal = () => {
+        setIsAssignModalOpen(true);
+        assignmentForm.resetFields();
+        assignmentForm.setFieldsValue({
+            classroomId: fromClassroomId,
+            status: 'OPEN',
+            dueDate: dayjs().add(1, 'day'),
+        });
+        loadAssignLevels();
+    };
+
+    const handleCreateAssignment = async (values: any) => {
+        try {
+            setAssigning(true);
+            await educatorService.createAssignment({
+                classroomId: values.classroomId,
+                learningUnitId: values.learningUnitId,
+                dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
+                status: values.status || 'OPEN',
+                description: values.description,
+            });
+            message.success('Gán chương học thành công');
+            setIsAssignModalOpen(false);
+            assignmentForm.resetFields();
+        } catch (error: any) {
+            console.error('Error creating assignment:', error);
+            message.error(error?.message || 'Không thể gán chương học');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     // --- Helper to resolve region key from dialectId ---
     const getRegionKey = (dialectId: string) => {
         const dialect = dialects.find((item) => item.id === dialectId);
         return (dialect?.name || '').toUpperCase();
     };
 
+    const fetchedAssignments = (location.state as any)?.fetchedAssignments as any[] | undefined;
+    const fromClassroomName = (location.state as any)?.fromClassroomName as string | undefined;
+    const fromClassroomId = (location.state as any)?.fromClassroomId as string | undefined;
+
+    const mergedLevels = useMemo(() => {
+        if (!fetchedAssignments || fetchedAssignments.length === 0) return levels;
+
+        const mappedFromAssignments = fetchedAssignments.map((item: any) => ({
+            id: item.id,
+            name: item.levelName || 'Không có tên chương',
+            dialectId: item.dialectId,
+            status: item.status || 'APPROVED',
+            createdAt: item.createdAt,
+            dueDate: item.dueDate,
+            _fromAssignment: true,
+        }));
+
+        return mappedFromAssignments;
+    }, [levels, fetchedAssignments]);
+
     // --- Filtered & Sorted data ---
     const filteredLevels = useMemo(() => {
-        let data = [...levels];
+        let data = [...mergedLevels];
 
         // Search by name
         if (searchText.trim()) {
@@ -266,7 +340,7 @@ const ChapterManagementPage: React.FC = () => {
         }
 
         return data;
-    }, [levels, searchText, filterRegion, filterStatus, dialects]);
+    }, [mergedLevels, searchText, filterRegion, filterStatus, dialects]);
 
     const activeFilterCount = [searchText.trim(), filterRegion, filterStatus].filter(Boolean).length;
 
@@ -364,21 +438,46 @@ const ChapterManagementPage: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                    }}
-                >
-                    Thêm Chương Học
-                </Button>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
+                    {fromClassroomName ? (
+                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                        </div>
+                    ) : null}
+                </div>
+                <Space>
+                    {fromClassroomId ? (
+                        <Button
+                            type="primary"
+                            onClick={handleOpenAssignModal}
+                            loading={assigning}
+                            style={{
+                                height: '40px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                            }}
+                        >
+                            Gán chương vào lớp
+                        </Button>
+                    ) : null}
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsCreateModalOpen(true)}
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                        }}
+                    >
+                        Thêm Chương Học
+                    </Button>
+                </Space>
             </div>
 
             {/* ====== FILTER & SORT TOOLBAR ====== */}
@@ -472,7 +571,7 @@ const ChapterManagementPage: React.FC = () => {
                                     />
                                 ) : null}
                                 <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{levels.length} chương
+                                    {filteredLevels.length}/{mergedLevels.length} chương
                                 </span>
                             </div>
                             <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
@@ -553,6 +652,75 @@ const ChapterManagementPage: React.FC = () => {
                     </div>
                     <Form.Item label="Mô tả" name="description">
                         <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={<span style={{ fontWeight: 600 }}>Gán chương học vào lớp</span>}
+                open={isAssignModalOpen}
+                onCancel={() => {
+                    assignmentForm.resetFields();
+                    setIsAssignModalOpen(false);
+                }}
+                onOk={() => assignmentForm.submit()}
+                confirmLoading={assigning}
+                okText="Gán chương"
+                okButtonProps={{
+                    style: { background: '#059669', border: 'none', borderRadius: '6px' }
+                }}
+                cancelText="Hủy"
+                centered
+            >
+                <Form
+                    form={assignmentForm}
+                    layout="vertical"
+                    onFinish={handleCreateAssignment}
+                >
+                    <Form.Item name="classroomId" hidden>
+                        <Input />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Chọn chương học hiện có"
+                        name="learningUnitId"
+                        rules={[{ required: true, message: 'Vui lòng chọn chương học' }]}
+                    >
+                        <Select
+                            loading={assigning}
+                            placeholder="Chọn chương học để gán"
+                            showSearch
+                            optionFilterProp="label"
+                            options={assignLevels.map((item: any) => ({
+                                value: item.id,
+                                label: item.name || item.levelName || item.id,
+                            }))}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Hạn nộp"
+                        name="dueDate"
+                        rules={[{ required: true, message: 'Vui lòng chọn hạn nộp' }]}
+                    >
+                        <DatePicker
+                            style={{ width: '100%' }}
+                            showTime
+                            format="DD/MM/YYYY HH:mm"
+                        />
+                    </Form.Item>
+
+                    <Form.Item label="Trạng thái" name="status" initialValue="OPEN">
+                        <Select
+                            options={[
+                                { value: 'OPEN', label: 'OPEN' },
+                                { value: 'CLOSED', label: 'CLOSED' },
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item label="Mô tả" name="description">
+                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/chương học" />
                     </Form.Item>
                 </Form>
             </Modal>
