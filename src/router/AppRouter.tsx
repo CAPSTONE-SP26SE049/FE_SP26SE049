@@ -6,6 +6,7 @@ import Register from '../apps/auth/Register'
 import VerifyEmail from '../apps/auth/VerifyEmail'
 import ForgotPassword from '../apps/auth/ForgotPassword'
 import ResetPassword from '../apps/auth/ResetPassword'
+import FacebookCallback from '../apps/auth/FacebookCallback'
 import EducatorLayout from '../modules/educator/components/EducatorLayout'
 import DashboardPage from '../modules/educator/pages/DashboardPage'
 import RoadmapManager from '../modules/educator/pages/RoadmapManager'
@@ -14,6 +15,8 @@ import StudentAnalyticsPage from '../modules/educator/pages/StudentAnalyticsPage
 import SettingsPage from '../modules/educator/pages/SettingsPage'
 import ClassroomManagementPage from '../modules/educator/pages/ClassroomManagementPage'
 import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
+import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
+import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
@@ -36,6 +39,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
 
       {/* Admin protected area */}
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
@@ -56,6 +60,8 @@ export const AppRoutes: React.FC = () => {
           <Route path="classrooms/:classId/students" element={<StudentManagementPage />} />
           <Route path="students" element={<StudentManagementPage />} />
           <Route path="roadmap" element={<RoadmapManager />} />
+          <Route path="challenges" element={<ChallengeBankPage />} />
+          <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
           <Route path="matrix" element={<AssessmentMatrix />} />
           <Route path="analytics" element={<StudentAnalyticsPage />} />

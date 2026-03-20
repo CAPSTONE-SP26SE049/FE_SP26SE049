@@ -1,5 +1,5 @@
 import React from 'react'
-import { Layout, Menu, Avatar, Typography } from 'antd'
+import { Layout, Menu, Avatar, Typography, Dropdown } from 'antd'
 import {
   DashboardOutlined,
   ReadOutlined,
@@ -8,9 +8,14 @@ import {
   SettingOutlined,
   UserOutlined,
   TeamOutlined,
-  FileDoneOutlined,
+  DatabaseOutlined,
+  BookOutlined,
+  FileTextOutlined,
+  LogoutOutlined,
+
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from '../../../core/auth/AuthContext'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -37,9 +42,20 @@ const menuItems = [
     label: <Link to="/educator/roadmap">Lộ trình học tập</Link>,
   },
   {
+    key: '/educator/challenges',
+    icon: <DatabaseOutlined />,
+    label: <Link to="/educator/challenges">Ngân hàng thử thách</Link>,
+  },
+  {
+    key: '/educator/chapters',
+    icon: <BookOutlined />,
+    label: <Link to="/educator/chapters">Quản lý chương học</Link>,
+  },
+  {
     key: '/educator/quizzes',
-    icon: <FileDoneOutlined />,
-    label: <Link to="/educator/quizzes">Quản lý bài kiểm tra</Link>,
+    icon: <FileTextOutlined />,
+    label: <Link to="/educator/quizzes">Quản lý Quiz</Link>,
+
   },
   {
     key: '/educator/matrix',
@@ -60,11 +76,45 @@ const menuItems = [
 
 const EducatorLayout = () => {
   const location = useLocation()
+  const { session, logout } = useAuth()
 
   const selectedKey =
     [...menuItems]
       .sort((a, b) => b.key.length - a.key.length)
       .find((item) => location.pathname.startsWith(item.key))?.key ?? '/educator'
+
+  const handleLogout = () => {
+    logout()
+  }
+
+  const userDisplayName = session?.user?.fullName || 'Giáo vụ'
+  const userEmail = session?.user?.email || ''
+
+  const avatarMenuItems = [
+    {
+      key: 'user-info',
+      label: (
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a' }}>{userDisplayName}</div>
+          {userEmail && <div style={{ fontSize: 12, color: '#888' }}>{userEmail}</div>}
+        </div>
+      ),
+      disabled: true,
+      style: { cursor: 'default' },
+    },
+    { type: 'divider' },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: <Link to="/educator/settings">Cài đặt</Link>,
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined style={{ color: '#ff4d4f' }} />,
+      label: <span style={{ color: '#ff4d4f' }}>Đăng xuất</span>,
+      onClick: handleLogout,
+    },
+  ]
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -115,17 +165,24 @@ const EducatorLayout = () => {
             <Title level={4} style={{ margin: 0, color: '#1a1a1a', fontWeight: 600 }}>
               Cổng Quản Trị Giáo Vụ
             </Title>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>Giáo vụ</span>
-                <span style={{ fontSize: 12, color: '#888' }}>Hệ thống SpeakVN</span>
+            <Dropdown
+              menu={{ items: avatarMenuItems }}
+              placement="bottomRight"
+              trigger={['click']}
+              overlayStyle={{ minWidth: 200 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{userDisplayName}</span>
+                  <span style={{ fontSize: 12, color: '#888' }}>Hệ thống SpeakVN</span>
+                </div>
+                <Avatar
+                  size="large"
+                  icon={<UserOutlined />}
+                  style={{ backgroundColor: '#1890ff', boxShadow: '0 2px 4px rgba(24,144,255,0.3)' }}
+                />
               </div>
-              <Avatar
-                size="large"
-                icon={<UserOutlined />}
-                style={{ backgroundColor: '#1890ff', cursor: 'pointer', boxShadow: '0 2px 4px rgba(24,144,255,0.3)' }}
-              />
-            </div>
+            </Dropdown>
           </div>
         </Header>
         <Content style={{ margin: '16px' }}>
@@ -146,3 +203,4 @@ const EducatorLayout = () => {
 }
 
 export default EducatorLayout
+

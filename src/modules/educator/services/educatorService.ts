@@ -2,6 +2,12 @@ import apiClient from '../../../services/apiClient';
 
 export interface ClassroomRequest {
     name: string;
+    description?: string;
+    dialectId?: string;
+    startDate?: string;   // ISO 8601, e.g. "2026-03-12T05:02:22.177Z"
+    endDate?: string;     // ISO 8601, e.g. "2026-03-15T05:02:22.177Z"
+    isActive?: boolean;
+    currentStudents?: number;
 }
 
 export interface AddStudentRequest {
@@ -23,23 +29,50 @@ export interface Level {
     updatedAt: string;
 }
 
-export interface CreateLevelRequest {
+export interface LevelFormPayload {
     dialectId: string;
     levelOrder: number;
     name: string;
-    description: string;
+    description?: string;
     minStarsRequired: number;
     errorTagId?: string;
     aiThreshold?: number;
+    status?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    rejectionReason?: string | null;
+    audioUrl?: string | null;
+    comment?: string;
+}
+
+export interface CreateLevelRequest {
+    name: string;
+    type: 'LEVEL';
+    parent_id: string;
+    metadata_json: {
+        status: string;
+        audio_url: string | null;
+        level_order: number;
+        ai_threshold?: number | null;
+        error_tag_id?: string | null;
+        rejection_reason?: string | null;
+        min_stars_required: number;
+        description?: string;
+    };
 }
 
 export interface UpdateLevelRequest {
-    name?: string;
-    description?: string;
-    levelOrder?: number;
-    minStarsRequired?: number;
-    errorTagId?: string;
-    aiThreshold?: number;
+    name: string;
+    type: 'LEVEL';
+    parent_id: string;
+    metadata_json: {
+        status: string;
+        audio_url: string | null;
+        level_order: number;
+        ai_threshold?: number | null;
+        error_tag_id?: string | null;
+        rejection_reason?: string | null;
+        min_stars_required: number;
+        description?: string;
+    };
     comment?: string;
 }
 
@@ -55,6 +88,26 @@ export interface PlacementRuleRequest {
     targetRegion: string;
     checkpoint: string;
     priority: number;
+}
+
+export interface QuizQuestionRequest {
+    skillType: string;
+    difficulty?: string;
+    questionOrder: number;
+    points: number;
+    challengeId?: string;
+}
+
+export interface QuizCreateRequest {
+    levelId: string;
+    title: string;
+    description?: string;
+    instructions?: string;
+    passingScore: number;
+    timeLimitMinutes?: number;
+    questionCount?: number;
+    comment?: string;
+    questions: QuizQuestionRequest[];
 }
 
 export interface Challenge {
@@ -122,6 +175,25 @@ export interface ChallengeRequest {
     comment?: string;
 }
 
+export interface ChallengeBank {
+    id: string;
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    isGlobal: boolean;
+    metadataJson: Record<string, any>;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ChallengeBankRequest {
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    isGlobal?: boolean;
+    metadataJson: Record<string, any>;
+}
+
 export const educatorService = {
     // --- Dashboard ---
     getDashboardSummary: async () => {
@@ -132,10 +204,13 @@ export const educatorService = {
     getClassrooms: async () => {
         return apiClient.get('/educator/classrooms');
     },
+    getClassroomById: async (id: string) => {
+        return apiClient.get(`/educator/classrooms/${id}`);
+    },
     createClassroom: async (data: ClassroomRequest) => {
         return apiClient.post('/educator/classrooms', data);
     },
-    updateClassroom: async (id: string, data: ClassroomRequest) => {
+    updateClassroom: async (id: string, data: Partial<ClassroomRequest>) => {
         return apiClient.patch(`/educator/classrooms/${id}`, data);
     },
     deleteClassroom: async (id: string) => {
@@ -165,11 +240,42 @@ export const educatorService = {
     getCurriculumByRegion: async (region: string) => {
         return apiClient.get(`/educator/curriculum/${region.toUpperCase()}`);
     },
-    createLevel: async (data: CreateLevelRequest) => {
-        return apiClient.post(`/educator/curriculum/levels`, data);
+    createLevel: async (data: LevelFormPayload) => {
+        const payload: CreateLevelRequest = {
+            name: data.name,
+            type: 'LEVEL',
+            parent_id: data.dialectId,
+            metadata_json: {
+                status: data.status || 'APPROVED',
+                audio_url: data.audioUrl ?? null,
+                level_order: data.levelOrder,
+                ai_threshold: data.aiThreshold ?? null,
+                error_tag_id: data.errorTagId ?? null,
+                rejection_reason: data.rejectionReason ?? null,
+                min_stars_required: data.minStarsRequired,
+                description: data.description || '',
+            },
+        };
+        return apiClient.post(`/educator/curriculum/levels`, payload);
     },
-    updateLevel: async (levelId: string, data: UpdateLevelRequest) => {
-        return apiClient.patch(`/educator/curriculum/levels/${levelId}`, data);
+    updateLevel: async (levelId: string, data: LevelFormPayload) => {
+        const payload: UpdateLevelRequest = {
+            name: data.name,
+            type: 'LEVEL',
+            parent_id: data.dialectId,
+            metadata_json: {
+                status: data.status || 'APPROVED',
+                audio_url: data.audioUrl ?? null,
+                level_order: data.levelOrder,
+                ai_threshold: data.aiThreshold ?? null,
+                error_tag_id: data.errorTagId ?? null,
+                rejection_reason: data.rejectionReason ?? null,
+                min_stars_required: data.minStarsRequired,
+                description: data.description || '',
+            },
+            comment: data.comment,
+        };
+        return apiClient.patch(`/educator/curriculum/levels/${levelId}`, payload);
     },
     deleteLevel: async (levelId: string) => {
         return apiClient.delete(`/educator/curriculum/levels/${levelId}`);
@@ -230,5 +336,32 @@ export const educatorService = {
 
     getContentHistory: async (id: string) => {
         return apiClient.get(`/educator/content/${id}/history`);
-    }
+    },
+    getLevelsForSelection: async () => {
+        return apiClient.get('/educator/levels');
+    },
+    createQuiz: async (data: QuizCreateRequest) => {
+        return apiClient.post('/educator/quizzes', data);
+    },
+    getQuizzesByLevel: async (levelId: string) => {
+        return apiClient.get('/educator/quizzes', { params: { levelId } });
+    },
+    updateQuiz: async (id: string, data: QuizCreateRequest) => {
+        return apiClient.put(`/educator/quizzes/${id}`, data);
+    },
+
+    // --- Challenge Bank ---
+    getChallengeBank: async () => {
+        return apiClient.get('/educator/challenge-bank');
+    },
+    createChallengeBankItem: async (data: ChallengeBankRequest) => {
+        return apiClient.post('/educator/challenge-bank', data);
+    },
+    assignChallengesToQuiz: async (quizId: string, challengeIds: string[]) => {
+        return apiClient.post(`/educator/quiz/${quizId}/challenges`, { challengeIds });
+    },
+    getQuizChallenges: async (quizId: string) => {
+        return apiClient.get(`/educator/quiz/${quizId}/challenges`);
+    },
 };
+
