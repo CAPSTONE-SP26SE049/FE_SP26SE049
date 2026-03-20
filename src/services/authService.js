@@ -77,6 +77,16 @@ export const logoutAPI = async (refreshToken) => {
 }
 
 /**
+ * Social Login - Login with Google or Facebook OAuth2
+ * @param {string} provider - 'GOOGLE' or 'FACEBOOK'
+ * @param {string} token - ID Token (Google) or Access Token (Facebook)
+ * @returns {Promise<Object>} API Response containing tokens and user data
+ */
+export const socialLoginAPI = async (provider, token) => {
+    return apiClient.post('/auth/social-login', { provider, token })
+}
+
+/**
  * Get current user's profile information.
  * Required Authentication Header: Bearer token (Handled by apiClient interceptor)
  * @returns {Promise<Object>} API Response containing user profile

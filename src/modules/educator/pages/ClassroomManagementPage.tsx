@@ -17,7 +17,8 @@ import {
     DatePicker,
     Select,
     Switch,
-    Tag
+    Tag,
+    Upload
 } from 'antd'
 import dayjs from 'dayjs'
 import {
@@ -26,12 +27,15 @@ import {
     DeleteOutlined,
     TeamOutlined,
     BarChartOutlined,
-    SearchOutlined
+    SearchOutlined,
+    DownloadOutlined,
+    UploadOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { educatorService } from '../services/educatorService'
 
 const { Text } = Typography;
+
 
 const ClassroomManagementPage: React.FC = () => {
     const [classrooms, setClassrooms] = useState<any[]>([])
@@ -45,6 +49,8 @@ const ClassroomManagementPage: React.FC = () => {
     const [dialectOptions, setDialectOptions] = useState<{ label: string; value: string }[]>([])
     const [dialectMap, setDialectMap] = useState<Record<string, any>>({})
     const [searchText, setSearchText] = useState('')
+    const [descPreview, setDescPreview] = useState<{ name: string; text: string } | null>(null)
+    const [importing, setImporting] = useState(false)
     const [form] = Form.useForm()
     const navigate = useNavigate()
     const watchedStartDate = Form.useWatch('startDate', form)
@@ -117,7 +123,7 @@ const ClassroomManagementPage: React.FC = () => {
                 startDate: classroom.startDate ? dayjs(classroom.startDate) : null,
                 endDate: classroom.endDate ? dayjs(classroom.endDate) : null,
                 isActive: classroom.isActive ?? true,
-                maxStudents: classroom.maxStudents ?? null,
+                currentStudents: classroom.currentStudents ?? null,
             })
         } else {
             form.resetFields()
@@ -139,7 +145,7 @@ const ClassroomManagementPage: React.FC = () => {
                 isActive: values.isActive ?? true,
                 startDate: values.startDate ? values.startDate.toISOString() : undefined,
                 endDate: values.endDate ? values.endDate.toISOString() : undefined,
-                maxStudents: values.maxStudents ?? undefined,
+                currentStudents: values.currentStudents ?? undefined,
             }
 
             if (editingClass) {
@@ -188,6 +194,120 @@ const ClassroomManagementPage: React.FC = () => {
         }
     }
 
+    // ========== Export CSV ==========
+    const handleExportCSV = () => {
+        if (classrooms.length === 0) {
+            message.warning('Không có dữ liệu để xuất')
+            return
+        }
+        const headers = ['Tên Lớp Học', 'Mã Lớp', 'Mô Tả', 'Ngày Tạo', 'Ngày Bắt Đầu', 'Ngày Kết Thúc', 'HS hiện tại', 'Vùng', 'Trạng Thái']
+        const rows = classrooms.map((c) => {
+            const dialect = dialectMap[c.dialectId]
+            const regionKey = (dialect?.name || '').toUpperCase()
+            const regionLabel = REGION_LABEL[regionKey]?.label || ''
+            return [
+                c.name || '',
+                c.code || '',
+                (c.description || '').replace(/"/g, '""'),
+                c.createdAt ? new Date(c.createdAt).toLocaleDateString('vi-VN') : '',
+                c.startDate ? new Date(c.startDate).toLocaleDateString('vi-VN') : '',
+                c.endDate ? new Date(c.endDate).toLocaleDateString('vi-VN') : '',
+                c.currentStudents ?? '',
+                regionLabel,
+                c.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+            ].map(v => `"${v}"`).join(',')
+        })
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n')
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `danh_sach_lop_hoc_${dayjs().format('YYYYMMDD_HHmmss')}.csv`
+        link.click()
+        URL.revokeObjectURL(url)
+        message.success('Xuất file CSV thành công!')
+    }
+
+    // ========== Import CSV ==========
+    const handleImportCSV = async (file: File) => {
+        setImporting(true)
+        try {
+            const text = await file.text()
+            const lines = text.split(/\r?\n/).filter(line => line.trim())
+            if (lines.length < 2) {
+                message.error('File CSV không có dữ liệu. Cần có header và ít nhất 1 dòng dữ liệu.')
+                return
+            }
+
+            // Parse CSV header
+            const parseCSVLine = (line: string): string[] => {
+                const result: string[] = []
+                let current = '', inQuotes = false
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i]
+                    if (inQuotes) {
+                        if (ch === '"' && line[i + 1] === '"') { current += '"'; i++ }
+                        else if (ch === '"') inQuotes = false
+                        else current += ch
+                    } else {
+                        if (ch === '"') inQuotes = true
+                        else if (ch === ',') { result.push(current.trim()); current = '' }
+                        else current += ch
+                    }
+                }
+                result.push(current.trim())
+                return result
+            }
+
+            const header = parseCSVLine(lines[0]).map(h => h.replace(/^\uFEFF/, '').toLowerCase())
+            const nameIdx = header.findIndex(h => h.includes('tên') || h.includes('ten') || h === 'name')
+            const descIdx = header.findIndex(h => h.includes('mô tả') || h.includes('mo ta') || h === 'description')
+            const regionIdx = header.findIndex(h => h.includes('vùng') || h.includes('vung') || h === 'region')
+
+            if (nameIdx === -1) {
+                message.error('File CSV thiếu cột "Tên Lớp Học". Vui lòng kiểm tra lại.')
+                return
+            }
+
+            // Build reverse map: region label → dialectId
+            const regionToDialect: Record<string, string> = {}
+            Object.entries(dialectMap).forEach(([id, d]) => {
+                const key = (d.name || '').toUpperCase()
+                const label = REGION_LABEL[key]?.label
+                if (label) regionToDialect[label.toLowerCase()] = id
+                if (d.description) regionToDialect[d.description.toLowerCase()] = id
+                regionToDialect[(d.name || '').toLowerCase()] = id
+            })
+
+            let success = 0, failed = 0
+            const dataLines = lines.slice(1)
+            for (const line of dataLines) {
+                const cols = parseCSVLine(line)
+                const name = cols[nameIdx]
+                if (!name) continue
+                const payload: any = { name, isActive: true }
+                if (descIdx !== -1 && cols[descIdx]) payload.description = cols[descIdx]
+                if (regionIdx !== -1 && cols[regionIdx]) {
+                    const dId = regionToDialect[cols[regionIdx].toLowerCase()]
+                    if (dId) payload.dialectId = dId
+                }
+                try {
+                    await educatorService.createClassroom(payload)
+                    success++
+                } catch {
+                    failed++
+                }
+            }
+            message.success(`Nhập CSV hoàn tất: ${success} thành công, ${failed} thất bại`)
+            fetchClassrooms()
+        } catch (err) {
+            console.error('Import CSV error:', err)
+            message.error('Lỗi khi đọc file CSV')
+        } finally {
+            setImporting(false)
+        }
+    }
+
     const columns = [
         {
             title: 'STT',
@@ -223,26 +343,36 @@ const ClassroomManagementPage: React.FC = () => {
             title: 'Mô Tả',
             dataIndex: 'description',
             key: 'description',
-            width: 180,
-            render: (text: string) =>
-                text ? (
-                    <Tooltip title={text}>
-                        <span
+            width: 120,
+            render: (text: string, record: any) => {
+                if (!text) return <span style={{ color: '#d1d5db' }}>—</span>
+                const tooltipText = text.length > 300 ? text.slice(0, 300) + '…' : text
+                return (
+                    <Tooltip
+                        title={<div style={{ maxWidth: 350, whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 13 }}>{tooltipText}</div>}
+                        placement="topLeft"
+                        overlayStyle={{ maxWidth: 400 }}
+                    >
+                        <div
+                            onClick={() => setDescPreview({ name: record.name, text })}
                             style={{
-                                display: 'block',
-                                maxWidth: 160,
+                                maxWidth: 100,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
                                 color: '#4b5563',
                                 fontSize: 13,
-                                cursor: 'default'
+                                cursor: 'pointer',
+                                transition: 'color 0.2s',
                             }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = '#2563eb')}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = '#4b5563')}
                         >
                             {text}
-                        </span>
+                        </div>
                     </Tooltip>
-                ) : <span style={{ color: '#d1d5db' }}>—</span>
+                )
+            }
         },
         {
             title: 'Ngày Bắt Đầu',
@@ -261,11 +391,11 @@ const ClassroomManagementPage: React.FC = () => {
             render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '—'
         },
         {
-            title: 'HS tối đa',
-            dataIndex: 'maxStudents',
-            key: 'maxStudents',
+            title: 'HS hiện tại',
+            dataIndex: 'currentStudents',
+            key: 'currentStudents',
             align: 'center' as const,
-            sorter: (a: any, b: any) => (a.maxStudents ?? 0) - (b.maxStudents ?? 0),
+            sorter: (a: any, b: any) => (a.currentStudents ?? 0) - (b.currentStudents ?? 0),
             render: (val: number) =>
                 val != null
                     ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{val}</span>
@@ -347,7 +477,7 @@ const ClassroomManagementPage: React.FC = () => {
                             onClick={() => navigate(`/educator/classrooms/${record.id}/students`)}
                         />
                     </Tooltip>
-                    <Tooltip title="Sửa tên lớp">
+                    <Tooltip title="Cập nhật lớp học">
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => handleOpenModal(record)}
@@ -371,28 +501,67 @@ const ClassroomManagementPage: React.FC = () => {
     ]
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Lớp Học</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => handleOpenModal()}
-                    style={{
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                    }}
-                >
-                    Thêm Lớp Mới
-                </Button>
+        <div style={{ padding: '8px 0' }}>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 20,
+            }}>
+                <div>
+                    <h2 style={{
+                        margin: 0, fontSize: 22, fontWeight: 700, color: '#1e293b',
+                        letterSpacing: '-0.01em',
+                    }}>
+                        Quản Lý Lớp Học
+                    </h2>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>
+                        Tổng cộng <strong style={{ color: '#64748b' }}>{classrooms.length}</strong> lớp học
+                    </p>
+                </div>
+                <Space size={10}>
+                    <Button
+                        icon={<DownloadOutlined />}
+                        onClick={handleExportCSV}
+                        style={{ borderRadius: 10, height: 42 }}
+                    >
+                        Xuất CSV
+                    </Button>
+                    <Upload
+                        accept=".csv"
+                        showUploadList={false}
+                        beforeUpload={(file) => { handleImportCSV(file); return false; }}
+                    >
+                        <Button
+                            icon={<UploadOutlined />}
+                            loading={importing}
+                            style={{ borderRadius: 10, height: 42 }}
+                        >
+                            Nhập CSV
+                        </Button>
+                    </Upload>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => handleOpenModal()}
+                        style={{
+                            height: 42, borderRadius: 10, fontSize: 14, fontWeight: 600,
+                            background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 14px rgba(37,99,235,0.25)',
+                        }}
+                    >
+                        Thêm Lớp Mới
+                    </Button>
+                </Space>
             </div>
 
             <Card
                 variant="borderless"
-                style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+                style={{
+                    borderRadius: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.04)',
+                    overflow: 'hidden',
+                }}
+                styles={{ body: { padding: '20px 24px 8px' } }}
             >
                 {/* Thanh tìm kiếm */}
                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -403,7 +572,7 @@ const ClassroomManagementPage: React.FC = () => {
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
                         allowClear
-                        style={{ maxWidth: 360, borderRadius: 8 }}
+                        style={{ maxWidth: 380, borderRadius: 10, height: 38 }}
                     />
                     {searchText && (
                         <span style={{ color: '#6b7280', fontSize: 13 }}>
@@ -412,11 +581,49 @@ const ClassroomManagementPage: React.FC = () => {
                     )}
                 </div>
 
+                <style>{`
+                    .classroom-table .ant-table {
+                        border-radius: 12px;
+                        overflow: hidden;
+                    }
+                    .classroom-table .ant-table-thead > tr > th {
+                        background: #f1f5f9 !important;
+                        color: #475569 !important;
+                        font-weight: 600 !important;
+                        font-size: 13px !important;
+                        border-bottom: 2px solid #e2e8f0 !important;
+                        padding: 12px 14px !important;
+                    }
+                    .classroom-table .ant-table-tbody > tr > td {
+                        padding: 14px 14px !important;
+                        border-bottom: 1px solid #f1f5f9 !important;
+                        transition: background 0.2s;
+                    }
+                    .classroom-table .ant-table-tbody > tr:hover > td {
+                        background: #eff6ff !important;
+                    }
+                    .classroom-table .ant-table-tbody > tr:nth-child(even) > td {
+                        background: #fafbfc;
+                    }
+                    .classroom-table .ant-table-tbody > tr:nth-child(even):hover > td {
+                        background: #eff6ff !important;
+                    }
+                `}</style>
+
                 <Table
+                    className="classroom-table"
                     columns={columns}
                     dataSource={filteredClassrooms}
                     rowKey="id"
                     loading={loading}
+                    scroll={{ x: 1100 }}
+                    pagination={{
+                        showSizeChanger: true,
+                        pageSizeOptions: ['5', '10', '20'],
+                        defaultPageSize: 10,
+                        showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} lớp`,
+                        style: { marginTop: 12 },
+                    }}
                     locale={{ emptyText: searchText ? 'Không tìm thấy lớp học phù hợp' : 'Chưa có dữ liệu lớp học' }}
                     showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
                 />
@@ -455,11 +662,14 @@ const ClassroomManagementPage: React.FC = () => {
                         />
                     </Form.Item>
 
-                    <Form.Item name="dialectId" label="Phương Ngữ (Vùng)">
+                    <Form.Item
+                        name="dialectId"
+                        label="Phương Ngữ (Vùng)"
+                        rules={[{ required: true, message: 'Vui lòng chọn vùng phương ngữ' }]}
+                    >
                         <Select
                             placeholder="Chọn vùng phương ngữ"
                             options={dialectOptions}
-                            allowClear
                             loading={dialectOptions.length === 0}
                         />
                     </Form.Item>
@@ -532,7 +742,7 @@ const ClassroomManagementPage: React.FC = () => {
 
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <Form.Item
-                            name="maxStudents"
+                            name="currentStudents"
                             label="Số Học Sinh Tối Đa"
                             style={{ flex: 1 }}
                             rules={[
@@ -609,6 +819,44 @@ const ClassroomManagementPage: React.FC = () => {
                 ) : (
                     <div className="text-center text-gray-500 py-8">Không có dữ liệu báo cáo.</div>
                 )}
+            </Modal>
+
+            {/* Modal xem mô tả đầy đủ */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 32, height: 32, borderRadius: 8,
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            color: '#fff', fontSize: 16
+                        }}>📄</span>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: 15 }}>Mô tả lớp học</div>
+                            <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 400 }}>{descPreview?.name}</div>
+                        </div>
+                    </div>
+                }
+                open={!!descPreview}
+                onCancel={() => setDescPreview(null)}
+                footer={<Button onClick={() => setDescPreview(null)}>Đóng</Button>}
+                width={640}
+                centered
+                styles={{ body: { maxHeight: '60vh', overflowY: 'auto', padding: '20px 24px' } }}
+            >
+                <div style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    color: '#374151',
+                    background: '#f9fafb',
+                    borderRadius: 12,
+                    padding: '16px 20px',
+                    border: '1px solid #e5e7eb',
+                }}>
+                    {descPreview?.text}
+                </div>
             </Modal>
         </div>
     )

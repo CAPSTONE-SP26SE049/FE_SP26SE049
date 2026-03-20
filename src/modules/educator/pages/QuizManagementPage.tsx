@@ -97,7 +97,8 @@ const QuizManagementPage: React.FC = () => {
     const [selectedDetailChallenge, setSelectedDetailChallenge] = useState<any | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [bankSearchText, setBankSearchText] = useState('');
-
+    const [quizChallenges, setQuizChallenges] = useState<any[]>([]);
+    const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
 
     useEffect(() => {
         const fetchLevels = async () => {
@@ -124,6 +125,26 @@ const QuizManagementPage: React.FC = () => {
         fetchLevels();
         fetchDialects();
     }, []);
+
+    useEffect(() => {
+        const fetchQuizChallenges = async () => {
+            if (quiz?.id) {
+                setLoadingQuizChallenges(true);
+                try {
+                    const res: any = await educatorService.getQuizChallenges(quiz.id);
+                    setQuizChallenges(res?.data || (Array.isArray(res) ? res : []));
+                } catch (e) {
+                    console.error("Failed to fetch quiz challenges", e);
+                    setQuizChallenges([]);
+                } finally {
+                    setLoadingQuizChallenges(false);
+                }
+            } else {
+                setQuizChallenges([]);
+            }
+        };
+        fetchQuizChallenges();
+    }, [quiz?.id]);
 
     const handleLevelChange = async (levelId: string) => {
         setSelectedLevelId(levelId);
@@ -568,15 +589,44 @@ const QuizManagementPage: React.FC = () => {
             key: 'action',
             width: 80,
             align: 'center' as const,
-            render: (_: any, record: any, index: number) => (
-                <Tooltip title="Xem nội dung câu hỏi">
-                    <Button
-                        type="text"
-                        icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                        onClick={() => showDetail(record, index)}
-                    />
-                </Tooltip>
-            ),
+            render: (_: any, record: any, index: number) => {
+                let isMapped = false;
+                if (quizChallenges && quizChallenges.length > 0) {
+                    let bankItem = quizChallenges.find((item: any) =>
+                        (record.id && item.challenge?.id === record.id) ||
+                        (record.challengeId && item.challenge?.id === record.challengeId)
+                    );
+                    if (!bankItem && record.questionOrder != null) {
+                        bankItem = quizChallenges.find((item: any) =>
+                            item.orderIndex === record.questionOrder
+                        );
+                    }
+                    if (!bankItem && index != null && index < quizChallenges.length) {
+                        bankItem = quizChallenges[index];
+                    }
+                    if (bankItem?.challenge) {
+                        isMapped = true;
+                    }
+                }
+
+                if (loadingQuizChallenges) {
+                    return <Spin size="small" />;
+                }
+
+                if (!isMapped && !record.contentText) {
+                    return null;
+                }
+
+                return (
+                    <Tooltip title="Xem nội dung câu hỏi">
+                        <Button
+                            type="text"
+                            icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+                            onClick={() => showDetail(record, index)}
+                        />
+                    </Tooltip>
+                );
+            },
         },
     ];
 

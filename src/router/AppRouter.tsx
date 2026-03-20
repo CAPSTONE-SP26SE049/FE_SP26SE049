@@ -6,6 +6,7 @@ import Register from '../apps/auth/Register'
 import VerifyEmail from '../apps/auth/VerifyEmail'
 import ForgotPassword from '../apps/auth/ForgotPassword'
 import ResetPassword from '../apps/auth/ResetPassword'
+import FacebookCallback from '../apps/auth/FacebookCallback'
 import EducatorLayout from '../modules/educator/components/EducatorLayout'
 import DashboardPage from '../modules/educator/pages/DashboardPage'
 import RoadmapManager from '../modules/educator/pages/RoadmapManager'
@@ -38,6 +39,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
 
       {/* Admin protected area */}
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
