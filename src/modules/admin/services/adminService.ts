@@ -146,11 +146,23 @@ export const adminService = {
     getPendingChallenges: async () => {
         return apiClient.get('/admin/content/pending/challenges');
     },
+    getPendingQuizzes: async () => {
+        return apiClient.get('/admin/approvals/quizzes');
+    },
     reviewLevel: async (id: string, data: ReviewContentRequest) => {
         return apiClient.put(`/admin/content/levels/${id}/review`, data);
     },
     reviewChallenge: async (id: string, data: ReviewContentRequest) => {
         return apiClient.put(`/admin/content/challenges/${id}/review`, data);
+    },
+    reviewQuiz: async (id: string, data: ReviewContentRequest) => {
+        return apiClient.post(`/admin/approvals/quizzes/${id}/review`, {
+            action: data.status,
+            reason: data.comment || data.rejectionReason
+        });
+    },
+    getQuizzes: async () => {
+        return apiClient.get('/admin/content/quizzes');
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/admin/content/${id}/history`);

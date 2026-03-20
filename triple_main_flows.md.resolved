@@ -1,0 +1,58 @@
+# Business Analysis: Triple Main Flows (Linear Format)
+
+Tài liệu này chi tiết hóa 3 luồng nghiệp vụ cốt lõi của hệ thống SpeakVN Journey. Mỗi luồng đảm bảo có ít nhất **6 chức năng** tham gia và mô tả theo dạng tuyến tính kèm theo **Actor**.
+
+---
+
+## Luồng 1: Phê duyệt & Tạo nội dung bài học (Content Lifecycle)
+*Mục tiêu: Đảm bảo học liệu chuẩn xác và phong phú cho hệ thống.*
+
+**Actor tham gia:** Content Creator (CC), Admin (AD), Backend (BE).
+
+**Sơ đồ tuyến tính:**
+**[CC]** Nhập liệu nội dung (Text/Phoneme) 
+---> **[CC]** Thu âm audio mẫu "Gold Standard" 
+---> **[BE]** Gán nhãn vùng miền & Độ khó (Metadata Tagging) 
+---> **[AD]** Kiểm tra chất lượng âm thanh & Chính tả 
+---> **[AD]** Duyệt (Approve) hoặc Từ chối (Reject) kèm lý do 
+---> **[BE]** Đồng bộ nội dung vào Bản đồ hành trình (Roadmap) 
+---> **[BE]** Cập nhật kho cẩm nang phát âm (Phonetic Guide).
+
+---
+
+## Luồng 2: Người học tham gia cải thiện nói ngọng (Learner Journey)
+*Mục tiêu: Quy trình core giúp người dùng sửa lỗi phát âm qua AI.*
+
+**Actor tham gia:** Learner (LN), AI System (AI), Backend (BE).
+
+**Sơ đồ tuyến tính:**
+**[LN]** Thực hiện bài kiểm tra đầu vào (Assessment) 
+---> **[BE]** Phân tích vùng miền & Đề xuất lộ trình sửa ngọng 
+---> **[LN]** Nghe mẫu & Thu âm giọng đọc thực tế 
+---> **[AI]** So sánh sóng âm & Trả kết quả chính xác (%) 
+---> **[AI/BE]** Hiển thị hướng dẫn khẩu hình 3D cho âm sai 
+---> **[BE]** Trừ mạng (Heart) hoặc Tặng sao & Cập nhật Streak 
+---> **[LN]** Mở khóa thử thách tiếp theo hoặc Nhận huy hiệu thành tích.
+
+---
+
+## Luồng 3: Phân tích Insight & Quản trị (Admin/Educator Analytics)
+*Mục tiêu: Theo dõi sức khỏe hệ thống và tiến độ học tập toàn diện.*
+
+**Actor tham gia:** Admin (AD), Educator (ED), Backend (BE).
+
+**Sơ đồ tuyến tính:**
+**[BE]** Thu thập dữ liệu Attempt âm thanh & Điểm số 
+---> **[BE]** Phân tích tỷ lệ lỗi phổ biến theo Vùng miền (Insight Mapping) 
+---> **[AD]** Theo dõi chỉ số giữ chân & Tương tác (User Retention) 
+---> **[ED]** Xem Heatmap lỗi cụ thể của lớp học/sinh viên 
+---> **[ED]** Tạo báo cáo tiến độ (Progress Report) xuất file Excel/PDF 
+---> **[AD/ED]** Điều chỉnh độ khó hoặc Giao bài tập cá nhân hóa 
+---> **[BE]** Tối ưu hóa Model AI dựa trên dữ liệu lỗi thực tế.
+
+---
+
+## Ghi chú cho BA (Technical Notes)
+1. **Tính kế thừa:** Dữ liệu từ Luồng 1 (Content) là nguồn cung cho Luồng 2 (Learning). Dữ liệu từ Luồng 2 là đầu vào để phân tích trong Luồng 3 (Analytics).
+2. **Quy tắc 6+:** Mỗi luồng trên đều có từ 7 bước chức năng trở lên, đảm bảo logic hệ thống chặt chẽ.
+3. **Sơ đồ:** Team BA có thể dùng Luồng 1 để vẽ *Content Management Sequence*, Luồng 2 cho *Learning Activity*, và Luồng 3 cho *Admin Dashboard Sequence*.
