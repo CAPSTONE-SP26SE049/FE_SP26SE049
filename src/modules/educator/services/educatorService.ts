@@ -96,6 +96,7 @@ export interface QuizQuestionRequest {
     questionOrder: number;
     points: number;
     challengeId?: string;
+    contentData?: any;
 }
 
 export interface QuizCreateRequest {
@@ -107,6 +108,7 @@ export interface QuizCreateRequest {
     timeLimitMinutes?: number;
     questionCount?: number;
     comment?: string;
+    skillType?: string;
     questions: QuizQuestionRequest[];
 }
 
@@ -155,23 +157,7 @@ export interface QuizQuestion {
     contentData: any;
 }
 
-export interface QuizCreateRequest {
-    levelId: string;
-    title: string;
-    description: string;
-    instructions: string;
-    passingScore: number;
-    timeLimitMinutes?: number;
-    questions: QuizQuestionRequest[];
-}
 
-export interface QuizQuestionRequest {
-    skillType: string;
-    difficulty: string;
-    questionOrder: number;
-    points: number;
-    contentData: any;
-}
 
 export interface ChallengeRequest {
     levelId: string;
@@ -189,6 +175,7 @@ export interface ChallengeBank {
     skillType: string;
     difficultyTag: string;
     isGlobal: boolean;
+    region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
     createdAt: string;
     updatedAt: string;
@@ -199,6 +186,7 @@ export interface ChallengeBankRequest {
     skillType: string;
     difficultyTag: string;
     isGlobal?: boolean;
+    region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
 }
 
@@ -248,6 +236,9 @@ export const educatorService = {
     },
     createAssignment: async (data: CreateAssignmentRequest) => {
         return apiClient.post('/educator/assignments', data);
+    },
+    deleteAssignment: async (assignmentId: string) => {
+        return apiClient.delete(`/educator/assignments/${assignmentId}`);
     },
 
     // --- Curriculum Management ---
@@ -341,12 +332,7 @@ export const educatorService = {
     getQuizDetails: async (id: string) => {
         return apiClient.get(`/educator/quizzes/${id}`);
     },
-    createQuiz: async (data: QuizCreateRequest) => {
-        return apiClient.post('/educator/quizzes', data);
-    },
-    updateQuiz: async (id: string, data: QuizCreateRequest) => {
-        return apiClient.put(`/educator/quizzes/${id}`, data);
-    },
+
 
     getContentHistory: async (id: string) => {
         return apiClient.get(`/educator/content/${id}/history`);
@@ -376,6 +362,15 @@ export const educatorService = {
     },
     getQuizChallenges: async (quizId: string) => {
         return apiClient.get(`/educator/quiz/${quizId}/challenges`);
+    },
+    updateChallengeBankItem: async (id: string, data: ChallengeBankRequest) => {
+        return apiClient.put(`/educator/challenge-bank/${id}`, data);
+    },
+    deleteChallengeBankItem: async (id: string) => {
+        return apiClient.delete(`/educator/challenge-bank/${id}`);
+    },
+    removeChallengeFromQuiz: async (quizId: string, challengeId: string) => {
+        return apiClient.delete(`/educator/quiz/${quizId}/challenges/${challengeId}`);
     },
 };
 

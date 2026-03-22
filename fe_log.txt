@@ -1,0 +1,24 @@
+99f9a43 add level to class function
+3293340 add level to class function
+bb3344e Merge branch 'development' into educator
+3301da7 merge admin
+c0b9e42 fix logic and validate
+354aae7 managementPage
+f345e3a Add login facebook
+15edf91 feat: implement Google login and update login API integration on frontend
+2b9b870 feat: add import/export for classroom and student management
+c593a8e fix: update classroom information loading UI
+21d71c2 classroom educator
+6900202 feat: Implement quiz management functionality, replacing challenge management and updating related educator modules and API documentation.
+e146ae2 chore: add VS Code workspace configuration file.
+f97f3f7 feat: Implement client-side pagination for user management, enhance user data parsing, and add `triple_main_flows.md.resolved`.
+7baf4e3 Update new UI
+0c039c7 Update Refesh token
+9e5c0cd Chuan hoa noi dung
+70787ff Update new feature
+797ea6c OKE
+5e1f006 feat(ui): Polish Home Page & Auth UX
+a8be8d5 Add README for SpeakVN Journey web portal
+c69e339 Restructure: Move all frontend code into frontend directory
+63fea68 Restructure: Move frontend code to root directory
+a758cd6 Initial commit: Add frontend source code to development branch
