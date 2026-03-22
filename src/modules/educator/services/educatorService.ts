@@ -96,6 +96,7 @@ export interface QuizQuestionRequest {
     questionOrder: number;
     points: number;
     challengeId?: string;
+    contentData?: any;
 }
 
 export interface QuizCreateRequest {
@@ -147,23 +148,7 @@ export interface QuizQuestion {
     contentData: any;
 }
 
-export interface QuizCreateRequest {
-    levelId: string;
-    title: string;
-    description: string;
-    instructions: string;
-    passingScore: number;
-    timeLimitMinutes?: number;
-    questions: QuizQuestionRequest[];
-}
 
-export interface QuizQuestionRequest {
-    skillType: string;
-    difficulty: string;
-    questionOrder: number;
-    points: number;
-    contentData: any;
-}
 
 export interface ChallengeRequest {
     levelId: string;
@@ -340,15 +325,10 @@ export const educatorService = {
     getLevelsForSelection: async () => {
         return apiClient.get('/educator/levels');
     },
-    createQuiz: async (data: QuizCreateRequest) => {
-        return apiClient.post('/educator/quizzes', data);
-    },
     getQuizzesByLevel: async (levelId: string) => {
         return apiClient.get('/educator/quizzes', { params: { levelId } });
     },
-    updateQuiz: async (id: string, data: QuizCreateRequest) => {
-        return apiClient.put(`/educator/quizzes/${id}`, data);
-    },
+
 
     // --- Challenge Bank ---
     getChallengeBank: async () => {
