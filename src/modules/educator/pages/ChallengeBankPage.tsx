@@ -16,7 +16,10 @@ import {
     Switch,
     message,
     Tooltip,
-    Divider
+    Divider,
+    Dropdown,
+    Upload,
+    Alert
 } from 'antd';
 import {
     DatabaseOutlined,
@@ -27,12 +30,20 @@ import {
     PlusOutlined,
     EyeOutlined,
     InfoCircleOutlined,
-    PictureOutlined,
     EditOutlined,
-    SearchOutlined
+    SearchOutlined,
+    DownloadOutlined,
+    UploadOutlined,
+    FileExcelOutlined,
+    SaveOutlined,
+    GlobalOutlined,
+    LockOutlined,
+    ArrowRightOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
 import { educatorService } from '../services/educatorService';
 import type { ChallengeBank, ChallengeBankRequest } from '../services/educatorService';
+import { excelService, downloadBlob } from '../services/excelService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -51,6 +62,12 @@ const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
     ADVANCED: { label: 'Nâng cao', color: 'red' },
 };
 
+const REGION_CONFIG: Record<string, { label: string; color: string }> = {
+    BAC: { label: 'Miền Bắc', color: '#1890ff' },
+    TRUNG: { label: 'Miền Trung', color: '#fa8c16' },
+    NAM: { label: 'Miền Nam', color: '#52c41a' },
+};
+
 const ChallengeBankPage: React.FC = () => {
     const [challenges, setChallenges] = useState<ChallengeBank[]>([]);
     const [loading, setLoading] = useState(false);
@@ -64,15 +81,25 @@ const ChallengeBankPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [skillFilter, setSkillFilter] = useState<string | null>(null);
     const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null);
+    const [regionFilter, setRegionFilter] = useState<string | null>(null);
+
+    // Import/Export states
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importSkillType, setImportSkillType] = useState<string>('READING');
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<any>(null);
+    const [exporting, setExporting] = useState(false);
 
     const filteredChallenges = useMemo(() => {
         return challenges.filter(c => {
             const matchesSearch = !searchTerm || c.contentText?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesSkill = !skillFilter || c.skillType === skillFilter;
             const matchesDifficulty = !difficultyFilter || c.difficultyTag === difficultyFilter;
-            return matchesSearch && matchesSkill && matchesDifficulty;
+            const matchesRegion = !regionFilter || c.region === regionFilter;
+            return matchesSearch && matchesSkill && matchesDifficulty && matchesRegion;
         });
-    }, [challenges, searchTerm, skillFilter, difficultyFilter]);
+    }, [challenges, searchTerm, skillFilter, difficultyFilter, regionFilter]);
 
     // Watch skillType to change form fields dynamically
     const skillType = Form.useWatch('skillType', form);
@@ -94,17 +121,19 @@ const ChallengeBankPage: React.FC = () => {
         fetchChallenges();
     }, []);
 
-    const handleCreate = async (values: any) => {
+    const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
+
+    const handleSubmit = async (values: any) => {
         setSubmitting(true);
         try {
             let metadataJson: any = {};
 
             if (values.skillType === 'READING') {
                 metadataJson = {
-                    options: values.options ? values.options.split('\n').filter((o: string) => o.trim()) : [],
-                    correctAnswer: values.correctAnswer,
-                    hint: values.hint || "",
-                    imageUrl: values.imageUrl || ""
+                    words: values.words ? values.words.split('|').map((w: string) => w.trim()).filter(Boolean) : [],
+                    error_index: values.error_index,
+                    correct_word: values.correct_word,
+                    hint: values.hint || ""
                 };
             } else if (values.skillType === 'LISTENING') {
                 metadataJson = {
@@ -126,7 +155,7 @@ const ChallengeBankPage: React.FC = () => {
                     hint: values.hint || ""
                 };
             } else {
-                // Fallback for PRONUNCIATION / SPEAKING or others
+                // Fallback
                 metadataJson = { ...values.metadataJson };
             }
 
@@ -135,26 +164,170 @@ const ChallengeBankPage: React.FC = () => {
                 skillType: values.skillType,
                 difficultyTag: values.difficultyTag,
                 isGlobal: values.isGlobal ?? true,
+                region: values.region || 'BAC',
                 metadataJson: metadataJson
             };
 
-            await educatorService.createChallengeBankItem(payload);
-            message.success("Tạo câu hỏi thành công");
+            if (editingChallengeId) {
+                await educatorService.updateChallengeBankItem(editingChallengeId, payload);
+                message.success("Cập nhật câu hỏi thành công");
+            } else {
+                await educatorService.createChallengeBankItem(payload);
+                message.success("Tạo câu hỏi thành công");
+            }
+            
             setIsModalOpen(false);
             form.resetFields();
+            setEditingChallengeId(null);
             fetchChallenges(); // Refresh list
         } catch (err: any) {
-            console.error("[ChallengeBank] Error creating:", err);
-            message.error(err?.message || "Lỗi khi tạo câu hỏi");
+            console.error("[ChallengeBank] Error saving:", err);
+            message.error(err?.message || "Lỗi khi lưu câu hỏi");
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleEdit = (record: ChallengeBank) => {
+        setEditingChallengeId(record.id);
+        
+        let meta = record.metadataJson;
+        if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch(e) { meta = {}; }
+        }
+        meta = meta || {};
+
+        const formVals: any = {
+            contentText: record.contentText,
+            skillType: record.skillType,
+            difficultyTag: record.difficultyTag,
+            isGlobal: record.isGlobal,
+            region: record.region
+        };
+
+        if (record.skillType === 'READING') {
+            formVals.words = meta.words?.join('|');
+            formVals.error_index = meta.error_index;
+            formVals.correct_word = meta.correct_word;
+            formVals.hint = meta.hint;
+        } else if (record.skillType === 'LISTENING') {
+            formVals.audioUrl = meta.audioUrl;
+            formVals.options = meta.options?.join('\n');
+            formVals.correctAnswer = meta.correctAnswer;
+            formVals.transcript = meta.transcript;
+        } else if (record.skillType === 'WRITING') {
+            formVals.scrambledWords = meta.scrambledWords?.join('\n');
+            formVals.correctSentence = meta.correctSentence;
+            formVals.hint = meta.hint;
+        } else if (record.skillType === 'SPEAKING') {
+            formVals.audioUrl = meta.audioUrl;
+            formVals.transcript = meta.transcript;
+            formVals.hint = meta.hint;
+        }
+
+        form.setFieldsValue(formVals);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = (id: string) => {
+        Modal.confirm({
+            title: 'Chắc chắn xóa câu hỏi này?',
+            content: 'Hành động này sẽ gỡ câu hỏi khỏi tất cả những quiz đang sử dụng nó và không thể hoàn tác.',
+            okText: 'Xóa',
+            okType: 'danger',
+            cancelText: 'Hủy bỏ',
+            onOk: async () => {
+                try {
+                    await educatorService.deleteChallengeBankItem(id);
+                    message.success('Đã xóa câu hỏi thành công!');
+                    fetchChallenges();
+                } catch (error) {
+                    message.error('Có lỗi xảy ra khi xóa câu hỏi');
+                }
+            }
+        });
     };
 
     const showDetail = (record: ChallengeBank) => {
         setSelectedChallenge(record);
         setIsDetailModalOpen(true);
     };
+
+    // ════════════════════════════════════════
+    //  IMPORT / EXPORT HANDLERS
+    // ════════════════════════════════════════
+
+    const handleDownloadTemplate = async (skillType: string) => {
+        try {
+            message.loading({ content: 'Đang tải template...', key: 'dl' });
+            const blob = await excelService.downloadChallengeTemplate(skillType);
+            downloadBlob(blob, `template_${skillType.toLowerCase()}.xlsx`);
+            message.success({ content: 'Tải template thành công!', key: 'dl' });
+        } catch (err) {
+            console.error('[Excel] Download template error:', err);
+            message.error({ content: 'Không thể tải template', key: 'dl' });
+        }
+    };
+
+    const handleExport = async (skillType?: string) => {
+        setExporting(true);
+        try {
+            message.loading({ content: 'Đang xuất dữ liệu...', key: 'exp' });
+            const blob = await excelService.exportChallenges(skillType);
+            const filename = skillType
+                ? `challenge_bank_${skillType.toLowerCase()}.xlsx`
+                : 'challenge_bank_all.xlsx';
+            downloadBlob(blob, filename);
+            message.success({ content: 'Export thành công!', key: 'exp' });
+        } catch (err) {
+            console.error('[Excel] Export error:', err);
+            message.error({ content: 'Không thể export dữ liệu', key: 'exp' });
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleImportSubmit = async () => {
+        if (!importFile) {
+            message.warning('Vui lòng chọn file Excel');
+            return;
+        }
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const res: any = await excelService.importChallenges(importSkillType, importFile);
+            setImportResult(res?.data || res);
+            message.success('Import hoàn tất!');
+            fetchChallenges(); // Refresh list
+        } catch (err: any) {
+            console.error('[Excel] Import error:', err);
+            message.error(err?.response?.data?.message || 'Lỗi khi import');
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const templateMenuItems = Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({
+        key: `template-${key}`,
+        icon: cfg.icon,
+        label: `Template ${cfg.label}`,
+        onClick: () => handleDownloadTemplate(key),
+    }));
+
+    const exportMenuItems = [
+        {
+            key: 'export-all',
+            icon: <FileExcelOutlined />,
+            label: 'Tất cả kỹ năng',
+            onClick: () => handleExport(),
+        },
+        ...Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({
+            key: `export-${key}`,
+            icon: cfg.icon,
+            label: cfg.label,
+            onClick: () => handleExport(key),
+        })),
+    ];
 
     const columns = [
         {
@@ -170,9 +343,60 @@ const ChallengeBankPage: React.FC = () => {
             title: 'Nội dung câu hỏi',
             dataIndex: 'contentText',
             key: 'contentText',
-            render: (text: string) => (
-                <Text strong style={{ fontSize: 14 }}>{text}</Text>
-            ),
+            width: 350,
+            render: (text: string, record: any) => {
+                let meta = record.metadataJson;
+                if (typeof meta === 'string') {
+                    try {
+                        meta = JSON.parse(meta);
+                    } catch (e) {
+                        meta = {};
+                    }
+                }
+                meta = meta || {};
+                const skill = record.skillType;
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                            {text || '—'}
+                        </Text>
+                        
+                        <div style={{ fontSize: 14 }}>
+                            {skill === 'READING' && Array.isArray(meta.words) && (
+                                <>
+                                    <div>
+                                        {meta.words.map((w: string, i: number) => (
+                                            <span key={i} style={{
+                                                color: i === meta.error_index ? '#ef4444' : '#334155',
+                                                textDecoration: i === meta.error_index ? 'line-through' : 'none',
+                                                fontWeight: i === meta.error_index ? 600 : 400,
+                                                marginRight: 4
+                                            }}>
+                                                {w}
+                                            </span>
+                                        ))}
+                                        {meta.correct_word && (
+                                            <Text type="success" strong style={{ marginLeft: 6 }}>
+                                                <ArrowRightOutlined style={{ fontSize: 12, marginRight: 6 }} />
+                                                {meta.correct_word}
+                                            </Text>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
+                                <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
+                            )}
+
+                            {skill === 'WRITING' && meta.correctSentence && (
+                                <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
+                            )}
+                        </div>
+                    </div>
+                );
+            },
         },
         {
             title: 'Kỹ năng',
@@ -212,7 +436,7 @@ const ChallengeBankPage: React.FC = () => {
             title: 'Phạm vi',
             dataIndex: 'isGlobal',
             key: 'isGlobal',
-            width: 120,
+            width: 100,
             render: (isGlobal: boolean) => (
                 <Badge
                     status={isGlobal ? 'success' : 'default'}
@@ -221,17 +445,41 @@ const ChallengeBankPage: React.FC = () => {
             ),
         },
         {
+            title: 'Miền',
+            dataIndex: 'region',
+            key: 'region',
+            width: 120,
+            render: (region: string) => {
+                const cfg = REGION_CONFIG[region] || { label: region || 'Chưa xác định', color: '#999' };
+                return <Tag color={cfg.color}>{cfg.label}</Tag>;
+            },
+        },
+        {
             title: 'Thao tác',
             key: 'action',
-            width: 100,
+            width: 150,
             align: 'center' as const,
             render: (_: any, record: ChallengeBank) => (
-                <Space>
+                <Space size="small">
                     <Tooltip title="Xem chi tiết">
                         <Button
                             type="text"
                             icon={<EyeOutlined style={{ color: '#1890ff' }} />}
                             onClick={() => showDetail(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Chỉnh sửa">
+                        <Button
+                            type="text"
+                            icon={<EditOutlined style={{ color: '#faad14' }} />}
+                            onClick={() => handleEdit(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xóa">
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                            onClick={() => handleDelete(record.id)}
                         />
                     </Tooltip>
                 </Space>
@@ -258,26 +506,92 @@ const ChallengeBankPage: React.FC = () => {
                         <Text type="secondary">Quản lý và tạo câu hỏi cho các bài kiểm tra</Text>
                     </div>
                 </div>
-                <Button
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
-                    size="large"
-                    style={{
-                        borderRadius: 10,
-                        height: 48,
-                        fontWeight: 600,
-                        boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
-                        border: 'none',
-                        background: 'linear-gradient(90deg, #1890ff, #0076e4)',
-                        color: 'white',
-                        paddingInline: 24,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8
-                    }}
-                >
-                    Tạo câu hỏi mới
-                </Button>
+                <Space size={12}>
+                    <Dropdown menu={{ items: templateMenuItems }} trigger={['click']} placement="bottomRight">
+                        <Button
+                            icon={<DownloadOutlined />}
+                            size="large"
+                            style={{
+                                borderRadius: 10,
+                                height: 44,
+                                fontWeight: 600,
+                                border: '1.5px solid #1890ff',
+                                color: '#1890ff',
+                                paddingInline: 16,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: '#e6f7ff',
+                            }}
+                        >
+                            Template
+                        </Button>
+                    </Dropdown>
+                    <Button
+                        icon={<UploadOutlined />}
+                        size="large"
+                        onClick={() => {
+                            setImportResult(null);
+                            setImportFile(null);
+                            setIsImportModalOpen(true);
+                        }}
+                        style={{
+                            borderRadius: 10,
+                            height: 44,
+                            fontWeight: 600,
+                            border: '1.5px solid #52c41a',
+                            color: '#52c41a',
+                            paddingInline: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: '#f6ffed',
+                        }}
+                    >
+                        Import
+                    </Button>
+                    <Dropdown menu={{ items: exportMenuItems }} trigger={['click']} placement="bottomRight">
+                        <Button
+                            icon={<FileExcelOutlined />}
+                            size="large"
+                            loading={exporting}
+                            style={{
+                                borderRadius: 10,
+                                height: 44,
+                                fontWeight: 600,
+                                border: '1.5px solid #fa8c16',
+                                color: '#fa8c16',
+                                paddingInline: 16,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: '#fff7e6',
+                            }}
+                        >
+                            Export
+                        </Button>
+                    </Dropdown>
+                    <Button
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsModalOpen(true)}
+                        size="large"
+                        style={{
+                            borderRadius: 10,
+                            height: 44,
+                            fontWeight: 600,
+                            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
+                            border: 'none',
+                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                            color: 'white',
+                            paddingInline: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                        }}
+                    >
+                        Tạo câu hỏi mới
+                    </Button>
+                </Space>
             </div>
 
             {/* Filter Row */}
@@ -306,6 +620,16 @@ const ChallengeBankPage: React.FC = () => {
                     onChange={val => setDifficultyFilter(val)}
                 >
                     {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
+                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                    ))}
+                </Select>
+                <Select
+                    placeholder="Lọc theo miền"
+                    allowClear
+                    style={{ minWidth: 160, height: 42 }}
+                    onChange={val => setRegionFilter(val)}
+                >
+                    {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
                         <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
                     ))}
                 </Select>
@@ -347,24 +671,27 @@ const ChallengeBankPage: React.FC = () => {
                 )}
             </Card>
 
-            {/* Modal: Create Question */}
+            {/* Modal: Create/Edit Question */}
             <Modal
                 title={
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                        <PlusOutlined style={{ color: '#1890ff', fontSize: 20 }} />
-                        <Title level={4} style={{ margin: 0 }}>Thêm câu hỏi mới vào kho</Title>
+                        {editingChallengeId ? <EditOutlined style={{ color: '#faad14', fontSize: 20 }} /> : <PlusOutlined style={{ color: '#1890ff', fontSize: 20 }} />}
+                        <Title level={4} style={{ margin: 0 }}>
+                            {editingChallengeId ? 'Cập nhật câu hỏi' : 'Thêm câu hỏi mới vào kho'}
+                        </Title>
                     </div>
                 }
                 open={isModalOpen}
                 onCancel={() => {
                     setIsModalOpen(false);
                     form.resetFields();
+                    setEditingChallengeId(null);
                 }}
                 onOk={() => form.submit()}
                 confirmLoading={submitting}
                 width={750}
                 centered
-                okText="Lưu câu hỏi"
+                okText={editingChallengeId ? "Lưu cập nhật" : "Thêm mới"}
                 cancelText="Hủy"
                 okButtonProps={{
                     style: { height: 40, borderRadius: 8, paddingInline: 24, fontWeight: 600 }
@@ -376,8 +703,8 @@ const ChallengeBankPage: React.FC = () => {
                 <Form
                     form={form}
                     layout="vertical"
-                    onFinish={handleCreate}
-                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', isGlobal: true }}
+                    onFinish={handleSubmit}
+                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', isGlobal: true, region: 'BAC' }}
                     style={{ marginTop: 24 }}
                 >
                     <Form.Item
@@ -392,7 +719,7 @@ const ChallengeBankPage: React.FC = () => {
                         />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="skillType"
                             label={<Text strong>Kỹ năng</Text>}
@@ -414,6 +741,18 @@ const ChallengeBankPage: React.FC = () => {
                         >
                             <Select style={{ width: '100%' }}>
                                 {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
+                                    <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item
+                            name="region"
+                            label={<Text strong>Miền</Text>}
+                            rules={[{ required: true, message: 'Vui lòng chọn miền' }]}
+                        >
+                            <Select style={{ width: '100%' }}>
+                                {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
                                     <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
                                 ))}
                             </Select>
@@ -445,39 +784,43 @@ const ChallengeBankPage: React.FC = () => {
                         {skillType === 'READING' && (
                             <>
                                 <Form.Item
-                                    name="options"
-                                    label={<Text strong>Các lựa chọn</Text>}
-                                    extra="Nhập mỗi lựa chọn trên một dòng mới"
-                                    rules={[{ required: true, message: 'Vui lòng nhập các lựa chọn' }]}
+                                    name="words"
+                                    label={<Text strong>Các từ trong câu (phân cách bằng |)</Text>}
+                                    extra="Nhập các từ, phân cách bởi dấu | (Ví dụ: Ông|lội|kể|chuyện)"
+                                    rules={[{ required: true, message: 'Vui lòng nhập các từ trong câu' }]}
                                 >
-                                    <TextArea rows={4} placeholder="nợn&#10;lợn&#10;lộn" style={{ borderRadius: 8 }} />
+                                    <TextArea rows={2} placeholder="Con|lai|kia|chạy|lên|nương" style={{ borderRadius: 8 }} />
                                 </Form.Item>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
+                                    <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.words !== currentValues.words}>
                                         {({ getFieldValue }) => {
-                                            const optionsText = getFieldValue('options') || '';
-                                            const parsedOptions = optionsText.split('\n').map((s: string) => s.trim()).filter(Boolean);
+                                            const wordsText = getFieldValue('words') || '';
+                                            const parsedWords = wordsText.split('|').map((s: string) => s.trim()).filter(Boolean);
                                             return (
                                                 <Form.Item
-                                                    name="correctAnswer"
-                                                    label={<Text strong>Đáp án chính xác</Text>}
-                                                    rules={[{ required: true, message: 'Nhập đáp án đúng' }]}
+                                                    name="error_index"
+                                                    label={<Text strong>Từ bị viết sai</Text>}
+                                                    rules={[{ required: true, message: 'Chọn từ bị sai' }]}
                                                 >
-                                                    <Select placeholder="Chọn từ danh sách..." style={{ borderRadius: 8 }}>
-                                                        {parsedOptions.map((opt: string, idx: number) => (
-                                                            <Select.Option key={idx} value={opt}>{opt}</Select.Option>
+                                                    <Select placeholder="Chọn từ bị sai..." style={{ borderRadius: 8 }}>
+                                                        {parsedWords.map((word: string, idx: number) => (
+                                                            <Select.Option key={idx} value={idx}>{word}</Select.Option>
                                                         ))}
                                                     </Select>
                                                 </Form.Item>
                                             );
                                         }}
                                     </Form.Item>
-                                    <Form.Item name="hint" label={<Text strong>Gợi ý</Text>}>
-                                        <Input placeholder="Ví dụ: Chú ý âm đầu 'L' hay 'N'" style={{ borderRadius: 8 }} />
+                                    <Form.Item
+                                        name="correct_word"
+                                        label={<Text strong>Từ viết đúng</Text>}
+                                        rules={[{ required: true, message: 'Nhập từ viết đúng' }]}
+                                    >
+                                        <Input placeholder="Ví dụ: nai" style={{ borderRadius: 8 }} />
                                     </Form.Item>
                                 </div>
-                                <Form.Item name="imageUrl" label={<Text strong>Hình ảnh minh họa (URL)</Text>}>
-                                    <Input placeholder="https://..." prefix={<PictureOutlined />} style={{ borderRadius: 8 }} />
+                                <Form.Item name="hint" label={<Text strong>Gợi ý</Text>}>
+                                    <Input placeholder="Ví dụ: Chú ý âm đầu L/N, lai -> nai" style={{ borderRadius: 8 }} />
                                 </Form.Item>
                             </>
                         )}
@@ -634,19 +977,19 @@ const ChallengeBankPage: React.FC = () => {
                             {selectedChallenge.skillType === 'READING' && (
                                 <>
                                     <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Các lựa chọn:</Text>
+                                        <Text strong>Các từ trong câu (phân cách bằng |):</Text>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                                            {selectedChallenge.metadataJson?.options?.map((opt: string, idx: number) => (
-                                                <Tag key={idx} color={opt === selectedChallenge.metadataJson?.correctAnswer ? 'success' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
-                                                    {opt}
+                                            {selectedChallenge.metadataJson?.words?.map((word: string, idx: number) => (
+                                                <Tag key={idx} color={idx === selectedChallenge.metadataJson?.error_index ? 'error' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
+                                                    {word}
                                                 </Tag>
                                             ))}
                                         </div>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <Text strong style={{ display: 'block' }}>Đáp án đúng:</Text>
-                                            <Text type="success" strong>{selectedChallenge.metadataJson?.correctAnswer}</Text>
+                                            <Text strong style={{ display: 'block' }}>Từ viết đúng:</Text>
+                                            <Text type="success" strong style={{ fontSize: 16 }}>{selectedChallenge.metadataJson?.correct_word}</Text>
                                         </div>
                                         {selectedChallenge.metadataJson?.hint && (
                                             <div>
@@ -655,12 +998,6 @@ const ChallengeBankPage: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
-                                    {selectedChallenge.metadataJson?.imageUrl && (
-                                        <div style={{ marginTop: 16 }}>
-                                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Ảnh minh họa:</Text>
-                                            <img src={selectedChallenge.metadataJson.imageUrl} style={{ maxWidth: '100%', borderRadius: 8 }} />
-                                        </div>
-                                    )}
                                 </>
                             )}
 
@@ -752,6 +1089,113 @@ const ChallengeBankPage: React.FC = () => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* Modal: Import Excel */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                        <UploadOutlined style={{ color: '#52c41a', fontSize: 20 }} />
+                        <Typography.Title level={4} style={{ margin: 0 }}>Import câu hỏi từ Excel</Typography.Title>
+                    </div>
+                }
+                open={isImportModalOpen}
+                onCancel={() => {
+                    setIsImportModalOpen(false);
+                    setImportResult(null);
+                    setImportFile(null);
+                }}
+                onOk={handleImportSubmit}
+                confirmLoading={importing}
+                okText="Import"
+                cancelText="Hủy"
+                okButtonProps={{
+                    disabled: !importFile,
+                    icon: <UploadOutlined />,
+                    style: { height: 40, borderRadius: 8, paddingInline: 24, fontWeight: 600, background: '#52c41a', border: 'none' }
+                }}
+                cancelButtonProps={{ style: { height: 40, borderRadius: 8 } }}
+                width={600}
+                centered
+            >
+                <div style={{ marginTop: 20 }}>
+                    {/* Step 1: Chọn kỹ năng */}
+                    <div style={{ marginBottom: 20 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Chọn kỹ năng</Text>
+                        <Select
+                            value={importSkillType}
+                            onChange={val => setImportSkillType(val)}
+                            style={{ width: '100%' }}
+                            size="large"
+                        >
+                            {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
+                                <Select.Option key={key} value={key}>
+                                    <Space>{cfg.icon} {cfg.label}</Space>
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </div>
+
+                    {/* Step 2: Download template */}
+                    <div style={{ marginBottom: 20 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>2. Tải template mẫu</Text>
+                        <Button
+                            icon={<DownloadOutlined />}
+                            onClick={() => handleDownloadTemplate(importSkillType)}
+                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
+                        >
+                            Tải template {SKILL_CONFIG[importSkillType]?.label}
+                        </Button>
+                        <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                            Tải file mẫu, điền dữ liệu theo hướng dẫn, rồi upload ở bước 3
+                        </Text>
+                    </div>
+
+                    {/* Step 3: Upload file */}
+                    <div style={{ marginBottom: 20 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>3. Upload file Excel đã điền</Text>
+                        <Upload.Dragger
+                            accept=".xlsx,.xls"
+                            maxCount={1}
+                            beforeUpload={(file) => {
+                                setImportFile(file);
+                                return false; // prevent auto upload
+                            }}
+                            onRemove={() => setImportFile(null)}
+                            fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' } as any] : []}
+                            style={{ borderRadius: 12, borderColor: '#52c41a' }}
+                        >
+                            <p style={{ fontSize: 32, color: '#52c41a', marginBottom: 8 }}>
+                                <FileExcelOutlined />
+                            </p>
+                            <p style={{ fontWeight: 600 }}>Kéo thả file hoặc click để chọn</p>
+                            <p style={{ color: '#999', fontSize: 12 }}>Chỉ hỗ trợ file .xlsx, .xls</p>
+                        </Upload.Dragger>
+                    </div>
+
+                    {/* Import Result */}
+                    {importResult && (
+                        <div style={{ marginTop: 16 }}>
+                            <Alert
+                                type={importResult.errorCount > 0 ? 'warning' : 'success'}
+                                message={`Thành công: ${importResult.successCount} | Bỏ qua: ${importResult.skipCount} | Lỗi: ${importResult.errorCount}`}
+                                description={
+                                    importResult.messages?.length > 0 && (
+                                        <ul style={{ margin: '8px 0 0', paddingLeft: 20, maxHeight: 150, overflow: 'auto' }}>
+                                            {importResult.messages.map((msg: string, idx: number) => (
+                                                <li key={idx} style={{ fontSize: 12, color: msg.includes('Lỗi') ? '#ff4d4f' : msg.includes('bỏ qua') ? '#faad14' : '#52c41a' }}>
+                                                    {msg}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )
+                                }
+                                showIcon
+                                style={{ borderRadius: 10 }}
+                            />
+                        </div>
+                    )}
+                </div>
             </Modal>
         </div>
     );

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { useLocation } from 'react-router-dom';
+import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm } from 'antd';
+import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined } from '@ant-design/icons';
 import { educatorService } from '../services/educatorService';
 
 const ChapterManagementPage: React.FC = () => {
@@ -16,14 +18,26 @@ const ChapterManagementPage: React.FC = () => {
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
+    const [assignmentForm] = Form.useForm();
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assigning, setAssigning] = useState(false);
+    const [assignLevels, setAssignLevels] = useState<any[]>([]);
     const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
     const [creatingQuiz, setCreatingQuiz] = useState(false);
     const [selectedLevelForQuiz, setSelectedLevelForQuiz] = useState<any | null>(null);
+    const location = useLocation();
 
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
     const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+
+    // Import/Export states
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+    const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
 
     const fetchLevels = async () => {
         setLoading(true);
@@ -230,15 +244,112 @@ const ChapterManagementPage: React.FC = () => {
         }
     };
 
+    const loadAssignLevels = async () => {
+        setAssigning(true);
+        try {
+            const response: any = await educatorService.getLevelsForSelection();
+            const list = response?.data || response || [];
+            setAssignLevels(Array.isArray(list) ? list : []);
+        } catch (error) {
+            console.error('Error loading levels for assignment:', error);
+            message.error('Không thể tải danh sách chương học để gán');
+            setAssignLevels([]);
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleOpenAssignModal = () => {
+        setIsAssignModalOpen(true);
+        assignmentForm.resetFields();
+        assignmentForm.setFieldsValue({
+            classroomId: fromClassroomId,
+            status: 'OPEN',
+            dueDate: dayjs().add(1, 'day'),
+        });
+        loadAssignLevels();
+    };
+
+    const handleCreateAssignment = async (values: any) => {
+        try {
+            setAssigning(true);
+            await educatorService.createAssignment({
+                classroomId: values.classroomId,
+                learningUnitId: values.learningUnitId,
+                dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
+                status: values.status || 'OPEN',
+                description: values.description,
+            });
+            message.success('Gán chương học thành công');
+            setIsAssignModalOpen(false);
+            assignmentForm.resetFields();
+        } catch (error: any) {
+            console.error('Error creating assignment:', error);
+            message.error(error?.message || 'Không thể gán chương học');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleRemoveAssignment = async (assignmentId: string) => {
+        if (!assignmentId) {
+            message.error('Không tìm thấy ID assignment');
+            return;
+        }
+        try {
+            await educatorService.deleteAssignment(assignmentId);
+            message.success('Đã gỡ chương học khỏi lớp');
+            setRemovedAssignmentIds(prev => [...prev, assignmentId]);
+        } catch (error: any) {
+            console.error('Error deleting assignment:', error);
+            message.error(error?.response?.data?.message || error?.message || 'Không thể gỡ chương học');
+        }
+    };
+
     // --- Helper to resolve region key from dialectId ---
     const getRegionKey = (dialectId: string) => {
         const dialect = dialects.find((item) => item.id === dialectId);
         return (dialect?.name || '').toUpperCase();
     };
 
+    const fetchedAssignments = (location.state as any)?.fetchedAssignments as any[] | undefined;
+    const fromClassroomName = (location.state as any)?.fromClassroomName as string | undefined;
+    const fromClassroomId = (location.state as any)?.fromClassroomId as string | undefined;
+
+    const mergedLevels = useMemo(() => {
+        if (!fetchedAssignments || fetchedAssignments.length === 0) return levels;
+
+        const mappedFromAssignments = fetchedAssignments.map((item: any) => {
+            // Parse metadataJson if available
+            let meta: any = {};
+            if (item.metadataJson) {
+                try {
+                    meta = typeof item.metadataJson === 'string' ? JSON.parse(item.metadataJson) : item.metadataJson;
+                } catch (e) { /* ignore */ }
+            }
+
+            return {
+                id: item.levelId || item.id,
+                name: item.levelName || 'Không có tên chương',
+                dialectId: item.dialectId,
+                description: meta.description || item.description || '',
+                levelOrder: meta.level_order ?? item.levelOrder ?? null,
+                minStarsRequired: meta.min_stars_required ?? item.minStarsRequired ?? null,
+                aiThreshold: meta.ai_threshold ?? item.aiThreshold ?? null,
+                status: meta.status || item.status || 'APPROVED',
+                createdAt: item.createdAt,
+                dueDate: item.dueDate,
+                _fromAssignment: true,
+                _assignmentId: item.id,
+            };
+        });
+
+        return mappedFromAssignments.filter((item: any) => !removedAssignmentIds.includes(item._assignmentId));
+    }, [levels, fetchedAssignments, removedAssignmentIds]);
+
     // --- Filtered & Sorted data ---
     const filteredLevels = useMemo(() => {
-        let data = [...levels];
+        let data = [...mergedLevels];
 
         // Search by name
         if (searchText.trim()) {
@@ -266,7 +377,7 @@ const ChapterManagementPage: React.FC = () => {
         }
 
         return data;
-    }, [levels, searchText, filterRegion, filterStatus, dialects]);
+    }, [mergedLevels, searchText, filterRegion, filterStatus, dialects]);
 
     const activeFilterCount = [searchText.trim(), filterRegion, filterStatus].filter(Boolean).length;
 
@@ -274,6 +385,112 @@ const ChapterManagementPage: React.FC = () => {
         setSearchText('');
         setFilterRegion(undefined);
         setFilterStatus(undefined);
+    };
+
+    // ============ IMPORT / EXPORT ============
+    const handleDownloadTemplate = () => {
+        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
+        const sampleRows = [
+            'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
+            'Nhóm chữ GI,"Phân biệt GI với D",3,75',
+            'Nhóm chữ R (Uốn lưỡi),"Luyện R uốn lưỡi",3,75',
+        ];
+        const csvContent = [headers, ...sampleRows].join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'template_chuong_hoc.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+        message.success('Đã tải template mẫu');
+    };
+
+    const handleImportCSV = async () => {
+        if (!importFile) { message.warning('Vui lòng chọn file CSV'); return; }
+        setImporting(true);
+        const result = { success: 0, failed: 0, errors: [] as string[] };
+        try {
+            const text = await importFile.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) { message.error('File rỗng hoặc không có dữ liệu'); setImporting(false); return; }
+
+            // Find SOUTH dialect
+            const southDialect = dialects.find((d: any) => (d.name || '').toUpperCase() === 'SOUTH');
+            if (!southDialect) { message.error('Không tìm thấy phương ngữ Miền Nam (SOUTH) trong hệ thống'); setImporting(false); return; }
+
+            // Parse CSV rows (skip header)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                // Simple CSV parse supporting quoted strings
+                const cols: string[] = [];
+                let current = '';
+                let inQuotes = false;
+                for (const ch of line) {
+                    if (ch === '"') { inQuotes = !inQuotes; }
+                    else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
+                    else { current += ch; }
+                }
+                cols.push(current.trim());
+
+                const name = cols[0];
+                const description = cols[1] || '';
+                const minStars = parseInt(cols[2]) || 3;
+                const aiThreshold = parseInt(cols[3]) || 75;
+
+                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
+
+                // Check duplicate
+                const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
+                if (exists) { result.errors.push(`Dòng ${i + 1}: '${name}' đã tồn tại`); result.failed++; continue; }
+
+                try {
+                    await educatorService.createLevel({
+                        dialectId: southDialect.id,
+                        levelOrder: levels.length + result.success + 1,
+                        name,
+                        description,
+                        minStarsRequired: minStars,
+                        aiThreshold,
+                    });
+                    result.success++;
+                } catch (err: any) {
+                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo chương'}`);
+                    result.failed++;
+                }
+            }
+            setImportResult(result);
+            if (result.success > 0) {
+                message.success(`Import thành công ${result.success} chương học`);
+                fetchLevels();
+            }
+            if (result.failed > 0) {
+                message.warning(`${result.failed} dòng bị lỗi`);
+            }
+        } catch (err) {
+            message.error('Lỗi đọc file CSV');
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleExportCSV = () => {
+        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
+        const rows = filteredLevels.map((item: any) => {
+            const regionKey = getRegionKey(item.dialectId);
+            const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
+            const desc = (item.description || item.metadataJson?.description || '').replace(/"/g, '""');
+            return `"${item.name || ''}","${desc}","${regionLabel}","${item.status || 'DRAFT'}",${item.minStarsRequired || 3}`;
+        });
+        const csvContent = [headers, ...rows].join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `chuong_hoc_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        message.success(`Đã export ${rows.length} chương học`);
     };
 
     const columns = [
@@ -299,9 +516,39 @@ const ChapterManagementPage: React.FC = () => {
             render: (text: string) => <strong>{text}</strong>,
         },
         {
+            title: 'Mô tả',
+            dataIndex: 'description',
+            key: 'description',
+            width: 250,
+            ellipsis: true,
+            render: (text: string) => (
+                <Tooltip title={text}>
+                    <span style={{ color: '#64748b', fontSize: 13 }}>{text || '—'}</span>
+                </Tooltip>
+            ),
+        },
+        {
+            title: 'Thứ tự',
+            dataIndex: 'levelOrder',
+            key: 'levelOrder',
+            width: 80,
+            align: 'center' as const,
+            sorter: (a: any, b: any) => (a.levelOrder || 0) - (b.levelOrder || 0),
+            render: (val: number) => val ?? '—',
+        },
+        {
+            title: 'Số sao',
+            dataIndex: 'minStarsRequired',
+            key: 'minStarsRequired',
+            width: 80,
+            align: 'center' as const,
+            render: (val: number) => val != null ? <span>⭐ {val}</span> : '—',
+        },
+        {
             title: 'Vùng',
             dataIndex: 'dialectId',
             key: 'dialectId',
+            width: 120,
             sorter: (a: any, b: any) => {
                 const aRegion = getRegionKey(a.dialectId);
                 const bRegion = getRegionKey(b.dialectId);
@@ -356,6 +603,20 @@ const ChapterManagementPage: React.FC = () => {
                     <Tooltip title="Chỉnh sửa">
                         <Button icon={<EditOutlined />} onClick={() => handleEditLevel(record)} />
                     </Tooltip>
+                    {fromClassroomId && record._fromAssignment && (
+                        <Popconfirm
+                            title="Gỡ chương học khỏi lớp?"
+                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
+                            onConfirm={() => handleRemoveAssignment(record._assignmentId)}
+                            okText="Gỡ"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true, style: { background: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
+                        >
+                            <Tooltip title="Gỡ khỏi lớp">
+                                <Button icon={<DeleteOutlined />} danger />
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         }
@@ -364,21 +625,88 @@ const ChapterManagementPage: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                    }}
-                >
-                    Thêm Chương Học
-                </Button>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
+                    {fromClassroomName ? (
+                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                        </div>
+                    ) : null}
+                </div>
+                <Space>
+                    <Button
+                        icon={<DownloadOutlined />}
+                        onClick={handleDownloadTemplate}
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            border: '1.5px solid #1890ff',
+                            color: '#1890ff',
+                            background: '#e6f7ff',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Template
+                    </Button>
+                    <Button
+                        icon={<UploadOutlined />}
+                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true); }}
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            border: '1.5px solid #52c41a',
+                            color: '#52c41a',
+                            background: '#f6ffed',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Import
+                    </Button>
+                    <Button
+                        icon={<FileExcelOutlined />}
+                        onClick={handleExportCSV}
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            border: '1.5px solid #fa8c16',
+                            color: '#fa8c16',
+                            background: '#fff7e6',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Export
+                    </Button>
+                    {fromClassroomId ? (
+                        <Button
+                            type="primary"
+                            onClick={handleOpenAssignModal}
+                            loading={assigning}
+                            style={{
+                                height: '40px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                            }}
+                        >
+                            Gán chương vào lớp
+                        </Button>
+                    ) : null}
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsCreateModalOpen(true)}
+                        style={{
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                        }}
+                    >
+                        Thêm Chương Học
+                    </Button>
+                </Space>
             </div>
 
             {/* ====== FILTER & SORT TOOLBAR ====== */}
@@ -472,7 +800,7 @@ const ChapterManagementPage: React.FC = () => {
                                     />
                                 ) : null}
                                 <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{levels.length} chương
+                                    {filteredLevels.length}/{mergedLevels.length} chương
                                 </span>
                             </div>
                             <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
@@ -553,6 +881,75 @@ const ChapterManagementPage: React.FC = () => {
                     </div>
                     <Form.Item label="Mô tả" name="description">
                         <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={<span style={{ fontWeight: 600 }}>Gán chương học vào lớp</span>}
+                open={isAssignModalOpen}
+                onCancel={() => {
+                    assignmentForm.resetFields();
+                    setIsAssignModalOpen(false);
+                }}
+                onOk={() => assignmentForm.submit()}
+                confirmLoading={assigning}
+                okText="Gán chương"
+                okButtonProps={{
+                    style: { background: '#059669', border: 'none', borderRadius: '6px' }
+                }}
+                cancelText="Hủy"
+                centered
+            >
+                <Form
+                    form={assignmentForm}
+                    layout="vertical"
+                    onFinish={handleCreateAssignment}
+                >
+                    <Form.Item name="classroomId" hidden>
+                        <Input />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Chọn chương học hiện có"
+                        name="learningUnitId"
+                        rules={[{ required: true, message: 'Vui lòng chọn chương học' }]}
+                    >
+                        <Select
+                            loading={assigning}
+                            placeholder="Chọn chương học để gán"
+                            showSearch
+                            optionFilterProp="label"
+                            options={assignLevels.map((item: any) => ({
+                                value: item.id,
+                                label: item.name || item.levelName || item.id,
+                            }))}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Hạn nộp"
+                        name="dueDate"
+                        rules={[{ required: true, message: 'Vui lòng chọn hạn nộp' }]}
+                    >
+                        <DatePicker
+                            style={{ width: '100%' }}
+                            showTime
+                            format="DD/MM/YYYY HH:mm"
+                        />
+                    </Form.Item>
+
+                    <Form.Item label="Trạng thái" name="status" initialValue="OPEN">
+                        <Select
+                            options={[
+                                { value: 'OPEN', label: 'OPEN' },
+                                { value: 'CLOSED', label: 'CLOSED' },
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item label="Mô tả" name="description">
+                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/chương học" />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -797,6 +1194,57 @@ const ChapterManagementPage: React.FC = () => {
                         <Input.TextArea rows={1} placeholder="Ghi chú khi tạo quiz" />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* ===== IMPORT MODAL ===== */}
+            <Modal
+                title={<span style={{ fontWeight: 600 }}>📥 Import Chương Học từ CSV</span>}
+                open={isImportModalOpen}
+                onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
+                footer={null}
+                centered
+                width={520}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                    <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
+                        <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
+                            📌 File CSV cần có các cột: <strong>Tên chương học, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
+                        </p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Chương trùng tên sẽ bị bỏ qua.
+                        </p>
+                    </div>
+                    <input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                        style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '8px 12px' }}
+                    />
+                    <Button
+                        type="primary"
+                        icon={<UploadOutlined />}
+                        loading={importing}
+                        onClick={handleImportCSV}
+                        disabled={!importFile}
+                        block
+                        size="large"
+                        style={{ borderRadius: 10, background: '#52c41a', border: 'none', fontWeight: 600 }}
+                    >
+                        {importing ? 'Đang import...' : 'Bắt đầu Import'}
+                    </Button>
+                    {importResult && (
+                        <div style={{ padding: 12, background: importResult.failed > 0 ? '#fff7e6' : '#f6ffed', borderRadius: 8, border: `1px solid ${importResult.failed > 0 ? '#ffd591' : '#b7eb8f'}` }}>
+                            <p style={{ margin: 0, fontWeight: 600 }}>
+                                ✅ Thành công: {importResult.success} | ❌ Lỗi: {importResult.failed}
+                            </p>
+                            {importResult.errors.length > 0 && (
+                                <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 12, color: '#d4380d' }}>
+                                    {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
             </Modal>
         </div>
     );

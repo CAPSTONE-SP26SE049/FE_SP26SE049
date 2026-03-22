@@ -29,10 +29,12 @@ import {
     BarChartOutlined,
     SearchOutlined,
     DownloadOutlined,
-    UploadOutlined
+    UploadOutlined,
+    EyeOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { educatorService } from '../services/educatorService'
+import { useAuth } from '../../../core/auth/AuthContext'
 
 const { Text } = Typography;
 
@@ -53,6 +55,7 @@ const ClassroomManagementPage: React.FC = () => {
     const [importing, setImporting] = useState(false)
     const [form] = Form.useForm()
     const navigate = useNavigate()
+    const { session } = useAuth()
     const watchedStartDate = Form.useWatch('startDate', form)
 
     // Lọc client-side theo tên lớp hoặc mã lớp
@@ -191,6 +194,37 @@ const ClassroomManagementPage: React.FC = () => {
             setPerformanceModalVisible(false)
         } finally {
             setPerformanceLoading(false)
+        }
+    }
+
+    const handleViewChapters = async (classroom: any) => {
+        try {
+            const educatorId = session?.user?.id
+            if (!educatorId) {
+                message.error('Không xác định được educatorId. Vui lòng đăng nhập lại.')
+                return
+            }
+
+            const res: any = await educatorService.getAssignmentsByEducator(educatorId)
+            const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+            const className = classroom?.name || ''
+
+            const chapterList = list.filter((item: any) => {
+                const assignmentClassroomName = (item?.classroomName || '').toString().trim().toLowerCase()
+                return assignmentClassroomName === className.toString().trim().toLowerCase()
+            })
+
+            navigate('/educator/chapters', {
+                state: {
+                    fromClassroomId: classroom?.id,
+                    fromClassroomName: className,
+                    fetchedAssignments: chapterList,
+                    fetchedAt: new Date().toISOString(),
+                },
+            })
+        } catch (error) {
+            console.error('Failed to fetch chapters by educator:', error)
+            message.error('Không thể lấy danh sách chương học từ API assignments')
         }
     }
 
@@ -469,6 +503,13 @@ const ClassroomManagementPage: React.FC = () => {
                             icon={<BarChartOutlined />}
                             onClick={() => handleViewPerformance(record.id)}
                             className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xem chương học">
+                        <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewChapters(record)}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
                         />
                     </Tooltip>
                     <Tooltip title="Xem học sinh">
