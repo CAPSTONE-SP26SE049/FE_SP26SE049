@@ -481,7 +481,7 @@ const QuizManagementPage: React.FC = () => {
     const handleEditQuestion = async (record: any, index?: number) => {
         const parsed = parseMetadata(record);
         let challengeIdToModify = parsed.id;
-        
+
         // Find inside quizChallenges
         if (quizChallenges && quizChallenges.length > 0) {
             let bankItem = quizChallenges.find((item: any) =>
@@ -498,14 +498,14 @@ const QuizManagementPage: React.FC = () => {
             }
             if (bankItem?.challenge) {
                 challengeIdToModify = bankItem.challenge.id;
-                
+
                 const meta = parseMetadata(bankItem.challenge).metadataJson || {};
                 const formVals: any = {
                     contentText: bankItem.challenge.contentText,
                     difficultyTag: bankItem.challenge.difficultyTag || 'BEGINNER',
                     isGlobal: bankItem.challenge.isGlobal,
                 };
-                
+
                 const skill = bankItem.challenge.skillType;
                 if (skill === 'READING') {
                     formVals.words = meta.words?.join('|');
@@ -526,7 +526,7 @@ const QuizManagementPage: React.FC = () => {
                     formVals.transcript = meta.transcript;
                     formVals.hint = meta.hint;
                 }
-                
+
                 createForm.setFieldsValue(formVals);
                 setActiveSkillType(skill);
                 setIsCreatingNew(true);
@@ -557,12 +557,12 @@ const QuizManagementPage: React.FC = () => {
                 challengeId = bankItem.challenge.id;
             }
         }
-        
+
         if (!quiz?.id || !challengeId) {
             message.warning("Không thể tìm thấy ID câu hỏi để xóa");
             return;
         }
-        
+
         Modal.confirm({
             title: 'Gỡ câu hỏi',
             content: 'Bạn có chắc chắn muốn gỡ câu hỏi này khỏi bài kiểm tra hiện tại? (Vẫn giữ trong kho câu hỏi chung)',
@@ -630,7 +630,7 @@ const QuizManagementPage: React.FC = () => {
             } else {
                 const res: any = await educatorService.createChallengeBankItem(payload);
                 const newChallengeId = res?.data?.id || res?.id;
-    
+
                 if (newChallengeId) {
                     // Auto assign to quiz after creation
                     await educatorService.assignChallengesToQuiz(quiz.id, [newChallengeId]);
@@ -902,7 +902,7 @@ const QuizManagementPage: React.FC = () => {
                             <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
                                 {parsed.contentText || '—'}
                             </Text>
-                            
+
                             <div style={{ fontSize: 14 }}>
                                 {skill === 'READING' && Array.isArray(meta.words) && (
                                     <>
@@ -1048,12 +1048,12 @@ const QuizManagementPage: React.FC = () => {
         if (quizSkillFilter) {
             result = result.filter(q => q.skillType === quizSkillFilter);
         }
-        
+
         // Tự động sắp xếp (ví dụ: Màn 1, Màn 2, ... Màn 10, Màn 11)
         result = [...result].sort((a, b) => {
             const titleA = a.title || a.name || '';
             const titleB = b.title || b.name || '';
-            
+
             const numA = parseInt(titleA.match(/\d+/)?.[0] || '0');
             const numB = parseInt(titleB.match(/\d+/)?.[0] || '0');
             if (numA !== numB) {
@@ -1061,7 +1061,7 @@ const QuizManagementPage: React.FC = () => {
             }
             return titleA.localeCompare(titleB);
         });
-        
+
         return result;
     }, [quizzes, quizSearchTerm, quizSkillFilter]);
 
@@ -1322,44 +1322,44 @@ const QuizManagementPage: React.FC = () => {
                             </Col>
                         ) : (
                             filteredAndSortedQuizzes.map((q) => (
-                            <Col xs={24} sm={12} lg={8} xl={6} key={q.id}>
-                                <div
-                                    onClick={() => setQuiz(q)}
-                                    className="premium-level-card"
-                                >
-                                    <div className="card-accent" style={{ background: '#f59e0b' }}></div>
-                                    <div className="card-top">
-                                        <div className="icon-wrapper" style={{
-                                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                                            color: '#d97706'
-                                        }}>
-                                            <TrophyOutlined style={{ fontSize: 24 }} />
+                                <Col xs={24} sm={12} lg={8} xl={6} key={q.id}>
+                                    <div
+                                        onClick={() => setQuiz(q)}
+                                        className="premium-level-card"
+                                    >
+                                        <div className="card-accent" style={{ background: '#f59e0b' }}></div>
+                                        <div className="card-top">
+                                            <div className="icon-wrapper" style={{
+                                                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                                                color: '#d97706'
+                                            }}>
+                                                <TrophyOutlined style={{ fontSize: 24 }} />
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div className="card-content">
-                                        <h3 className="card-title">{q.name || q.title || 'Untitled Quiz'}</h3>
-                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                                            <Tag color="orange" style={{ margin: 0 }}>
-                                                {q.questions?.length ?? q.questionCount ?? 0} câu hỏi
-                                            </Tag>
-                                            {q.passingScore && (
-                                                <Tag color="green" style={{ margin: 0 }}>
-                                                    {q.passingScore}% đạt
+                                        <div className="card-content">
+                                            <h3 className="card-title">{q.name || q.title || 'Untitled Quiz'}</h3>
+                                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                                                <Tag color="orange" style={{ margin: 0 }}>
+                                                    {q.questions?.length ?? q.questionCount ?? 0} câu hỏi
                                                 </Tag>
-                                            )}
+                                                {q.passingScore && (
+                                                    <Tag color="green" style={{ margin: 0 }}>
+                                                        {q.passingScore}% đạt
+                                                    </Tag>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div className="card-footer">
-                                        <div className="action-btn">
-                                            <span>Xem chi tiết</span>
-                                            <div className="arrow">→</div>
+                                        <div className="card-footer">
+                                            <div className="action-btn">
+                                                <span>Xem chi tiết</span>
+                                                <div className="arrow">→</div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </Col>
-                        )))}
+                                </Col>
+                            )))}
                     </Row>
                 </div>
             )}
@@ -1526,45 +1526,45 @@ const QuizManagementPage: React.FC = () => {
                             {Object.entries(SKILL_CONFIG)
                                 .filter(([key]) => !quiz.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
                                 .map(([key, cfg]) => {
-                                const count = (quiz.questions || []).filter((q: any) => q.skillType === key).length;
-                                return (
-                                    <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
-                                        <span
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                padding: '6px 14px',
-                                                borderRadius: '20px 0 0 20px',
-                                                background: `${cfg.color}12`,
-                                                border: `1px solid ${cfg.color}30`,
-                                                borderRight: 'none',
-                                                color: cfg.color,
-                                                fontWeight: 600,
-                                                fontSize: 13,
-                                            }}
-                                        >
-                                            {cfg.icon}
-                                            {cfg.label}: {count}
-                                        </span>
-                                        <Tooltip title={`Thêm câu hỏi ${cfg.label}`}>
-                                            <Button
-                                                size="small"
-                                                icon={<PlusOutlined />}
-                                                onClick={() => openChallengeModal(key)}
+                                    const count = (quiz.questions || []).filter((q: any) => q.skillType === key).length;
+                                    return (
+                                        <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
+                                            <span
                                                 style={{
-                                                    borderRadius: '0 20px 20px 0',
-                                                    height: 33,
-                                                    background: cfg.color,
-                                                    color: '#fff',
-                                                    border: `1px solid ${cfg.color}`,
-                                                    padding: '0 10px',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    padding: '6px 14px',
+                                                    borderRadius: '20px 0 0 20px',
+                                                    background: `${cfg.color}12`,
+                                                    border: `1px solid ${cfg.color}30`,
+                                                    borderRight: 'none',
+                                                    color: cfg.color,
+                                                    fontWeight: 600,
+                                                    fontSize: 13,
                                                 }}
-                                            />
-                                        </Tooltip>
-                                    </div>
-                                );
-                            })}
+                                            >
+                                                {cfg.icon}
+                                                {cfg.label}: {count}
+                                            </span>
+                                            <Tooltip title={`Thêm câu hỏi ${cfg.label}`}>
+                                                <Button
+                                                    size="small"
+                                                    icon={<PlusOutlined />}
+                                                    onClick={() => openChallengeModal(key)}
+                                                    style={{
+                                                        borderRadius: '0 20px 20px 0',
+                                                        height: 33,
+                                                        background: cfg.color,
+                                                        color: '#fff',
+                                                        border: `1px solid ${cfg.color}`,
+                                                        padding: '0 10px',
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        </div>
+                                    );
+                                })}
                         </div>
 
                         {/* Import Excel buttons */}
@@ -1676,8 +1676,8 @@ const QuizManagementPage: React.FC = () => {
                     <Space>
                         {editingChallengeId ? <EditOutlined style={{ color: '#faad14' }} /> : <BankOutlined style={{ color: '#2563eb' }} />}
                         <span>
-                            {editingChallengeId 
-                                ? `Cập nhật câu hỏi` 
+                            {editingChallengeId
+                                ? `Cập nhật câu hỏi`
                                 : `Thêm câu hỏi cho kỹ năng: ${activeSkillType ? SKILL_CONFIG[activeSkillType]?.label : ''}`
                             }
                         </span>
@@ -1719,7 +1719,20 @@ const QuizManagementPage: React.FC = () => {
                                         loading={loadingBank}
                                         dataSource={availableChallenges
                                             .filter(c => c.skillType === activeSkillType)
-                                            .filter(c => c.contentText.toLowerCase().includes(bankSearchText.toLowerCase()))
+                                            .filter(c => {
+                                                if (!bankSearchText) return true;
+                                                const search = bankSearchText.toLowerCase();
+                                                if (c.contentText?.toLowerCase().includes(search)) return true;
+                                                // Also search in metadataJson details
+                                                const meta = typeof c.metadataJson === 'string'
+                                                    ? (() => { try { return JSON.parse(c.metadataJson); } catch { return {}; } })()
+                                                    : (c.metadataJson || {});
+                                                if (Array.isArray(meta.words) && meta.words.join(' ').toLowerCase().includes(search)) return true;
+                                                if (meta.correct_word?.toLowerCase().includes(search)) return true;
+                                                if (meta.transcript?.toLowerCase().includes(search)) return true;
+                                                if (meta.correctSentence?.toLowerCase().includes(search)) return true;
+                                                return false;
+                                            })
                                         }
                                         rowKey="id"
                                         size="middle"
@@ -1728,7 +1741,49 @@ const QuizManagementPage: React.FC = () => {
                                                 title: 'Nội dung',
                                                 dataIndex: 'contentText',
                                                 key: 'contentText',
-                                                render: (text: string) => <Text strong>{text}</Text>
+                                                render: (_text: string, record: any) => {
+                                                    const parsed = parseMetadata(record);
+                                                    const meta = parsed.metadataJson || {};
+                                                    const skill = parsed.skillType;
+
+                                                    return (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                            <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                                                                {parsed.contentText || '—'}
+                                                            </Text>
+
+                                                            <div style={{ fontSize: 14 }}>
+                                                                {skill === 'READING' && Array.isArray(meta.words) && (
+                                                                    <div>
+                                                                        {meta.words.map((w: string, i: number) => (
+                                                                            <span key={i} style={{
+                                                                                color: i === meta.error_index ? '#ef4444' : '#334155',
+                                                                                textDecoration: i === meta.error_index ? 'line-through' : 'none',
+                                                                                fontWeight: i === meta.error_index ? 600 : 400,
+                                                                                marginRight: 4
+                                                                            }}>
+                                                                                {w}
+                                                                            </span>
+                                                                        ))}
+                                                                        {meta.correct_word && (
+                                                                            <Text type="success" strong style={{ marginLeft: 6 }}>
+                                                                                → {meta.correct_word}
+                                                                            </Text>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
+                                                                    <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
+                                                                )}
+
+                                                                {skill === 'WRITING' && meta.correctSentence && (
+                                                                    <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
                                             },
                                             {
                                                 title: 'Độ khó',
@@ -2149,20 +2204,28 @@ const QuizManagementPage: React.FC = () => {
                             </Form.Item>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                            <Form.Item label="Số câu Reading" name="readingCount" style={{ marginBottom: 0 }}>
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Số câu Listening" name="listeningCount" style={{ marginBottom: 0 }}>
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Số câu Speaking" name="speakingCount" style={{ marginBottom: 0 }}>
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Số câu Writing" name="writingCount" style={{ marginBottom: 0 }}>
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
+                        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.skillType !== cur.skillType}>
+                            {({ getFieldValue }) => {
+                                const skillType = getFieldValue('skillType');
+                                const showAll = !skillType || skillType === 'MIXED';
+                                const fields = [
+                                    { key: 'READING', label: 'Số câu Reading', name: 'readingCount' },
+                                    { key: 'LISTENING', label: 'Số câu Listening', name: 'listeningCount' },
+                                    { key: 'SPEAKING', label: 'Số câu Speaking', name: 'speakingCount' },
+                                    { key: 'WRITING', label: 'Số câu Writing', name: 'writingCount' },
+                                ];
+                                const visibleFields = showAll ? fields : fields.filter(f => f.key === skillType);
+                                return (
+                                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleFields.length}, 1fr)`, gap: '12px' }}>
+                                        {visibleFields.map(f => (
+                                            <Form.Item key={f.key} label={f.label} name={f.name} style={{ marginBottom: 0 }}>
+                                                <InputNumber min={0} style={{ width: '100%' }} />
+                                            </Form.Item>
+                                        ))}
+                                    </div>
+                                );
+                            }}
+                        </Form.Item>
                     </div>
 
                     <Form.Item label="Ghi chú cập nhật" name="comment">
@@ -2247,7 +2310,7 @@ const QuizManagementPage: React.FC = () => {
                 <div style={{ marginTop: 20 }}>
                     <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
                         <Text style={{ color: '#0369a1', fontSize: 13 }}>
-                            <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br/>
+                            <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
                             Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (phút), Độ khó
                         </Text>
                     </div>
@@ -2451,9 +2514,9 @@ const QuizManagementPage: React.FC = () => {
                                                 marginBottom: 3,
                                                 color: msg.includes('✅') || msg.includes('thành công') ? '#15803d'
                                                     : msg.includes('❌') || msg.includes('Lỗi') ? '#dc2626'
-                                                    : msg.includes('bỏ qua') || msg.includes('⚠') ? '#a16207'
-                                                    : msg.startsWith('──') ? '#2563eb'
-                                                    : '#475569',
+                                                        : msg.includes('bỏ qua') || msg.includes('⚠') ? '#a16207'
+                                                            : msg.startsWith('──') ? '#2563eb'
+                                                                : '#475569',
                                                 fontWeight: msg.startsWith('Import hoàn tất') || msg.startsWith('──') ? 700 : 400,
                                             }}
                                         >

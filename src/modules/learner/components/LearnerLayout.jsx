@@ -81,7 +81,15 @@ export default function LearnerLayout() {
                 collapsed={collapsed}
                 width={260}
                 theme="light"
-                className="shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-gray-100 relative z-20"
+                className="shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-gray-100 z-20"
+                style={{
+                    overflow: 'auto',
+                    height: '100vh',
+                    position: 'fixed',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                }}
             >
                 <div className="h-20 flex items-center justify-center px-4 border-b border-gray-100">
                     {/* Logo Section */}
@@ -123,7 +131,7 @@ export default function LearnerLayout() {
                 </div>
             </Sider>
 
-            <Layout className="bg-transparent">
+            <Layout className="bg-transparent" style={{ marginLeft: collapsed ? 80 : 260, transition: 'margin-left 0.2s' }}>
                 {/* Top Header */}
                 <Header className="h-20 bg-white/80 backdrop-blur-md px-8 flex items-center justify-between shadow-[0_4px_24px_rgba(0,0,0,0.02)] border-b border-gray-100 sticky top-0 z-10 transition-all duration-300">
                     {/* Left Header Area */}

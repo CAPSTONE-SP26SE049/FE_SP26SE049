@@ -123,7 +123,14 @@ const EducatorLayout = () => {
         theme="dark"
         style={{
           background: 'linear-gradient(180deg, #001529 0%, #000c17 100%)',
-          boxShadow: '4px 0 10px rgba(0,0,0,0.1)'
+          boxShadow: '4px 0 10px rgba(0,0,0,0.1)',
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 20,
         }}
       >
         <div
@@ -151,8 +158,8 @@ const EducatorLayout = () => {
           className="educator-sidebar-menu"
         />
       </Sider>
-      <Layout>
-        <Header style={{ padding: 0, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', zIndex: 1 }}>
+      <Layout style={{ marginLeft: 260 }}>
+        <Header style={{ padding: 0, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', zIndex: 10, position: 'sticky', top: 0 }}>
           <div
             style={{
               display: 'flex',
