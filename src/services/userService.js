@@ -6,7 +6,7 @@ import apiClient from './apiClient'
  * @returns {Promise<Object>} API Response
  */
 export const updateProfileAPI = async (profileData) => {
-    return apiClient.put('/users/profile', profileData)
+    return apiClient.put('/users/me', profileData)
 }
 
 /**
