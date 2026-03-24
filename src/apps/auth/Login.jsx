@@ -35,24 +35,25 @@ function LoginForm() {
 
   const googleLogin = useGoogleLogin({
     flow: 'implicit',
+    // Explicit scopes required for Google UserInfo API
+    scope: 'openid email profile',
     onSuccess: async (tokenResponse) => {
       setGoogleLoading(true)
       try {
-        // Get user info from Google using the access token, then get id_token via credential approach
-        // Actually, useGoogleLogin with implicit flow returns access_token, not id_token
-        // We need to use 'auth-code' flow or fetch id_token differently
-        // Simplest: use the Google userinfo endpoint to get user data, then send access_token
         const session = await socialLogin('GOOGLE', tokenResponse.access_token)
         message.success(`Chào mừng ${session.user.fullName}!`)
         navigateByRole(session)
       } catch (err) {
-        message.error(err?.message ?? 'Đăng nhập Google thất bại. Vui lòng thử lại.')
+        // Show backend error message if available, otherwise fallback
+        const backendMsg = err?.response?.data?.message
+        message.error(backendMsg ?? err?.message ?? 'Đăng nhập Google thất bại. Vui lòng thử lại.')
       } finally {
         setGoogleLoading(false)
       }
     },
-    onError: () => {
-      message.error('Đăng nhập Google thất bại.')
+    onError: (err) => {
+      console.error('Google login error:', err)
+      message.error('Google đăng nhập bị hủy bỏ hoặc xảy ra lỗi.')
     },
   })
 

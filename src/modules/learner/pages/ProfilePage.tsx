@@ -1,9 +1,10 @@
-import { Card, Avatar, Typography, Divider, Button, Switch, Modal, Input, Select, Form, message, Upload } from 'antd'
-import { UserOutlined, SettingOutlined, SafetyOutlined, BellOutlined, EditOutlined, CameraOutlined, PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons'
+import { Card, Avatar, Typography, Divider, Button, Switch, Modal, Input, Select, Form, message, Upload, Tooltip, Spin, Empty } from 'antd'
+import { UserOutlined, SettingOutlined, SafetyOutlined, BellOutlined, EditOutlined, CameraOutlined, PhoneOutlined, EnvironmentOutlined, TrophyOutlined } from '@ant-design/icons'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { updateProfileAPI } from '../../../services/userService'
+import badgeService, { type MyBadge } from '../services/badgeService'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -27,6 +28,16 @@ export default function ProfilePage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     const [form] = Form.useForm()
+    const [myBadges, setMyBadges] = useState<MyBadge[]>([])
+    const [badgesLoading, setBadgesLoading] = useState(false)
+
+    useEffect(() => {
+        setBadgesLoading(true)
+        badgeService.getMyBadges()
+            .then(setMyBadges)
+            .catch(() => { /* silently fail — badges are optional */ })
+            .finally(() => setBadgesLoading(false))
+    }, [])
 
     const openEditModal = () => {
         form.setFieldsValue({
@@ -112,6 +123,25 @@ export default function ProfilePage() {
                 <Text className="text-gray-500 font-medium tracking-wide">
                     Học viên SpeakVN • {getRegionLabel(user?.region)}
                 </Text>
+
+                {/* Login Streak */}
+                <div className="mt-4 flex justify-center">
+                    <Tooltip title={
+                        (session?.user?.streak ?? 0) > 0
+                            ? `Bạn đã đăng nhập ${session?.user?.streak} ngày liên tiếp! Tiếp tục duy trì chuỗi nhé 💪`
+                            : 'Đăng nhập mỗi ngày để xây dựng chuỗi streak của bạn!'
+                    }>
+                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm shadow-sm border transition-all
+                            ${(session?.user?.streak ?? 0) > 0
+                                ? 'bg-orange-50 border-orange-200 text-orange-600'
+                                : 'bg-gray-50 border-gray-200 text-gray-400'}`
+                        }>
+                            <span className="text-lg">{(session?.user?.streak ?? 0) > 0 ? '🔥' : '○'}</span>
+                            <span className="text-lg font-extrabold">{session?.user?.streak ?? 0}</span>
+                            <span>Ngày liên tiếp</span>
+                        </div>
+                    </Tooltip>
+                </div>
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
@@ -199,6 +229,74 @@ export default function ProfilePage() {
                         <Button className="w-full h-12 rounded-xl border-2 border-brand-yellow text-brand-yellow font-bold hover:bg-yellow-50 hover:border-yellow-500 hover:text-yellow-600">
                             Nâng Cấp Ngay
                         </Button>
+                    </Card>
+
+                    {/* My Badges */}
+                    <Card
+                        className="rounded-3xl shadow-sm border-gray-100"
+                        bodyStyle={{ padding: '24px' }}
+                        title={
+                            <span className="font-extrabold text-base text-gray-700 flex items-center gap-2">
+                                <TrophyOutlined className="text-yellow-500" />
+                                Huy Hiệu Của Tôi
+                            </span>
+                        }
+                        extra={
+                            <span className="text-xs font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded-full">
+                                {myBadges.length}
+                            </span>
+                        }
+                    >
+                        {badgesLoading ? (
+                            <div className="flex justify-center py-6">
+                                <Spin size="small" />
+                            </div>
+                        ) : myBadges.length === 0 ? (
+                            <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description={
+                                    <span className="text-xs text-gray-400">
+                                        Chưa có huy hiệu nào.<br />Hãy học thêm để mở khóa!
+                                    </span>
+                                }
+                                imageStyle={{ height: 48 }}
+                            />
+                        ) : (
+                            <div className="grid grid-cols-3 gap-3">
+                                {myBadges.slice(0, 9).map((badge) => (
+                                    <Tooltip key={badge.id} title={
+                                        <div className="text-center">
+                                            <div className="font-bold">{badge.badgeName}</div>
+                                            <div className="text-xs opacity-80">{badge.badgeDescription}</div>
+                                            <div className="text-xs opacity-60 mt-1">
+                                                {badge.earnedAt ? new Date(badge.earnedAt).toLocaleDateString('vi-VN') : ''}
+                                            </div>
+                                        </div>
+                                    }>
+                                        <div className="flex flex-col items-center gap-1 cursor-pointer group">
+                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-100 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform shadow-sm">
+                                                {badge.badgeIconUrl ? (
+                                                    <img src={badge.badgeIconUrl} alt={badge.badgeName} className="w-10 h-10 object-contain" />
+                                                ) : (
+                                                    <TrophyOutlined className="text-yellow-400 text-2xl" />
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-gray-500 text-center leading-tight line-clamp-2 w-full">
+                                                {badge.badgeName}
+                                            </span>
+                                        </div>
+                                    </Tooltip>
+                                ))}
+                                {myBadges.length > 9 && (
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-sm">
+                                            +{myBadges.length - 9}
+                                        </div>
+                                        <span className="text-[10px] text-gray-400">Xem thêm</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </Card>
                 </div>
             </div>

@@ -142,15 +142,12 @@ export default function LearnerLayout() {
                     {/* Right Header Area - Stats & Profile */}
                     <div className="flex items-center gap-6">
 
-                        {/* Gamification Stats (Streak) */}
+                        {/* Streak */}
                         <div className="hidden sm:flex items-center gap-2 bg-orange-50 px-4 py-2 rounded-2xl border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors">
                             <FireFilled className="text-orange-500 text-lg" />
-                            <span className="font-bold text-orange-600">0 Ngày</span>
-                        </div>
-
-                        <div className="hidden sm:flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors">
-                            <TrophyOutlined className="text-brand-blue text-lg" />
-                            <span className="font-bold text-blue-600">0 XP</span>
+                            <span className="font-bold text-orange-600">
+                                {session?.user?.streak ?? 0} Ngày
+                            </span>
                         </div>
 
                         {/* User Dropdown */}

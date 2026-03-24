@@ -106,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             avatar: data.user.avatar,
             phone: data.user.phone,
             phoneNumber: data.user.phoneNumber || data.user.phone,
+            streak: data.user.currentStreakDays ?? 0,
           },
         }
 
@@ -127,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             role: data.user.role as Role,
             region: data.user.region,
             avatar: data.user.avatar,
+            streak: data.user.currentStreakDays ?? 0,
           },
         }
 
