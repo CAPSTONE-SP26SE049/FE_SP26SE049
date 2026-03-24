@@ -28,6 +28,7 @@ import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
+import Entrytest from '../pages/Entrytest'
 import { ProtectedRoute } from '../core/auth/ProtectedRoute'
 
 export const AppRoutes: React.FC = () => {
@@ -73,6 +74,8 @@ export const AppRoutes: React.FC = () => {
 
       {/* User/Learner protected area */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+        {/* Standalone EntryTest page without LearnerLayout (no sidebar/menu) */}
+        <Route path="/learner/entrytest" element={<Entrytest />} />
         <Route path="/learner" element={<LearnerLayout />}>
           {/* Default redirect to dashboard or first child */}
           <Route index element={<Navigate to="dashboard" replace />} />

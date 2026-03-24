@@ -151,7 +151,7 @@ apiClient.interceptors.response.use(
       }
 
       // Handle the specific validation error format from backend
-      if (status === 400 && data?.status === 'error' && data?.errors) {
+      if (status === 400 && data?.errors) {
         console.error("400 Bad Request:", data.errors);
         // Reject with the specific data structure so we can map it in UI
         return Promise.reject({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Layout, Menu, Typography, Dropdown, Avatar, Button } from 'antd'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -26,6 +26,12 @@ export default function LearnerLayout() {
 
     // Fallbacks if session is missing
     const user = session?.user || { fullName: 'Learner', avatar: null }
+
+    useEffect(() => {
+        if (session && session.user.role === 'USER' && !session.user.region && location.pathname !== '/learner/entrytest') {
+            navigate('/learner/entrytest', { replace: true })
+        }
+    }, [session, location.pathname, navigate])
 
     const handleLogout = () => {
         logout()

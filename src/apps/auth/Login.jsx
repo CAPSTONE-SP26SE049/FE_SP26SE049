@@ -29,7 +29,11 @@ function LoginForm() {
     } else if (session.user.role === 'EDUCATOR') {
       navigate('/educator', { replace: true })
     } else {
-      navigate('/learner/roadmap', { replace: true })
+      if (!session.user.region) {
+        navigate('/learner/entrytest', { replace: true })
+      } else {
+        navigate('/learner/roadmap', { replace: true })
+      }
     }
   }, [navigate])
 
@@ -144,7 +148,11 @@ function LoginForm() {
       } else if (session.user.role === 'EDUCATOR') {
         navigate('/educator', { replace: true })
       } else {
-        navigate('/learner/roadmap', { replace: true })
+        if (!session.user.region) {
+          navigate('/learner/entrytest', { replace: true })
+        } else {
+          navigate('/learner/roadmap', { replace: true })
+        }
       }
     } catch (err) {
       if (err?.status === 403 || err?.response?.status === 403) {

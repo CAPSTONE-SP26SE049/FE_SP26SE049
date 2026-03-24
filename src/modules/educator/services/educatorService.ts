@@ -340,15 +340,10 @@ export const educatorService = {
     getLevelsForSelection: async () => {
         return apiClient.get('/educator/levels');
     },
-    createQuiz: async (data: QuizCreateRequest) => {
-        return apiClient.post('/educator/quizzes', data);
-    },
     getQuizzesByLevel: async (levelId: string) => {
         return apiClient.get('/educator/quizzes', { params: { levelId } });
     },
-    updateQuiz: async (id: string, data: QuizCreateRequest) => {
-        return apiClient.put(`/educator/quizzes/${id}`, data);
-    },
+
 
     // --- Challenge Bank ---
     getChallengeBank: async () => {

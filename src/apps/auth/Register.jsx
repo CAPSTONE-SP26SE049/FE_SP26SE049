@@ -4,7 +4,6 @@ import {
   Form,
   Input,
   Button,
-  Select,
   message,
 } from 'antd'
 import { useNavigate, Link } from 'react-router-dom'
@@ -14,14 +13,12 @@ import {
   Lock,
   Mail,
   Phone,
-  Globe,
   CheckCircle,
   ArrowLeft,
   ArrowRight,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react'
-
-const { Step } = Steps
-const { Option } = Select
 
 const passwordRules = [
   { required: true, message: 'Vui lòng nhập mật khẩu' },
@@ -36,15 +33,12 @@ const passwordRules = [
 const steps = [
   {
     title: 'Tài Khoản',
-    // description: 'Thiết lập đăng nhập',
   },
   {
     title: 'Thông Tin',
-    // description: 'Hồ sơ cá nhân',
   },
   {
     title: 'Xác Nhận',
-    // description: 'Kiểm tra lại',
   },
 ]
 
@@ -60,7 +54,7 @@ export default function Register() {
       if (current === 0) {
         fields = ['email', 'password', 'confirmPassword']
       } else if (current === 1) {
-        fields = ['fullName', 'phone', 'region']
+        fields = ['fullName', 'phone']
       }
       await form.validateFields(fields)
       setCurrent(current + 1)
@@ -82,7 +76,6 @@ export default function Register() {
         password: allValues.password,
         fullName: allValues.fullName,
         phone: allValues.phone,
-        region: allValues.region,
       }
 
       setSubmitting(true)
@@ -91,20 +84,17 @@ export default function Register() {
       navigate('/verify-email', { replace: true, state: { email: allValues.email } })
     } catch (err) {
       if (err?.errorFields) {
-        // Map backend errors to form fields
         const fields = Object.keys(err.errorFields).map(key => ({
           name: key,
           errors: [err.errorFields[key]]
         }))
         form.setFields(fields)
 
-        // If error is in the first step (email/password), go back
         if (err.errorFields.email || err.errorFields.password) {
           setCurrent(0)
-        } else if (err.errorFields.fullName || err.errorFields.phone || err.errorFields.region) {
+        } else if (err.errorFields.fullName || err.errorFields.phone) {
           setCurrent(1)
         }
-
         return
       }
       message.error(err?.message ?? 'Đăng ký thất bại')
@@ -118,7 +108,7 @@ export default function Register() {
   const renderStepContent = () => {
     if (current === 0) {
       return (
-        <div className="animate-fadeIn">
+        <div className="animate-fadeIn space-y-3">
           <Form.Item
             name="email"
             rules={[
@@ -127,17 +117,17 @@ export default function Register() {
             ]}
           >
             <Input
-              prefix={<Mail className="text-gray-400 w-5 h-5" />}
+              prefix={<Mail className="text-brand-green/60 w-5 h-5 mr-1" />}
               placeholder="Địa chỉ Email"
-              className="rounded-xl py-3 border-gray-200 focus:border-brand-green focus:shadow-green-100"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
             />
           </Form.Item>
 
           <Form.Item name="password" rules={passwordRules}>
             <Input.Password
-              prefix={<Lock className="text-gray-400 w-5 h-5" />}
+              prefix={<Lock className="text-brand-green/60 w-5 h-5 mr-1" />}
               placeholder="Mật khẩu"
-              className="rounded-xl py-3 border-gray-200 focus:border-brand-green focus:shadow-green-100"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
             />
           </Form.Item>
 
@@ -157,9 +147,9 @@ export default function Register() {
             ]}
           >
             <Input.Password
-              prefix={<CheckCircle className="text-gray-400 w-5 h-5" />}
+              prefix={<ShieldCheck className="text-brand-green/60 w-5 h-5 mr-1" />}
               placeholder="Nhập lại mật khẩu"
-              className="rounded-xl py-3 border-gray-200 focus:border-brand-green focus:shadow-green-100"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
             />
           </Form.Item>
         </div>
@@ -168,15 +158,15 @@ export default function Register() {
 
     if (current === 1) {
       return (
-        <div className="animate-fadeIn">
+        <div className="animate-fadeIn space-y-3">
           <Form.Item
             name="fullName"
             rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
           >
             <Input
-              prefix={<User className="text-gray-400 w-5 h-5" />}
+              prefix={<User className="text-brand-green/60 w-5 h-5 mr-1" />}
               placeholder="Họ và Tên"
-              className="rounded-xl py-3 border-gray-200 focus:border-brand-green focus:shadow-green-100"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
             />
           </Form.Item>
 
@@ -185,27 +175,10 @@ export default function Register() {
             rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}
           >
             <Input
-              prefix={<Phone className="text-gray-400 w-5 h-5" />}
+              prefix={<Phone className="text-brand-green/60 w-5 h-5 mr-1" />}
               placeholder="Số điện thoại"
-              className="rounded-xl py-3 border-gray-200 focus:border-brand-green focus:shadow-green-100"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
             />
-          </Form.Item>
-
-          <Form.Item
-            name="region"
-            rules={[{ required: true, message: 'Vui lòng chọn vùng miền' }]}
-          >
-            <Select
-              placeholder="Chọn vùng miền"
-              size="large"
-              suffixIcon={<Globe className="text-gray-400 w-5 h-5" />}
-              className="rounded-xl border-gray-200 focus:border-brand-green"
-              style={{ height: 50 }}
-            >
-              <Option value="north">Miền Bắc</Option>
-              <Option value="central">Miền Trung</Option>
-              <Option value="south">Miền Nam</Option>
-            </Select>
           </Form.Item>
         </div>
       )
@@ -213,46 +186,35 @@ export default function Register() {
 
     return (
       <div className="animate-fadeIn">
-        <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 mb-6">
-          <h3 className="text-lg font-bold text-brand-green mb-4 border-b border-green-200 pb-2">
-            Xác nhận thông tin
+        <div className="bg-gradient-to-br from-green-50 to-teal-50/30 p-5 rounded-[1.5rem] border border-green-100 mb-4 shadow-inner relative overflow-hidden">
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-brand-green/10 rounded-full blur-2xl"></div>
+          <h3 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-700 mb-4 flex items-center gap-2">
+            <CheckCircle className="text-brand-green" size={20} /> Xác nhận thông tin
           </h3>
-          <ul className="space-y-4 text-sm">
-            <li className="flex justify-between items-center">
-              <span className="text-gray-500 flex items-center gap-2">
-                <Mail size={16} /> Email
+          <ul className="space-y-3 text-sm relative z-10">
+            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
+              <span className="text-gray-500 font-medium flex items-center gap-2">
+                <Mail size={16} className="text-teal-500" /> Email
               </span>
-              <span className="font-semibold text-gray-900">{values.email}</span>
+              <span className="font-bold text-gray-800">{values.email}</span>
             </li>
-            <li className="flex justify-between items-center">
-              <span className="text-gray-500 flex items-center gap-2">
-                <User size={16} /> Họ tên
+            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
+              <span className="text-gray-500 font-medium flex items-center gap-2">
+                <User size={16} className="text-teal-500" /> Họ tên
               </span>
-              <span className="font-semibold text-gray-900">{values.fullName}</span>
+              <span className="font-bold text-gray-800">{values.fullName}</span>
             </li>
-            <li className="flex justify-between items-center">
-              <span className="text-gray-500 flex items-center gap-2">
-                <Phone size={16} /> SĐT
+            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
+              <span className="text-gray-500 font-medium flex items-center gap-2">
+                <Phone size={16} className="text-teal-500" /> SĐT
               </span>
-              <span className="font-semibold text-gray-900">{values.phone}</span>
-            </li>
-            <li className="flex justify-between items-center">
-              <span className="text-gray-500 flex items-center gap-2">
-                <Globe size={16} /> Vùng miền
-              </span>
-              <span className="font-semibold text-brand-green">
-                {values.region === 'north'
-                  ? 'Miền Bắc'
-                  : values.region === 'central'
-                    ? 'Miền Trung'
-                    : 'Miền Nam'}
-              </span>
+              <span className="font-bold text-gray-800">{values.phone}</span>
             </li>
           </ul>
         </div>
-        <div className="text-center text-xs text-gray-400">
+        <div className="text-center text-xs text-gray-400 font-medium">
           Bằng việc nhấn "Đăng Ký", bạn đồng ý với{' '}
-          <a href="#" className="text-brand-green font-medium hover:underline">
+          <a href="#" className="text-brand-green font-bold hover:underline">
             điều khoản sử dụng
           </a>{' '}
           của SpeakVN.
@@ -262,44 +224,81 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-green to-teal-600 relative overflow-hidden py-10 px-4">
-      {/* Background Pattern */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+    <div className="min-h-[100dvh] bg-gradient-to-br from-green-50 via-teal-50/50 to-blue-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+      {/* Decorative background blur elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[25rem] h-[25rem] bg-brand-green/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[25rem] h-[25rem] bg-teal-400/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{animationDelay: '2s'}}></div>
+      <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-blue-300/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{animationDelay: '4s'}}></div>
 
       {/* Main Card Container */}
-      <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-slideUp">
-        {/* Header Section inside Card */}
-        <div className="text-center pt-10 pb-6 px-8 bg-white">
-          <h1 className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-600 mb-2">
+      <div className="w-full max-w-xl bg-white/80 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 relative z-10 flex flex-col transition-all duration-500 max-h-[95dvh] overflow-y-auto custom-scrollbar">
+        
+        {/* Header Section */}
+        <div className="text-center pt-6 pb-2 px-6 md:px-10 shrink-0">
+          <div className="mx-auto inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-green to-teal-500 text-white shadow-lg shadow-teal-500/30 mb-2">
+            <Sparkles size={24} />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-700 mb-1">
             SpeakVN Journey
           </h1>
-          <p className="text-gray-500 font-medium">
-            Tạo tài khoản mới để bắt đầu hành trình.
+          <p className="text-gray-500 font-medium text-sm md:text-base">
+            Khởi tạo hồ sơ để cá nhân hóa lộ trình của bạn.
           </p>
         </div>
 
         {/* Form Section */}
-        <div className="px-8 pb-10">
-          <Steps
-            current={current}
-            size="small"
-            className="mb-8 site-navigation-steps"
-            items={steps}
-          />
+        <div className="px-6 pb-6 md:px-10 pt-2 flex-1 flex flex-col">
+          <div className="px-2 mb-4 shrink-0">
+            <Steps
+              current={current}
+              size="small"
+              className="site-navigation-steps custom-steps font-medium"
+              items={steps}
+            />
+          </div>
+
+          <style>{`
+            .custom-steps .ant-steps-item-process .ant-steps-item-icon {
+              background: linear-gradient(to right, #14b8a6, #0f766e) !important;
+              border: none !important;
+            }
+            .custom-steps .ant-steps-item-finish .ant-steps-item-icon {
+              border-color: #14b8a6 !important;
+            }
+            .custom-steps .ant-steps-item-finish .ant-steps-icon {
+              color: #14b8a6 !important;
+            }
+            .custom-steps .ant-steps-item-title {
+              font-weight: 600 !important;
+              font-size: 13px !important;
+            }
+            .custom-scrollbar::-webkit-scrollbar {
+              width: 6px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+              background-color: rgba(20, 184, 166, 0.2);
+              border-radius: 20px;
+            }
+          `}</style>
 
           <Form
             layout="vertical"
             form={form}
-            initialValues={{ region: 'south' }}
-            size="large"
+            size="middle"
+            className="flex-1 flex flex-col justify-between"
           >
-            <div className="min-h-[300px]">{renderStepContent()}</div>
+            <div className="min-h-[200px]">
+              {renderStepContent()}
+            </div>
 
-            <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-100">
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100/80 shrink-0">
               {current > 0 ? (
                 <Button
                   onClick={prev}
-                  className="rounded-xl h-12 px-6 border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 flex items-center gap-2 font-medium transition-all"
+                  className="rounded-xl h-11 px-5 border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 flex items-center gap-2 font-bold text-sm transition-all"
                 >
                   <ArrowLeft size={18} /> Quay lại
                 </Button>
@@ -311,7 +310,7 @@ export default function Register() {
                 <Button
                   type="primary"
                   onClick={next}
-                  className="rounded-xl h-12 px-8 bg-brand-green hover:bg-green-600 border-none shadow-lg shadow-green-100 flex items-center gap-2 font-bold text-lg transition-all transform hover:-translate-y-0.5"
+                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-brand-green to-teal-500 hover:from-green-600 hover:to-teal-600 border-none shadow-[0_8px_15px_rgb(20,184,166,0.2)] hover:shadow-[0_12px_20px_rgb(20,184,166,0.3)] flex items-center gap-2 font-bold text-sm transition-all transform hover:-translate-y-0.5"
                 >
                   Tiếp tục <ArrowRight size={18} />
                 </Button>
@@ -320,20 +319,21 @@ export default function Register() {
                   type="primary"
                   onClick={onSubmit}
                   loading={submitting}
-                  className="rounded-xl h-12 px-8 bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90 border-none shadow-lg shadow-green-200 font-bold text-lg flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
+                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-brand-green to-teal-600 hover:from-green-600 hover:to-teal-700 border-none shadow-[0_8px_15px_rgb(20,184,166,0.2)] hover:shadow-[0_12px_20px_rgb(20,184,166,0.3)] font-bold text-sm flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
                 >
-                  Đăng Ký <CheckCircle size={18} />
+                  Khởi Tạo Tài Khoản <CheckCircle size={18} />
                 </Button>
               )}
             </div>
           </Form>
 
-          <div className="mt-8 text-center border-t border-gray-100 pt-6">
-            <p className="text-gray-500">
+          <div className="mt-4 text-center pt-4 relative shrink-0">
+            <div className="absolute inset-0 top-4 border-t border-gray-100/80 pointer-events-none"></div>
+            <p className="text-gray-500 text-sm relative z-10 bg-white/80 inline-block px-4 font-medium backdrop-blur-md rounded-full">
               Đã có tài khoản?{' '}
               <Link
                 to="/login"
-                className="text-brand-blue font-bold hover:text-blue-700 transition-colors hover:underline"
+                className="text-teal-600 font-extrabold hover:text-teal-800 transition-colors hover:underline ml-1"
               >
                 Đăng nhập ngay
               </Link>
