@@ -31,6 +31,7 @@ interface AuthContextValue {
   login: (email: string, password: string, remember?: boolean) => Promise<AuthSession>
   socialLogin: (provider: string, token: string) => Promise<AuthSession>
   logout: () => Promise<void>
+  updateSessionItem: (data: Partial<AuthUser>) => void
 }
 
 const SESSION_KEY = 'speakvn_session'
@@ -149,6 +150,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setSession(null)
           writeSessionToStorage(null, false)
           window.location.href = '/login'
+        }
+      },
+      updateSessionItem: (data: Partial<AuthUser>) => {
+        if (session) {
+          const newSession = {
+            ...session,
+            user: { ...session.user, ...data }
+          }
+          setSession(newSession)
+          const isRemembered = window.localStorage.getItem(SESSION_KEY) !== null
+          writeSessionToStorage(newSession, isRemembered)
         }
       },
     }),
