@@ -35,7 +35,7 @@ export default function ProfilePage() {
     const { session, updateSessionItem } = useAuth()
     const user = session?.user
 
-    const regionName = user?.region === 'north' ? 'Miền Bắc' : user?.region === 'central' ? 'Miền Trung' : user?.region === 'south' ? 'Miền Nam' : 'Mặc định'
+    const regionName = getRegionLabel(user?.region)
 
     const [badges, setBadges] = useState<any[]>([]);
     const [progress, setProgress] = useState<Record<string, number>>({});
@@ -91,12 +91,23 @@ export default function ProfilePage() {
                 avatar: values.avatarUrl
             });
 
+<<<<<<< HEAD
             updateSessionItem({
                 fullName: values.fullName,
                 phone: values.phone,
                 region: values.region,
                 avatar: values.avatarUrl
             });
+=======
+            if (updateSessionItem) {
+                updateSessionItem({
+                    fullName: values.fullName,
+                    phone: values.phone,
+                    region: values.region,
+                    avatar: values.avatarUrl
+                });
+            }
+>>>>>>> 4fd3e2f (feat: Add profile editing functionality with a modal, form, and API integration, replacing `updateSession` with `updateSessionItem`.)
 
             message.success('Cập nhật hồ sơ thành công!');
             setIsModalOpen(false);
