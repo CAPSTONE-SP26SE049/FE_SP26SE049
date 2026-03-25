@@ -1,18 +1,12 @@
 import React from 'react'
 import { Layout, Menu, Avatar, Typography, Dropdown } from 'antd'
 import {
-  DashboardOutlined,
-  ReadOutlined,
-  PartitionOutlined,
-  BarChartOutlined,
   SettingOutlined,
   UserOutlined,
-  TeamOutlined,
   DatabaseOutlined,
   BookOutlined,
   FileTextOutlined,
   LogoutOutlined,
-
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -21,26 +15,7 @@ const { Header, Sider, Content } = Layout
 const { Title } = Typography
 
 const menuItems = [
-  {
-    key: '/educator',
-    icon: <DashboardOutlined />,
-    label: <Link to="/educator">Tổng quan</Link>,
-  },
-  {
-    key: '/educator/classrooms',
-    icon: <TeamOutlined />,
-    label: <Link to="/educator/classrooms">Quản lý lớp học</Link>,
-  },
-  {
-    key: '/educator/students',
-    icon: <UserOutlined />,
-    label: <Link to="/educator/students">Danh sách học sinh</Link>,
-  },
-  {
-    key: '/educator/roadmap',
-    icon: <ReadOutlined />,
-    label: <Link to="/educator/roadmap">Lộ trình học tập</Link>,
-  },
+
   {
     key: '/educator/challenges',
     icon: <DatabaseOutlined />,
@@ -57,16 +32,7 @@ const menuItems = [
     label: <Link to="/educator/quizzes">Quản lý Quiz</Link>,
 
   },
-  {
-    key: '/educator/matrix',
-    icon: <PartitionOutlined />,
-    label: <Link to="/educator/matrix">Ma trận đánh giá</Link>,
-  },
-  {
-    key: '/educator/analytics',
-    icon: <BarChartOutlined />,
-    label: <Link to="/educator/analytics">Phân tích học sinh</Link>,
-  },
+
   {
     key: '/educator/settings',
     icon: <SettingOutlined />,
