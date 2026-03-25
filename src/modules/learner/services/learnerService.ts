@@ -28,6 +28,30 @@ export interface Level {
     starsEarned: number;
     isCompleted: boolean;
     isLocked: boolean;
+    minStarsRequired?: number;
+    aiThreshold?: number;
+    audioUrl?: string;
+}
+
+export interface QuizQuestion {
+    question: string;
+    options?: string[];
+    correctAnswer?: string;
+    audioUrl?: string;
+}
+
+export interface Quiz {
+    id: string;
+    levelId: string;
+    name: string;
+    description?: string;
+    timeLimitMinutes?: number;
+    passingScore?: number;
+    pointsPerQuestion?: number;
+    difficulty?: string;
+    skillType?: string;
+    questionCount?: number;
+    questions?: QuizQuestion[];
 }
 
 export const learnerService = {
@@ -57,5 +81,14 @@ export const learnerService = {
     getLevels: async (dialectId: string): Promise<Level[]> => {
         const res: any = await apiClient.get(`/levels?dialectId=${dialectId}`);
         return res?.data ?? [];
-    }
+    },
+
+    /**
+     * GET /api/v1/quizzes/by-level?levelId=
+     * Lấy danh sách Quiz của một Level để người dùng bắt đầu học
+     */
+    getQuizzesByLevel: async (levelId: string): Promise<Quiz[]> => {
+        const res: any = await apiClient.get(`/quizzes/by-level?levelId=${levelId}`);
+        return res?.data ?? [];
+    },
 };
