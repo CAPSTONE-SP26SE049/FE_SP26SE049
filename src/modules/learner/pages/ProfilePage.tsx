@@ -91,14 +91,6 @@ export default function ProfilePage() {
                 avatar: values.avatarUrl
             });
 
-<<<<<<< HEAD
-            updateSessionItem({
-                fullName: values.fullName,
-                phone: values.phone,
-                region: values.region,
-                avatar: values.avatarUrl
-            });
-=======
             if (updateSessionItem) {
                 updateSessionItem({
                     fullName: values.fullName,
@@ -107,7 +99,6 @@ export default function ProfilePage() {
                     avatar: values.avatarUrl
                 });
             }
->>>>>>> 4fd3e2f (feat: Add profile editing functionality with a modal, form, and API integration, replacing `updateSession` with `updateSessionItem`.)
 
             message.success('Cập nhật hồ sơ thành công!');
             setIsModalOpen(false);
