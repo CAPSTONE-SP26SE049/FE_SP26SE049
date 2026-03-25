@@ -23,6 +23,7 @@ import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
 import ContentApprovalPage from '../modules/admin/pages/ContentApprovalPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
+import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -48,6 +49,7 @@ export const AppRoutes: React.FC = () => {
           <Route index element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
           <Route path="approvals" element={<ContentApprovalPage />} />
+          <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
       </Route>

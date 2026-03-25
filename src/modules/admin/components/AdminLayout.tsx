@@ -6,6 +6,7 @@ import {
     SettingOutlined,
     LogoutOutlined,
     BellOutlined,
+    TrophyOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -37,6 +38,11 @@ const AdminLayout = () => {
             key: '/admin/approvals',
             icon: <FileProtectOutlined />,
             label: <Link to="/admin/approvals">Phê duyệt nội dung</Link>,
+        },
+        {
+            key: '/admin/rewards',
+            icon: <TrophyOutlined />,
+            label: <Link to="/admin/rewards">Huy hiệu & Thành tích</Link>,
         },
         {
             type: 'divider',
