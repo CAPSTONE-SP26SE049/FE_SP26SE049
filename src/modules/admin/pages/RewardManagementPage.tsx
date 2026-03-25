@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
     Table, Button, Modal, Form, Input, Select, Switch, Tag, Space,
     Tooltip, Popconfirm, message, Typography, Card,
-    Drawer, Row, Col, Divider
+    Drawer, Row, Col, Divider, Upload
 } from 'antd'
-import {
-    PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined,
-    TrophyOutlined, ReloadOutlined, SearchOutlined
-} from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, TrophyOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '../../../firebase'
 import rewardService from '../services/rewardService'
 
 const { Text } = Typography
@@ -361,6 +360,8 @@ const RewardManagementPage = () => {
     const [detailDrawer, setDetailDrawer] = useState<Reward | null>(null)
     const [criteriaType, setCriteriaType] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [fileList, setFileList] = useState<any[]>([])
+    const [uploading, setUploading] = useState(false)
     const [form] = Form.useForm()
 
     const fetchRewards = useCallback(async () => {
@@ -382,6 +383,7 @@ const RewardManagementPage = () => {
         form.resetFields()
         setCriteriaType(null)
         setSelectedCategory(null)
+        setFileList([])
         setModalOpen(true)
     }
 
@@ -407,22 +409,41 @@ const RewardManagementPage = () => {
             from: parsed.from,
             to: parsed.to,
         })
+        setFileList(record.iconUrl ? [{
+            uid: '-1',
+            name: 'current_icon.png',
+            status: 'done',
+            url: record.iconUrl,
+        }] : [])
         setModalOpen(true)
     }
 
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields()
+            setUploading(true)
+
+            // 1. Handle File Upload if exists
+            let finalIconUrl = values.iconUrl || ''
+            const file = fileList[0]?.originFileObj
+            if (file) {
+                const storageRef = ref(storage, `badges/${Date.now()}_${file.name}`)
+                const snapshot = await uploadBytes(storageRef, file)
+                finalIconUrl = await getDownloadURL(snapshot.ref)
+            }
+
+            // 2. Build Payload
             const criteriaJson = buildCriteriaJson(values.criteriaType, values)
             const payload = {
                 code: values.code,
                 name: values.name,
                 description: values.description,
                 category: values.category,
-                iconUrl: values.iconUrl || '',
+                iconUrl: finalIconUrl,
                 criteriaJson,
                 isActive: values.isActive ?? true,
             }
+
             if (editing) {
                 await rewardService.update(editing.id, payload)
                 message.success('Cập nhật hùy hiệu thành công!')
@@ -432,9 +453,11 @@ const RewardManagementPage = () => {
             }
             setModalOpen(false)
             fetchRewards()
-        } catch (err) {
-            if ((err as { errorFields?: unknown }).errorFields) return
-            message.error((err as { message?: string })?.message || 'Có lỗi xảy ra')
+        } catch (err: any) {
+            if (err?.errorFields) return
+            message.error(err?.message || 'Có lỗi xảy ra')
+        } finally {
+            setUploading(false)
         }
     }
 
@@ -748,6 +771,7 @@ const RewardManagementPage = () => {
                 open={modalOpen}
                 onCancel={() => setModalOpen(false)}
                 onOk={handleSubmit}
+                confirmLoading={uploading}
                 title={
                     <div className="flex items-center gap-2 text-lg font-semibold">
                         <TrophyOutlined className="text-yellow-500" />
@@ -798,8 +822,28 @@ const RewardManagementPage = () => {
                         <TextArea rows={2} placeholder="Mô tả ngắn hiển thị cho người chơi..." />
                     </Form.Item>
 
-                    <Form.Item name="iconUrl" label="URL Icon (tùy chọn)">
-                        <Input placeholder="/icons/badges/example.png" />
+                    <Form.Item label="Hình ảnh Huy hiệu" required>
+                        <Upload
+                            listType="picture-card"
+                            fileList={fileList}
+                            onChange={({ fileList }) => setFileList(fileList)}
+                            beforeUpload={() => false} // Don't upload automatically
+                            maxCount={1}
+                        >
+                            {fileList.length < 1 && (
+                                <div>
+                                    <PlusOutlined />
+                                    <div style={{ marginTop: 8 }}>Tải ảnh</div>
+                                </div>
+                            )}
+                        </Upload>
+                        <Text type="secondary" className="text-xs">
+                            Khuyên dùng ảnh PNG trong suốt, kích thước 256x256px.
+                        </Text>
+                    </Form.Item>
+
+                    <Form.Item name="iconUrl" hidden>
+                        <Input />
                     </Form.Item>
 
                     <Divider className="text-sm font-medium text-purple-600">

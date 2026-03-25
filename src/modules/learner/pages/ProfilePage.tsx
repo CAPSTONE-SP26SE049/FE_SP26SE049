@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card, Avatar, Typography, Button, Switch, Progress } from 'antd'
-import { UserOutlined, SettingOutlined, BellOutlined, TrophyOutlined } from '@ant-design/icons'
+import { Card, Avatar, Typography, Button, Switch, Progress, Select, Modal, Form, Input, Divider, message } from 'antd'
+import { UserOutlined, SettingOutlined, BellOutlined, TrophyOutlined, EditOutlined, PhoneOutlined, EnvironmentOutlined, CameraOutlined } from '@ant-design/icons'
 import { Flame, Zap, Lock, Shield } from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { motion } from 'framer-motion'
@@ -32,7 +32,7 @@ const BadgeItem = ({ imageUrl, icon: Icon, title, level, locked }: any) => (
 );
 
 export default function ProfilePage() {
-    const { session, updateSession } = useAuth()
+    const { session, updateSessionItem } = useAuth()
     const user = session?.user
 
     const regionName = user?.region === 'north' ? 'Miền Bắc' : user?.region === 'central' ? 'Miền Trung' : user?.region === 'south' ? 'Miền Nam' : 'Mặc định'
@@ -40,6 +40,9 @@ export default function ProfilePage() {
     const [badges, setBadges] = useState<any[]>([]);
     const [progress, setProgress] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form] = Form.useForm();
 
     useEffect(() => {
         const loadProfileData = async () => {
@@ -65,6 +68,45 @@ export default function ProfilePage() {
         
         loadProfileData();
     }, []);
+
+    const handleEdit = () => {
+        form.setFieldsValue({
+            fullName: user?.fullName,
+            phone: user?.phone || user?.phoneNumber,
+            region: user?.region,
+            avatarUrl: user?.avatar,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async () => {
+        try {
+            const values = await form.validateFields();
+            setSaving(true);
+            
+            await apiClient.patch('/users/me', {
+                fullName: values.fullName,
+                phone: values.phone,
+                region: values.region,
+                avatar: values.avatarUrl
+            });
+
+            updateSessionItem({
+                fullName: values.fullName,
+                phone: values.phone,
+                region: values.region,
+                avatar: values.avatarUrl
+            });
+
+            message.success('Cập nhật hồ sơ thành công!');
+            setIsModalOpen(false);
+        } catch (error: any) {
+            console.error("Failed to update profile", error);
+            message.error(error?.response?.data?.message || 'Không thể cập nhật hồ sơ');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="max-w-4xl mx-auto pb-10">
@@ -98,7 +140,11 @@ export default function ProfilePage() {
                                 Tham gia từ {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
                             </div>
                         </div>
-                        <Button className="mt-4 md:mt-0 font-bold text-gray-500 hover:text-brand-blue rounded-xl border-gray-200 shadow-sm" icon={<SettingOutlined />}>
+                        <Button 
+                            className="mt-4 md:mt-0 font-bold text-gray-500 hover:text-brand-blue rounded-xl border-gray-200 shadow-sm" 
+                            icon={<SettingOutlined />}
+                            onClick={handleEdit}
+                        >
                             Cài đặt
                         </Button>
                     </div>
