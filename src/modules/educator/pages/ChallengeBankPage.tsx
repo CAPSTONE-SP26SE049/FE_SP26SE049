@@ -19,6 +19,8 @@ import {
     Upload,
     Alert
 } from 'antd';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../firebase';
 import {
     DatabaseOutlined,
     ReadOutlined,
@@ -72,6 +74,7 @@ const ChallengeBankPage: React.FC = () => {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [audioFile, setAudioFile] = useState<File | null>(null);
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -122,6 +125,15 @@ const ChallengeBankPage: React.FC = () => {
     const handleSubmit = async (values: any) => {
         setSubmitting(true);
         try {
+            let finalAudioUrl = values.audioUrl || "";
+
+            // Handle Audio Upload to Firebase if a new file is selected
+            if (audioFile) {
+                const storageRef = ref(storage, `challenges/audio/${Date.now()}_${audioFile.name}`);
+                const uploadTask = await uploadBytes(storageRef, audioFile);
+                finalAudioUrl = await getDownloadURL(uploadTask.ref);
+            }
+
             let metadataJson: any = {};
 
             if (values.skillType === 'READING') {
@@ -133,7 +145,7 @@ const ChallengeBankPage: React.FC = () => {
                 };
             } else if (values.skillType === 'LISTENING') {
                 metadataJson = {
-                    audioUrl: values.audioUrl || "",
+                    audioUrl: finalAudioUrl,
                     options: values.options ? values.options.split('\n').filter((o: string) => o.trim()) : [],
                     correctAnswer: values.correctAnswer,
                     transcript: values.transcript || ""
@@ -146,7 +158,7 @@ const ChallengeBankPage: React.FC = () => {
                 };
             } else if (values.skillType === 'SPEAKING' || values.skillType === 'ENTRY_TEST') {
                 metadataJson = {
-                    audioUrl: values.audioUrl || "",
+                    audioUrl: finalAudioUrl,
                     transcript: values.transcript || "",
                     hint: values.hint || ""
                 };
@@ -174,6 +186,7 @@ const ChallengeBankPage: React.FC = () => {
             setIsModalOpen(false);
             form.resetFields();
             setEditingChallengeId(null);
+            setAudioFile(null);
             fetchChallenges(); // Refresh list
         } catch (err: any) {
             console.error("[ChallengeBank] Error saving:", err);
@@ -220,6 +233,7 @@ const ChallengeBankPage: React.FC = () => {
         }
 
         form.setFieldsValue(formVals);
+        setAudioFile(null);
         setIsModalOpen(true);
     };
 
@@ -800,11 +814,40 @@ const ChallengeBankPage: React.FC = () => {
                         {skillType === 'LISTENING' && (
                             <>
                                 <Form.Item
-                                    name="audioUrl"
-                                    label={<Text strong>Đường dẫn âm thanh (Audio URL)</Text>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập link file âm thanh' }]}
+                                    label={<Text strong>Âm thanh bài nghe</Text>}
+                                    required={!editingChallengeId}
                                 >
-                                    <Input placeholder="https://..." style={{ borderRadius: 8 }} />
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Upload
+                                            accept="audio/*"
+                                            maxCount={1}
+                                            beforeUpload={(file) => {
+                                                setAudioFile(file);
+                                                return false;
+                                            }}
+                                            onRemove={() => setAudioFile(null)}
+                                            fileList={audioFile ? [audioFile as any] : []}
+                                        >
+                                            <Button icon={<UploadOutlined />}>Chọn file âm thanh</Button>
+                                        </Upload>
+                                        
+                                        <Form.Item name="audioUrl" noStyle>
+                                            <Input hidden />
+                                        </Form.Item>
+
+                                        {(audioFile || form.getFieldValue('audioUrl')) && (
+                                            <div style={{ marginTop: 8, padding: 8, background: '#f0f2f5', borderRadius: 8 }}>
+                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                                                    Xem trước âm thanh:
+                                                </Text>
+                                                <audio 
+                                                    controls 
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
+                                                    style={{ width: '100%', height: 32 }} 
+                                                />
+                                            </div>
+                                        )}
+                                    </Space>
                                 </Form.Item>
                                 <Form.Item
                                     name="options"
@@ -869,11 +912,40 @@ const ChallengeBankPage: React.FC = () => {
                         {(skillType === 'SPEAKING' || skillType === 'ENTRY_TEST') && (
                             <>
                                 <Form.Item
-                                    name="audioUrl"
-                                    label={<Text strong>Âm thanh mẫu (Reference Audio URL)</Text>}
-                                    rules={[{ required: true, message: 'Nhập link âm thanh mẫu' }]}
+                                    label={<Text strong>Âm thanh mẫu</Text>}
+                                    required={!editingChallengeId}
                                 >
-                                    <Input placeholder="https://..." prefix={<SoundOutlined />} style={{ borderRadius: 8 }} />
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Upload
+                                            accept="audio/*"
+                                            maxCount={1}
+                                            beforeUpload={(file) => {
+                                                setAudioFile(file);
+                                                return false;
+                                            }}
+                                            onRemove={() => setAudioFile(null)}
+                                            fileList={audioFile ? [audioFile as any] : []}
+                                        >
+                                            <Button icon={<UploadOutlined />}>Chọn file âm thanh mẫu</Button>
+                                        </Upload>
+
+                                        <Form.Item name="audioUrl" noStyle>
+                                            <Input hidden />
+                                        </Form.Item>
+
+                                        {(audioFile || form.getFieldValue('audioUrl')) && (
+                                            <div style={{ marginTop: 8, padding: 8, background: '#f0f2f5', borderRadius: 8 }}>
+                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                                                    Nghe thử:
+                                                </Text>
+                                                <audio 
+                                                    controls 
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
+                                                    style={{ width: '100%', height: 32 }} 
+                                                />
+                                            </div>
+                                        )}
+                                    </Space>
                                 </Form.Item>
                                 <Form.Item
                                     name="transcript"

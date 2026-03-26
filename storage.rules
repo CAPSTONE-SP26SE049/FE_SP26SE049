@@ -13,5 +13,11 @@ service firebase.storage {
       allow read: if true;
       allow write: if true;
     }
+
+    // THƯ MỤC ÂM THANH CHALLENGE
+    match /challenges/audio/{filename} {
+      allow read: if true;
+      allow write: if request.resource.size < 50 * 1024 * 1024;
+    }
   }
 }

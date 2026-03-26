@@ -30,6 +30,7 @@ import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
+import QuizPage from '../modules/learner/pages/QuizPage'
 import Entrytest from '../pages/Entrytest'
 import { ProtectedRoute } from '../core/auth/ProtectedRoute'
 
@@ -78,7 +79,8 @@ export const AppRoutes: React.FC = () => {
 
       {/* User/Learner protected area */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
-        {/* Standalone EntryTest page without LearnerLayout (no sidebar/menu) */}
+        {/* Standalone quiz page without LearnerLayout */}
+        <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
         <Route path="/learner/entrytest" element={<Entrytest />} />
         <Route path="/learner" element={<LearnerLayout />}>
           {/* Default redirect to dashboard or first child */}
