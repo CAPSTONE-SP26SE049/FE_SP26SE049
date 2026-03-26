@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Thư mục ghi âm
+    match /recordings/{userId}/{filename} {
+      allow read: if true;
+      allow write: if request.resource.size < 20 * 1024 * 1024
+                    && request.resource.contentType.matches('audio/.*');
+    }
+
+    // THƯ MỤC HUY HIỆU - CHO PHÉP GHI CÔNG KHAI
+    match /badges/{filename} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

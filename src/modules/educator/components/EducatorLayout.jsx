@@ -37,27 +37,6 @@ const menuItems = [
     label: <Link to="/educator/students">Danh sách học sinh</Link>,
   },
   {
-    key: '/educator/roadmap',
-    icon: <ReadOutlined />,
-    label: <Link to="/educator/roadmap">Lộ trình học tập</Link>,
-  },
-  {
-    key: '/educator/challenges',
-    icon: <DatabaseOutlined />,
-    label: <Link to="/educator/challenges">Ngân hàng thử thách</Link>,
-  },
-  {
-    key: '/educator/chapters',
-    icon: <BookOutlined />,
-    label: <Link to="/educator/chapters">Quản lý chương học</Link>,
-  },
-  {
-    key: '/educator/quizzes',
-    icon: <FileTextOutlined />,
-    label: <Link to="/educator/quizzes">Quản lý Quiz</Link>,
-
-  },
-  {
     key: '/educator/matrix',
     icon: <PartitionOutlined />,
     label: <Link to="/educator/matrix">Ma trận đánh giá</Link>,

@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function for user validation
+    function isValidUser(data) {
+      let requiredFields = ['age', 'address', 'region', 'createdAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.age is string
+        && data.address is string
+        && data.region in ['bac', 'trung', 'nam']
+        && data.createdAt is timestamp;
+    }
+
+    // Helper function for recording validation
+    function isValidRecording(data) {
+      let requiredFields = ['userId', 'region', 'sentenceId', 'sentenceText', 'audioUrl', 'storageRef', 'status', 'createdAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.userId is string
+        && data.region in ['bac', 'trung', 'nam']
+        && data.sentenceId is string
+        && data.sentenceText is string
+        && (data.level == null || data.level is number)
+        && data.audioUrl is string
+        && data.storageRef is string
+        && data.status == 'unlabeled'
+        && data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isValidUser(request.resource.data);
+      allow update, delete: if false;
+    }
+    
+    match /recordings/{recordingId} {
+      allow read: if true;
+      allow create: if isValidRecording(request.resource.data);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'label'])
+                    && (request.resource.data.status in ['unlabeled', 'labeled']);
+      allow delete: if false;
+    }
+  }
+}

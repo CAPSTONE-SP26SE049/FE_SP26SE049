@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Row, Col, Statistic, Tag, Avatar } from 'antd'
+import { Card, Row, Col, Statistic, Tag } from 'antd'
 import {
   UserOutlined,
   BookOutlined,
@@ -15,21 +15,18 @@ const AdminDashboardPage = () => {
   const [health, setHealth] = React.useState<any>({})
   const [aiPerformance, setAiPerformance] = React.useState<any>({})
   const [feedbacks, setFeedbacks] = React.useState<any[]>([])
-  const [recentApprovals, setRecentApprovals] = React.useState<any[]>([])
 
   React.useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [overviewRes, engagementRes, heatmapsRes, healthRes, aiRes, feedbackRes, pendingLevelsRes, pendingChallengesRes]: any[] = await Promise.all([
+        const [overviewRes, engagementRes, heatmapsRes, healthRes, aiRes, feedbackRes]: any[] = await Promise.all([
           adminService.getAnalyticsOverview().catch(() => ({ status: 'error' })),
           adminService.getAnalyticsEngagement().catch(() => ({ status: 'error' })),
           adminService.getAnalyticsErrorHeatmaps().catch(() => ({ status: 'error' })),
           adminService.getSystemHealth().catch(() => ({ status: 'error' })),
           adminService.getAiPerformance().catch(() => ({ status: 'error' })),
           adminService.getSystemFeedback().catch(() => ({ status: 'error', data: [] })),
-          adminService.getPendingLevels().catch(() => ({ status: 'error', data: [] })),
-          adminService.getPendingChallenges().catch(() => ({ status: 'error', data: [] }))
         ])
         if (overviewRes.status === 'success') setOverview(overviewRes.data)
         if (engagementRes.status === 'success') setEngagement(engagementRes.data)
@@ -38,14 +35,6 @@ const AdminDashboardPage = () => {
         if (aiRes.status === 'success') setAiPerformance(aiRes.data)
         if (feedbackRes.status === 'success') setFeedbacks(feedbackRes.data || [])
 
-        let pendingContent: any[] = []
-        if (pendingLevelsRes.status === 'success' && pendingLevelsRes.data) {
-          pendingContent = [...pendingContent, ...pendingLevelsRes.data.map((i: any) => ({ ...i, type: 'level', displayTitle: `Bài học: ${i.title || i.name}`, submittedBy: i.createdBy || 'Educator', date: new Date().toLocaleDateString() }))]
-        }
-        if (pendingChallengesRes.status === 'success' && pendingChallengesRes.data) {
-          pendingContent = [...pendingContent, ...pendingChallengesRes.data.map((i: any) => ({ ...i, type: 'challenge', displayTitle: `Bài tập: ${i.contentText}`, submittedBy: i.createdBy || 'Educator', date: new Date().toLocaleDateString() }))]
-        }
-        setRecentApprovals(pendingContent)
       } catch (error) {
         console.error('Failed to fetch admin dashboard data:', error)
       } finally {
@@ -149,32 +138,26 @@ const AdminDashboardPage = () => {
       </Row>
 
       <Row gutter={[24, 24]}>
-        {/* Recent Approvals */}
+        {/* Content Statistics or other relevant info could go here */}
         <Col xs={24} lg={12}>
           <Card
-            title="Nội dung chờ phê duyệt gần đây"
+            title="Thống kê nội dung"
             variant="borderless"
             className="shadow-sm rounded-xl"
-            extra={<a href="/admin/approvals" className="text-blue-600 hover:text-blue-500 font-medium bg-blue-50 px-3 py-1 rounded-md transition-colors text-sm border border-blue-100">Xem tất cả</a>}
           >
             <div className="space-y-4">
-              {recentApprovals.slice(0, 3).map((item: any, index: number) => (
-                <div key={index} className="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
-                  <Avatar icon={<BookOutlined />} style={{ backgroundColor: item.type === 'level' ? '#1890ff' : '#faad14' }} />
-                  <div className="flex-1">
-                    <span className="font-medium">{item.displayTitle}</span>
-                    <div className="flex gap-2 text-xs text-gray-500">
-                      <span>Bởi: {item.submittedBy}</span>
-                      <span>•</span>
-                      <span>{item.date}</span>
-                    </div>
-                  </div>
-                  <Tag color="orange">Chờ duyệt</Tag>
-                </div>
-              ))}
-              {recentApprovals.length === 0 && !loading && (
-                <div className="text-gray-400 italic text-center py-4">Không có nội dung chờ duyệt</div>
-              )}
+               <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Tổng số chương học</span>
+                  <span className="font-bold text-blue-600">{overview.totalLevels || 0}</span>
+               </div>
+               <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Tổng số thử thách</span>
+                  <span className="font-bold text-green-600">{overview.totalChallenges || 0}</span>
+               </div>
+               <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-600">Tổng số bài kiểm tra</span>
+                  <span className="font-bold text-orange-600">{overview.totalQuizzes || 0}</span>
+               </div>
             </div>
           </Card>
         </Col>

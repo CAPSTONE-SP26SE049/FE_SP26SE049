@@ -7,6 +7,8 @@ import {
     LogoutOutlined,
     BellOutlined,
     TrophyOutlined,
+    BookOutlined,
+    FileTextOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -35,9 +37,19 @@ const AdminLayout = () => {
             label: <Link to="/admin/users">Quản lý người dùng</Link>,
         },
         {
-            key: '/admin/approvals',
+            key: '/admin/chapters',
+            icon: <BookOutlined />,
+            label: <Link to="/admin/chapters">Quản lý chương học</Link>,
+        },
+        {
+            key: '/admin/challenges',
+            icon: <FileTextOutlined />,
+            label: <Link to="/admin/challenges">Kho thử thách</Link>,
+        },
+        {
+            key: '/admin/quizzes',
             icon: <FileProtectOutlined />,
-            label: <Link to="/admin/approvals">Phê duyệt nội dung</Link>,
+            label: <Link to="/admin/quizzes">Quản lý bài kiểm tra</Link>,
         },
         {
             key: '/admin/rewards',

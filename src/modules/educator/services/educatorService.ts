@@ -332,6 +332,12 @@ export const educatorService = {
     getQuizDetails: async (id: string) => {
         return apiClient.get(`/educator/quizzes/${id}`);
     },
+    createQuiz: async (data: QuizCreateRequest) => {
+        return apiClient.post('/educator/quizzes', data);
+    },
+    updateQuiz: async (id: string, data: Partial<QuizCreateRequest>) => {
+        return apiClient.patch(`/educator/quizzes/${id}`, data);
+    },
 
 
     getContentHistory: async (id: string) => {

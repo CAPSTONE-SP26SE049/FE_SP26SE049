@@ -251,6 +251,7 @@ const UserManagementPage = () => {
                     columns={columns}
                     dataSource={filteredData}
                     rowKey="id"
+                    scroll={{ x: 'max-content' }}
                     pagination={{
                         current: currentPage,
                         pageSize: pageSize,
