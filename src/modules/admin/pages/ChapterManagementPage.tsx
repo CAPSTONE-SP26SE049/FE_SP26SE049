@@ -30,7 +30,6 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
-    const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -369,24 +368,14 @@ const AdminChapterManagementPage: React.FC = () => {
             });
         }
 
-        // Filter by status
-        if (filterStatus) {
-            if (filterStatus === 'DRAFT') {
-                data = data.filter((item) => !item.status || item.status === 'DRAFT');
-            } else {
-                data = data.filter((item) => item.status === filterStatus);
-            }
-        }
-
         return data;
-    }, [mergedLevels, searchText, filterRegion, filterStatus, dialects]);
+    }, [mergedLevels, searchText, filterRegion, dialects]);
 
-    const activeFilterCount = [searchText.trim(), filterRegion, filterStatus].filter(Boolean).length;
+    const activeFilterCount = [searchText.trim(), filterRegion].filter(Boolean).length;
 
     const handleResetFilters = () => {
         setSearchText('');
         setFilterRegion(undefined);
-        setFilterStatus(undefined);
     };
 
     // ============ IMPORT / EXPORT ============
@@ -542,20 +531,6 @@ const AdminChapterManagementPage: React.FC = () => {
             key: 'name',
             sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
             render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            width: 140,
-            align: 'center' as const,
-            sorter: (a: any, b: any) => (a.status || 'DRAFT').localeCompare(b.status || 'DRAFT'),
-            render: (value?: string) => {
-                if (value === 'APPROVED' || value === 'PUBLISHED') return <Tag color="success">Đã công bố</Tag>;
-                if (value === 'PENDING') return <Tag color="warning">Đang chờ</Tag>;
-                if (value === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-                return <Tag color="default">Bản nháp</Tag>;
-            },
         },
         {
             title: 'Hành Động',
@@ -726,29 +701,6 @@ const AdminChapterManagementPage: React.FC = () => {
                             </Select.Option>
                             <Select.Option value="SOUTH">
                                 <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc trạng thái"
-                            value={filterStatus}
-                            onChange={(val) => setFilterStatus(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
-                        >
-                            <Select.Option value="APPROVED">
-                                <Tag color="success" style={{ margin: 0 }}>Đã duyệt</Tag>
-                            </Select.Option>
-                            <Select.Option value="PENDING">
-                                <Tag color="warning" style={{ margin: 0 }}>Chờ duyệt</Tag>
-                            </Select.Option>
-                            <Select.Option value="REJECTED">
-                                <Tag color="error" style={{ margin: 0 }}>Từ chối</Tag>
-                            </Select.Option>
-                            <Select.Option value="DRAFT">
-                                <Tag color="default" style={{ margin: 0 }}>Nháp</Tag>
                             </Select.Option>
                         </Select>
                     </Col>

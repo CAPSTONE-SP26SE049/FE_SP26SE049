@@ -32,18 +32,12 @@ export interface ChallengeRequest {
     comment?: string;
 }
 
-export interface ReviewContentRequest {
-    status: 'APPROVED' | 'REJECTED';
-    rejectionReason?: string;
-    comment?: string;
-}
 
 export interface ChallengeBank {
     id: string;
     contentText: string;
     skillType: string;
     difficultyTag: string;
-    isGlobal: boolean;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
     createdAt: string;
@@ -54,7 +48,6 @@ export interface ChallengeBankRequest {
     contentText: string;
     skillType: string;
     difficultyTag: string;
-    isGlobal?: boolean;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
 }
@@ -243,27 +236,6 @@ export const adminService = {
     },
     updateUser: async (id: string, data: any) => {
         return apiClient.patch(`/admin/users/${id}`, data);
-    },
-    getPendingLevels: async () => {
-        return apiClient.get('/admin/content/pending/levels');
-    },
-    getPendingChallenges: async () => {
-        return apiClient.get('/admin/content/pending/challenges');
-    },
-    getPendingQuizzes: async () => {
-        return apiClient.get('/admin/approvals/quizzes');
-    },
-    reviewLevel: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.put(`/admin/content/levels/${id}/review`, data);
-    },
-    reviewChallenge: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.put(`/admin/content/challenges/${id}/review`, data);
-    },
-    reviewQuiz: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.post(`/admin/approvals/quizzes/${id}/review`, {
-            action: data.status,
-            reason: data.comment || data.rejectionReason
-        });
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/admin/content/${id}/history`);

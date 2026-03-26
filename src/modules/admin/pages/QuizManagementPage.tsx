@@ -21,7 +21,6 @@ import {
     Input,
     InputNumber,
     message,
-    Checkbox,
 } from 'antd';
 import {
     FileTextOutlined,
@@ -42,7 +41,8 @@ import {
     UploadOutlined,
     ExportOutlined,
     DeleteOutlined,
-    ArrowRightOutlined
+    ArrowRightOutlined,
+    CheckCircleOutlined
 } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { excelService, downloadBlob } from '../../educator/services/excelService';
@@ -496,7 +496,6 @@ const AdminQuizManagementPage: React.FC = () => {
                 const formVals: any = {
                     contentText: bankItem.challenge.contentText,
                     difficultyTag: bankItem.challenge.difficultyTag || 'BEGINNER',
-                    isGlobal: bankItem.challenge.isGlobal,
                 };
 
                 const skill = bankItem.challenge.skillType;
@@ -613,7 +612,6 @@ const AdminQuizManagementPage: React.FC = () => {
                 contentText: values.contentText,
                 skillType: skill,
                 difficultyTag: values.difficultyTag,
-                isGlobal: values.isGlobal ?? true,
                 metadataJson: metadataJson
             };
 
@@ -1024,6 +1022,148 @@ const AdminQuizManagementPage: React.FC = () => {
         },
     ];
 
+    const levelColumns = [
+        {
+            title: 'Tên chương',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text: string, record: any) => {
+                const rInfo = getRegionInfo(record.dialectId);
+                return (
+                    <Space direction="vertical" size={0}>
+                        <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
+                        {rInfo && (
+                            <Tag color={rInfo.color} style={{ fontSize: 11, borderRadius: 10, background: `${rInfo.color}15`, border: `1px solid ${rInfo.color}40` }}>
+                                {rInfo.label}
+                            </Tag>
+                        )}
+                    </Space>
+                );
+            }
+        },
+        {
+            title: 'Mô tả',
+            dataIndex: 'description',
+            key: 'description',
+            ellipsis: true,
+            render: (text: string) => <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
+        },
+        {
+            title: 'Thứ tự',
+            dataIndex: 'levelOrder',
+            key: 'levelOrder',
+            align: 'center' as const,
+            width: 80,
+            render: (val: number) => <Badge count={val} showZero color="#64748b" />
+        },
+        {
+            title: 'Sao yêu cầu',
+            dataIndex: 'minStarsRequired',
+            key: 'minStarsRequired',
+            align: 'center' as const,
+            width: 120,
+            render: (val: number) => (
+                <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                    ⭐ {val ?? 0}
+                </span>
+            )
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            align: 'center' as const,
+            width: 120,
+            render: (_: any, record: any) => (
+                <Button
+                    type="primary"
+                    size="small"
+                    icon={<ArrowRightOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleLevelChange(record.id);
+                    }}
+                    style={{ borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                >
+                    Mở
+                </Button>
+            )
+        }
+    ];
+
+    const quizColumns = [
+        {
+            title: 'Tên bài kiểm tra',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text: string, record: any) => (
+                <Text strong style={{ color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
+            )
+        },
+        {
+            title: 'Kỹ năng',
+            dataIndex: 'skillType',
+            key: 'skillType',
+            width: 150,
+            render: (skill: string) => {
+                const cfg = SKILL_CONFIG[skill] || { label: skill, color: '#888', icon: <QuestionCircleOutlined /> };
+                return (
+                    <Tag
+                        icon={cfg.icon}
+                        style={{
+                            background: `${cfg.color}10`,
+                            border: `1px solid ${cfg.color}30`,
+                            color: cfg.color,
+                            fontWeight: 600,
+                            borderRadius: 20
+                        }}
+                    >
+                        {cfg.label}
+                    </Tag>
+                );
+            }
+        },
+        {
+            title: 'Thông số',
+            key: 'stats',
+            render: (_: any, record: any) => (
+                <Space size={8}>
+                    <Tooltip title="Số câu hỏi">
+                        <Tag color="blue" icon={<FileTextOutlined />}>{record.questions?.length ?? record.questionCount ?? 0}</Tag>
+                    </Tooltip>
+                    <Tooltip title="Điểm đạt">
+                        <Tag color="green" icon={<CheckCircleOutlined />}>{record.passingScore ?? 0}%</Tag>
+                    </Tooltip>
+                    {record.timeLimitMinutes && (
+                        <Tooltip title="Thời gian">
+                            <Tag color="orange" icon={<ClockCircleOutlined />}>{record.timeLimitMinutes}p</Tag>
+                        </Tooltip>
+                    )}
+                </Space>
+            )
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            align: 'center' as const,
+            width: 120,
+            render: (_: any, record: any) => (
+                <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setQuiz(record);
+                    }}
+                    style={{ borderRadius: 6, fontWeight: 600 }}
+                >
+                    Chi tiết
+                </Button>
+            )
+        }
+    ];
+
     const filteredAndSortedQuizzes = useMemo(() => {
         let result = quizzes;
         if (quizSearchTerm) {
@@ -1156,76 +1296,23 @@ const AdminQuizManagementPage: React.FC = () => {
                         </Space>
                     </div>
 
-                    <Row gutter={[24, 24]}>
-                        {filteredLevels.length > 0 ? (
-                            filteredLevels.map((level) => {
-                                const rInfo = getRegionInfo(level.dialectId);
-                                return (
-                                    <Col xs={24} sm={12} lg={8} xl={8} key={level.id}>
-                                        <div
-                                            onClick={() => handleLevelChange(level.id)}
-                                            className="premium-level-card"
-                                        >
-                                            <div className="card-accent" style={{ background: rInfo?.color || '#3b82f6' }}></div>
-
-                                            <div className="card-top">
-                                                <div className="icon-wrapper" style={{
-                                                    background: rInfo ? `${rInfo.bg}` : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                                                    color: rInfo?.color || '#2563eb'
-                                                }}>
-                                                    <FileTextOutlined style={{ fontSize: 24 }} />
-                                                </div>
-                                                {rInfo && (
-                                                    <div className="region-tag" style={{ border: `1px solid ${rInfo.color}30`, background: `${rInfo.bg}80` }}>
-                                                        <span className="dot" style={{ background: rInfo.color }}></span>
-                                                        <span style={{ color: rInfo.color, fontWeight: 600 }}>{rInfo.label}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="card-content">
-                                                <h3 className="card-title">{level.name}</h3>
-                                                <p className="card-desc">
-                                                    {level.description || 'Hệ thống bài học và kiểm tra thuộc chương trình này đã sẵn sàng để quản lý.'}
-                                                </p>
-                                                <div className="card-meta">
-                                                    {level.levelOrder != null && (
-                                                        <span className="meta-badge">
-                                                            <span style={{ fontWeight: 700 }}>#{level.levelOrder}</span> Thứ tự
-                                                        </span>
-                                                    )}
-                                                    {level.minStarsRequired != null && (
-                                                        <span className="meta-badge meta-stars">
-                                                            ⭐ {level.minStarsRequired} sao
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="card-footer">
-                                                <div className="action-btn">
-                                                    <span>Quản lý Quiz</span>
-                                                    <div className="arrow">→</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Col>
-                                );
-                            })
-                        ) : (
-                            <Col span={24}>
-                                <div style={{
-                                    padding: '60px 0',
-                                    textAlign: 'center',
-                                    background: '#f8fafc',
-                                    borderRadius: 32,
-                                    border: '1.5px dashed #e2e8f0'
-                                }}>
-                                    <Empty description="Không tìm thấy chương nào khớp với bộ lọc" />
-                                </div>
-                            </Col>
-                        )}
-                    </Row>
+                    <Table
+                        columns={levelColumns}
+                        dataSource={filteredLevels}
+                        rowKey="id"
+                        pagination={{ pageSize: 15, showSizeChanger: true }}
+                        onRow={(record) => ({
+                            onClick: () => handleLevelChange(record.id),
+                            style: { cursor: 'pointer' }
+                        })}
+                        style={{
+                            background: '#fff',
+                            borderRadius: 16,
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            border: '1px solid #f1f5f9'
+                        }}
+                    />
                 </div>
             )}
 
@@ -1290,61 +1377,23 @@ const AdminQuizManagementPage: React.FC = () => {
                         </Space>
                     </div>
 
-                    <Row gutter={[24, 24]}>
-                        {filteredAndSortedQuizzes.length === 0 ? (
-                            <Col span={24}>
-                                <div style={{
-                                    padding: '60px 0',
-                                    textAlign: 'center',
-                                    background: '#f8fafc',
-                                    borderRadius: 32,
-                                    border: '1.5px dashed #e2e8f0',
-                                    marginTop: 16
-                                }}>
-                                    <Empty description="Không tìm thấy bài kiểm tra nào khớp với bộ lọc" />
-                                </div>
-                            </Col>
-                        ) : (
-                            filteredAndSortedQuizzes.map((q) => (
-                                <Col xs={24} sm={12} lg={8} xl={6} key={q.id}>
-                                    <div
-                                        onClick={() => setQuiz(q)}
-                                        className="premium-level-card"
-                                    >
-                                        <div className="card-accent" style={{ background: '#f59e0b' }}></div>
-                                        <div className="card-top">
-                                            <div className="icon-wrapper" style={{
-                                                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                                                color: '#d97706'
-                                            }}>
-                                                <TrophyOutlined style={{ fontSize: 24 }} />
-                                            </div>
-                                        </div>
-
-                                        <div className="card-content">
-                                            <h3 className="card-title">{q.name || q.title || 'Untitled Quiz'}</h3>
-                                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                                                <Tag color="orange" style={{ margin: 0 }}>
-                                                    {q.questions?.length ?? q.questionCount ?? 0} câu hỏi
-                                                </Tag>
-                                                {q.passingScore && (
-                                                    <Tag color="green" style={{ margin: 0 }}>
-                                                        {q.passingScore}% đạt
-                                                    </Tag>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="card-footer">
-                                            <div className="action-btn">
-                                                <span>Xem chi tiết</span>
-                                                <div className="arrow">→</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Col>
-                            )))}
-                    </Row>
+                    <Table
+                        columns={quizColumns}
+                        dataSource={filteredAndSortedQuizzes}
+                        rowKey="id"
+                        pagination={{ pageSize: 15, showSizeChanger: true }}
+                        onRow={(record) => ({
+                            onClick: () => setQuiz(record),
+                            style: { cursor: 'pointer' }
+                        })}
+                        style={{
+                            background: '#fff',
+                            borderRadius: 16,
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                            border: '1px solid #f1f5f9'
+                        }}
+                    />
                 </div>
             )}
 
@@ -1831,7 +1880,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                     form={createForm}
                                     layout="vertical"
                                     onFinish={handleCreateNewChallenge}
-                                    initialValues={{ difficultyTag: 'BEGINNER', isGlobal: true }}
+                                    initialValues={{ difficultyTag: 'BEGINNER' }}
                                     style={{ marginTop: 16 }}
                                 >
                                     <Form.Item
@@ -1849,9 +1898,6 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     <Option key={k} value={k}>{v.label}</Option>
                                                 ))}
                                             </Select>
-                                        </Form.Item>
-                                        <Form.Item name="isGlobal" label="Dùng chung toàn hệ thống" valuePropName="checked">
-                                            <Checkbox defaultChecked>Bật</Checkbox>
                                         </Form.Item>
                                     </div>
 
@@ -1999,12 +2045,6 @@ const AdminQuizManagementPage: React.FC = () => {
                             <div>
                                 <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Độ khó:</Text>
                                 <Tag color={DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.color}>{DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.label}</Tag>
-                            </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Phạm vi:</Text>
-                                <Tag color={selectedDetailChallenge.isGlobal ? 'green' : 'blue'}>
-                                    {selectedDetailChallenge.isGlobal ? 'Hệ thống' : 'Cá nhân'}
-                                </Tag>
                             </div>
                         </div>
 

@@ -7,13 +7,11 @@ import {
     Space,
     Spin,
     Empty,
-    Badge,
     Button,
     Modal,
     Form,
     Input,
     Select,
-    Switch,
     message,
     Tooltip,
     Divider,
@@ -35,9 +33,6 @@ import {
     DownloadOutlined,
     UploadOutlined,
     FileExcelOutlined,
-    SaveOutlined,
-    GlobalOutlined,
-    LockOutlined,
     ArrowRightOutlined,
     DeleteOutlined
 } from '@ant-design/icons';
@@ -53,7 +48,8 @@ const SKILL_CONFIG: Record<string, { label: string; color: string; icon: React.R
     READING: { label: 'Đọc hiểu', color: '#2563eb', icon: <ReadOutlined /> },
     LISTENING: { label: 'Nghe hiểu', color: '#7c3aed', icon: <SoundOutlined /> },
     WRITING: { label: 'Viết', color: '#059669', icon: <EditOutlined /> },
-    SPEAKING: { label: 'Nói', color: '#ea580c', icon: <AudioOutlined /> }
+    SPEAKING: { label: 'Nói', color: '#ea580c', icon: <AudioOutlined /> },
+    ENTRY_TEST: { label: 'Kiểm tra đầu vào', color: '#dc2626', icon: <QuestionCircleOutlined /> }
 };
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
@@ -148,7 +144,7 @@ const ChallengeBankPage: React.FC = () => {
                     correctSentence: values.correctSentence,
                     hint: values.hint || ""
                 };
-            } else if (values.skillType === 'SPEAKING') {
+            } else if (values.skillType === 'SPEAKING' || values.skillType === 'ENTRY_TEST') {
                 metadataJson = {
                     audioUrl: values.audioUrl || "",
                     transcript: values.transcript || "",
@@ -163,7 +159,6 @@ const ChallengeBankPage: React.FC = () => {
                 contentText: values.contentText,
                 skillType: values.skillType,
                 difficultyTag: values.difficultyTag,
-                isGlobal: values.isGlobal ?? true,
                 region: values.region || 'BAC',
                 metadataJson: metadataJson
             };
@@ -201,7 +196,6 @@ const ChallengeBankPage: React.FC = () => {
             contentText: record.contentText,
             skillType: record.skillType,
             difficultyTag: record.difficultyTag,
-            isGlobal: record.isGlobal,
             region: record.region
         };
 
@@ -219,7 +213,7 @@ const ChallengeBankPage: React.FC = () => {
             formVals.scrambledWords = meta.scrambledWords?.join('\n');
             formVals.correctSentence = meta.correctSentence;
             formVals.hint = meta.hint;
-        } else if (record.skillType === 'SPEAKING') {
+        } else if (record.skillType === 'SPEAKING' || record.skillType === 'ENTRY_TEST') {
             formVals.audioUrl = meta.audioUrl;
             formVals.transcript = meta.transcript;
             formVals.hint = meta.hint;
@@ -386,7 +380,7 @@ const ChallengeBankPage: React.FC = () => {
                                 </>
                             )}
 
-                            {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
+                            {(skill === 'LISTENING' || skill === 'SPEAKING' || skill === 'ENTRY_TEST') && meta.transcript && (
                                 <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
                             )}
 
@@ -431,18 +425,6 @@ const ChallengeBankPage: React.FC = () => {
                 const cfg = DIFFICULTY_CONFIG[tag] || { label: tag, color: 'default' };
                 return <Tag color={cfg.color}>{cfg.label}</Tag>;
             },
-        },
-        {
-            title: 'Phạm vi',
-            dataIndex: 'isGlobal',
-            key: 'isGlobal',
-            width: 100,
-            render: (isGlobal: boolean) => (
-                <Badge
-                    status={isGlobal ? 'success' : 'default'}
-                    text={isGlobal ? 'Hệ thống' : 'Cá nhân'}
-                />
-            ),
         },
         {
             title: 'Miền',
@@ -637,7 +619,7 @@ const ChallengeBankPage: React.FC = () => {
 
             <Card
                 style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
-                bodyStyle={{ padding: 0 }}
+                styles={{ body: { padding: 0 } }}
             >
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '60px' }}>
@@ -704,7 +686,7 @@ const ChallengeBankPage: React.FC = () => {
                     form={form}
                     layout="vertical"
                     onFinish={handleSubmit}
-                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', isGlobal: true, region: 'BAC' }}
+                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', region: 'BAC' }}
                     style={{ marginTop: 24 }}
                 >
                     <Form.Item
@@ -719,7 +701,7 @@ const ChallengeBankPage: React.FC = () => {
                         />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="skillType"
                             label={<Text strong>Kỹ năng</Text>}
@@ -756,17 +738,6 @@ const ChallengeBankPage: React.FC = () => {
                                     <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
                                 ))}
                             </Select>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="isGlobal"
-                            label={<Text strong>Phạm vi hệ thống</Text>}
-                            valuePropName="checked"
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32 }}>
-                                <Switch />
-                                <Text type="secondary" style={{ fontSize: 12 }}>Bật để dùng chung</Text>
-                            </div>
                         </Form.Item>
                     </div>
 
@@ -894,8 +865,8 @@ const ChallengeBankPage: React.FC = () => {
                             </>
                         )}
 
-                        {/* SPEAKING Metadata Fields */}
-                        {skillType === 'SPEAKING' && (
+                        {/* SPEAKING & ENTRY_TEST Metadata Fields */}
+                        {(skillType === 'SPEAKING' || skillType === 'ENTRY_TEST') && (
                             <>
                                 <Form.Item
                                     name="audioUrl"
@@ -956,12 +927,6 @@ const ChallengeBankPage: React.FC = () => {
                             <div>
                                 <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Độ khó:</Text>
                                 <Tag color={DIFFICULTY_CONFIG[selectedChallenge.difficultyTag]?.color}>{DIFFICULTY_CONFIG[selectedChallenge.difficultyTag]?.label}</Tag>
-                            </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Phạm vi:</Text>
-                                <Tag color={selectedChallenge.isGlobal ? 'green' : 'blue'}>
-                                    {selectedChallenge.isGlobal ? 'Hệ thống' : 'Cá nhân'}
-                                </Tag>
                             </div>
                         </div>
 
@@ -1059,8 +1024,8 @@ const ChallengeBankPage: React.FC = () => {
                                 </>
                             )}
 
-                            {/* SPEAKING Details */}
-                            {selectedChallenge.skillType === 'SPEAKING' && (
+                            {/* SPEAKING & ENTRY_TEST Details */}
+                            {(selectedChallenge.skillType === 'SPEAKING' || selectedChallenge.skillType === 'ENTRY_TEST') && (
                                 <>
                                     <div style={{ marginBottom: 16 }}>
                                         <Text strong>Âm thanh mẫu:</Text>

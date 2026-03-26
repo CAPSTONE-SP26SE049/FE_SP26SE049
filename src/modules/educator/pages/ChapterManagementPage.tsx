@@ -30,7 +30,7 @@ const ChapterManagementPage: React.FC = () => {
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
-    const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+    // Remove filterStatus as approval process is removed
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -367,24 +367,14 @@ const ChapterManagementPage: React.FC = () => {
             });
         }
 
-        // Filter by status
-        if (filterStatus) {
-            if (filterStatus === 'DRAFT') {
-                data = data.filter((item) => !item.status || item.status === 'DRAFT');
-            } else {
-                data = data.filter((item) => item.status === filterStatus);
-            }
-        }
-
         return data;
-    }, [mergedLevels, searchText, filterRegion, filterStatus, dialects]);
+    }, [mergedLevels, searchText, filterRegion, dialects]);
 
-    const activeFilterCount = [searchText.trim(), filterRegion, filterStatus].filter(Boolean).length;
+    const activeFilterCount = [searchText.trim(), filterRegion].filter(Boolean).length;
 
     const handleResetFilters = () => {
         setSearchText('');
         setFilterRegion(undefined);
-        setFilterStatus(undefined);
     };
 
     // ============ IMPORT / EXPORT ============
@@ -581,18 +571,6 @@ const ChapterManagementPage: React.FC = () => {
             },
         },
         {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            sorter: (a: any, b: any) => (a.status || 'DRAFT').localeCompare(b.status || 'DRAFT'),
-            render: (value?: string) => {
-                if (value === 'APPROVED') return <Tag color="success">Đã duyệt</Tag>;
-                if (value === 'PENDING') return <Tag color="warning">Chờ duyệt</Tag>;
-                if (value === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-                return <Tag color="default">Nháp</Tag>;
-            },
-        },
-        {
             title: 'Hành Động',
             key: 'actions',
             render: (_: any, record: any) => (
@@ -748,29 +726,6 @@ const ChapterManagementPage: React.FC = () => {
                             </Select.Option>
                             <Select.Option value="SOUTH">
                                 <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc trạng thái"
-                            value={filterStatus}
-                            onChange={(val) => setFilterStatus(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
-                        >
-                            <Select.Option value="APPROVED">
-                                <Tag color="success" style={{ margin: 0 }}>Đã duyệt</Tag>
-                            </Select.Option>
-                            <Select.Option value="PENDING">
-                                <Tag color="warning" style={{ margin: 0 }}>Chờ duyệt</Tag>
-                            </Select.Option>
-                            <Select.Option value="REJECTED">
-                                <Tag color="error" style={{ margin: 0 }}>Từ chối</Tag>
-                            </Select.Option>
-                            <Select.Option value="DRAFT">
-                                <Tag color="default" style={{ margin: 0 }}>Nháp</Tag>
                             </Select.Option>
                         </Select>
                     </Col>

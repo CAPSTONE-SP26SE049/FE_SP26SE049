@@ -174,7 +174,6 @@ export interface ChallengeBank {
     contentText: string;
     skillType: string;
     difficultyTag: string;
-    isGlobal: boolean;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
     createdAt: string;
@@ -185,7 +184,6 @@ export interface ChallengeBankRequest {
     contentText: string;
     skillType: string;
     difficultyTag: string;
-    isGlobal?: boolean;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
 }
