@@ -121,8 +121,16 @@ const AdminChapterManagementPage: React.FC = () => {
     const fetchChallengeBank = async (skillType: string) => {
         setLoadingBank(true);
         try {
-            const response = await adminService.getChallengeBank(skillType);
-            setAvailableChallenges(response.data || []);
+            // Use stricter filtering by passing region and levelId
+            const region = getRegionKey(selectedChapter?.dialectId);
+            const levelId = selectedChapter?.id;
+            const response = await adminService.getChallengeBank(skillType, region, levelId);
+            
+            // Filter out challenges already in the quiz
+            const existingIds = new Set(quizChallenges.map(c => c.id));
+            const available = (response.data || []).filter((c: any) => !existingIds.has(c.id));
+            
+            setAvailableChallenges(available);
         } catch (error) {
             message.error('Không thể tải ngân hàng thử thách');
         } finally {
@@ -232,12 +240,12 @@ const AdminChapterManagementPage: React.FC = () => {
 
     const getRegionKey = (dialectId: string) => {
         const d = dialects.find((item: any) => item.id === dialectId);
-        if (!d) return 'UNKNOWN';
+        if (!d) return 'BAC'; // Fallback to BAC
         const name = (d.name || '').toUpperCase();
-        if (name.includes('BAC') || name.includes('NORTH')) return 'BAC';
+        if (name.includes('BẮC') || name.includes('BAC') || name.includes('NORTH')) return 'BAC';
         if (name.includes('TRUNG') || name.includes('CENTRAL')) return 'TRUNG';
         if (name.includes('NAM') || name.includes('SOUTH')) return 'NAM';
-        return name;
+        return 'BAC'; // Default fallback
     };
 
     const filteredLevels = useMemo(() => {
@@ -379,6 +387,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             icon={<ArrowRightOutlined />}
                             onClick={() => {
                                 setSelectedQuiz(record);
+                                setSelectedLevel(selectedChapter); // Ensure context is preserved
                                 setViewMode('QUIZ_DETAIL');
                                 fetchQuizChallenges(record.id);
                             }}

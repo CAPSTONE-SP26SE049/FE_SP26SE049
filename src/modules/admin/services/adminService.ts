@@ -138,9 +138,11 @@ export const adminService = {
     },
 
     // --- Challenge Bank ---
-    getChallengeBank: async (skillType?: string) => {
+    getChallengeBank: async (skillType?: string, region?: string, levelId?: string) => {
         const params: any = {};
         if (skillType) params.skillType = skillType;
+        if (region) params.region = region;
+        if (levelId) params.levelId = levelId;
         return apiClient.get('/admin/content/challenge-bank', { params });
     },
     createChallengeBankItem: async (data: ChallengeBankRequest) => {
