@@ -24,7 +24,6 @@ import UserManagementPage from '../modules/admin/pages/UserManagementPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
 import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
-import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AdminChallengeBankPage from '../modules/admin/pages/ChallengeBankPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
@@ -53,7 +52,6 @@ export const AppRoutes: React.FC = () => {
           <Route path="users" element={<UserManagementPage />} />
           <Route path="chapters" element={<AdminChapterManagementPage />} />
           <Route path="challenges" element={<AdminChallengeBankPage />} />
-          <Route path="quizzes" element={<AdminQuizManagementPage />} />
           <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>

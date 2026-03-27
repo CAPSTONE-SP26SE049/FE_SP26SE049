@@ -33,6 +33,8 @@ export default function LearnerDashboardPage() {
     });
     const [recentBadges, setRecentBadges] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeDialect, setActiveDialect] = useState<any>(null);
+    const [activeLevelObj, setActiveLevelObj] = useState<any>(null);
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -64,22 +66,24 @@ export default function LearnerDashboardPage() {
                     (userRegion === 'BAC' && (d.name?.includes('Bắc') || d.name?.toUpperCase() === 'NORTH')) ||
                     (userRegion === 'TRUNG' && (d.name?.includes('Trung') || d.name?.toUpperCase() === 'CENTRAL')) ||
                     (userRegion === 'NAM' && (d.name?.includes('Nam') || d.name?.toUpperCase() === 'SOUTH'))
-                // Fallback: nếu không match, lấy dialect đầu tiên
+                    // Fallback: nếu không match, lấy dialect đầu tiên
                 ) ?? dialectsRes[0];
 
                 if (matchedDialect) {
+                    setActiveDialect(matchedDialect);
                     const levelData = await learnerService.getLevels(matchedDialect.id).catch(() => []);
                     const completedCount = levelData.filter((l: any) => l.isCompleted).length;
-                    
+
                     setStatsData((prev: any) => ({ ...prev, completedLessons: completedCount }));
 
                     const activeLevel = levelData.find((lvl: any) => !lvl.isCompleted && !lvl.isLocked);
-                    
+
                     if (activeLevel) {
+                        setActiveLevelObj(activeLevel);
                         setCurrentLesson({
                             title: activeLevel.name,
                             description: `Bài học • Màn ${activeLevel.levelOrder || 1}`,
-                            progress: activeLevel.starsEarned ? Math.round((activeLevel.starsEarned / 3) * 100) : 0,
+                            progress: activeLevel.progressPercentage || 0,
                             id: activeLevel.id,
                             locked: false
                         });
@@ -105,7 +109,7 @@ export default function LearnerDashboardPage() {
                     // Không tìm được dialect nào — reset về nội dung rõ ràng
                     setCurrentLesson({
                         title: 'Bắt đầu lộ trình',
-                        description: 'Chọn giọng miền từ trang Lộ Trình.',
+                        description: 'Chọn giọng miền từ trang Lộ TRình.',
                         progress: 0,
                         id: null,
                         locked: false
@@ -147,7 +151,19 @@ export default function LearnerDashboardPage() {
                             <motion.div
                                 whileHover={{ y: -4 }}
                                 className={clsx("bg-white rounded-3xl p-6 border-b-[6px] border border-gray-100 cursor-pointer shadow-sm transition-all group", currentLesson.locked ? 'border-b-gray-200 opacity-80' : 'border-b-gray-200 hover:border-b-brand-green')}
-                                onClick={() => !currentLesson.locked && navigate('/learner/roadmap')}
+                                onClick={() => {
+                                    if (!currentLesson.locked) {
+                                        navigate('/learner/roadmap', {
+                                            state: {
+                                                roadmapState: {
+                                                    selectedDialect: activeDialect,
+                                                    step: 'quizzes',
+                                                    selectedChapter: activeLevelObj
+                                                }
+                                            }
+                                        });
+                                    }
+                                }}
                             >
                                 <div className="flex sm:flex-row flex-col gap-6 items-center">
                                     <div className={clsx("w-24 h-24 shrink-0 rounded-full flex items-center justify-center border-4", currentLesson.locked ? 'bg-gray-100 border-gray-200' : 'bg-brand-green/10 border-brand-green/20')}>
@@ -188,7 +204,7 @@ export default function LearnerDashboardPage() {
                                     {recentBadges.map((b, i) => (
                                         <motion.div key={b.id || i} whileHover={{ y: -4 }} className="flex flex-col items-center bg-white p-6 rounded-3xl border-2 border-yellow-400 shadow-sm transition-shadow hover:shadow-lg">
                                             <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3 bg-brand-yellow text-yellow-700 overflow-hidden shadow-inner">
-                                                {b.badge?.imageUrl || b.imageUrl ? <img src={b.badge?.imageUrl || b.imageUrl} alt={b.badge?.name || b.name} className="w-full h-full object-cover" /> : <TrophyOutlined style={{fontSize: 28}} />}
+                                                {b.badge?.imageUrl || b.imageUrl ? <img src={b.badge?.imageUrl || b.imageUrl} alt={b.badge?.name || b.name} className="w-full h-full object-cover" /> : <TrophyOutlined style={{ fontSize: 28 }} />}
                                             </div>
                                             <div className="font-extrabold text-gray-700 text-sm text-center line-clamp-2">{b.badge?.name || b.name || 'Huy hiệu'}</div>
                                         </motion.div>

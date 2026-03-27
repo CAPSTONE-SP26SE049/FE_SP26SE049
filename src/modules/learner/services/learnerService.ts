@@ -32,6 +32,9 @@ export interface Level {
     aiThreshold?: number;
     audioUrl?: string;
     status?: string;
+    totalQuizzes?: number;
+    completedQuizzes?: number;
+    progressPercentage?: number;
 }
 
 // Chapter is just a Level without the lock/unlock concept
@@ -58,6 +61,8 @@ export interface Quiz {
     questionCount?: number;
     questions?: QuizQuestion[];
     status?: string;
+    isCompleted?: boolean;
+    starsEarned?: number;
 }
 
 export const learnerService = {

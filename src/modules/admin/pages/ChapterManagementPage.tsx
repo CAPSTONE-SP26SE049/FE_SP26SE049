@@ -1,11 +1,37 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import dayjs from 'dayjs';
-import { useLocation } from 'react-router-dom';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import {
+    Card, Table, message, Tag, Form, Input, InputNumber,
+    Select, Button, Modal, Tooltip, Space, Row, Col,
+    Popconfirm, Typography
+} from 'antd';
+import {
+    PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined,
+    UploadOutlined, DeleteOutlined, ReadOutlined, SoundOutlined,
+    AudioOutlined, ArrowLeftOutlined, TrophyOutlined, ArrowRightOutlined
+} from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 
+const { Title, Text } = Typography;
+
+const SKILL_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+    READING: { label: 'Đọc hiểu', color: '#2563eb', icon: <ReadOutlined /> },
+    LISTENING: { label: 'Nghe hiểu', color: '#7c3aed', icon: <SoundOutlined /> },
+    WRITING: { label: 'Viết', color: '#059669', icon: <EditOutlined /> },
+    SPEAKING: { label: 'Nói', color: '#ea580c', icon: <AudioOutlined /> },
+};
+
+const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
+    BEGINNER: { label: 'Cơ bản', color: 'green' },
+    INTERMEDIATE: { label: 'Trung bình', color: 'gold' },
+    ADVANCED: { label: 'Nâng cao', color: 'red' },
+};
+
 const AdminChapterManagementPage: React.FC = () => {
+    const [viewMode, setViewMode] = useState<'CHAPTERS' | 'QUIZZES' | 'QUIZ_DETAIL'>('CHAPTERS');
+    const [selectedChapter, setSelectedChapter] = useState<any | null>(null);
+    const [selectedQuiz, setSelectedQuiz] = useState<any | null>(null);
+
+    // --- Chapter State ---
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -13,1236 +39,590 @@ const AdminChapterManagementPage: React.FC = () => {
     const [updating, setUpdating] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editingLevel, setEditingLevel] = useState<any | null>(null);
-    const [errorTags, setErrorTags] = useState<any[]>([]);
+    const [selectedLevel, setSelectedLevel] = useState<any | null>(null);
+
+    // --- Quiz State ---
+    const [quizzes, setQuizzes] = useState<any[]>([]);
+    const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+    const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
+    const [creatingQuiz, setCreatingQuiz] = useState(false);
+
+    // --- Challenge State ---
+    const [quizChallenges, setQuizChallenges] = useState<any[]>([]);
+    const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
+    const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
+    const [availableChallenges, setAvailableChallenges] = useState<any[]>([]);
+    const [loadingBank, setLoadingBank] = useState(false);
+    const [selectedBankIds, setSelectedBankIds] = useState<string[]>([]);
+
+    // --- Forms ---
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
-    const [assignmentForm] = Form.useForm();
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [assigning, setAssigning] = useState(false);
-    const [assignLevels, setAssignLevels] = useState<any[]>([]);
-    const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
-    const [creatingQuiz, setCreatingQuiz] = useState(false);
-    const [selectedLevelForQuiz, setSelectedLevelForQuiz] = useState<any | null>(null);
-    const location = useLocation();
 
-    // --- Filter & Sort State ---
+    // --- Filter State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
 
-    // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
-    const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
-    const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-    const [selectedLevelForDetail, setSelectedLevelForDetail] = useState<any | null>(null);
-
-    const fetchLevels = async () => {
-        setLoading(true);
-        try {
-            const response: any = await adminService.getLevelsForSelection();
-            if (response && (response.status === 'success' || response.data)) {
-                setLevels(response.data || response);
-            } else {
-                setLevels(Array.isArray(response) ? response : []);
-            }
-        } catch (error) {
-            console.error('Error fetching levels:', error);
-            message.error('Không thể tải danh sách chương học');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const REGION_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-        NORTH: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
-        SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
-        CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
-    };
-
-    const fetchDialects = async () => {
-        try {
-            const response: any = await adminService.getDialects();
-            if (response && (response.status === 'success' || response.data)) {
-                setDialects(response.data || response);
-            } else {
-                setDialects(Array.isArray(response) ? response : []);
-            }
-        } catch (error) {
-            console.error('Error fetching dialects:', error);
-            message.error('Không thể tải danh sách phương ngữ');
-        }
-    };
-
-    const fetchErrorTags = async (dialectId?: string) => {
-        if (!dialectId) {
-            setErrorTags([]);
-            return;
-        }
-        try {
-            const response: any = await adminService.getErrorTags(dialectId);
-            if (response && (response.status === 'success' || response.data)) {
-                setErrorTags(response.data || response);
-            } else {
-                setErrorTags(Array.isArray(response) ? response : []);
-            }
-        } catch (error) {
-            console.error('Error fetching error tags:', error);
-            message.error('Không thể tải danh sách lỗi');
-            setErrorTags([]);
-        }
-    };
 
     useEffect(() => {
         fetchLevels();
         fetchDialects();
     }, []);
 
+    const fetchLevels = async () => {
+        setLoading(true);
+        try {
+            const response = await adminService.getLevels();
+            setLevels(response.data || []);
+        } catch (error) {
+            message.error('Không thể tải danh sách chương học');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDialects = async () => {
+        try {
+            const response = await adminService.getDialects();
+            setDialects(response.data || []);
+        } catch (error) {
+            console.error('Lỗi tải phương ngữ:', error);
+        }
+    };
+
+    const fetchQuizzes = async (chapterId: string) => {
+        setLoadingQuizzes(true);
+        try {
+            const response = await adminService.getQuizzesByLevel(chapterId);
+            setQuizzes(response.data || []);
+        } catch (error) {
+            message.error('Không thể tải danh sách bài tập');
+        } finally {
+            setLoadingQuizzes(false);
+        }
+    };
+
+    const fetchQuizChallenges = async (quizId: string) => {
+        setLoadingQuizChallenges(true);
+        try {
+            const response = await adminService.getQuizChallenges(quizId);
+            setQuizChallenges(response.data || []);
+        } catch (error) {
+            message.error('Không thể tải danh sách thử thách');
+        } finally {
+            setLoadingQuizChallenges(false);
+        }
+    };
+
+    const fetchChallengeBank = async (skillType: string) => {
+        setLoadingBank(true);
+        try {
+            const response = await adminService.getChallengeBank(skillType);
+            setAvailableChallenges(response.data || []);
+        } catch (error) {
+            message.error('Không thể tải ngân hàng thử thách');
+        } finally {
+            setLoadingBank(false);
+        }
+    };
+
     const handleCreateLevel = async (values: any) => {
         setCreating(true);
         try {
             await adminService.createLevel({
-                dialectId: values.dialectId,
-                levelOrder: values.levelOrder || 1,
-                name: values.name,
-                description: values.description || '',
-                minStarsRequired: values.minStarsRequired,
-                errorTagId: values.errorTagId || null,
-                aiThreshold: values.aiThreshold || 75,
+                ...values,
+                levelOrder: levels.length + 1,
+                status: 'APPROVED'
             });
-            message.success('Tạo chương học thành công');
-            form.resetFields();
+            message.success('Đã thêm chương học mới');
             setIsCreateModalOpen(false);
+            form.resetFields();
             fetchLevels();
-        } catch (error: any) {
-            console.error('Error creating level:', error);
-            message.error(error?.message || 'Không thể tạo chương học');
+        } catch (error) {
+            message.error('Lỗi khi thêm chương học');
         } finally {
             setCreating(false);
         }
     };
 
-    const handleEditLevel = (record: any) => {
-        setEditingLevel(record);
-        setIsEditModalOpen(true);
-        editForm.setFieldsValue({
-            name: record.name,
-            dialectId: record.dialectId || record.dialect?.id,
-            levelOrder: record.levelOrder,
-            minStarsRequired: record.minStarsRequired,
-            aiThreshold: record.aiThreshold,
-            errorTagId: record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
-            description: record.description || '',
-            comment: record.rejectionReason || '',
-        });
-        fetchErrorTags(record.dialectId || record.dialect?.id);
-    };
-
     const handleUpdateLevel = async (values: any) => {
-        if (!editingLevel?.id) return;
+        if (!selectedLevel) return;
         setUpdating(true);
         try {
-            await adminService.updateLevel(editingLevel.id, {
-                name: values.name,
-                description: values.description,
-                dialectId: values.dialectId ?? editingLevel.dialectId ?? editingLevel.dialect?.id,
-                levelOrder: values.levelOrder || editingLevel.levelOrder || 1,
-                minStarsRequired: values.minStarsRequired,
-                errorTagId: values.errorTagId || (editingLevel.errorTag && typeof editingLevel.errorTag === 'object' ? editingLevel.errorTag.id : editingLevel.errorTag) || null,
-                aiThreshold: values.aiThreshold || editingLevel.aiThreshold || 75,
-                status: editingLevel.status || 'APPROVED',
-                rejectionReason: editingLevel.rejectionReason ?? null,
-                audioUrl: editingLevel.audioUrl ?? null,
-                comment: values.comment,
-            });
-            message.success('Cập nhật chương học thành công');
-            editForm.resetFields();
+            await adminService.updateLevel(selectedLevel.id, values);
+            message.success('Đã cập nhật chương học');
             setIsEditModalOpen(false);
-            setEditingLevel(null);
             fetchLevels();
-        } catch (error: any) {
-            console.error('Error updating level:', error);
-            message.error(error?.message || 'Không thể cập nhật chương học');
+        } catch (error) {
+            message.error('Lỗi khi cập nhật chương học');
         } finally {
             setUpdating(false);
         }
     };
 
-    const handleOpenCreateQuiz = (record: any) => {
-        setSelectedLevelForQuiz(record);
-        quizForm.setFieldsValue({
-            title: record?.name ? `Quiz ${record.name}` : '',
-            passingScore: 80,
-            timeLimitMinutes: 15,
-            pointsPerQuestion: 10,
-            readingCount: 0,
-            listeningCount: 0,
-            speakingCount: 0,
-            writingCount: 0,
-        });
-        setIsCreateQuizModalOpen(true);
+    const handleDeleteLevel = async (id: string) => {
+        try {
+            await adminService.deleteLevel(id);
+            message.success('Đã xóa chương học');
+            fetchLevels();
+        } catch (error) {
+            message.error('Lỗi khi xóa chương học');
+        }
     };
 
     const handleCreateQuiz = async (values: any) => {
-        if (!selectedLevelForQuiz?.id) return;
+        if (!selectedChapter) return;
         setCreatingQuiz(true);
         try {
-            const readingCount = Number(values.readingCount || 0);
-            const listeningCount = Number(values.listeningCount || 0);
-            const speakingCount = Number(values.speakingCount || 0);
-            const writingCount = Number(values.writingCount || 0);
-            const questionCount = readingCount + listeningCount + speakingCount + writingCount;
-            if (questionCount <= 0) {
-                message.error('Vui lòng nhập số câu cho ít nhất một kỹ năng');
-                setCreatingQuiz(false);
-                return;
-            }
-
-            const buildQuestions = (skillType: string, count: number) => {
-                if (count <= 0) return [];
-                return Array.from({ length: count }, (_, index) => ({
-                    skillType,
-                    difficulty: values.difficulty,
-                    questionOrder: index + 1,
-                    points: values.pointsPerQuestion,
-                    challengeId: undefined,
-                }));
-            };
-
-            const questions = [
-                ...buildQuestions('READING', readingCount),
-                ...buildQuestions('LISTENING', listeningCount),
-                ...buildQuestions('SPEAKING', speakingCount),
-                ...buildQuestions('WRITING', writingCount),
-            ].map((question, index) => ({
-                ...question,
-                questionOrder: index + 1,
-            }));
-
             await adminService.createQuiz({
-                levelId: selectedLevelForQuiz.id,
-                title: values.title,
-                description: values.description,
-                instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
-                questionCount,
-                comment: values.comment,
-                questions,
+                ...values,
+                levelId: selectedChapter.id
             });
-            message.success('Tạo quiz thành công');
-            quizForm.resetFields();
+            message.success('Đã thêm bài tập mới');
             setIsCreateQuizModalOpen(false);
-            setSelectedLevelForQuiz(null);
-        } catch (error: any) {
-            console.error('Error creating quiz:', error);
-            message.error(error?.message || 'Không thể tạo quiz');
+            quizForm.resetFields();
+            fetchQuizzes(selectedChapter.id);
+        } catch (error) {
+            message.error('Lỗi khi thêm bài tập');
         } finally {
             setCreatingQuiz(false);
         }
     };
 
-    const loadAssignLevels = async () => {
-        setAssigning(true);
+    const handleDeleteQuiz = async (quizId: string) => {
         try {
-            const response: any = await adminService.getLevelsForSelection();
-            const list = response?.data || response || [];
-            setAssignLevels(Array.isArray(list) ? list : []);
+            await adminService.deleteQuiz(quizId);
+            message.success('Đã xóa bài tập');
+            if (selectedChapter) fetchQuizzes(selectedChapter.id);
         } catch (error) {
-            console.error('Error loading levels for assignment:', error);
-            message.error('Không thể tải danh sách chương học để gán');
-            setAssignLevels([]);
-        } finally {
-            setAssigning(false);
+            message.error('Lỗi khi xóa bài tập');
         }
     };
 
-    const handleOpenAssignModal = () => {
-        setIsAssignModalOpen(true);
-        assignmentForm.resetFields();
-        assignmentForm.setFieldsValue({
-            classroomId: fromClassroomId,
-            status: 'OPEN',
-            dueDate: dayjs().add(1, 'day'),
-        });
-        loadAssignLevels();
-    };
-
-    const handleCreateAssignment = async (values: any) => {
+    const handleAssignChallenges = async () => {
+        if (!selectedQuiz || selectedBankIds.length === 0) return;
+        setLoadingBank(true);
         try {
-            setAssigning(true);
-            await adminService.createAssignment({
-                classroomId: values.classroomId,
-                learningUnitId: values.learningUnitId,
-                dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
-                status: values.status || 'OPEN',
-                description: values.description,
-            });
-            message.success('Gán chương học thành công');
-            setIsAssignModalOpen(false);
-            assignmentForm.resetFields();
-        } catch (error: any) {
-            console.error('Error creating assignment:', error);
-            message.error(error?.message || 'Không thể gán chương học');
+            await adminService.assignChallengesToQuiz(selectedQuiz.id, selectedBankIds);
+            message.success(`Đã thêm ${selectedBankIds.length} thử thách`);
+            setIsChallengeModalOpen(false);
+            setSelectedBankIds([]);
+            fetchQuizChallenges(selectedQuiz.id);
+        } catch (error) {
+            message.error('Lỗi khi gán thử thách');
         } finally {
-            setAssigning(false);
+            setLoadingBank(false);
         }
     };
 
-    const handleRemoveAssignment = async (assignmentId: string) => {
-        if (!assignmentId) {
-            message.error('Không tìm thấy ID assignment');
-            return;
-        }
+    const handleRemoveChallenge = async (challengeId: string) => {
+        if (!selectedQuiz) return;
         try {
-            await adminService.deleteAssignment(assignmentId);
-            message.success('Đã gỡ chương học khỏi lớp');
-            setRemovedAssignmentIds(prev => [...prev, assignmentId]);
-        } catch (error: any) {
-            console.error('Error deleting assignment:', error);
-            message.error(error?.response?.data?.message || error?.message || 'Không thể gỡ chương học');
+            await adminService.removeChallengeFromQuiz(selectedQuiz.id, challengeId);
+            message.success('Đã gỡ thử thách');
+            fetchQuizChallenges(selectedQuiz.id);
+        } catch (error) {
+            message.error('Lỗi khi gỡ thử thách');
         }
     };
 
-    // --- Helper to resolve region key from dialectId ---
     const getRegionKey = (dialectId: string) => {
-        const dialect = dialects.find((item) => item.id === dialectId);
-        return (dialect?.name || '').toUpperCase();
+        const d = dialects.find((item: any) => item.id === dialectId);
+        if (!d) return 'UNKNOWN';
+        const name = (d.name || '').toUpperCase();
+        if (name.includes('BAC') || name.includes('NORTH')) return 'BAC';
+        if (name.includes('TRUNG') || name.includes('CENTRAL')) return 'TRUNG';
+        if (name.includes('NAM') || name.includes('SOUTH')) return 'NAM';
+        return name;
     };
 
-    const fetchedAssignments = (location.state as any)?.fetchedAssignments as any[] | undefined;
-    const fromClassroomName = (location.state as any)?.fromClassroomName as string | undefined;
-    const fromClassroomId = (location.state as any)?.fromClassroomId as string | undefined;
-
-    const mergedLevels = useMemo(() => {
-        if (!fetchedAssignments || fetchedAssignments.length === 0) return levels;
-
-        const mappedFromAssignments = fetchedAssignments.map((item: any) => {
-            // Parse metadataJson if available
-            let meta: any = {};
-            if (item.metadataJson) {
-                try {
-                    meta = typeof item.metadataJson === 'string' ? JSON.parse(item.metadataJson) : item.metadataJson;
-                } catch (e) { /* ignore */ }
-            }
-
-            return {
-                id: item.levelId || item.id,
-                name: item.levelName || 'Không có tên chương',
-                dialectId: item.dialectId,
-                description: meta.description || item.description || '',
-                levelOrder: meta.level_order ?? item.levelOrder ?? null,
-                minStarsRequired: meta.min_stars_required ?? item.minStarsRequired ?? null,
-                aiThreshold: meta.ai_threshold ?? item.aiThreshold ?? null,
-                status: meta.status || item.status || 'APPROVED',
-                createdAt: item.createdAt,
-                dueDate: item.dueDate,
-                _fromAssignment: true,
-                _assignmentId: item.id,
-            };
-        });
-
-        return mappedFromAssignments.filter((item: any) => !removedAssignmentIds.includes(item._assignmentId));
-    }, [levels, fetchedAssignments, removedAssignmentIds]);
-
-    // --- Filtered & Sorted data ---
     const filteredLevels = useMemo(() => {
-        let data = [...mergedLevels];
-
-        // Search by name
-        if (searchText.trim()) {
-            const lower = searchText.trim().toLowerCase();
-            data = data.filter((item) =>
-                (item.name || '').toLowerCase().includes(lower)
-            );
+        let data = [...levels];
+        if (searchText) {
+            data = data.filter(l => (l.name || '').toLowerCase().includes(searchText.toLowerCase()));
         }
-
-        // Filter by region
         if (filterRegion) {
-            data = data.filter((item) => {
-                const regionKey = getRegionKey(item.dialectId);
-                return regionKey === filterRegion;
-            });
+            data = data.filter(l => getRegionKey(l.dialectId) === filterRegion);
         }
-
         return data;
-    }, [mergedLevels, searchText, filterRegion, dialects]);
+    }, [levels, searchText, filterRegion, dialects]);
 
-    const activeFilterCount = [searchText.trim(), filterRegion].filter(Boolean).length;
-
-    const handleResetFilters = () => {
-        setSearchText('');
-        setFilterRegion(undefined);
-    };
-
-    // ============ IMPORT / EXPORT ============
-    const handleDownloadTemplate = () => {
-        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
-        const sampleRows = [
-            'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
-            'Nhóm chữ GI,"Phân biệt GI với D",3,75',
-            'Nhóm chữ R (Uốn lưỡi),"Luyện R uốn lưỡi",3,75',
-        ];
-        const csvContent = [headers, ...sampleRows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'template_chuong_hoc.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success('Đã tải template mẫu');
-    };
-
-    const handleImportCSV = async () => {
-        if (!importFile) { message.warning('Vui lòng chọn file CSV'); return; }
-        setImporting(true);
-        const result = { success: 0, failed: 0, errors: [] as string[] };
-        try {
-            const text = await importFile.text();
-            const lines = text.split(/\r?\n/).filter(l => l.trim());
-            if (lines.length < 2) { message.error('File rỗng hoặc không có dữ liệu'); setImporting(false); return; }
-
-            // Find SOUTH dialect
-            const southDialect = dialects.find((d: any) => (d.name || '').toUpperCase() === 'SOUTH');
-            if (!southDialect) { message.error('Không tìm thấy phương ngữ Miền Nam (SOUTH) trong hệ thống'); setImporting(false); return; }
-
-            // Parse CSV rows (skip header)
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                // Simple CSV parse supporting quoted strings
-                const cols: string[] = [];
-                let current = '';
-                let inQuotes = false;
-                for (const ch of line) {
-                    if (ch === '"') { inQuotes = !inQuotes; }
-                    else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
-                    else { current += ch; }
-                }
-                cols.push(current.trim());
-
-                const name = cols[0];
-                const description = cols[1] || '';
-                const minStars = parseInt(cols[2]) || 3;
-                const aiThreshold = parseInt(cols[3]) || 75;
-
-                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
-
-                // Check duplicate
-                const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
-                if (exists) { result.errors.push(`Dòng ${i + 1}: '${name}' đã tồn tại`); result.failed++; continue; }
-
-                try {
-                    await adminService.createLevel({
-                        dialectId: southDialect.id,
-                        levelOrder: levels.length + result.success + 1,
-                        name,
-                        description,
-                        minStarsRequired: minStars,
-                        aiThreshold,
-                    });
-                    result.success++;
-                } catch (err: any) {
-                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo chương'}`);
-                    result.failed++;
-                }
-            }
-            setImportResult(result);
-            if (result.success > 0) {
-                message.success(`Import thành công ${result.success} chương học`);
-                fetchLevels();
-            }
-            if (result.failed > 0) {
-                message.warning(`${result.failed} dòng bị lỗi`);
-            }
-        } catch (err) {
-            message.error('Lỗi đọc file CSV');
-        } finally {
-            setImporting(false);
-        }
-    };
-
-    const handleExportCSV = () => {
-        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
-        const rows = filteredLevels.map((item: any) => {
-            const regionKey = getRegionKey(item.dialectId);
-            const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
-            const desc = (item.description || item.metadataJson?.description || '').replace(/"/g, '""');
-            return `"${item.name || ''}","${desc}","${regionLabel}","${item.status || 'DRAFT'}",${item.minStarsRequired || 3}`;
-        });
-        const csvContent = [headers, ...rows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `chuong_hoc_export_${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} chương học`);
-    };
-
-    const columns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 70,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => index + 1,
-        },
-        {
-            title: 'Vùng',
-            dataIndex: 'dialectId',
-            key: 'dialectId',
-            width: 140,
-            sorter: (a: any, b: any) => {
-                const aRegion = getRegionKey(a.dialectId);
-                const bRegion = getRegionKey(b.dialectId);
-                return aRegion.localeCompare(bRegion);
-            },
-            render: (dialectId: string) => {
-                const regionKey = getRegionKey(dialectId);
-                const info = REGION_LABEL[regionKey];
-                if (!info) return <Tag>Không có</Tag>;
-                return (
-                    <span
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: info.color,
-                            background: info.bg,
-                            border: `1px solid ${info.color}30`,
-                        }}
-                    >
-                        {info.label}
-                    </span>
-                );
-            },
-        },
+    const chapterColumns = [
         {
             title: 'Tên chương học',
             dataIndex: 'name',
             key: 'name',
-            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
-            render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
+            render: (text: string, record: any) => (
+                <Space direction="vertical" size={0}>
+                    <Text strong>{text}</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {record.metadata_json?.description || record.description || 'Không có mô tả'}
+                    </Text>
+                </Space>
+            ),
         },
         {
-            title: 'Hành Động',
-            key: 'actions',
-            width: 180,
-            fixed: 'right' as const,
+            title: 'Vùng miền',
+            dataIndex: 'dialectId',
+            key: 'dialectId',
+            render: (dialectId: string) => {
+                const region = getRegionKey(dialectId);
+                const color = region === 'BAC' ? 'red' : region === 'TRUNG' ? 'gold' : 'blue';
+                return <Tag color={color}>{region}</Tag>;
+            },
+        },
+        {
+            title: 'Yêu cầu sao',
+            dataIndex: ['metadata_json', 'min_stars_required'],
+            key: 'min_stars_required',
+            render: (stars: any, record: any) => {
+                const val = stars ?? record.minStarsRequired ?? 0;
+                return <Space><TrophyOutlined style={{ color: '#faad14' }} /> {val}</Space>;
+            },
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            width: 150,
             align: 'center' as const,
             render: (_: any, record: any) => (
                 <Space size="small">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            icon={<EyeOutlined />}
-                            onClick={() => {
-                                setSelectedLevelForDetail(record);
-                                setIsDetailDrawerOpen(true);
-                            }}
-                            style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff' }}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Tạo quiz">
-                        <Button icon={<FileAddOutlined />} onClick={() => handleOpenCreateQuiz(record)} />
-                    </Tooltip>
-                    <Tooltip title="Chỉnh sửa">
-                        <Button icon={<EditOutlined />} onClick={() => handleEditLevel(record)} />
-                    </Tooltip>
-                    {fromClassroomId && record._fromAssignment && (
-                        <Popconfirm
-                            title="Gỡ chương học khỏi lớp?"
-                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
-                            onConfirm={() => handleRemoveAssignment(record._assignmentId)}
-                            okText="Gỡ"
-                            cancelText="Hủy"
-                            okButtonProps={{ danger: true, style: { background: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
-                        >
-                            <Tooltip title="Gỡ khỏi lớp">
-                                <Button icon={<DeleteOutlined />} danger />
-                            </Tooltip>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
-        }
-    ];
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
-                    {fromClassroomName ? (
-                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
-                        </div>
-                    ) : null}
-                </div>
-                <Space>
-                    <Button
-                        icon={<DownloadOutlined />}
-                        onClick={handleDownloadTemplate}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Template
-                    </Button>
-                    <Button
-                        icon={<UploadOutlined />}
-                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true); }}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Import
-                    </Button>
-                    <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={handleExportCSV}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Export
-                    </Button>
-                    {fromClassroomId ? (
+                    <Tooltip title="Quản lý bài tập">
                         <Button
                             type="primary"
-                            onClick={handleOpenAssignModal}
-                            loading={assigning}
-                            style={{
-                                height: '40px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                            icon={<FileAddOutlined />}
+                            size="middle"
+                            onClick={() => {
+                                setSelectedChapter(record);
+                                setViewMode('QUIZZES');
+                                fetchQuizzes(record.id);
                             }}
-                        >
-                            Gán chương vào lớp
-                        </Button>
-                    ) : null}
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsCreateModalOpen(true)}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
-                            border: 'none',
-                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                        }}
-                    >
-                        Thêm Chương Học
-                    </Button>
-                </Space>
-            </div>
-
-            {/* ====== FILTER & SORT TOOLBAR ====== */}
-            <Card
-                style={{
-                    borderRadius: 14,
-                    marginBottom: 0,
-                    boxShadow: '0 2px 12px rgba(37,99,235,0.06)',
-                    border: '1px solid #e2e8f0',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
-                }}
-                styles={{ body: { padding: '16px 20px' } }}
-            >
-                <Row gutter={[16, 12]} align="middle">
-                    <Col xs={24} sm={24} md={8} lg={7}>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="Tìm kiếm theo tên chương học..."
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
-                            style={{ borderRadius: 8, height: 38 }}
                         />
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc theo vùng"
-                            value={filterRegion}
-                            onChange={(val) => setFilterRegion(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
+                    </Tooltip>
+                    <Tooltip title="Chỉnh sửa">
+                        <Button
+                            type="primary"
+                            icon={<EditOutlined />}
+                            size="middle"
+                            onClick={() => {
+                                setSelectedLevel(record);
+                                editForm.setFieldsValue({
+                                    name: record.name,
+                                    dialectId: record.dialectId,
+                                    description: record.metadata_json?.description || record.description,
+                                    minStarsRequired: record.metadata_json?.min_stars_required || record.minStarsRequired,
+                                });
+                                setIsEditModalOpen(true);
+                            }}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xóa chương học">
+                        <Popconfirm 
+                            title="Xóa chương này?" 
+                            description="Tất cả bài tập trong chương cũng sẽ bị ảnh hưởng."
+                            onConfirm={() => handleDeleteLevel(record.id)}
+                            okText="Xóa"
+                            cancelText="Hủy"
                         >
-                            <Select.Option value="NORTH">
-                                <span style={{ color: '#1d4ed8', fontWeight: 600 }}>🔵 Miền Bắc</span>
-                            </Select.Option>
-                            <Select.Option value="CENTRAL">
-                                <span style={{ color: '#b45309', fontWeight: 600 }}>🟠 Miền Trung</span>
-                            </Select.Option>
-                            <Select.Option value="SOUTH">
-                                <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
+                            <Button type="primary" danger icon={<DeleteOutlined />} size="middle" />
+                        </Popconfirm>
+                    </Tooltip>
+                </Space>
+            ),
+        },
+    ];
+
+    const quizColumns = [
+        {
+            title: 'Tiêu đề',
+            dataIndex: 'title',
+            key: 'title',
+            render: (text: string, record: any) => (
+                <Space direction="vertical" size={0}>
+                    <Text strong>{text}</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{record.description}</Text>
+                </Space>
+            ),
+        },
+        {
+            title: 'Kỹ năng',
+            dataIndex: 'skillType',
+            key: 'skillType',
+            render: (type: string) => {
+                const config = SKILL_CONFIG[type] || { label: type, color: 'default', icon: <ReadOutlined /> };
+                return <Tag color={config.color} icon={config.icon}>{config.label}</Tag>;
+            },
+        },
+        {
+            title: 'Độ khó',
+            dataIndex: 'difficultyTag',
+            key: 'difficultyTag',
+            render: (tag: string) => {
+                const config = DIFFICULTY_CONFIG[tag] || { label: tag, color: 'default' };
+                return <Tag color={config.color}>{config.label}</Tag>;
+            },
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            width: 120,
+            align: 'center' as const,
+            render: (_: any, record: any) => (
+                <Space size="middle">
+                    <Tooltip title="Xem chi tiết">
+                        <Button
+                            type="primary"
+                            icon={<ArrowRightOutlined />}
+                            onClick={() => {
+                                setSelectedQuiz(record);
+                                setViewMode('QUIZ_DETAIL');
+                                fetchQuizChallenges(record.id);
+                            }}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xóa bài tập">
+                        <Popconfirm title="Xóa bài tập này?" onConfirm={() => handleDeleteQuiz(record.id)}>
+                            <Button danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                    </Tooltip>
+                </Space>
+            ),
+        },
+    ];
+
+    const challengeColumns = [
+        {
+            title: 'Nội dung',
+            dataIndex: 'contentText',
+            key: 'contentText',
+            ellipsis: true,
+        },
+        {
+            title: 'Loại',
+            dataIndex: 'type',
+            key: 'type',
+            render: (type: string) => <Tag color="blue">{type}</Tag>,
+        },
+        {
+            title: 'Âm thanh',
+            dataIndex: 'referenceAudioUrl',
+            key: 'referenceAudioUrl',
+            render: (url: string) => url ? <Tag color="cyan">Đã có</Tag> : <Tag>Chưa có</Tag>,
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            width: 100,
+            align: 'center' as const,
+            render: (_: any, record: any) => (
+                <Tooltip title="Gỡ khỏi bài tập">
+                    <Popconfirm title="Gỡ thử thách?" onConfirm={() => handleRemoveChallenge(record.id)}>
+                        <Button danger type="text" icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                </Tooltip>
+            ),
+        },
+    ];
+
+    const renderChapterView = () => (
+        <div className="space-y-6">
+            <Card style={{ marginBottom: '24px' }} styles={{ body: { padding: '16px' } }}>
+                <Row gutter={[16, 16]} align="middle" justify="space-between">
+                    <Col xs={24} sm={16} md={18}>
+                        <Space size="middle" style={{ width: '100%' }}>
+                            <Input
+                                prefix={<SearchOutlined />}
+                                placeholder="Tìm kiếm chương..."
+                                value={searchText}
+                                onChange={e => setSearchText(e.target.value)}
+                                style={{ width: 300 }}
+                            />
+                            <Select
+                                style={{ width: 180 }}
+                                placeholder="Vùng miền"
+                                allowClear
+                                onChange={val => setFilterRegion(val)}
+                            >
+                                <Select.Option value="BAC">Miền Bắc</Select.Option>
+                                <Select.Option value="TRUNG">Miền Trung</Select.Option>
+                                <Select.Option value="NAM">Miền Nam</Select.Option>
+                            </Select>
+                        </Space>
                     </Col>
-                    <Col xs={24} sm={24} md={6} lg={7}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {activeFilterCount > 0 && (
-                                <Button
-                                    icon={<ClearOutlined />}
-                                    onClick={handleResetFilters}
-                                    style={{ borderRadius: 8, height: 38, borderColor: '#e2e8f0' }}
-                                >
-                                    Xóa bộ lọc
-                                </Button>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {activeFilterCount > 0 ? (
-                                    <Badge
-                                        count={activeFilterCount}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            fontSize: 11,
-                                            height: 20,
-                                            lineHeight: '20px',
-                                            borderRadius: 10,
-                                            padding: '0 7px',
-                                        }}
-                                    />
-                                ) : null}
-                                <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{mergedLevels.length} chương
-                                </span>
-                            </div>
-                            <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
-                                <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
-                            </Tooltip>
-                        </div>
+                    <Col xs={24} sm={8} md={6} style={{ textAlign: 'right' }}>
+                        <Space>
+                            <Button type="primary" icon={<UploadOutlined />} onClick={() => setIsImportModalOpen(true)}>Import</Button>
+                            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateModalOpen(true)}>Thêm chương</Button>
+                        </Space>
                     </Col>
                 </Row>
             </Card>
+            <Table
+                dataSource={filteredLevels}
+                columns={chapterColumns}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 10 }}
+            />
+        </div>
+    );
 
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}
-                open={isCreateModalOpen}
-                onCancel={() => {
-                    form.resetFields();
-                    setIsCreateModalOpen(false);
-                }}
-                onOk={() => form.submit()}
-                confirmLoading={creating}
-                okText="Xác Nhận"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
-                centered
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleCreateLevel}
-                    initialValues={{ aiThreshold: 75, minStarsRequired: 3 }}
-                >
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Tên chương học"
-                            name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
-                        >
-                            <Input placeholder="Ví dụ: Level 1" />
-                        </Form.Item>
-                        <Form.Item
-                            label="Phương ngữ"
-                            name="dialectId"
-                            rules={[{ required: true, message: 'Vui lòng chọn phương ngữ' }]}
-                        >
-                            <Select
-                                placeholder="Chọn phương ngữ"
-                                options={dialects.map((dialect: any) => {
-                                    const regionKey = (dialect.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: dialect.id,
-                                        label: dialect.description || info?.label || dialect.name || dialect.code || dialect.id,
-                                    };
-                                })}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            label="Thứ tự level"
-                            name="levelOrder"
-                            hidden
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
-                            <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Error Tag ID" name="errorTagId" hidden>
-                            <Input placeholder="ID error tag (nếu có)" />
-                        </Form.Item>
-                    </div>
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+    const renderQuizView = () => (
+        <div className="space-y-6">
+            <Button icon={<ArrowLeftOutlined />} onClick={() => setViewMode('CHAPTERS')}>Quay lại</Button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
+                <Title level={2} style={{ margin: 0 }}>Bài tập của {selectedChapter?.name}</Title>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)}>Thêm bài tập</Button>
+            </div>
+            <Table
+                dataSource={quizzes}
+                columns={quizColumns}
+                rowKey="id"
+                loading={loadingQuizzes}
+            />
+        </div>
+    );
 
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Gán chương học vào lớp</span>}
-                open={isAssignModalOpen}
-                onCancel={() => {
-                    assignmentForm.resetFields();
-                    setIsAssignModalOpen(false);
-                }}
-                onOk={() => assignmentForm.submit()}
-                confirmLoading={assigning}
-                okText="Gán chương"
-                okButtonProps={{
-                    style: { background: '#059669', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy"
-                centered
-            >
-                <Form
-                    form={assignmentForm}
-                    layout="vertical"
-                    onFinish={handleCreateAssignment}
-                >
-                    <Form.Item name="classroomId" hidden>
-                        <Input />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Chọn chương học hiện có"
-                        name="learningUnitId"
-                        rules={[{ required: true, message: 'Vui lòng chọn chương học' }]}
-                    >
-                        <Select
-                            loading={assigning}
-                            placeholder="Chọn chương học để gán"
-                            showSearch
-                            optionFilterProp="label"
-                            options={assignLevels.map((item: any) => ({
-                                value: item.id,
-                                label: item.name || item.levelName || item.id,
-                            }))}
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Hạn nộp"
-                        name="dueDate"
-                        rules={[{ required: true, message: 'Vui lòng chọn hạn nộp' }]}
-                    >
-                        <DatePicker
-                            style={{ width: '100%' }}
-                            showTime
-                            format="DD/MM/YYYY HH:mm"
-                        />
-                    </Form.Item>
-
-                    <Form.Item label="Trạng thái" name="status" initialValue="OPEN">
-                        <Select
-                            options={[
-                                { value: 'OPEN', label: 'OPEN' },
-                                { value: 'CLOSED', label: 'CLOSED' },
-                            ]}
-                        />
-                    </Form.Item>
-
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/chương học" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            <Drawer
-                title={<span style={{ fontWeight: 700, fontSize: 18 }}>Chi Tiết Chương Học</span>}
-                placement="right"
-                width={500}
-                onClose={() => {
-                    setIsDetailDrawerOpen(false);
-                    setSelectedLevelForDetail(null);
-                }}
-                open={isDetailDrawerOpen}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {selectedLevelForDetail && (
-                    <div className="space-y-6">
-                        <Descriptions column={1} bordered size="small" labelStyle={{ fontWeight: 600, width: 140, background: '#f8fafc' }}>
-                            <Descriptions.Item label="Tên chương học">
-                                <span style={{ fontWeight: 700, color: '#1e293b' }}>{selectedLevelForDetail.name}</span>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Vùng miền">
-                                {(() => {
-                                    const regionKey = getRegionKey(selectedLevelForDetail.dialectId);
-                                    const info = REGION_LABEL[regionKey];
-                                    return info ? <Tag color={info.color} style={{ background: info.bg, border: `1px solid ${info.color}30` }}>{info.label}</Tag> : <Tag>Không có</Tag>;
-                                })()}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Trạng thái">
-                                {(() => {
-                                    const val = selectedLevelForDetail.status;
-                                    if (val === 'APPROVED' || val === 'PUBLISHED') return <Tag color="success">Đã công bố</Tag>;
-                                    if (val === 'PENDING') return <Tag color="warning">Đang chờ</Tag>;
-                                    if (val === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-                                    return <Tag color="default">Bản nháp</Tag>;
-                                })()}
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
-                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Chỉ số & Yêu cầu
-                            </span>
-                        </Divider>
-
-                        <Descriptions column={1} size="small" labelStyle={{ color: '#64748b' }}>
-                            <Descriptions.Item label="Số sao tối thiểu">
-                                <span style={{ color: '#faad14', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                                    {'⭐'.repeat(selectedLevelForDetail.minStarsRequired ?? 0)}
-                                </span>
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
-                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Mô tả nội dung
-                            </span>
-                        </Divider>
-
-                        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', color: '#475569', lineHeight: 1.6 }}>
-                            {selectedLevelForDetail.description || selectedLevelForDetail.metadataJson?.description || 'Không có mô tả cho chương học này.'}
-                        </div>
-
-                        <Divider style={{ margin: '24px 0' }} />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 12 }}>
-                            <span>Ngày tạo: {selectedLevelForDetail.createdAt ? dayjs(selectedLevelForDetail.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
-                            <span>Cập nhật: {selectedLevelForDetail.updatedAt ? dayjs(selectedLevelForDetail.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
-                        </div>
-                    </div>
-                )}
-            </Drawer>
-
-            <Card
-                variant="borderless"
-                style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
-            >
-                <Table
-                    dataSource={filteredLevels}
-                    columns={columns}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} chương học` }}
-                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
-                    showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
-                />
-            </Card>
-
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Cập Nhật Chương Học</span>}
-                open={isEditModalOpen}
-                onCancel={() => {
-                    editForm.resetFields();
-                    setIsEditModalOpen(false);
-                    setEditingLevel(null);
-                }}
-                onOk={() => editForm.submit()}
-                confirmLoading={updating}
-                okText="Cập Nhật"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
-                centered
-            >
-                <Form
-                    form={editForm}
-                    layout="vertical"
-                    onFinish={handleUpdateLevel}
-                >
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Tên chương học"
-                            name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
-                        >
-                            <Input placeholder="Ví dụ: Level 1" />
-                        </Form.Item>
-                        <Form.Item
-                            label="Phương ngữ"
-                            name="dialectId"
-                            rules={[{ required: true, message: 'Vui lòng chọn phương ngữ' }]}
-                        >
-                            <Select
-                                placeholder="Chọn phương ngữ"
-                                options={dialects.map((dialect: any) => {
-                                    const regionKey = (dialect.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: dialect.id,
-                                        label: dialect.description || info?.label || dialect.name || dialect.code || dialect.id,
-                                    };
-                                })}
-                                onChange={(value) => fetchErrorTags(value)}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            label="Thứ tự level"
-                            name="levelOrder"
-                            hidden
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
-                            <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Error Tag" name="errorTagId" hidden>
-                            <Select
-                                placeholder="Chọn loại lỗi"
-                                allowClear
-                                options={errorTags.map((tag: any) => ({
-                                    value: tag.id,
-                                    label: tag.name || tag.tagCode || tag.id,
-                                }))}
-                            />
-                        </Form.Item>
-                    </div>
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
-                    </Form.Item>
-                    <Form.Item
-                        label="Ghi chú thay đổi"
-                        name="comment"
-                        rules={[{ required: true, message: 'Vui lòng nhập ghi chú thay đổi' }]}
-                    >
-                        <Input.TextArea rows={2} placeholder="Lý do hoặc nội dung cập nhật" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Quiz cho Level {selectedLevelForQuiz?.name}</span>}
-                open={isCreateQuizModalOpen}
-                onCancel={() => {
-                    quizForm.resetFields();
-                    setIsCreateQuizModalOpen(false);
-                    setSelectedLevelForQuiz(null);
-                }}
-                onOk={() => quizForm.submit()}
-                confirmLoading={creatingQuiz}
-                okText="Tạo Quiz"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
-                centered
-                width={850}
-            >
-                <Form
-                    form={quizForm}
-                    layout="vertical"
-                    onFinish={handleCreateQuiz}
-                >
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Tên quiz"
-                                name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
-                            >
-                                <Input placeholder="Ví dụ: Thử thách Level 1" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Độ khó"
-                                name="difficulty"
-                            >
-                                <Select
-                                    placeholder="Chọn độ khó"
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Mô tả" name="description">
-                                <Input.TextArea rows={2} placeholder="Mô tả bài quiz" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Hướng dẫn" name="instructions">
-                                <Input.TextArea rows={2} placeholder="Hướng dẫn làm bài" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <div style={{
-                        background: '#f8fafc',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        marginBottom: '20px'
-                    }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item
-                                label="Điểm đạt (%)"
-                                name="passingScore"
-                                rules={[{ required: true, message: 'Vui lòng nhập điểm đạt' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Giới hạn (phút)"
-                                name="timeLimitMinutes"
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Điểm mỗi câu"
-                                name="pointsPerQuestion"
-                                rules={[{ required: true, message: 'Vui lòng nhập điểm mỗi câu' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                            <Form.Item
-                                label="Số câu Reading"
-                                name="readingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Listening"
-                                name="listeningCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Speaking"
-                                name="speakingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Writing"
-                                name="writingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
-                    </div>
-
-                    <Form.Item label="Ghi chú" name="comment" style={{ marginBottom: 0 }}>
-                        <Input.TextArea rows={1} placeholder="Ghi chú khi tạo quiz" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* ===== IMPORT MODAL ===== */}
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import Chương Học từ CSV</span>}
-                open={isImportModalOpen}
-                onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
-                footer={null}
-                centered
-                width={520}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                    <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
-                        <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File CSV cần có các cột: <strong>Tên chương học, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
-                        </p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Chương trùng tên sẽ bị bỏ qua.
-                        </p>
-                    </div>
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                        style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '8px 12px' }}
-                    />
+    const renderQuizDetailView = () => (
+        <div className="space-y-6">
+            <Button icon={<ArrowLeftOutlined />} onClick={() => setViewMode('QUIZZES')}>Quay lại</Button>
+            <Card style={{ margin: '16px 0' }}>
+                <Title level={3}>{selectedQuiz?.title}</Title>
+                <Text type="secondary">{selectedQuiz?.description}</Text>
+                <div style={{ marginTop: '16px' }}>
                     <Button
                         type="primary"
-                        icon={<UploadOutlined />}
-                        loading={importing}
-                        onClick={handleImportCSV}
-                        disabled={!importFile}
-                        block
-                        size="large"
-                        style={{ borderRadius: 10, background: '#52c41a', border: 'none', fontWeight: 600 }}
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            fetchChallengeBank(selectedQuiz?.skillType);
+                            setIsChallengeModalOpen(true);
+                        }}
                     >
-                        {importing ? 'Đang import...' : 'Bắt đầu Import'}
+                        Thêm từ ngân hàng
                     </Button>
-                    {importResult && (
-                        <div style={{ padding: 12, background: importResult.failed > 0 ? '#fff7e6' : '#f6ffed', borderRadius: 8, border: `1px solid ${importResult.failed > 0 ? '#ffd591' : '#b7eb8f'}` }}>
-                            <p style={{ margin: 0, fontWeight: 600 }}>
-                                ✅ Thành công: {importResult.success} | ❌ Lỗi: {importResult.failed}
-                            </p>
-                            {importResult.errors.length > 0 && (
-                                <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 12, color: '#d4380d' }}>
-                                    {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                    )}
+                </div>
+            </Card>
+            <Table
+                dataSource={quizChallenges}
+                columns={challengeColumns}
+                rowKey="id"
+                loading={loadingQuizChallenges}
+            />
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '24px' }}>
+            {viewMode === 'CHAPTERS' && renderChapterView()}
+            {viewMode === 'QUIZZES' && renderQuizView()}
+            {viewMode === 'QUIZ_DETAIL' && renderQuizDetailView()}
+
+            {/* Modals for Create/Edit Chapter */}
+            <Modal
+                title="Thêm Chương Học"
+                open={isCreateModalOpen}
+                onCancel={() => setIsCreateModalOpen(false)}
+                onOk={() => form.submit()}
+                confirmLoading={creating}
+            >
+                <Form form={form} layout="vertical" onFinish={handleCreateLevel}>
+                    <Form.Item name="name" label="Tên chương" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="dialectId" label="Phương ngữ" rules={[{ required: true }]}>
+                        <Select options={dialects.map((d: any) => ({ value: d.id, label: d.name }))} />
+                    </Form.Item>
+                    <Form.Item name="minStarsRequired" label="Sao yêu cầu" initialValue={3}><InputNumber min={0} /></Form.Item>
+                    <Form.Item name="description" label="Mô tả"><Input.TextArea /></Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title="Chỉnh sửa Chương Học"
+                open={isEditModalOpen}
+                onCancel={() => setIsEditModalOpen(false)}
+                onOk={() => editForm.submit()}
+                confirmLoading={updating}
+            >
+                <Form form={editForm} layout="vertical" onFinish={handleUpdateLevel}>
+                    <Form.Item name="name" label="Tên chương" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="dialectId" label="Phương ngữ" rules={[{ required: true }]}>
+                        <Select options={dialects.map((d: any) => ({ value: d.id, label: d.name }))} />
+                    </Form.Item>
+                    <Form.Item name="minStarsRequired" label="Sao yêu cầu"><InputNumber min={0} /></Form.Item>
+                    <Form.Item name="description" label="Mô tả"><Input.TextArea /></Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Modal for Create Quiz */}
+            <Modal
+                title="Thêm Bài Tập"
+                open={isCreateQuizModalOpen}
+                onCancel={() => setIsCreateQuizModalOpen(false)}
+                onOk={() => quizForm.submit()}
+                confirmLoading={creatingQuiz}
+            >
+                <Form form={quizForm} layout="vertical" onFinish={handleCreateQuiz}>
+                    <Form.Item name="title" label="Tiêu đề" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="description" label="Mô tả"><Input.TextArea /></Form.Item>
+                    <Form.Item name="skillType" label="Kỹ năng" rules={[{ required: true }]}>
+                        <Select options={Object.entries(SKILL_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))} />
+                    </Form.Item>
+                    <Form.Item name="difficultyTag" label="Độ khó" initialValue="BEGINNER">
+                        <Select options={Object.entries(DIFFICULTY_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))} />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Modal for Challenge Bank Selection */}
+            <Modal
+                title="Ngân hàng thử thách"
+                open={isChallengeModalOpen}
+                onCancel={() => setIsChallengeModalOpen(false)}
+                width={800}
+                onOk={handleAssignChallenges}
+            >
+                <Table
+                    rowSelection={{
+                        selectedRowKeys: selectedBankIds,
+                        onChange: (keys) => setSelectedBankIds(keys as string[]),
+                    }}
+                    dataSource={availableChallenges}
+                    columns={[
+                        { title: 'Nội dung', dataIndex: 'contentText' },
+                        { title: 'Loại', dataIndex: 'type' },
+                    ]}
+                    rowKey="id"
+                    loading={loadingBank}
+                    pagination={{ pageSize: 15 }}
+                />
+            </Modal>
+
+            {/* Modal for Import */}
+            <Modal
+                title="Import Chương Học"
+                open={isImportModalOpen}
+                onCancel={() => setIsImportModalOpen(false)}
+                footer={null}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <input type="file" accept=".csv" onChange={e => setImportFile(e.target.files?.[0] || null)} />
+                    <Button
+                        type="primary"
+                        loading={importing}
+                        onClick={async () => {
+                            if (!importFile) return;
+                            setImporting(true);
+                            // Simple mock/trigger for now
+                            message.info('Tính năng import đang được tối ưu hóa');
+                            setImporting(false);
+                            setIsImportModalOpen(false);
+                        }}
+                    >
+                        Bắt đầu Import
+                    </Button>
                 </div>
             </Modal>
         </div>

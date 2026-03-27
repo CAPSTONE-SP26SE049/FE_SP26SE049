@@ -138,8 +138,10 @@ export const adminService = {
     },
 
     // --- Challenge Bank ---
-    getChallengeBank: async () => {
-        return apiClient.get('/admin/content/challenge-bank');
+    getChallengeBank: async (skillType?: string) => {
+        const params: any = {};
+        if (skillType) params.skillType = skillType;
+        return apiClient.get('/admin/content/challenge-bank', { params });
     },
     createChallengeBankItem: async (data: ChallengeBankRequest) => {
         return apiClient.post('/admin/content/challenge-bank', data);
@@ -166,6 +168,9 @@ export const adminService = {
     },
     updateQuiz: async (id: string, data: any) => {
         return apiClient.put(`/admin/content/quizzes/${id}`, data);
+    },
+    deleteQuiz: async (id: string) => {
+        return apiClient.delete(`/admin/content/quizzes/${id}`);
     },
     getQuizChallenges: async (quizId: string) => {
         return apiClient.get(`/admin/content/quizzes/${quizId}/challenges`);

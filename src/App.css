@@ -1,1 +1,45 @@
-/* App-level styles can go here if needed */
+/* Disable all Ant Design and Tailwind hover effects for buttons */
+.ant-btn-primary,
+.ant-btn-primary:hover, 
+.ant-btn-primary:focus, 
+.ant-btn-primary:active {
+    background-color: #1cb0f6 !important;
+    border-color: #1cb0f6 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+.ant-btn-dangerous,
+.ant-btn-dangerous:hover, 
+.ant-btn-dangerous:focus, 
+.ant-btn-dangerous:active {
+    background-color: #ff4b4b !important;
+    border-color: #ff4b4b !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+/* For secondary/default buttons if any */
+.ant-btn-default:hover,
+.ant-btn-default:focus,
+.ant-btn-default:active {
+    background-color: #ffffff !important;
+    border-color: #d9d9d9 !important;
+    color: rgba(0, 0, 0, 0.88) !important;
+    box-shadow: none !important;
+}
+
+/* Also disable table row hover */
+.ant-table-wrapper .ant-table-tbody > tr:hover > td,
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+    background-color: transparent !important;
+}
+
+/* Globally disable any AntD motion wave effects */
+.ant-click-animating-node {
+    display: none !important;
+}

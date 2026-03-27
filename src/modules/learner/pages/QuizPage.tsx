@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeftOutlined,
@@ -78,6 +78,7 @@ interface ParsedChallenge {
 
 interface QuizDetail {
   id: string
+  levelId: string | null
   name: string
   passingScore: number
   challenges: ParsedChallenge[]
@@ -144,6 +145,29 @@ const SKILL_META: Record<string, { label: string; color: string; icon: React.Rea
   ENTRY_TEST:  { label: 'Kiểm tra đầu vào', color: 'gold',    icon: <ThunderboltFilled /> },
 }
 
+const SOUND_URLS = {
+  SUCCESS: 'https://firebasestorage.googleapis.com/v0/b/speak-journey-vn-2026.firebasestorage.app/o/sound_effects%2FAm_thanh_khi_hoan_thanh_com.mp3?alt=media&token=23a68645-bbcb-4b0c-917c-756dc1b41a14',
+  WRONG:   'https://firebasestorage.googleapis.com/v0/b/speak-journey-vn-2026.firebasestorage.app/o/sound_effects%2FAm_thanh_tra_loi_sai_com.mp3?alt=media&token=c18b9f8d-0c91-4413-9b80-ea69dc2b4b1e',
+  RIGHT:   'https://firebasestorage.googleapis.com/v0/b/speak-journey-vn-2026.firebasestorage.app/o/sound_effects%2Fright_answer_sound_effect_com.mp3?alt=media&token=0edae79f-b910-4f2c-91ec-7bcab9408faa',
+  FAILED:  'https://firebasestorage.googleapis.com/v0/b/speak-journey-vn-2026.firebasestorage.app/o/sound_effects%2FAm_thanh_that_bai.mp3?alt=media&token=63167a2d-9b97-44bb-8383-bcd353d262b8',
+}
+
+// Preload globally or within component to avoid creation lag
+const preloadedAudio: Record<string, HTMLAudioElement> = {}
+Object.entries(SOUND_URLS).forEach(([k, url]) => {
+  const a = new Audio(url)
+  a.preload = 'auto'
+  preloadedAudio[k] = a
+})
+
+const playEffect = (key: keyof typeof SOUND_URLS) => {
+  const a = preloadedAudio[key]
+  if (a) {
+    a.currentTime = 0
+    a.play().catch(() => {})
+  }
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 /** Multiple choice (READING v1, LISTENING, ENTRY_TEST) */
@@ -182,6 +206,7 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
 const QuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [quiz,         setQuiz]         = useState<QuizDetail | null>(null)
   const [loading,      setLoading]      = useState(true)
@@ -192,30 +217,75 @@ const QuizPage: React.FC = () => {
   const [finished,     setFinished]     = useState(false)
   const [writingInput, setWritingInput] = useState('')
   const [wordPicked,   setWordPicked]   = useState<number | null>(null)  // for FIND_WRONG_WORD
+  const [sessionId,    setSessionId]    = useState<string | null>(null)
+  const [nextQuizId,   setNextQuizId]   = useState<string | null>(null)
+  const [nextQuizTitle,setNextQuizTitle]= useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Ref to track the pending markComplete API call so navigation can await it
+  const markCompletePromiseRef = useRef<Promise<any> | null>(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!quizId) return
     setLoading(true)
+    setQuiz(null); setSessionId(null);
+    setIdx(0); setScore(0); setSelected(null); setAnswered(false); setFinished(false); 
+    setWritingInput(''); setWordPicked(null); setNextQuizId(null); setNextQuizTitle(null);
+    
+    // Priority levelId from navigation state
+    const stateLevelId = location.state?.levelId
+    
     Promise.allSettled([
       apiClient.get(`/users/quizzes/${quizId}`),
       apiClient.get(`/users/quizzes/${quizId}/challenges`),
     ]).then(([qr, cr]) => {
-      const qd: any = qr.status === 'fulfilled' ? (qr.value?.data ?? qr.value ?? {}) : {}
+      const qdRaw: any = qr.status === 'fulfilled' ? (qr.value ?? {}) : {}
+      const qd: any = qdRaw.data ?? qdRaw
       const raw: any[] = cr.status === 'fulfilled' ? (cr.value?.data ?? cr.value ?? []) : []
       const arr = Array.isArray(raw) ? raw : []
-      console.log('[QuizPage] quiz meta:', qd)
-      console.log('[QuizPage] raw challenges:', arr)
+
       const parsed = arr.map(parseChallenge)
-      console.log('[QuizPage] parsed:', parsed)
+      const finalLevelId = stateLevelId || qd.levelId || qd.level_id || (arr.length > 0 ? arr[0].challenge?.levelId : null)
+
       setQuiz({
         id: qd.id ?? quizId,
+        levelId: finalLevelId,
         name: qd.title ?? qd.name ?? 'Bài kiểm tra',
-        passingScore: typeof qd.passingScore === 'number' ? qd.passingScore : 70,
+        passingScore: typeof qd.passingScore === 'number' ? qd.passingScore : (qd.passing_score ?? 70),
         challenges: parsed,
       })
+
+      // If we have levelId, fetch quizzes of that level to find the next one
+      if (finalLevelId) {
+        apiClient.get(`/users/levels/${finalLevelId}/quizzes`).then(res => {
+          const listRes: any = res?.data ?? res ?? []
+          const all: any[] = Array.isArray(listRes) ? listRes : (listRes.data ?? [])
+          
+          const currentId = (qd.id ?? quizId).toString().toLowerCase()
+          const currIdx = all.findIndex(q => (q.id ?? '').toString().toLowerCase() === currentId)
+          
+          if (currIdx !== -1 && currIdx < all.length - 1) {
+            setNextQuizId(all[currIdx + 1].id)
+            setNextQuizTitle(all[currIdx + 1].title ?? all[currIdx + 1].name)
+          }
+        }).catch(err => console.error('[QuizPage] Failed to fetch level quizzes:', err))
+      }
     }).finally(() => setLoading(false))
+
+    // Start a gameplay session
+    apiClient.post('/gameplay/sessions')
+      .then(res => {
+        const sid = res.data?.id ?? res.data?.sessionId;
+        if (sid) setSessionId(sid);
+      })
+      .catch(err => console.error('[QuizPage] Failed to start session:', err));
+
+    return () => {
+      // End session if it exists
+      if (sessionId) {
+        apiClient.put(`/gameplay/sessions/${sessionId}/end`).catch(() => {});
+      }
+    }
   }, [quizId])
 
   // ── Auto-play audio for LISTENING ─────────────────────────────────────────
@@ -231,8 +301,46 @@ const QuizPage: React.FC = () => {
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = () => {
     setWritingInput(''); setWordPicked(null)
-    if (idx + 1 >= (quiz?.challenges?.length ?? 0)) { setFinished(true) }
+    if (idx + 1 >= (quiz?.challenges?.length ?? 0)) {
+       setFinished(true)
+       if (sessionId) {
+         apiClient.put(`/gameplay/sessions/${sessionId}/end`).catch(() => {});
+       }
+       // Mark quiz as complete — store the promise so navigation can await it
+       if (quiz?.id) {
+         markCompletePromiseRef.current = apiClient.put(`/users/quizzes/${quiz.id}/complete`, null, {
+           params: { correctCount: score, totalCount: quiz.challenges.length }
+         }).catch(err => console.error('[QuizPage] markComplete failed:', err));
+       }
+    }
     else { setIdx(i => i + 1); setSelected(null); setAnswered(false) }
+  }
+
+  // Await pending markComplete before navigating so roadmap re-fetch sees fresh data
+  const goToRoadmap = async (state: any) => {
+    if (markCompletePromiseRef.current) {
+      await markCompletePromiseRef.current.catch(() => {})
+    }
+    navigate('/learner/roadmap', { state })
+  }
+
+  // ── End Game Sounds ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (finished && quiz) {
+      const pct = total > 0 ? Math.round((score / total) * 100) : 0
+      const passed = pct >= quiz.passingScore
+      if (passed) playEffect('SUCCESS')
+      else playEffect('FAILED')
+    }
+  }, [finished])
+
+  const submitAttempt = (challengeId: string, isPassed: boolean) => {
+    apiClient.post('/gameplay/attempts', {
+      sessionId,
+      challengeId,
+      isPassed,
+      audioUrl: '', // Not used for Quiz unless it's a recording
+    }).catch(err => console.error('[QuizPage] Failed to submit attempt:', err));
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -242,15 +350,24 @@ const QuizPage: React.FC = () => {
   if (!quiz) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-gray-50">
       <Empty description="Không tìm thấy bài kiểm tra" />
-      <Button onClick={() => navigate(-1)}>Quay lại</Button>
+      <Button onClick={() => goToRoadmap({ roadmapState: location.state?.roadmapState })}>Quay lại</Button>
     </div>
   )
 
   const challenges = quiz.challenges
   const total = challenges.length
 
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-gray-50">
+        <Empty description="Bài kiểm tra này hiện chưa có câu hỏi" />
+        <Button onClick={() => goToRoadmap({ roadmapState: location.state?.roadmapState })}>Quay lại Lộ trình</Button>
+      </div>
+    )
+  }
+
   // ── Finished ──────────────────────────────────────────────────────────────
-  if (finished || total === 0) {
+  if (finished) {
     const pct = total > 0 ? Math.round((score / total) * 100) : 0
     const passed = pct >= quiz.passingScore
     return (
@@ -262,12 +379,25 @@ const QuizPage: React.FC = () => {
           <p className="text-gray-500 mb-6">Bạn đúng {score}/{total} câu ({pct}%)</p>
           <Progress percent={pct} status={passed ? 'success' : 'exception'} strokeColor={passed ? '#10b981' : '#ef4444'} className="mb-6" />
           <p className="text-sm text-gray-400 mb-6">Điểm đạt yêu cầu: {quiz.passingScore}%</p>
-          <div className="flex gap-3 justify-center">
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Quay lại</Button>
-            <Button type="primary" className="bg-green-500 border-green-500 hover:bg-green-600"
-              onClick={() => { setIdx(0); setScore(0); setSelected(null); setAnswered(false); setFinished(false); setWritingInput(''); setWordPicked(null) }}>
-              Làm lại
-            </Button>
+          <div className="flex flex-col gap-3 w-full">
+            {passed && nextQuizId && (
+              <Button type="primary" size="large" className="bg-blue-600 border-blue-600 hover:bg-blue-700 h-14 font-bold text-lg rounded-2xl"
+                onClick={async () => {
+                   if (markCompletePromiseRef.current) {
+                     await markCompletePromiseRef.current.catch(() => {})
+                   }
+                   navigate(`/learner/quiz/${nextQuizId}`, { state: { levelId: quiz.levelId, roadmapState: location.state?.roadmapState } });
+                }}>
+                Bài tiếp theo: {nextQuizTitle} →
+              </Button>
+            )}
+            <div className="flex gap-3 justify-center">
+              <Button icon={<ArrowLeftOutlined />} onClick={() => goToRoadmap({ roadmapState: location.state?.roadmapState })} className="h-12 rounded-xl">Lộ trình</Button>
+              <Button className="border-green-500 text-green-600 hover:text-green-700 hover:border-green-600 h-12 rounded-xl"
+                onClick={() => { setIdx(0); setScore(0); setSelected(null); setAnswered(false); setFinished(false); setWritingInput(''); setWordPicked(null) }}>
+                Làm lại
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -286,8 +416,15 @@ const QuizPage: React.FC = () => {
       case 'MULTIPLE_CHOICE': {
         const handleSelect = (opt: string) => {
           if (answered) return
+          const isCorrect = opt === ch.correctAnswer
           setSelected(opt); setAnswered(true)
-          if (opt === ch.correctAnswer) setScore(s => s + 1)
+          if (isCorrect) {
+            setScore(s => s + 1)
+            playEffect('RIGHT')
+          } else {
+            playEffect('WRONG')
+          }
+          submitAttempt(ch.id, isCorrect)
         }
         return (
           <>
@@ -308,8 +445,15 @@ const QuizPage: React.FC = () => {
       case 'FIND_WRONG_WORD': {
         const handleWordClick = (wordIdx: number) => {
           if (answered) return
+          const isCorrect = wordIdx === ch.errorIndex
           setWordPicked(wordIdx); setAnswered(true)
-          if (wordIdx === ch.errorIndex) setScore(s => s + 1)
+          if (isCorrect) {
+            setScore(s => s + 1)
+            playEffect('RIGHT')
+          } else {
+            playEffect('WRONG')
+          }
+          submitAttempt(ch.id, isCorrect)
         }
         return (
           <>
@@ -351,9 +495,15 @@ const QuizPage: React.FC = () => {
       case 'WRITING_FILL': {
         const handleWritingSubmit = () => {
           if (!writingInput.trim()) return
-          setAnswered(true)
           const isCorrect = ch.correctWords.some(w => w.toLowerCase() === writingInput.trim().toLowerCase())
-          if (isCorrect) setScore(s => s + 1)
+          setAnswered(true)
+          if (isCorrect) {
+            setScore(s => s + 1)
+            playEffect('RIGHT')
+          } else {
+            playEffect('WRONG')
+          }
+          submitAttempt(ch.id, isCorrect)
         }
         const isCorrect = answered && ch.correctWords.some(w => w.toLowerCase() === writingInput.trim().toLowerCase())
         return (
@@ -422,7 +572,11 @@ const QuizPage: React.FC = () => {
             {!answered ? (
               <Button type="primary" size="large" block icon={<AudioOutlined />}
                 className="bg-purple-500 border-purple-500 hover:bg-purple-600 rounded-2xl h-14 text-base font-bold mb-6"
-                onClick={() => { setAnswered(true); setScore(s => s + 1) }}>
+                onClick={() => {
+                   setAnswered(true); setScore(s => s + 1);
+                   playEffect('RIGHT');
+                   submitAttempt(ch.id, true);
+                }}>
                 Đã đọc xong ✓
               </Button>
             ) : (
@@ -449,7 +603,7 @@ const QuizPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 pb-16">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate(-1)}
+        <button onClick={() => goToRoadmap({ roadmapState: location.state?.roadmapState })}
           className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all">
           <ArrowLeftOutlined className="text-gray-600" />
         </button>

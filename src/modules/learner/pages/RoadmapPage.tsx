@@ -10,24 +10,24 @@ import {
 } from '@ant-design/icons'
 import { Spin, Empty } from 'antd'
 import clsx from 'clsx'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { learnerService, type Level, type Dialect, type Quiz } from '../services/learnerService'
 
 // ─────────────────────────────────────────────
 const DIALECT_ORDER = ['NORTH', 'CENTRAL', 'SOUTH']
 
 const DIALECT_META: Record<string, { viName: string; abbr: string; color: string; darkColor: string }> = {
-  NORTH:   { viName: 'Miền Bắc',   abbr: 'Bắc',   color: '#2563eb', darkColor: '#1d4ed8' },
-  CENTRAL: { viName: 'Miền Trung', abbr: 'Trung',  color: '#d97706', darkColor: '#b45309' },
-  SOUTH:   { viName: 'Miền Nam',   abbr: 'Nam',    color: '#059669', darkColor: '#047857' },
+  NORTH: { viName: 'Miền Bắc', abbr: 'Bắc', color: '#2563eb', darkColor: '#1d4ed8' },
+  CENTRAL: { viName: 'Miền Trung', abbr: 'Trung', color: '#d97706', darkColor: '#b45309' },
+  SOUTH: { viName: 'Miền Nam', abbr: 'Nam', color: '#059669', darkColor: '#047857' },
 }
 
 const getDialectMeta = (dialect: Dialect) => {
   const key = dialect.name?.toUpperCase()
   if (DIALECT_META[key]) return { key, ...DIALECT_META[key] }
-  if (dialect.description?.includes('Bắc'))  return { key: 'NORTH',   ...DIALECT_META['NORTH'] }
+  if (dialect.description?.includes('Bắc')) return { key: 'NORTH', ...DIALECT_META['NORTH'] }
   if (dialect.description?.includes('Trung')) return { key: 'CENTRAL', ...DIALECT_META['CENTRAL'] }
-  if (dialect.description?.includes('Nam'))  return { key: 'SOUTH',   ...DIALECT_META['SOUTH'] }
+  if (dialect.description?.includes('Nam')) return { key: 'SOUTH', ...DIALECT_META['SOUTH'] }
   return { key, viName: dialect.description || dialect.name, abbr: '?', color: '#6366f1', darkColor: '#4f46e5' }
 }
 
@@ -120,8 +120,11 @@ const ChapterStep = ({
                 initial={{ opacity: 0, x: -24 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.07, type: 'spring', stiffness: 120 }}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 p-5 flex items-center gap-5 cursor-pointer group"
-                onClick={() => onSelect(ch)}
+                className={clsx(
+                  "bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 p-5 flex items-center gap-5 cursor-pointer group",
+                  ch.isLocked && "opacity-60 cursor-not-allowed grayscale-[40%]"
+                )}
+                onClick={() => !ch.isLocked && onSelect(ch)}
               >
                 {/* Chapter number badge */}
                 <div
@@ -132,8 +135,8 @@ const ChapterStep = ({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-gray-800 text-base truncate">{ch.name}</h4>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{desc}</p>
+                  <h4 className="font-bold text-gray-800 text-base break-words whitespace-normal">{ch.name}</h4>
+                  <p className="text-xs text-gray-400 mt-0.5 break-words whitespace-normal leading-relaxed">{desc}</p>
                   {/* Progress */}
                   {ch.isCompleted ? (
                     <div className="flex items-center gap-1 mt-1.5">
@@ -153,12 +156,17 @@ const ChapterStep = ({
                   {ch.isCompleted && (
                     <CheckCircleFilled className="text-green-500 text-xl" />
                   )}
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow group-hover:scale-110 transition-transform duration-200"
-                    style={{ backgroundColor: meta.color }}
-                  >
-                    <ReadOutlined />
-                  </div>
+                  {ch.isLocked && (
+                    <LockFilled className="text-gray-400 text-xl" />
+                  )}
+                  {!ch.isLocked && (
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow group-hover:scale-110 transition-transform duration-200"
+                      style={{ backgroundColor: meta.color }}
+                    >
+                      <ReadOutlined />
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )
@@ -178,17 +186,17 @@ const RoadmapNode = ({ node, index, onClick }: { node: any; index: number; onCli
   const getStyles = () => {
     switch (node.type) {
       case 'completed': return 'bg-brand-yellow shadow-yellow-200/50 border-b-yellow-600'
-      case 'active':    return 'bg-brand-green shadow-green-200/50 border-b-green-700 ring-4 ring-green-100'
+      case 'active': return 'bg-brand-green shadow-green-200/50 border-b-green-700 ring-4 ring-green-100'
       case 'locked':
-      default:          return 'bg-gray-200 shadow-gray-100 border-b-gray-300 text-gray-400'
+      default: return 'bg-gray-200 shadow-gray-100 border-b-gray-300 text-gray-400'
     }
   }
 
   const getIcon = () => {
     switch (node.type) {
       case 'completed': return <CheckCircleFilled className="text-3xl text-white" />
-      case 'active':    return <PlayCircleFilled className="text-3xl text-white" />
-      case 'locked':    return <LockFilled className="text-2xl text-gray-400" />
+      case 'active': return <PlayCircleFilled className="text-3xl text-white" />
+      case 'locked': return <LockFilled className="text-2xl text-gray-400" />
     }
   }
 
@@ -254,30 +262,45 @@ const QuizRoadmapStep = ({
   chapter: _chapter,
   quizzes,
   loading,
+  dialect: _dialect,
 }: {
   chapter: Level
   quizzes: Quiz[]
   loading: boolean
+  dialect?: Dialect | null
 }) => {
   const navigate = useNavigate()
 
-  const roadmapNodes = useMemo(() => quizzes.map((quiz, index) => ({
-    id: quiz.id,
-    title: quiz.title ?? quiz.name ?? `Bài ${index + 1}`,
-    // First quiz always active; rest locked unless has passingScore history (stub)
-    type: index === 0 ? 'active' : 'locked',
-    stars: 0,
-    quiz,
-    position: {
-      x: index % 4 === 0 ? 50 : index % 4 === 1 ? 25 : index % 4 === 2 ? 50 : 75,
-      y: index,
-    },
-  })), [quizzes])
+  const roadmapNodes = useMemo(() => {
+    let firstLockedFound = false;
+    return quizzes.map((quiz, index) => {
+      let type: 'completed' | 'active' | 'locked' = 'locked';
+
+      if (quiz.isCompleted) {
+        type = 'completed';
+      } else if (!firstLockedFound) {
+        type = 'active';
+        firstLockedFound = true;
+      }
+
+      return {
+        id: quiz.id,
+        title: quiz.title ?? quiz.name ?? `Bài ${index + 1}`,
+        type,
+        stars: quiz.starsEarned ?? 0,
+        quiz,
+        position: {
+          x: index % 4 === 0 ? 50 : index % 4 === 1 ? 25 : index % 4 === 2 ? 50 : 75,
+          y: index,
+        },
+      };
+    });
+  }, [quizzes])
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[400px]">
-        <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải bài kiểm tra...</div></Spin>
+        <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải bài kiểm tra...</div></Spin>
       </div>
     )
   }
@@ -325,7 +348,17 @@ const QuizRoadmapStep = ({
             key={node.id}
             node={node}
             index={i}
-            onClick={() => navigate(`/learner/quiz/${node.id}`)}
+            onClick={() => navigate(`/learner/quiz/${node.id}`, {
+              state: {
+                levelId: _chapter.id,
+                roadmapState: {
+                  step: 'quizzes' as const,
+                  selectedDialect: _dialect ?? undefined,
+                  selectedChapter: _chapter,
+                  quizzes,
+                }
+              }
+            })}
           />
         ))}
       </div>
@@ -339,6 +372,8 @@ const QuizRoadmapStep = ({
 type Step = 'dialect' | 'chapters' | 'quizzes'
 
 const RoadmapPage: React.FC = () => {
+  const location = useLocation()
+
   const [step, setStep] = useState<Step>('dialect')
   const [dialects, setDialects] = useState<Dialect[]>([])
   const [selectedDialect, setSelectedDialect] = useState<Dialect | null>(null)
@@ -352,7 +387,19 @@ const RoadmapPage: React.FC = () => {
 
   // Load dialects on mount
   useEffect(() => {
-    learnerService.getDialects().then(setDialects).finally(() => setDialectsLoading(false))
+    learnerService.getDialects().then(dialects => {
+      setDialects(dialects)
+
+      // Restore state from navigation (e.g. coming back from QuizPage)
+      const saved = location.state?.roadmapState
+      if (saved?.selectedDialect && saved?.step) {
+        setSelectedDialect(saved.selectedDialect)
+        setStep(saved.step)
+        if (saved.chapters) setChapters(saved.chapters)
+        if (saved.selectedChapter) setSelectedChapter(saved.selectedChapter)
+        if (saved.quizzes) setQuizzes(saved.quizzes)
+      }
+    }).finally(() => setDialectsLoading(false))
   }, [])
 
   // Step 1 → 2: select dialect, load chapters
@@ -451,7 +498,7 @@ const RoadmapPage: React.FC = () => {
             >
               {dialectsLoading ? (
                 <div className="flex justify-center items-center h-48">
-                  <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải vùng miền...</div></Spin>
+                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải vùng miền...</div></Spin>
                 </div>
               ) : (
                 <DialectStep dialects={dialects} onSelect={handleSelectDialect} />
@@ -471,7 +518,7 @@ const RoadmapPage: React.FC = () => {
             >
               {chaptersLoading ? (
                 <div className="flex justify-center items-center h-[400px]">
-                  <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải danh sách chương...</div></Spin>
+                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải danh sách chương...</div></Spin>
                 </div>
               ) : chapters.length === 0 ? (
                 <div className="flex justify-center items-center h-40">
@@ -501,6 +548,7 @@ const RoadmapPage: React.FC = () => {
                 chapter={selectedChapter!}
                 quizzes={quizzes}
                 loading={quizzesLoading}
+                dialect={selectedDialect}
               />
             </motion.div>
           )}
