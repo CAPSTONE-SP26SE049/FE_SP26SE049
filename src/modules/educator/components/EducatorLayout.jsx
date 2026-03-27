@@ -1,18 +1,12 @@
 import React from 'react'
 import { Layout, Menu, Avatar, Typography, Dropdown } from 'antd'
 import {
-  DashboardOutlined,
-  ReadOutlined,
-  PartitionOutlined,
-  BarChartOutlined,
   SettingOutlined,
   UserOutlined,
-  TeamOutlined,
   DatabaseOutlined,
   BookOutlined,
   FileTextOutlined,
   LogoutOutlined,
-
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'

@@ -8,13 +8,9 @@ import ForgotPassword from '../apps/auth/ForgotPassword'
 import ResetPassword from '../apps/auth/ResetPassword'
 import FacebookCallback from '../apps/auth/FacebookCallback'
 import EducatorLayout from '../modules/educator/components/EducatorLayout'
-import DashboardPage from '../modules/educator/pages/DashboardPage'
-import RoadmapManager from '../modules/educator/pages/RoadmapManager'
-import AssessmentMatrix from '../modules/educator/pages/AssessmentMatrix'
-import StudentAnalyticsPage from '../modules/educator/pages/StudentAnalyticsPage'
+
 import SettingsPage from '../modules/educator/pages/SettingsPage'
-import ClassroomManagementPage from '../modules/educator/pages/ClassroomManagementPage'
-import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
+
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
@@ -62,17 +58,12 @@ export const AppRoutes: React.FC = () => {
       {/* Educator protected area */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
-          {/* <Route path="/educator" element={<div>Educator Layout Placeholder</div>}> */}
-          <Route index element={<DashboardPage />} />
-          <Route path="classrooms" element={<ClassroomManagementPage />} />
-          <Route path="classrooms/:classId/students" element={<StudentManagementPage />} />
-          <Route path="students" element={<StudentManagementPage />} />
-          <Route path="roadmap" element={<RoadmapManager />} />
+          <Route index element={<Navigate to="challenges" replace />} />
+
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
-          <Route path="matrix" element={<AssessmentMatrix />} />
-          <Route path="analytics" element={<StudentAnalyticsPage />} />
+
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
