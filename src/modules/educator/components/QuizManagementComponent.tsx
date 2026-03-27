@@ -59,7 +59,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
       setLevels(data);
     } catch (error) {
       console.error('Failed to fetch levels:', error);
-      message.error('Không thể tải danh sách bài học cho vùng này');
+      message.error('Không thể tải danh sách học phần cho vùng này');
     } finally {
       setFetchingLevels(false);
     }
@@ -269,7 +269,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
       <div className="flex justify-between items-center mb-6">
         <div>
           <Title level={embedded ? 5 : 3} style={{ margin: 0 }}>
-            {levelId ? 'Bài kiểm tra của bài học' : 'Quản lý Bài kiểm tra'}
+            {levelId ? 'Bài kiểm tra của học phần' : 'Quản lý bài kiểm tra'}
           </Title>
           {!embedded && <Text type="secondary">Tạo và quản lý các bài kiểm tra đánh giá năng lực học sinh</Text>}
         </div>
@@ -347,7 +347,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
                   rules={[{ required: true, message: 'Vui lòng chọn cấp độ' }]}
                 >
                   <Select
-                    placeholder="Chọn bài học..."
+                    placeholder="Chọn học phần..."
                     loading={fetchingLevels}
                     disabled={!form.getFieldValue('dialectName')}
                   >

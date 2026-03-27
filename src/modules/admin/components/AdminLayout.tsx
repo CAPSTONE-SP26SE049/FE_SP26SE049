@@ -38,7 +38,7 @@ const AdminLayout = () => {
         {
             key: '/admin/chapters',
             icon: <BookOutlined />,
-            label: <Link to="/admin/chapters">Chương học & Bài tập</Link>,
+            label: <Link to="/admin/chapters">Học phần & Bài kiểm tra</Link>,
         },
         {
             key: '/admin/challenges',

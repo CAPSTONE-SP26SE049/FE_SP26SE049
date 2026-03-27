@@ -705,7 +705,7 @@ const ChallengeBankPage: React.FC = () => {
                 >
                     <Form.Item
                         name="contentText"
-                        label={<Text strong>Tiêu đề bài tập / Yêu cầu</Text>}
+                        label={<Text strong>Tiêu đề câu hỏi / Yêu cầu</Text>}
                         rules={[{ required: true, message: 'Vui lòng nhập nội dung yêu cầu' }]}
                     >
                         <TextArea

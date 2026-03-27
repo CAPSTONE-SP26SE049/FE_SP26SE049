@@ -50,7 +50,7 @@ const ChapterManagementPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Error fetching levels:', error);
-            message.error('Không thể tải danh sách chương học');
+            message.error('Không thể tải danh sách học phần');
         } finally {
             setLoading(false);
         }
@@ -112,13 +112,13 @@ const ChapterManagementPage: React.FC = () => {
                 errorTagId: values.errorTagId || null,
                 aiThreshold: values.aiThreshold || 75,
             });
-            message.success('Tạo chương học thành công');
+            message.success('Tạo học phần thành công');
             form.resetFields();
             setIsCreateModalOpen(false);
             fetchLevels();
         } catch (error: any) {
             console.error('Error creating level:', error);
-            message.error(error?.message || 'Không thể tạo chương học');
+            message.error(error?.message || 'Không thể tạo học phần');
         } finally {
             setCreating(false);
         }
@@ -157,14 +157,14 @@ const ChapterManagementPage: React.FC = () => {
                 audioUrl: editingLevel.audioUrl ?? null,
                 comment: values.comment,
             });
-            message.success('Cập nhật chương học thành công');
+            message.success('Cập nhật học phần thành công');
             editForm.resetFields();
             setIsEditModalOpen(false);
             setEditingLevel(null);
             fetchLevels();
         } catch (error: any) {
             console.error('Error updating level:', error);
-            message.error(error?.message || 'Không thể cập nhật chương học');
+            message.error(error?.message || 'Không thể cập nhật học phần');
         } finally {
             setUpdating(false);
         }
@@ -252,7 +252,7 @@ const ChapterManagementPage: React.FC = () => {
             setAssignLevels(Array.isArray(list) ? list : []);
         } catch (error) {
             console.error('Error loading levels for assignment:', error);
-            message.error('Không thể tải danh sách chương học để gán');
+            message.error('Không thể tải danh sách học phần để gán');
             setAssignLevels([]);
         } finally {
             setAssigning(false);
@@ -280,12 +280,12 @@ const ChapterManagementPage: React.FC = () => {
                 status: values.status || 'OPEN',
                 description: values.description,
             });
-            message.success('Gán chương học thành công');
+            message.success('Gán học phần thành công');
             setIsAssignModalOpen(false);
             assignmentForm.resetFields();
         } catch (error: any) {
             console.error('Error creating assignment:', error);
-            message.error(error?.message || 'Không thể gán chương học');
+            message.error(error?.message || 'Không thể gán học phần');
         } finally {
             setAssigning(false);
         }
@@ -298,11 +298,11 @@ const ChapterManagementPage: React.FC = () => {
         }
         try {
             await educatorService.deleteAssignment(assignmentId);
-            message.success('Đã gỡ chương học khỏi lớp');
+            message.success('Đã gỡ học phần khỏi lớp');
             setRemovedAssignmentIds(prev => [...prev, assignmentId]);
         } catch (error: any) {
             console.error('Error deleting assignment:', error);
-            message.error(error?.response?.data?.message || error?.message || 'Không thể gỡ chương học');
+            message.error(error?.response?.data?.message || error?.message || 'Không thể gỡ học phần');
         }
     };
 
@@ -330,7 +330,7 @@ const ChapterManagementPage: React.FC = () => {
 
             return {
                 id: item.levelId || item.id,
-                name: item.levelName || 'Không có tên chương',
+                name: item.levelName || 'Không có tên học phần',
                 dialectId: item.dialectId,
                 description: meta.description || item.description || '',
                 levelOrder: meta.level_order ?? item.levelOrder ?? null,
@@ -379,7 +379,7 @@ const ChapterManagementPage: React.FC = () => {
 
     // ============ IMPORT / EXPORT ============
     const handleDownloadTemplate = () => {
-        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
+        const headers = 'Tên học phần,Mô tả,Số sao tối thiểu,Ngưỡng AI';
         const sampleRows = [
             'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
             'Nhóm chữ GI,"Phân biệt GI với D",3,75',
@@ -428,7 +428,7 @@ const ChapterManagementPage: React.FC = () => {
                 const minStars = parseInt(cols[2]) || 3;
                 const aiThreshold = parseInt(cols[3]) || 75;
 
-                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
+                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên học phần`); result.failed++; continue; }
 
                 // Check duplicate
                 const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
@@ -445,13 +445,13 @@ const ChapterManagementPage: React.FC = () => {
                     });
                     result.success++;
                 } catch (err: any) {
-                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo chương'}`);
+                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo học phần'}`);
                     result.failed++;
                 }
             }
             setImportResult(result);
             if (result.success > 0) {
-                message.success(`Import thành công ${result.success} chương học`);
+                message.success(`Import thành công ${result.success} học phần`);
                 fetchLevels();
             }
             if (result.failed > 0) {
@@ -465,7 +465,7 @@ const ChapterManagementPage: React.FC = () => {
     };
 
     const handleExportCSV = () => {
-        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
+        const headers = 'Tên học phần,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
         const rows = filteredLevels.map((item: any) => {
             const regionKey = getRegionKey(item.dialectId);
             const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
@@ -480,7 +480,7 @@ const ChapterManagementPage: React.FC = () => {
         link.download = `chuong_hoc_export_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
         URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} chương học`);
+        message.success(`Đã export ${rows.length} học phần`);
     };
 
     const columns = [
@@ -499,7 +499,7 @@ const ChapterManagementPage: React.FC = () => {
             render: (text: string) => <code style={{ fontSize: '12px' }}>{text.substring(0, 8)}...</code>,
         },
         {
-            title: 'Tên chương học',
+            title: 'Tên học phần',
             dataIndex: 'name',
             key: 'name',
             sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
@@ -583,8 +583,8 @@ const ChapterManagementPage: React.FC = () => {
                     </Tooltip>
                     {fromClassroomId && record._fromAssignment && (
                         <Popconfirm
-                            title="Gỡ chương học khỏi lớp?"
-                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
+                            title="Gỡ học phần khỏi lớp?"
+                            description="Học phần sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
                             onConfirm={() => handleRemoveAssignment(record._assignmentId)}
                             okText="Gỡ"
                             cancelText="Hủy"
@@ -604,10 +604,10 @@ const ChapterManagementPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
+                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý học phần</h2>
                     {fromClassroomName ? (
                         <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                            Đang xem học phần đã gán cho lớp: <strong>{fromClassroomName}</strong>
                         </div>
                     ) : null}
                 </div>
@@ -667,7 +667,7 @@ const ChapterManagementPage: React.FC = () => {
                                 boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
                             }}
                         >
-                            Gán chương vào lớp
+                            Gán học phần vào lớp
                         </Button>
                     ) : null}
                     <Button
@@ -682,7 +682,7 @@ const ChapterManagementPage: React.FC = () => {
                             boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
                         }}
                     >
-                        Thêm Chương Học
+                        Thêm học phần
                     </Button>
                 </Space>
             </div>
@@ -702,7 +702,7 @@ const ChapterManagementPage: React.FC = () => {
                     <Col xs={24} sm={24} md={8} lg={7}>
                         <Input
                             prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="Tìm kiếm theo tên chương học..."
+                            placeholder="Tìm kiếm theo tên học phần..."
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                             allowClear
@@ -755,7 +755,7 @@ const ChapterManagementPage: React.FC = () => {
                                     />
                                 ) : null}
                                 <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{mergedLevels.length} chương
+                                    {filteredLevels.length}/{mergedLevels.length} học phần
                                 </span>
                             </div>
                             <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
@@ -767,7 +767,7 @@ const ChapterManagementPage: React.FC = () => {
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}
+                title={<span style={{ fontWeight: 600 }}>Tạo học phần Mới</span>}
                 open={isCreateModalOpen}
                 onCancel={() => {
                     form.resetFields();
@@ -790,9 +790,9 @@ const ChapterManagementPage: React.FC = () => {
                 >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                         <Form.Item
-                            label="Tên chương học"
+                            label="Tên học phần"
                             name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
+                            rules={[{ required: true, message: 'Vui lòng nhập tên học phần' }]}
                         >
                             <Input placeholder="Ví dụ: Level 1" />
                         </Form.Item>
@@ -835,13 +835,13 @@ const ChapterManagementPage: React.FC = () => {
                         </Form.Item>
                     </div>
                     <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                        <Input.TextArea rows={3} placeholder="Mô tả học phần" />
                     </Form.Item>
                 </Form>
             </Modal>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Gán chương học vào lớp</span>}
+                title={<span style={{ fontWeight: 600 }}>Gán học phần vào lớp</span>}
                 open={isAssignModalOpen}
                 onCancel={() => {
                     assignmentForm.resetFields();
@@ -849,7 +849,7 @@ const ChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => assignmentForm.submit()}
                 confirmLoading={assigning}
-                okText="Gán chương"
+                okText="Gán học phần"
                 okButtonProps={{
                     style: { background: '#059669', border: 'none', borderRadius: '6px' }
                 }}
@@ -866,13 +866,13 @@ const ChapterManagementPage: React.FC = () => {
                     </Form.Item>
 
                     <Form.Item
-                        label="Chọn chương học hiện có"
+                        label="Chọn học phần hiện có"
                         name="learningUnitId"
-                        rules={[{ required: true, message: 'Vui lòng chọn chương học' }]}
+                        rules={[{ required: true, message: 'Vui lòng chọn học phần' }]}
                     >
                         <Select
                             loading={assigning}
-                            placeholder="Chọn chương học để gán"
+                            placeholder="Chọn học phần để gán"
                             showSearch
                             optionFilterProp="label"
                             options={assignLevels.map((item: any) => ({
@@ -904,7 +904,7 @@ const ChapterManagementPage: React.FC = () => {
                     </Form.Item>
 
                     <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/chương học" />
+                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/học phần" />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -918,14 +918,14 @@ const ChapterManagementPage: React.FC = () => {
                     columns={columns}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} chương học` }}
-                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
+                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} học phần` }}
+                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy học phần phù hợp' : 'Chưa có dữ liệu học phần' }}
                     showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
                 />
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Cập Nhật Chương Học</span>}
+                title={<span style={{ fontWeight: 600 }}>Cập Nhật học phần</span>}
                 open={isEditModalOpen}
                 onCancel={() => {
                     editForm.resetFields();
@@ -948,9 +948,9 @@ const ChapterManagementPage: React.FC = () => {
                 >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                         <Form.Item
-                            label="Tên chương học"
+                            label="Tên học phần"
                             name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
+                            rules={[{ required: true, message: 'Vui lòng nhập tên học phần' }]}
                         >
                             <Input placeholder="Ví dụ: Level 1" />
                         </Form.Item>
@@ -1001,7 +1001,7 @@ const ChapterManagementPage: React.FC = () => {
                         </Form.Item>
                     </div>
                     <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                        <Input.TextArea rows={3} placeholder="Mô tả học phần" />
                     </Form.Item>
                     <Form.Item
                         label="Ghi chú thay đổi"
@@ -1153,7 +1153,7 @@ const ChapterManagementPage: React.FC = () => {
 
             {/* ===== IMPORT MODAL ===== */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import Chương Học từ CSV</span>}
+                title={<span style={{ fontWeight: 600 }}>📥 Import học phần từ CSV</span>}
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}
@@ -1163,10 +1163,10 @@ const ChapterManagementPage: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
                     <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
                         <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File CSV cần có các cột: <strong>Tên chương học, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
+                            📌 File CSV cần có các cột: <strong>Tên học phần, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
                         </p>
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Chương trùng tên sẽ bị bỏ qua.
+                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Học phần trùng tên sẽ bị bỏ qua.
                         </p>
                     </div>
                     <input

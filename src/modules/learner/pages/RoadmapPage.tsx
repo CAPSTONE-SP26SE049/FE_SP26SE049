@@ -106,13 +106,13 @@ const ChapterStep = ({
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
       {approvedChapters.length === 0 ? (
-        <Empty description="Chưa có chương nào cho vùng miền này" />
+        <Empty description="Chưa có học phần nào cho vùng miền này" />
       ) : (
         <div className="grid gap-4">
           {approvedChapters.map((ch, index) => {
             const desc = ch.description && ch.description.trim() && ch.description !== ch.name
               ? ch.description
-              : `Chương ${index + 1} — ${meta.viName}`
+              : `Học phần ${index + 1} — ${meta.viName}`
 
             return (
               <motion.div
@@ -308,7 +308,7 @@ const QuizRoadmapStep = ({
   if (quizzes.length === 0) {
     return (
       <div className="flex justify-center items-center h-40">
-        <Empty description="Chưa có bài kiểm tra nào cho chương này" />
+        <Empty description="Chưa có bài kiểm tra nào cho học phần này" />
       </div>
     )
   }
@@ -412,7 +412,7 @@ const RoadmapPage: React.FC = () => {
       // Sort by levelOrder ascending
       setChapters([...data].sort((a, b) => (a.levelOrder ?? 0) - (b.levelOrder ?? 0)))
     } catch (err) {
-      console.error('Không thể tải chương:', err)
+      console.error('Không thể tải học phần:', err)
     } finally {
       setChaptersLoading(false)
     }
@@ -450,13 +450,13 @@ const RoadmapPage: React.FC = () => {
 
   const breadcrumb = () => {
     if (step === 'dialect') return 'Lộ Trình Học Tiếng Việt'
-    if (step === 'chapters') return `${dialectMeta?.viName ?? ''} · Chọn chương`
+    if (step === 'chapters') return `${dialectMeta?.viName ?? ''} · Chọn học phần`
     return `${dialectMeta?.viName ?? ''} › ${selectedChapter?.name}`
   }
 
   const subtitle = () => {
     if (step === 'dialect') return 'Chọn giọng địa phương bạn muốn học'
-    if (step === 'chapters') return 'Chọn chương để xem danh sách bài kiểm tra'
+    if (step === 'chapters') return 'Chọn học phần để xem danh sách bài kiểm tra'
     return 'Hoàn thành từng bài kiểm tra để mở khóa bài tiếp theo'
   }
 
@@ -518,11 +518,11 @@ const RoadmapPage: React.FC = () => {
             >
               {chaptersLoading ? (
                 <div className="flex justify-center items-center h-[400px]">
-                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải danh sách chương...</div></Spin>
+                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải danh sách học phần...</div></Spin>
                 </div>
               ) : chapters.length === 0 ? (
                 <div className="flex justify-center items-center h-40">
-                  <Empty description="Chưa có chương nào cho vùng miền này" />
+                  <Empty description="Chưa có học phần nào cho vùng miền này" />
                 </div>
               ) : (
                 <ChapterStep

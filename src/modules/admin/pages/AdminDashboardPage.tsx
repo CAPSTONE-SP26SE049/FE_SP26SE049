@@ -147,7 +147,7 @@ const AdminDashboardPage = () => {
           >
             <div className="space-y-4">
                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Tổng số chương học</span>
+                  <span className="text-gray-600">Tổng số học phần</span>
                   <span className="font-bold text-blue-600">{overview.totalLevels || 0}</span>
                </div>
                <div className="flex justify-between items-center py-2 border-b border-gray-100">

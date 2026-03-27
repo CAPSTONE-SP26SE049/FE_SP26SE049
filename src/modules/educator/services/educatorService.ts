@@ -109,6 +109,7 @@ export interface QuizCreateRequest {
     questionCount?: number;
     comment?: string;
     skillType?: string;
+    difficulty?: string;
     questions: QuizQuestionRequest[];
 }
 
@@ -185,6 +186,7 @@ export interface ChallengeBankRequest {
     skillType: string;
     difficultyTag: string;
     region?: string; // BAC, TRUNG, NAM
+    levelId?: string;
     metadataJson: Record<string, any>;
 }
 
@@ -350,8 +352,12 @@ export const educatorService = {
 
 
     // --- Challenge Bank ---
-    getChallengeBank: async () => {
-        return apiClient.get('/educator/challenge-bank');
+    getChallengeBank: async (skillType?: string, region?: string, levelId?: string) => {
+        const params: Record<string, string> = {};
+        if (skillType) params.skillType = skillType;
+        if (region) params.region = region;
+        if (levelId) params.levelId = levelId;
+        return apiClient.get('/educator/challenge-bank', { params });
     },
     createChallengeBankItem: async (data: ChallengeBankRequest) => {
         return apiClient.post('/educator/challenge-bank', data);

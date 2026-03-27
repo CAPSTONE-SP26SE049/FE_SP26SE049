@@ -49,7 +49,7 @@ export const SnapshotDiffRenderer: React.FC<SnapshotRendererProps> = ({ oldSnaps
     if (contentType === 'LEVEL') {
         return (
             <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100 shadow-inner">
-                {renderRow('Tên bài học', oldSnapshot?.name || oldSnapshot?.title, newSnapshot?.name || newSnapshot?.title, 'words')}
+                {renderRow('Tên học phần', oldSnapshot?.name || oldSnapshot?.title, newSnapshot?.name || newSnapshot?.title, 'words')}
                 {renderRow('Mô tả', oldSnapshot?.description, newSnapshot?.description, 'words')}
                 {renderRow('Thứ tự', oldSnapshot?.levelOrder, newSnapshot?.levelOrder, 'words')}
                 {renderRow('Số sao tối thiểu', oldSnapshot?.minStarsRequired, newSnapshot?.minStarsRequired, 'words')}

@@ -7,7 +7,7 @@ const Educator = () => {
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Cổng Thông Tin Giáo Viên</h1>
-                    <p className="text-gray-500">Quản lý lớp học và nội dung bài học</p>
+                    <p className="text-gray-500">Quản lý lớp học và nội dung học phần</p>
                 </div>
                 <Button variant="primary"><Plus size={20} className="mr-2" /> TẠO BÀI HỌC MỚI</Button>
             </div>
@@ -49,7 +49,7 @@ const Educator = () => {
                                     </div>
                                     <div className="flex-1">
                                         <div className="font-bold text-gray-800 text-sm">Nguyễn Văn A</div>
-                                        <div className="text-xs text-gray-500">Đã nộp bài tập phát âm</div>
+                                        <div className="text-xs text-gray-500">Đã nộp bài luyện phát âm</div>
                                     </div>
                                     <div className="w-2 h-2 rounded-full bg-brand-red"></div>
                                 </div>

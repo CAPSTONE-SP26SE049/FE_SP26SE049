@@ -15,7 +15,7 @@ import GameLayout from './components/layout/GameLayout';
 import { AuthProvider } from './core/auth/AuthContext';
 import { AppRoutes } from './router/AppRouter';
 
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 
 function App() {
 	return (
@@ -45,6 +45,7 @@ function App() {
 				},
 			}}
 		>
+			<AntdApp>
 			<AuthProvider>
 				<Router>
 					<Routes>
@@ -68,6 +69,7 @@ function App() {
 					</Routes>
 				</Router>
 			</AuthProvider>
+			</AntdApp>
 		</ConfigProvider>
 	);
 }

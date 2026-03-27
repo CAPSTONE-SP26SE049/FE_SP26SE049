@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
+    message,
     Card,
     Select,
     Table,
@@ -20,7 +21,6 @@ import {
     Form,
     Input,
     InputNumber,
-    message,
 } from 'antd';
 import {
     FileTextOutlined,
@@ -66,9 +66,49 @@ const REGION_LABEL: Record<string, { label: string; color: string; bg: string }>
     NORTH: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
     SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
     CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
+    BAC: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
+    NAM: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
+    TRUNG: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
+};
+
+/** Maps dialect name to ChallengeBank.region (BAC / TRUNG / NAM) — must match backend. */
+const getRegionKeyFromDialectId = (dialectId: string, dialectList: any[]) => {
+    const d = dialectList.find((item: any) => item.id === dialectId);
+    if (!d) return 'BAC';
+    const name = (d.name || '').toUpperCase();
+    if (name.includes('BẮC') || name.includes('BAC') || name.includes('NORTH')) return 'BAC';
+    if (name.includes('TRUNG') || name.includes('CENTRAL')) return 'TRUNG';
+    if (name.includes('NAM') || name.includes('SOUTH')) return 'NAM';
+    return 'BAC';
+};
+
+/** Chuẩn hóa một quiz từ API (metadataJson / itemsJson) — dùng chung khi tải danh sách quiz. */
+const formatQuizListItem = (quizData: any) => {
+    let formatted = { ...quizData };
+    if (formatted && (formatted.metadataJson || formatted.itemsJson)) {
+        try {
+            const metadata = typeof formatted.metadataJson === 'string'
+                ? JSON.parse(formatted.metadataJson)
+                : (formatted.metadataJson || {});
+
+            const items = typeof formatted.itemsJson === 'string'
+                ? JSON.parse(formatted.itemsJson)
+                : (formatted.itemsJson || []);
+
+            formatted = {
+                ...formatted,
+                ...metadata,
+                questions: items || []
+            };
+        } catch (e) {
+            console.error('Error parsing quiz JSON fields:', e);
+        }
+    }
+    return formatted;
 };
 
 const QuizManagementPage: React.FC = () => {
+    const [messageApi, contextHolder] = message.useMessage();
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(undefined);
@@ -186,29 +226,7 @@ const QuizManagementPage: React.FC = () => {
 
             console.log('[QuizManagement] quizList resolved:', quizList);
 
-            const formattedQuizzes = quizList.map(quizData => {
-                let formatted = { ...quizData };
-                if (formatted && (formatted.metadataJson || formatted.itemsJson)) {
-                    try {
-                        const metadata = typeof formatted.metadataJson === 'string'
-                            ? JSON.parse(formatted.metadataJson)
-                            : (formatted.metadataJson || {});
-
-                        const items = typeof formatted.itemsJson === 'string'
-                            ? JSON.parse(formatted.itemsJson)
-                            : (formatted.itemsJson || []);
-
-                        formatted = {
-                            ...formatted,
-                            ...metadata,
-                            questions: items || []
-                        };
-                    } catch (e) {
-                        console.error("Error parsing quiz JSON fields:", e);
-                    }
-                }
-                return formatted;
-            });
+            const formattedQuizzes = quizList.map(formatQuizListItem);
 
             setQuizzes(formattedQuizzes);
         } catch (err) {
@@ -219,14 +237,106 @@ const QuizManagementPage: React.FC = () => {
         }
     };
 
-    const fetchBank = async () => {
+    /** Tải lại danh sách quiz của cấp độ nhưng giữ quiz đang mở (không reset màn chi tiết). */
+    const reloadQuizzesPreserveSelection = async () => {
+        if (!selectedLevelId) return;
+        setLoadingQuiz(true);
+        try {
+            const res: any = await educatorService.getQuizzesByLevel(selectedLevelId);
+            let quizList: any[] = [];
+            if (res?.data && Array.isArray(res.data)) {
+                quizList = res.data;
+            } else if (Array.isArray(res)) {
+                quizList = res;
+            } else if (res?.data && typeof res.data === 'object') {
+                quizList = [res.data];
+            } else if (res?.id) {
+                quizList = [res];
+            }
+            const formattedQuizzes = quizList.map(formatQuizListItem);
+            setQuizzes(formattedQuizzes);
+            const currentId = quiz?.id;
+            if (currentId) {
+                const found = formattedQuizzes.find((q: any) => q.id === currentId);
+                if (found) setQuiz(found);
+            }
+        } catch (err) {
+            console.error('[QuizManagement] reloadQuizzesPreserveSelection:', err);
+        } finally {
+            setLoadingQuiz(false);
+        }
+    };
+
+    const filteredLevels = useMemo(() => {
+        return levels.filter(level => {
+            const matchesSearch = level.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesRegion = !regionFilter || level.dialectId === regionFilter;
+            return matchesSearch && matchesRegion;
+        });
+    }, [levels, searchTerm, regionFilter]);
+
+    const selectedLevel = useMemo(
+        () => levels.find((l) => l.id === selectedLevelId),
+        [levels, selectedLevelId]
+    );
+
+    const reloadQuizChallenges = async () => {
+        if (!quiz?.id) return;
+        setLoadingQuizChallenges(true);
+        try {
+            const res: any = await educatorService.getQuizChallenges(quiz.id);
+            setQuizChallenges(res?.data || (Array.isArray(res) ? res : []));
+        } catch (e) {
+            console.error('Failed to refresh quiz challenges', e);
+            setQuizChallenges([]);
+        } finally {
+            setLoadingQuizChallenges(false);
+        }
+    };
+
+    /** Ưu tiên hàng từ quiz_challenge_item + ChallengeBank; không thì fallback itemsJson (quiz.questions). */
+    const displayQuizQuestions = useMemo(() => {
+        if (!quiz) return [];
+        if (quizChallenges && quizChallenges.length > 0) {
+            return quizChallenges
+                .map((item: any, idx: number) => {
+                    const ch = item.challenge;
+                    if (!ch) return null;
+                    return {
+                        id: ch.id,
+                        challengeId: ch.id,
+                        skillType: ch.skillType,
+                        difficulty: ch.difficultyTag || ch.difficulty,
+                        questionOrder: item.orderIndex ?? idx + 1,
+                        points: (ch as any).points ?? 10,
+                        contentText: ch.contentText,
+                        metadataJson: ch.metadataJson,
+                        ...ch,
+                    };
+                })
+                .filter(Boolean) as any[];
+        }
+        return Array.isArray(quiz.questions) ? quiz.questions : [];
+    }, [quiz, quizChallenges]);
+
+    const fetchBank = async (skillType: string) => {
+        if (!skillType || !selectedLevelId || !selectedLevel) {
+            messageApi.warning('Chọn cấp độ trước khi mở ngân hàng câu hỏi.');
+            return;
+        }
         setLoadingBank(true);
         try {
-            const res: any = await educatorService.getChallengeBank();
-            setAvailableChallenges(res?.data || (Array.isArray(res) ? res : []));
+            const region = getRegionKeyFromDialectId(selectedLevel.dialectId, dialects);
+            const res: any = await educatorService.getChallengeBank(skillType, region, selectedLevelId);
+            let list = res?.data || (Array.isArray(res) ? res : []);
+            const existingIds = new Set(
+                quizChallenges.map((c: any) => c.challenge?.id ?? c.challengeId ?? c.id).filter(Boolean)
+            );
+            list = list.filter((c: any) => c.id && !existingIds.has(c.id));
+            setAvailableChallenges(list);
         } catch (err) {
             console.error('[QuizManagement] fetch bank error:', err);
-            message.error('Không thể tải ngân hàng thử thách');
+            messageApi.error('Không thể tải ngân hàng thử thách');
         } finally {
             setLoadingBank(false);
         }
@@ -237,18 +347,9 @@ const QuizManagementPage: React.FC = () => {
         setIsChallengeModalOpen(true);
         setIsCreatingNew(false);
         setSelectedBankIds([]);
-        setBankSearchText(''); // Reset search
-        fetchBank();
+        setBankSearchText('');
+        fetchBank(skillType);
     };
-
-
-    const filteredLevels = useMemo(() => {
-        return levels.filter(level => {
-            const matchesSearch = level.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesRegion = !regionFilter || level.dialectId === regionFilter;
-            return matchesSearch && matchesRegion;
-        });
-    }, [levels, searchTerm, regionFilter]);
 
     const handleBackToChapters = () => {
         if (quiz) {
@@ -262,7 +363,7 @@ const QuizManagementPage: React.FC = () => {
     const handleOpenEditQuiz = () => {
         if (!quiz) return;
 
-        const qList = Array.isArray(quiz.questions) ? quiz.questions : [];
+        const qList = displayQuizQuestions;
         const readingCount = qList.filter((q: any) => q.skillType === 'READING').length;
         const listeningCount = qList.filter((q: any) => q.skillType === 'LISTENING').length;
         const speakingCount = qList.filter((q: any) => q.skillType === 'SPEAKING').length;
@@ -296,7 +397,7 @@ const QuizManagementPage: React.FC = () => {
             const writingCount = Number(values.writingCount || 0);
 
             // Logic to preserve existing questions but adjust counts
-            const currentQuestions = Array.isArray(quiz.questions) ? [...quiz.questions] : [];
+            const currentQuestions = [...displayQuizQuestions];
             const newQuestions: any[] = [];
 
             const skills = [
@@ -338,17 +439,19 @@ const QuizManagementPage: React.FC = () => {
                 passingScore: values.passingScore,
                 timeLimitMinutes: values.timeLimitMinutes,
                 skillType: values.skillType,
+                difficulty: values.difficulty || 'BEGINNER',
                 questionCount: finalQuestions.length,
                 comment: values.comment || 'Cập nhật quiz',
                 questions: finalQuestions
             };
 
             await educatorService.updateQuiz(quiz.id, payload);
-            message.success('Cập nhật quiz thành công');
+            messageApi.success('Cập nhật quiz thành công');
             setIsEditQuizModalOpen(false);
-            handleLevelChange(selectedLevelId);
+            await reloadQuizzesPreserveSelection();
+            await reloadQuizChallenges();
         } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi cập nhật quiz');
+            messageApi.error(err?.message || 'Lỗi khi cập nhật quiz');
         } finally {
             setUpdatingQuiz(false);
         }
@@ -366,18 +469,19 @@ const QuizManagementPage: React.FC = () => {
                 passingScore: values.passingScore || 80,
                 timeLimitMinutes: values.timeLimitMinutes || 15,
                 skillType: values.skillType || 'MIXED',
+                difficulty: values.difficulty || 'BEGINNER',
                 questionCount: 0,
                 comment: 'Tạo quiz mới',
                 questions: []
             };
 
             await educatorService.createQuiz(payload);
-            message.success('Tạo bài kiểm tra mới thành công');
+            messageApi.success('Tạo bài kiểm tra mới thành công');
             setIsCreateQuizModalOpen(false);
             newQuizForm.resetFields();
             handleLevelChange(selectedLevelId);
         } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi tạo bài kiểm tra');
+            messageApi.error(err?.message || 'Lỗi khi tạo bài kiểm tra');
         } finally {
             setCreatingQuiz(false);
         }
@@ -459,12 +563,11 @@ const QuizManagementPage: React.FC = () => {
         setSubmittingAssign(true);
         try {
             await educatorService.assignChallengesToQuiz(quiz.id, selectedBankIds);
-            message.success('Gán câu hỏi vào quiz thành công');
+            messageApi.success('Gán câu hỏi vào quiz thành công');
             setIsChallengeModalOpen(false);
-            // Refresh quiz data
-            if (selectedLevelId) handleLevelChange(selectedLevelId);
+            await reloadQuizChallenges();
         } catch (err) {
-            message.error('Gán câu hỏi thất bại');
+            messageApi.error('Gán câu hỏi thất bại');
         } finally {
             setSubmittingAssign(false);
         }
@@ -523,10 +626,11 @@ const QuizManagementPage: React.FC = () => {
                 setIsCreatingNew(true);
                 setEditingChallengeId(challengeIdToModify);
                 setIsChallengeModalOpen(true);
+                void fetchBank(skill);
                 return;
             }
         }
-        message.warning("Không lấy được dữ liệu chi tiết để sửa");
+        messageApi.warning("Không lấy được dữ liệu chi tiết để sửa");
     };
 
     const handleRemoveQuestion = (record: any, index?: number) => {
@@ -550,7 +654,7 @@ const QuizManagementPage: React.FC = () => {
         }
 
         if (!quiz?.id || !challengeId) {
-            message.warning("Không thể tìm thấy ID câu hỏi để xóa");
+            messageApi.warning("Không thể tìm thấy ID câu hỏi để xóa");
             return;
         }
 
@@ -563,10 +667,10 @@ const QuizManagementPage: React.FC = () => {
             onOk: async () => {
                 try {
                     await educatorService.removeChallengeFromQuiz(quiz.id, challengeId);
-                    message.success('Gỡ câu hỏi thành công');
-                    if (selectedLevelId) handleLevelChange(selectedLevelId);
+                    messageApi.success('Gỡ câu hỏi thành công');
+                    await reloadQuizChallenges();
                 } catch (err: any) {
-                    message.error('Lỗi khi gỡ câu hỏi');
+                    messageApi.error('Lỗi khi gỡ câu hỏi');
                 }
             }
         });
@@ -611,12 +715,14 @@ const QuizManagementPage: React.FC = () => {
                 contentText: values.contentText,
                 skillType: skill,
                 difficultyTag: values.difficultyTag,
-                metadataJson: metadataJson
+                metadataJson: metadataJson,
+                region: selectedLevel ? getRegionKeyFromDialectId(selectedLevel.dialectId, dialects) : undefined,
+                levelId: selectedLevelId,
             };
 
             if (editingChallengeId) {
                 await educatorService.updateChallengeBankItem(editingChallengeId, payload);
-                message.success('Cập nhật câu hỏi thành công');
+                messageApi.success('Cập nhật câu hỏi thành công');
             } else {
                 const res: any = await educatorService.createChallengeBankItem(payload);
                 const newChallengeId = res?.data?.id || res?.id;
@@ -624,30 +730,28 @@ const QuizManagementPage: React.FC = () => {
                 if (newChallengeId) {
                     // Auto assign to quiz after creation
                     await educatorService.assignChallengesToQuiz(quiz.id, [newChallengeId]);
-                    message.success('Tạo và gán câu hỏi thành công');
+                    messageApi.success('Tạo và gán câu hỏi thành công');
                 } else {
-                    message.success('Tạo câu hỏi thành công');
+                    messageApi.success('Tạo câu hỏi thành công');
                 }
             }
 
             setIsChallengeModalOpen(false);
             createForm.resetFields();
             setEditingChallengeId(null);
-            if (selectedLevelId) handleLevelChange(selectedLevelId);
+            await reloadQuizChallenges();
+            await reloadQuizzesPreserveSelection();
         } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi lưu câu hỏi');
+            messageApi.error(err?.message || 'Lỗi khi lưu câu hỏi');
         } finally {
             setSubmittingCreate(false);
         }
     };
 
     const getRegionInfo = (dialectId: string) => {
-        const dialect = dialects.find((d) => d.id === dialectId);
-        const regionKey = (dialect?.name || '').toUpperCase();
-        return REGION_LABEL[regionKey] || null;
+        const key = getRegionKeyFromDialectId(dialectId, dialects);
+        return REGION_LABEL[key] || null;
     };
-
-    const selectedLevel = levels.find((l) => l.id === selectedLevelId);
 
     // --- Import/Export/Template Handlers ---
     const handleDownloadQuizTemplate = () => {
@@ -660,7 +764,7 @@ const QuizManagementPage: React.FC = () => {
         link.download = 'quiz_template.csv';
         link.click();
         URL.revokeObjectURL(url);
-        message.success('Đã tải template mẫu');
+        messageApi.success('Đã tải template mẫu');
     };
 
     const handleImportQuizCSV = async () => {
@@ -670,7 +774,7 @@ const QuizManagementPage: React.FC = () => {
         try {
             const text = await importFile.text();
             const lines = text.split('\n').filter(l => l.trim());
-            if (lines.length < 2) { message.warning('File rỗng'); setImporting(false); return; }
+            if (lines.length < 2) { messageApi.warning('File rỗng'); setImporting(false); return; }
 
             const rows = lines.slice(1);
             let success = 0;
@@ -704,6 +808,7 @@ const QuizManagementPage: React.FC = () => {
                         passingScore: isNaN(passingScore) ? 70 : passingScore,
                         timeLimitMinutes: isNaN(timeLimitMinutes) ? 10 : timeLimitMinutes,
                         skillType,
+                        difficulty: 'BEGINNER',
                         questionCount: 0,
                         comment: `Import từ CSV - ${skillType}`,
                         questions: [],
@@ -719,18 +824,18 @@ const QuizManagementPage: React.FC = () => {
 
             setImportResult({ success, errors });
             if (success > 0) {
-                message.success(`Import thành công ${success} quiz`);
+                messageApi.success(`Import thành công ${success} quiz`);
                 handleLevelChange(selectedLevelId);
             }
         } catch (err) {
-            message.error('Lỗi đọc file CSV');
+            messageApi.error('Lỗi đọc file CSV');
         } finally {
             setImporting(false);
         }
     };
 
     const handleExportQuizCSV = () => {
-        if (quizzes.length === 0) { message.warning('Không có quiz để export'); return; }
+        if (quizzes.length === 0) { messageApi.warning('Không có quiz để export'); return; }
         const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng,Số câu hỏi';
         const rows = quizzes.map(q => {
             const name = (q.name || q.title || '').replace(/,/g, ';');
@@ -747,7 +852,7 @@ const QuizManagementPage: React.FC = () => {
         link.download = `quiz_${selectedLevel?.name?.replace(/\s+/g, '_') || 'export'}.csv`;
         link.click();
         URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} quiz`);
+        messageApi.success(`Đã export ${rows.length} quiz`);
     };
 
     // --- Import Challenges Excel to Quiz Handlers ---
@@ -774,9 +879,9 @@ const QuizManagementPage: React.FC = () => {
                 const blob = await excelService.downloadChallengeTemplate(skillToDownload);
                 downloadBlob(blob, `template_${skillToDownload.toLowerCase()}.xlsx`);
             }
-            message.success('Đã tải template Excel mẫu');
+            messageApi.success('Đã tải template Excel mẫu');
         } catch (err) {
-            message.error('Không thể tải template');
+            messageApi.error('Không thể tải template');
         }
     };
 
@@ -798,15 +903,15 @@ const QuizManagementPage: React.FC = () => {
             setImportChallengesResult(importData);
 
             if (importData?.successCount > 0) {
-                message.success(`Import thành công ${importData.successCount} câu hỏi vào quiz`);
-                // Refresh quiz data
-                if (selectedLevelId) handleLevelChange(selectedLevelId);
+                messageApi.success(`Import thành công ${importData.successCount} câu hỏi vào quiz`);
+                await reloadQuizChallenges();
+                await reloadQuizzesPreserveSelection();
             } else {
-                message.info('Không có câu hỏi mới nào được import');
+                messageApi.info('Không có câu hỏi mới nào được import');
             }
         } catch (err: any) {
             const errorMsg = err?.response?.data?.message || err?.message || 'Lỗi import';
-            message.error(errorMsg);
+            messageApi.error(errorMsg);
         } finally {
             setImportingChallenges(false);
         }
@@ -1031,13 +1136,13 @@ const QuizManagementPage: React.FC = () => {
     ];
     const levelColumns = [
         {
-            title: 'Tên chương',
+            title: 'Tên học phần',
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: any) => {
                 const rInfo = getRegionInfo(record.dialectId);
                 return (
-                    <Space direction="vertical" size={0}>
+                    <Space orientation="vertical" size={0}>
                         <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
                         {rInfo && (
                             <Tag color={rInfo.color} style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
@@ -1054,7 +1159,7 @@ const QuizManagementPage: React.FC = () => {
             key: 'description',
             render: (text: string) => (
                 <Text type="secondary" style={{ fontSize: 13 }}>
-                    {text || 'Hệ thống bài học và kiểm tra đã sẵn sàng.'}
+                    {text || 'Hệ thống học phần và bài kiểm tra đã sẵn sàng.'}
                 </Text>
             ),
         },
@@ -1065,7 +1170,7 @@ const QuizManagementPage: React.FC = () => {
             render: (_: any, record: any) => (
                 <Space size="middle">
                     {record.levelOrder != null && (
-                        <Tooltip title="Thứ tự chương">
+                        <Tooltip title="Thứ tự học phần">
                             <Badge count={`#${record.levelOrder}`} style={{ backgroundColor: '#f1f5f9', color: '#475569', boxShadow: 'none' }} />
                         </Tooltip>
                     )}
@@ -1094,7 +1199,7 @@ const QuizManagementPage: React.FC = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: any) => (
-                <Space direction="vertical" size={2}>
+                <Space orientation="vertical" size={2}>
                     <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>ID: {record.id?.substring(0, 8)}...</Text>
                 </Space>
@@ -1182,7 +1287,9 @@ const QuizManagementPage: React.FC = () => {
     const regionInfo = selectedLevel ? getRegionInfo(selectedLevel.dialectId) : null;
 
     return (
-        <div style={{ padding: 0 }}>
+        <>
+            {contextHolder}
+            <div style={{ padding: 0 }}>
             {/* Header */}
             <div
                 style={{
@@ -1210,8 +1317,8 @@ const QuizManagementPage: React.FC = () => {
                     </Title>
                     <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
                         {selectedLevelId && selectedLevel
-                            ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
-                            : 'Xem danh sách quiz và câu hỏi theo từng chương học'}
+                            ? `Quản lý các bài kiểm tra trong học phần "${selectedLevel.name}"`
+                            : 'Xem danh sách quiz và câu hỏi theo từng học phần'}
                     </Text>
                 </div>
                 {selectedLevelId && !quiz && (
@@ -1240,7 +1347,7 @@ const QuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
                         <div>
                             <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Khám Phá Các Chương Học
+                                Khám phá các học phần
                             </Title>
                             <Text style={{ color: '#64748b', fontSize: 15 }}>
                                 Tìm kiếm và chọn một hệ chương trình bên dưới
@@ -1249,7 +1356,7 @@ const QuizManagementPage: React.FC = () => {
 
                         <Space size={12} className="filter-controls">
                             <Input
-                                placeholder="Tìm tên chương..."
+                                placeholder="Tìm tên học phần..."
                                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                                 style={{ width: 260, borderRadius: 12, height: 42 }}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -1281,7 +1388,7 @@ const QuizManagementPage: React.FC = () => {
                                 gap: 8
                             }}>
                                 <Badge count={filteredLevels.length} color="#2563eb" />
-                                <Text strong style={{ color: '#2563eb', fontSize: 13 }}>Chương</Text>
+                                <Text strong style={{ color: '#2563eb', fontSize: 13 }}>Học phần</Text>
                             </div>
                         </Space>
                     </div>
@@ -1308,7 +1415,7 @@ const QuizManagementPage: React.FC = () => {
 
             {loadingQuiz && (
                 <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-                    <Spin size="large" tip="Đang tải dữ liệu quiz..." />
+                    <Spin size="large" description="Đang tải dữ liệu quiz..." />
                 </div>
             )}
 
@@ -1316,7 +1423,7 @@ const QuizManagementPage: React.FC = () => {
                 <div style={{ padding: '60px 0', textAlign: 'center' }}>
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<Text type="secondary">Chương học này chưa có bài kiểm tra nào</Text>}
+                        description={<Text type="secondary">Học phần này chưa có bài kiểm tra nào</Text>}
                     />
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: '#1890ff', borderColor: '#1890ff', color: '#fff', fontWeight: 600, borderRadius: 8 }}>
                         Tạo bài kiểm tra đầu tiên
@@ -1398,7 +1505,7 @@ const QuizManagementPage: React.FC = () => {
                             border: '1.5px solid #bfdbfe',
                             background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)',
                         }}
-                        bodyStyle={{ padding: '24px 28px' }}
+                        styles={{ body: { padding: '24px 28px' } }}
                     >
                         {/* Title row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -1478,7 +1585,7 @@ const QuizManagementPage: React.FC = () => {
                             <Col xs={12} sm={6}>
                                 <Statistic
                                     title={<span style={{ fontSize: 12, color: '#64748b' }}>Số câu hỏi</span>}
-                                    value={quiz.questions?.length ?? quiz.questionCount ?? 0}
+                                    value={(displayQuizQuestions.length || quiz.questionCount) ?? 0}
                                     prefix={<QuestionCircleOutlined style={{ color: '#2563eb' }} />}
                                     valueStyle={{ fontSize: 22, fontWeight: 700, color: '#2563eb' }}
                                 />
@@ -1533,12 +1640,12 @@ const QuizManagementPage: React.FC = () => {
                             boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                             border: '1px solid #e2e8f0',
                         }}
-                        headStyle={{ borderRadius: '16px 16px 0 0' }}
+                        styles={{ header: { borderRadius: '16px 16px 0 0' } }}
                         title={
                             <Space>
                                 <QuestionCircleOutlined style={{ color: '#2563eb' }} />
                                 <span style={{ fontWeight: 600 }}>
-                                    Danh sách câu hỏi ({quiz.questions?.length ?? quiz.questionCount ?? 0} câu)
+                                    Danh sách câu hỏi ({(displayQuizQuestions.length || quiz.questionCount) ?? 0} câu)
                                 </span>
                             </Space>
                         }
@@ -1549,7 +1656,7 @@ const QuizManagementPage: React.FC = () => {
                             {Object.entries(SKILL_CONFIG)
                                 .filter(([key]) => !quiz.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
                                 .map(([key, cfg]) => {
-                                    const count = (quiz.questions || []).filter((q: any) => q.skillType === key).length;
+                                    const count = displayQuizQuestions.filter((q: any) => q.skillType === key).length;
                                     return (
                                         <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
                                             <span
@@ -1644,9 +1751,9 @@ const QuizManagementPage: React.FC = () => {
                         </div>
 
                         {/* Questions Table */}
-                        {quiz.questions && quiz.questions.length > 0 ? (
+                        {displayQuizQuestions.length > 0 ? (
                             <Table
-                                dataSource={quiz.questions}
+                                dataSource={displayQuizQuestions}
                                 columns={questionColumns}
                                 rowKey={(r: any) => `${r.questionOrder}-${r.skillType}`}
                                 locale={{ emptyText: 'Không có câu hỏi nào' }}
@@ -2274,6 +2381,7 @@ const QuizManagementPage: React.FC = () => {
                     initialValues={{
                         passingScore: 80,
                         timeLimitMinutes: 15,
+                        difficulty: 'BEGINNER',
                     }}
                     style={{ marginTop: 20 }}
                 >
@@ -2287,7 +2395,7 @@ const QuizManagementPage: React.FC = () => {
                         <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
                         <Form.Item name="passingScore" label={<Text strong>Điểm cần đạt (%)</Text>} rules={[{ required: true, message: 'Nhập điểm cần đạt' }]}>
                             <InputNumber min={1} max={100} style={{ width: '100%' }} />
                         </Form.Item>
@@ -2302,6 +2410,12 @@ const QuizManagementPage: React.FC = () => {
                                 { value: 'WRITING', label: '✍️ Writing' },
                                 { value: 'MIXED', label: '🎯 Tổng hợp' },
                             ]} />
+                        </Form.Item>
+                        <Form.Item name="difficulty" label={<Text strong>Độ khó</Text>} rules={[{ required: true, message: 'Chọn độ khó' }]}>
+                            <Select
+                                placeholder="Độ khó"
+                                options={Object.entries(DIFFICULTY_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))}
+                            />
                         </Form.Item>
                     </div>
                 </Form>
@@ -2680,7 +2794,8 @@ const QuizManagementPage: React.FC = () => {
                     transform: translateX(4px);
                 }
             `}</style>
-        </div>
+            </div>
+        </>
     );
 
 };

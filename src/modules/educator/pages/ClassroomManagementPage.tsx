@@ -224,7 +224,7 @@ const ClassroomManagementPage: React.FC = () => {
             })
         } catch (error) {
             console.error('Failed to fetch chapters by educator:', error)
-            message.error('Không thể lấy danh sách chương học từ API assignments')
+            message.error('Không thể lấy danh sách học phần từ API assignments')
         }
     }
 
@@ -505,7 +505,7 @@ const ClassroomManagementPage: React.FC = () => {
                             className="text-purple-600 border-purple-200 hover:bg-purple-50"
                         />
                     </Tooltip>
-                    <Tooltip title="Xem chương học">
+                    <Tooltip title="Xem học phần">
                         <Button
                             icon={<EyeOutlined />}
                             onClick={() => handleViewChapters(record)}
