@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "verify:challenge-bank": "node scripts/verify-challenge-bank-wiring.mjs",
-    "verify": "npm run verify:challenge-bank && tsc --noEmit && echo \"tsc: OK\""
+    "verify": "npm run verify:challenge-bank && tsc --noEmit && echo \"tsc: OK\"",
+    "check": "npm run verify && npm run build"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",

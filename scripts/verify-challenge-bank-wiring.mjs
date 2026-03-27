@@ -44,14 +44,47 @@ const checks = [
       'params.levelId',
     ],
   },
-  {
-    name: 'ChapterManagementPage gọi getChallengeBank với region + levelId',
-    file: path.join(root, 'src/modules/admin/pages/ChapterManagementPage.tsx'),
-    mustInclude: [
-      'adminService.getChallengeBank(skillType, region, levelId)',
-    ],
-  },
 ];
+
+function checkFilteredBankConsumer() {
+  const adminChapter = path.join(
+    root,
+    'src/modules/admin/pages/ChapterManagementPage.tsx'
+  );
+  const eduQuiz = path.join(
+    root,
+    'src/modules/educator/pages/QuizManagementPage.tsx'
+  );
+  let a = '';
+  let e = '';
+  try {
+    a = fs.readFileSync(adminChapter, 'utf8');
+  } catch {
+    /* ignore */
+  }
+  try {
+    e = fs.readFileSync(eduQuiz, 'utf8');
+  } catch {
+    /* ignore */
+  }
+  const adminOk = a.includes('adminService.getChallengeBank(skillType, region, levelId)');
+  const eduOk =
+    e.includes('educatorService.getChallengeBank(skillType, region') ||
+    e.includes('educatorService.getChallengeBank(skillType, region,');
+  if (adminOk || eduOk) {
+    const where = [adminOk && 'admin ChapterManagement', eduOk && 'educator QuizManagement']
+      .filter(Boolean)
+      .join(' + ');
+    console.log(`PASS [FE gọi bank có filter: ${where}]`);
+    return true;
+  }
+  console.error(
+    'FAIL [FE gọi bank có filter] cần ít nhất một trong hai:\n' +
+      '  - admin ChapterManagementPage: adminService.getChallengeBank(skillType, region, levelId)\n' +
+      '  - educator QuizManagementPage: educatorService.getChallengeBank(skillType, region, ...)'
+  );
+  return false;
+}
 
 let failed = 0;
 for (const c of checks) {
@@ -70,6 +103,10 @@ for (const c of checks) {
   } else {
     console.log(`PASS [${c.name}]`);
   }
+}
+
+if (!checkFilteredBankConsumer()) {
+  failed++;
 }
 
 if (failed) {
