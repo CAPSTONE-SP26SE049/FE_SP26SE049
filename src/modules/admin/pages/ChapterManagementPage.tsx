@@ -579,7 +579,7 @@ const AdminChapterManagementPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
+                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
                     {fromClassroomName ? (
                         <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
                             Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
@@ -657,7 +657,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
                         }}
                     >
-                        Thêm Chương Học
+                        Thêm chương học
                     </Button>
                 </Space>
             </div>
@@ -742,7 +742,7 @@ const AdminChapterManagementPage: React.FC = () => {
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}
+                title={<span style={{ fontWeight: 600 }}>Tạo chương học mới</span>}
                 open={isCreateModalOpen}
                 onCancel={() => {
                     form.resetFields();
@@ -885,7 +885,7 @@ const AdminChapterManagementPage: React.FC = () => {
             </Modal>
 
             <Drawer
-                title={<span style={{ fontWeight: 700, fontSize: 18 }}>Chi Tiết Chương Học</span>}
+                title={<span style={{ fontWeight: 700, fontSize: 18 }}>Chi tiết chương học</span>}
                 placement="right"
                 width={500}
                 onClose={() => {
@@ -969,7 +969,7 @@ const AdminChapterManagementPage: React.FC = () => {
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Cập Nhật Chương Học</span>}
+                title={<span style={{ fontWeight: 600 }}>Cập nhật chương học</span>}
                 open={isEditModalOpen}
                 onCancel={() => {
                     editForm.resetFields();
@@ -978,7 +978,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => editForm.submit()}
                 confirmLoading={updating}
-                okText="Cập Nhật"
+                okText="Cập nhật"
                 okButtonProps={{
                     style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
                 }}
@@ -1058,7 +1058,7 @@ const AdminChapterManagementPage: React.FC = () => {
             </Modal>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Quiz cho Level {selectedLevelForQuiz?.name}</span>}
+                title={<span style={{ fontWeight: 600 }}>Tạo quiz cho level {selectedLevelForQuiz?.name}</span>}
                 open={isCreateQuizModalOpen}
                 onCancel={() => {
                     quizForm.resetFields();
@@ -1067,7 +1067,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => quizForm.submit()}
                 confirmLoading={creatingQuiz}
-                okText="Tạo Quiz"
+                okText="Tạo quiz"
                 okButtonProps={{
                     style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
                 }}
@@ -1197,7 +1197,7 @@ const AdminChapterManagementPage: React.FC = () => {
 
             {/* ===== IMPORT MODAL ===== */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import Chương Học từ CSV</span>}
+                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ CSV</span>}
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}

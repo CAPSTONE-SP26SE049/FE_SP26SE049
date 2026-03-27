@@ -670,7 +670,7 @@ const RewardManagementPage = () => {
                             <TrophyOutlined style={{ color: '#fff', fontSize: 18 }} />
                         </div>
                         <div>
-                            <div className="font-bold text-gray-800 text-base leading-tight">Quản lý Huy hiệu</div>
+                            <div className="font-bold text-gray-800 text-base leading-tight">Quản lý huy hiệu</div>
                             <div className="text-xs text-gray-400">Badge management</div>
                         </div>
                     </div>
@@ -708,7 +708,7 @@ const RewardManagementPage = () => {
                         boxShadow: '0 2px 8px rgba(245,158,11,0.35)', flexShrink: 0
                     }}
                 >
-                    Thêm Huy hiệu
+                    Thêm huy hiệu
                 </Button>
             </div>
 
@@ -775,7 +775,7 @@ const RewardManagementPage = () => {
                 title={
                     <div className="flex items-center gap-2 text-lg font-semibold">
                         <TrophyOutlined className="text-yellow-500" />
-                        {editing ? 'Chỉnh sửa Huy hiệu' : 'Tạo Huy hiệu mới'}
+                        {editing ? 'Chỉnh sửa huy hiệu' : 'Tạo huy hiệu mới'}
                     </div>
                 }
                 okText={editing ? 'Lưu thay đổi' : 'Tạo'}
@@ -822,7 +822,7 @@ const RewardManagementPage = () => {
                         <TextArea rows={2} placeholder="Mô tả ngắn hiển thị cho người chơi..." />
                     </Form.Item>
 
-                    <Form.Item label="Hình ảnh Huy hiệu" required>
+                    <Form.Item label="Hình ảnh huy hiệu" required>
                         <Upload
                             listType="picture-card"
                             fileList={fileList}

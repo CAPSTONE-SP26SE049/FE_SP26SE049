@@ -1215,8 +1215,8 @@ const AdminQuizManagementPage: React.FC = () => {
                         )}
                         <FileTextOutlined style={{ marginRight: 10, color: '#2563eb' }} />
                         {selectedLevelId && selectedLevel ? (
-                            <>Quản Lý Quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
-                        ) : 'Quản Lý Quiz'}
+                            <>Quản lý quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
+                        ) : 'Quản lý quiz'}
                     </Title>
                     <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
                         {selectedLevelId && selectedLevel
@@ -1250,7 +1250,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
                         <div>
                             <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Khám Phá Các Chương Học
+                                Khám phá các chương học
                             </Title>
                             <Text style={{ color: '#64748b', fontSize: 15 }}>
                                 Tìm kiếm và chọn một hệ chương trình bên dưới
@@ -1339,7 +1339,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                         <div>
                             <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Danh Sách Bài Kiểm Tra
+                                Danh sách bài kiểm tra
                             </Title>
                             <Text style={{ color: '#64748b', fontSize: 15 }}>
                                 Vui lòng chọn một bài kiểm tra để xem và quản lý chi tiết
@@ -2154,7 +2154,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
             {/* Edit Quiz Modal */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Chỉnh Sửa Quiz</span>}
+                title={<span style={{ fontWeight: 600 }}>Chỉnh sửa quiz</span>}
                 open={isEditQuizModalOpen}
                 onCancel={() => setIsEditQuizModalOpen(false)}
                 onOk={() => editQuizForm.submit()}
@@ -2264,7 +2264,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <PlusOutlined style={{ color: '#2563eb' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Tạo Bài Kiểm Tra Mới</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Tạo bài kiểm tra mới</span>
                     </Space>
                 }
                 open={isCreateQuizModalOpen}
@@ -2324,7 +2324,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import Quiz từ CSV</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import quiz từ CSV</span>
                     </Space>
                 }
                 open={isImportModalOpen}
@@ -2383,7 +2383,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import Câu Hỏi từ Excel vào Quiz</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import câu hỏi từ Excel vào quiz</span>
                     </Space>
                 }
                 open={isImportChallengesModalOpen}
@@ -2493,7 +2493,7 @@ const AdminQuizManagementPage: React.FC = () => {
                             fontSize: 15,
                         }}
                     >
-                        {importingChallenges ? 'Đang import...' : '🚀 Import Câu Hỏi vào Quiz'}
+                        {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}
                     </Button>
 
                     {/* Result display */}

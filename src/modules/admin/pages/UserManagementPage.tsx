@@ -73,7 +73,7 @@ const UserManagementPage = () => {
             setSubmitting(true)
             const res: any = await adminService.createEducator(values)
             if (res.status === 'success') {
-                message.success('Tạo tài khoản Giáo viên thành công. Mật khẩu đã được gửi qua email.')
+                message.success('Tạo tài khoản giáo viên thành công. Mật khẩu đã được gửi qua email.')
                 setIsModalVisible(false)
                 form.resetFields()
                 fetchUsers()
