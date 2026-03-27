@@ -31,7 +31,7 @@ const ErrorTagManagement: React.FC = () => {
                 setErrorTags(res.data || []);
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách Lỗi Phát Âm (Error Tags)');
+            message.error('Lỗi khi tải danh sách lỗi phát âm (Error Tags)');
         } finally {
             setLoading(false);
         }
@@ -63,15 +63,15 @@ const ErrorTagManagement: React.FC = () => {
             setLoading(true);
             if (editingTag) {
                 await adminService.updateErrorTag(editingTag.id, values);
-                message.success('Cập nhật Lỗi Phát Âm thành công');
+                message.success('Cập nhật lỗi phát âm thành công');
             } else {
                 await adminService.createErrorTag(values.tagCode, values.name, values.description || '', values.regions || []);
-                message.success('Tạo Lỗi Phát Âm mới thành công');
+                message.success('Tạo lỗi phát âm mới thành công');
             }
             setIsModalVisible(false);
             fetchErrorTags();
         } catch (error: any) {
-            message.error(error.message || `Có lỗi xảy ra khi ${editingTag ? 'cập nhật' : 'tạo'} Lỗi Phát Âm`);
+            message.error(error.message || `Có lỗi xảy ra khi ${editingTag ? 'cập nhật' : 'tạo'} lỗi phát âm`);
         } finally {
             setLoading(false);
         }
@@ -81,7 +81,7 @@ const ErrorTagManagement: React.FC = () => {
         try {
             setLoading(true);
             await adminService.deleteErrorTag(id);
-            message.success('Đã xóa Lỗi Phát Âm');
+            message.success('Đã xóa lỗi phát âm');
             fetchErrorTags();
         } catch (error: any) {
             message.error(error.message || 'Xóa thất bại');

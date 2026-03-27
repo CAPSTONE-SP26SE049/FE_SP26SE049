@@ -17,13 +17,16 @@ import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
-import ContentApprovalPage from '../modules/admin/pages/ContentApprovalPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
 import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
+import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
+import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
+import AdminChallengeBankPage from '../modules/admin/pages/ChallengeBankPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
+import QuizPage from '../modules/learner/pages/QuizPage'
 import Entrytest from '../pages/Entrytest'
 import { ProtectedRoute } from '../core/auth/ProtectedRoute'
 
@@ -44,7 +47,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
-          <Route path="approvals" element={<ContentApprovalPage />} />
+          <Route path="chapters" element={<AdminChapterManagementPage />} />
+          <Route path="challenges" element={<AdminChallengeBankPage />} />
+          <Route path="quizzes" element={<AdminQuizManagementPage />} />
           <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
@@ -65,7 +70,8 @@ export const AppRoutes: React.FC = () => {
 
       {/* User/Learner protected area */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
-        {/* Standalone EntryTest page without LearnerLayout (no sidebar/menu) */}
+        {/* Standalone quiz page without LearnerLayout */}
+        <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
         <Route path="/learner/entrytest" element={<Entrytest />} />
         <Route path="/learner" element={<LearnerLayout />}>
           {/* Default redirect to dashboard or first child */}

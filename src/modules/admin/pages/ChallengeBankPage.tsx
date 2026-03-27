@@ -38,9 +38,8 @@ import {
     ArrowRightOutlined,
     DeleteOutlined
 } from '@ant-design/icons';
-import { educatorService } from '../services/educatorService';
-import type { ChallengeBank, ChallengeBankRequest } from '../services/educatorService';
-import { excelService, downloadBlob } from '../services/excelService';
+import { adminService, type ChallengeBank, type ChallengeBankRequest } from '../services/adminService';
+import { excelService, downloadBlob } from '../../educator/services/excelService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -66,7 +65,7 @@ const REGION_CONFIG: Record<string, { label: string; color: string }> = {
     NAM: { label: 'Miền Nam', color: '#52c41a' },
 };
 
-const ChallengeBankPage: React.FC = () => {
+const AdminChallengeBankPage: React.FC = () => {
     const [challenges, setChallenges] = useState<ChallengeBank[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,7 +105,7 @@ const ChallengeBankPage: React.FC = () => {
     const fetchChallenges = async () => {
         setLoading(true);
         try {
-            const res: any = await educatorService.getChallengeBank();
+            const res: any = await adminService.getChallengeBank();
             setChallenges(res?.data || (Array.isArray(res) ? res : []));
         } catch (err) {
             console.error("[ChallengeBank] Error fetching:", err);
@@ -176,10 +175,10 @@ const ChallengeBankPage: React.FC = () => {
             };
 
             if (editingChallengeId) {
-                await educatorService.updateChallengeBankItem(editingChallengeId, payload);
+                await adminService.updateChallengeBankItem(editingChallengeId, payload);
                 message.success("Cập nhật câu hỏi thành công");
             } else {
-                await educatorService.createChallengeBankItem(payload);
+                await adminService.createChallengeBankItem(payload);
                 message.success("Tạo câu hỏi thành công");
             }
             
@@ -246,7 +245,7 @@ const ChallengeBankPage: React.FC = () => {
             cancelText: 'Hủy bỏ',
             onOk: async () => {
                 try {
-                    await educatorService.deleteChallengeBankItem(id);
+                    await adminService.deleteChallengeBankItem(id);
                     message.success('Đã xóa câu hỏi thành công!');
                     fetchChallenges();
                 } catch (error) {
@@ -644,6 +643,7 @@ const ChallengeBankPage: React.FC = () => {
                         columns={columns}
                         dataSource={filteredChallenges}
                         rowKey="id"
+                        scroll={{ x: 'max-content' }}
                         pagination={{
                             pageSize: 10,
                             showTotal: (total) => `Tổng cộng ${total} câu hỏi`,
@@ -700,7 +700,7 @@ const ChallengeBankPage: React.FC = () => {
                     form={form}
                     layout="vertical"
                     onFinish={handleSubmit}
-                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', region: 'BAC' }}
+                initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', region: 'BAC' }}
                     style={{ marginTop: 24 }}
                 >
                     <Form.Item
@@ -1010,6 +1010,28 @@ const ChallengeBankPage: React.FC = () => {
                                 Chi tiết Metadata ({selectedChallenge.skillType})
                             </Title>
 
+                            {/* SPEAKING & ENTRY_TEST Details */}
+                            {(selectedChallenge.skillType === 'SPEAKING' || selectedChallenge.skillType === 'ENTRY_TEST') && (
+                                <>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <Text strong>Âm thanh mẫu:</Text>
+                                        <div style={{ marginTop: 4 }}>
+                                            <audio controls src={selectedChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <Text strong style={{ display: 'block' }}>Nội dung cần nói:</Text>
+                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedChallenge.metadataJson?.transcript}</Text>
+                                    </div>
+                                    {selectedChallenge.metadataJson?.hint && (
+                                        <div>
+                                            <Text strong style={{ display: 'block' }}>Gợi ý:</Text>
+                                            <Text>{selectedChallenge.metadataJson?.hint}</Text>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
                             {/* READING Details */}
                             {selectedChallenge.skillType === 'READING' && (
                                 <>
@@ -1096,27 +1118,7 @@ const ChallengeBankPage: React.FC = () => {
                                 </>
                             )}
 
-                            {/* SPEAKING & ENTRY_TEST Details */}
-                            {(selectedChallenge.skillType === 'SPEAKING' || selectedChallenge.skillType === 'ENTRY_TEST') && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Âm thanh mẫu:</Text>
-                                        <div style={{ marginTop: 4 }}>
-                                            <audio controls src={selectedChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong style={{ display: 'block' }}>Nội dung cần nói:</Text>
-                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedChallenge.metadataJson?.transcript}</Text>
-                                    </div>
-                                    {selectedChallenge.metadataJson?.hint && (
-                                        <div>
-                                            <Text strong style={{ display: 'block' }}>Gợi ý:</Text>
-                                            <Text>{selectedChallenge.metadataJson?.hint}</Text>
-                                        </div>
-                                    )}
-                                </>
-                            )}
+
                         </div>
 
                         <div style={{ marginTop: 20, textAlign: 'right' }}>
@@ -1238,4 +1240,4 @@ const ChallengeBankPage: React.FC = () => {
     );
 };
 
-export default ChallengeBankPage;
+export default AdminChallengeBankPage;

@@ -41,10 +41,11 @@ import {
     UploadOutlined,
     ExportOutlined,
     DeleteOutlined,
-    ArrowRightOutlined
+    ArrowRightOutlined,
+    CheckCircleOutlined
 } from '@ant-design/icons';
-import { educatorService } from '../services/educatorService';
-import { excelService, downloadBlob } from '../services/excelService';
+import { adminService } from '../services/adminService';
+import { excelService, downloadBlob } from '../../educator/services/excelService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -68,7 +69,7 @@ const REGION_LABEL: Record<string, { label: string; color: string; bg: string }>
     CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
 };
 
-const QuizManagementPage: React.FC = () => {
+const AdminQuizManagementPage: React.FC = () => {
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(undefined);
@@ -124,7 +125,7 @@ const QuizManagementPage: React.FC = () => {
     useEffect(() => {
         const fetchLevels = async () => {
             try {
-                const res: any = await educatorService.getLevelsForSelection();
+                const res: any = await adminService.getLevelsForSelection();
                 setLevels(res?.data || (Array.isArray(res) ? res : []));
             } catch {
                 setLevels([]);
@@ -133,7 +134,7 @@ const QuizManagementPage: React.FC = () => {
 
         const fetchDialects = async () => {
             try {
-                const res: any = await educatorService.getDialects();
+                const res: any = await adminService.getDialects();
                 setDialects(res?.data || (Array.isArray(res) ? res : []));
             } catch {
                 setDialects([]);
@@ -149,7 +150,7 @@ const QuizManagementPage: React.FC = () => {
             if (quiz?.id) {
                 setLoadingQuizChallenges(true);
                 try {
-                    const res: any = await educatorService.getQuizChallenges(quiz.id);
+                    const res: any = await adminService.getQuizChallenges(quiz.id);
                     setQuizChallenges(res?.data || (Array.isArray(res) ? res : []));
                 } catch (e) {
                     console.error("Failed to fetch quiz challenges", e);
@@ -170,7 +171,7 @@ const QuizManagementPage: React.FC = () => {
         setQuizzes([]);
         setLoadingQuiz(true);
         try {
-            const res: any = await educatorService.getQuizzesByLevel(levelId);
+            const res: any = await adminService.getQuizzesByLevel(levelId);
             console.log('[QuizManagement] raw response:', res);
 
             let quizList: any[] = [];
@@ -222,7 +223,7 @@ const QuizManagementPage: React.FC = () => {
     const fetchBank = async () => {
         setLoadingBank(true);
         try {
-            const res: any = await educatorService.getChallengeBank();
+            const res: any = await adminService.getChallengeBank();
             setAvailableChallenges(res?.data || (Array.isArray(res) ? res : []));
         } catch (err) {
             console.error('[QuizManagement] fetch bank error:', err);
@@ -343,7 +344,7 @@ const QuizManagementPage: React.FC = () => {
                 questions: finalQuestions
             };
 
-            await educatorService.updateQuiz(quiz.id, payload);
+            await adminService.updateQuiz(quiz.id, payload);
             message.success('Cập nhật quiz thành công');
             setIsEditQuizModalOpen(false);
             handleLevelChange(selectedLevelId);
@@ -371,7 +372,7 @@ const QuizManagementPage: React.FC = () => {
                 questions: []
             };
 
-            await educatorService.createQuiz(payload);
+            await adminService.createQuiz(payload);
             message.success('Tạo bài kiểm tra mới thành công');
             setIsCreateQuizModalOpen(false);
             newQuizForm.resetFields();
@@ -406,7 +407,7 @@ const QuizManagementPage: React.FC = () => {
         if (quiz?.id) {
             try {
                 // Resolve detailed information from Bank via Quiz ID API
-                const res: any = await educatorService.getQuizChallenges(quiz.id);
+                const res: any = await adminService.getQuizChallenges(quiz.id);
                 console.log('[showDetail] getQuizChallenges response:', res);
 
                 // Handle both res.data (wrapped) and res (unwrapped) array
@@ -458,7 +459,7 @@ const QuizManagementPage: React.FC = () => {
         if (!quiz?.id || selectedBankIds.length === 0) return;
         setSubmittingAssign(true);
         try {
-            await educatorService.assignChallengesToQuiz(quiz.id, selectedBankIds);
+            await adminService.assignChallengesToQuiz(quiz.id, selectedBankIds);
             message.success('Gán câu hỏi vào quiz thành công');
             setIsChallengeModalOpen(false);
             // Refresh quiz data
@@ -562,7 +563,7 @@ const QuizManagementPage: React.FC = () => {
             cancelText: 'Hủy',
             onOk: async () => {
                 try {
-                    await educatorService.removeChallengeFromQuiz(quiz.id, challengeId);
+                    await adminService.removeChallengeFromQuiz(quiz.id, challengeId);
                     message.success('Gỡ câu hỏi thành công');
                     if (selectedLevelId) handleLevelChange(selectedLevelId);
                 } catch (err: any) {
@@ -615,15 +616,15 @@ const QuizManagementPage: React.FC = () => {
             };
 
             if (editingChallengeId) {
-                await educatorService.updateChallengeBankItem(editingChallengeId, payload);
+                await adminService.updateChallengeBankItem(editingChallengeId, payload);
                 message.success('Cập nhật câu hỏi thành công');
             } else {
-                const res: any = await educatorService.createChallengeBankItem(payload);
+                const res: any = await adminService.createChallengeBankItem(payload);
                 const newChallengeId = res?.data?.id || res?.id;
 
                 if (newChallengeId) {
                     // Auto assign to quiz after creation
-                    await educatorService.assignChallengesToQuiz(quiz.id, [newChallengeId]);
+                    await adminService.assignChallengesToQuiz(quiz.id, [newChallengeId]);
                     message.success('Tạo và gán câu hỏi thành công');
                 } else {
                     message.success('Tạo câu hỏi thành công');
@@ -708,7 +709,7 @@ const QuizManagementPage: React.FC = () => {
                         comment: `Import từ CSV - ${skillType}`,
                         questions: [],
                     };
-                    await educatorService.createQuiz(payload);
+                    await adminService.createQuiz(payload);
                     success++;
                     existingNames.push(title.toLowerCase().trim());
                 } catch (err: any) {
@@ -948,15 +949,6 @@ const QuizManagementPage: React.FC = () => {
             },
         },
         {
-            title: 'Thứ tự',
-            dataIndex: 'questionOrder',
-            key: 'questionOrder',
-            align: 'center' as const,
-            render: (val: number) => (
-                <Badge count={val} style={{ backgroundColor: '#e2e8f0', color: '#334155', boxShadow: 'none', fontWeight: 700 }} />
-            ),
-        },
-        {
             title: 'Điểm',
             dataIndex: 'points',
             key: 'points',
@@ -1029,6 +1021,7 @@ const QuizManagementPage: React.FC = () => {
             },
         },
     ];
+
     const levelColumns = [
         {
             title: 'Tên chương',
@@ -1040,52 +1033,61 @@ const QuizManagementPage: React.FC = () => {
                     <Space direction="vertical" size={0}>
                         <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
                         {rInfo && (
-                            <Tag color={rInfo.color} style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                            <Tag color={rInfo.color} style={{ fontSize: 11, borderRadius: 10, background: `${rInfo.color}15`, border: `1px solid ${rInfo.color}40` }}>
                                 {rInfo.label}
                             </Tag>
                         )}
                     </Space>
                 );
-            },
+            }
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
-            render: (text: string) => (
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                    {text || 'Hệ thống bài học và kiểm tra đã sẵn sàng.'}
-                </Text>
-            ),
+            ellipsis: true,
+            render: (text: string) => <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
         },
         {
-            title: 'Thông số',
-            key: 'stats',
-            width: 200,
-            render: (_: any, record: any) => (
-                <Space size="middle">
-                    {record.levelOrder != null && (
-                        <Tooltip title="Thứ tự chương">
-                            <Badge count={`#${record.levelOrder}`} style={{ backgroundColor: '#f1f5f9', color: '#475569', boxShadow: 'none' }} />
-                        </Tooltip>
-                    )}
-                    {record.minStarsRequired != null && (
-                        <Tag icon={<TrophyOutlined />} color="warning" style={{ borderRadius: 6 }}>
-                            {record.minStarsRequired} sao
-                        </Tag>
-                    )}
-                </Space>
-            ),
-        },
-        {
-            title: '',
-            key: 'action',
-            width: 60,
+            title: 'Thứ tự',
+            dataIndex: 'levelOrder',
+            key: 'levelOrder',
             align: 'center' as const,
-            render: () => (
-                <Button type="text" icon={<ArrowRightOutlined style={{ color: '#2563eb' }} />} />
-            ),
+            width: 80,
+            render: (val: number) => <Badge count={val} showZero color="#64748b" />
         },
+        {
+            title: 'Sao yêu cầu',
+            dataIndex: 'minStarsRequired',
+            key: 'minStarsRequired',
+            align: 'center' as const,
+            width: 120,
+            render: (val: number) => (
+                <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                    ⭐ {val ?? 0}
+                </span>
+            )
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            align: 'center' as const,
+            width: 120,
+            render: (_: any, record: any) => (
+                <Button
+                    type="primary"
+                    size="small"
+                    icon={<ArrowRightOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleLevelChange(record.id);
+                    }}
+                    style={{ borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                >
+                    Mở
+                </Button>
+            )
+        }
     ];
 
     const quizColumns = [
@@ -1094,65 +1096,73 @@ const QuizManagementPage: React.FC = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: any) => (
-                <Space direction="vertical" size={2}>
-                    <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>ID: {record.id?.substring(0, 8)}...</Text>
-                </Space>
-            ),
+                <Text strong style={{ color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
+            )
         },
         {
             title: 'Kỹ năng',
             dataIndex: 'skillType',
             key: 'skillType',
+            width: 150,
             render: (skill: string) => {
-                const cfg = SKILL_CONFIG[skill] || { label: skill || 'MIXED', color: 'default', icon: <QuestionCircleOutlined /> };
+                const cfg = SKILL_CONFIG[skill] || { label: skill, color: '#888', icon: <QuestionCircleOutlined /> };
                 return (
-                    <Tag icon={cfg.icon} color={cfg.color} style={{ borderRadius: 8, padding: '2px 10px', fontWeight: 500 }}>
+                    <Tag
+                        icon={cfg.icon}
+                        style={{
+                            background: `${cfg.color}10`,
+                            border: `1px solid ${cfg.color}30`,
+                            color: cfg.color,
+                            fontWeight: 600,
+                            borderRadius: 20
+                        }}
+                    >
                         {cfg.label}
                     </Tag>
                 );
-            },
+            }
         },
         {
             title: 'Thông số',
             key: 'stats',
             render: (_: any, record: any) => (
-                <Space size="middle">
-                    <Tooltip title="Số lượng câu hỏi">
-                        <Tag color="orange" style={{ borderRadius: 6 }}>
-                            {record.questions?.length ?? record.questionCount ?? 0} câu
-                        </Tag>
+                <Space size={8}>
+                    <Tooltip title="Số câu hỏi">
+                        <Tag color="blue" icon={<FileTextOutlined />}>{record.questions?.length ?? record.questionCount ?? 0}</Tag>
                     </Tooltip>
-                    {record.passingScore && (
-                        <Tooltip title="Điểm đạt yêu cầu">
-                            <Tag color="success" style={{ borderRadius: 6 }}>
-                                {record.passingScore}% đạt
-                            </Tag>
-                        </Tooltip>
-                    )}
+                    <Tooltip title="Điểm đạt">
+                        <Tag color="green" icon={<CheckCircleOutlined />}>{record.passingScore ?? 0}%</Tag>
+                    </Tooltip>
                     {record.timeLimitMinutes && (
-                        <Tooltip title="Thời gian làm bài">
-                            <Tag color="processing" style={{ borderRadius: 6 }}>
-                                {record.timeLimitMinutes} phút
-                            </Tag>
+                        <Tooltip title="Thời gian">
+                            <Tag color="orange" icon={<ClockCircleOutlined />}>{record.timeLimitMinutes}p</Tag>
                         </Tooltip>
                     )}
                 </Space>
-            ),
+            )
         },
         {
             title: 'Thao tác',
             key: 'action',
-            width: 100,
             align: 'center' as const,
-            render: () => (
-                <Button type="primary" size="small" ghost style={{ borderRadius: 6 }}>
-                    Quản lý
+            width: 120,
+            render: (_: any, record: any) => (
+                <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setQuiz(record);
+                    }}
+                    style={{ borderRadius: 6, fontWeight: 600 }}
+                >
+                    Chi tiết
                 </Button>
-            ),
-        },
+            )
+        }
     ];
-
 
     const filteredAndSortedQuizzes = useMemo(() => {
         let result = quizzes;
@@ -1205,8 +1215,8 @@ const QuizManagementPage: React.FC = () => {
                         )}
                         <FileTextOutlined style={{ marginRight: 10, color: '#2563eb' }} />
                         {selectedLevelId && selectedLevel ? (
-                            <>Quản Lý Quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
-                        ) : 'Quản Lý Quiz'}
+                            <>Quản lý quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
+                        ) : 'Quản lý quiz'}
                     </Title>
                     <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
                         {selectedLevelId && selectedLevel
@@ -1240,7 +1250,7 @@ const QuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
                         <div>
                             <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Khám Phá Các Chương Học
+                                Khám phá các chương học
                             </Title>
                             <Text style={{ color: '#64748b', fontSize: 15 }}>
                                 Tìm kiếm và chọn một hệ chương trình bên dưới
@@ -1329,7 +1339,7 @@ const QuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                         <div>
                             <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Danh Sách Bài Kiểm Tra
+                                Danh sách bài kiểm tra
                             </Title>
                             <Text style={{ color: '#64748b', fontSize: 15 }}>
                                 Vui lòng chọn một bài kiểm tra để xem và quản lý chi tiết
@@ -1398,7 +1408,7 @@ const QuizManagementPage: React.FC = () => {
                             border: '1.5px solid #bfdbfe',
                             background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)',
                         }}
-                        bodyStyle={{ padding: '24px 28px' }}
+                        styles={{ body: { padding: '24px 28px' } }}
                     >
                         {/* Title row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -1648,8 +1658,9 @@ const QuizManagementPage: React.FC = () => {
                             <Table
                                 dataSource={quiz.questions}
                                 columns={questionColumns}
-                                rowKey={(r: any) => `${r.questionOrder}-${r.skillType}`}
+                                rowKey={(r: any) => `${r.id}-${r.questionOrder}-${r.skillType}`}
                                 locale={{ emptyText: 'Không có câu hỏi nào' }}
+                                scroll={{ x: 'max-content' }}
                                 rowClassName={(_, index) =>
                                     index % 2 === 0 ? '' : 'quiz-row-alt'
                                 }
@@ -1714,7 +1725,7 @@ const QuizManagementPage: React.FC = () => {
                 width={800}
                 footer={null}
                 centered
-                destroyOnClose
+                destroyOnHidden
             >
                 <Tabs
                     activeKey={isCreatingNew ? 'create' : 'bank'}
@@ -1759,6 +1770,7 @@ const QuizManagementPage: React.FC = () => {
                                         }
                                         rowKey="id"
                                         size="middle"
+                                        scroll={{ x: 'max-content' }}
                                         columns={[
                                             {
                                                 title: 'Nội dung',
@@ -2142,7 +2154,7 @@ const QuizManagementPage: React.FC = () => {
 
             {/* Edit Quiz Modal */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Chỉnh Sửa Quiz</span>}
+                title={<span style={{ fontWeight: 600 }}>Chỉnh sửa quiz</span>}
                 open={isEditQuizModalOpen}
                 onCancel={() => setIsEditQuizModalOpen(false)}
                 onOk={() => editQuizForm.submit()}
@@ -2252,7 +2264,7 @@ const QuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <PlusOutlined style={{ color: '#2563eb' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Tạo Bài Kiểm Tra Mới</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Tạo bài kiểm tra mới</span>
                     </Space>
                 }
                 open={isCreateQuizModalOpen}
@@ -2312,7 +2324,7 @@ const QuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import Quiz từ CSV</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import quiz từ CSV</span>
                     </Space>
                 }
                 open={isImportModalOpen}
@@ -2371,7 +2383,7 @@ const QuizManagementPage: React.FC = () => {
                 title={
                     <Space>
                         <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import Câu Hỏi từ Excel vào Quiz</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import câu hỏi từ Excel vào quiz</span>
                     </Space>
                 }
                 open={isImportChallengesModalOpen}
@@ -2379,7 +2391,7 @@ const QuizManagementPage: React.FC = () => {
                 footer={null}
                 width={640}
                 centered
-                destroyOnClose
+                destroyOnHidden
             >
                 <div style={{ marginTop: 20 }}>
                     {/* Info box */}
@@ -2481,7 +2493,7 @@ const QuizManagementPage: React.FC = () => {
                             fontSize: 15,
                         }}
                     >
-                        {importingChallenges ? 'Đang import...' : '🚀 Import Câu Hỏi vào Quiz'}
+                        {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}
                     </Button>
 
                     {/* Result display */}
@@ -2685,4 +2697,4 @@ const QuizManagementPage: React.FC = () => {
 
 };
 
-export default QuizManagementPage;
+export default AdminQuizManagementPage;

@@ -32,10 +32,24 @@ export interface ChallengeRequest {
     comment?: string;
 }
 
-export interface ReviewContentRequest {
-    status: 'APPROVED' | 'REJECTED';
-    rejectionReason?: string;
-    comment?: string;
+
+export interface ChallengeBank {
+    id: string;
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    region?: string; // BAC, TRUNG, NAM
+    metadataJson: Record<string, any>;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ChallengeBankRequest {
+    contentText: string;
+    skillType: string;
+    difficultyTag: string;
+    region?: string; // BAC, TRUNG, NAM
+    metadataJson: Record<string, any>;
 }
 
 export const adminService = {
@@ -60,33 +74,113 @@ export const adminService = {
 
     // --- Content Management (Levels) ---
     getLevels: async () => {
-        return apiClient.get('/admin/content/levels'); // Assuming a GET exists
+        return apiClient.get('/admin/content/levels');
     },
-    createLevel: async (data: LevelRequest) => {
-        return apiClient.post('/admin/content/levels', data);
+    getLevelsForSelection: async () => {
+        return apiClient.get('/admin/content/levels');
     },
-    updateLevel: async (id: string, data: LevelRequest) => {
-        return apiClient.put(`/admin/content/levels/${id}`, {
-            ...data,
-            name: data.name // Ensure 'name' is used if 'title' was previous backend expectation
-        });
+    createLevel: async (data: any) => {
+        const payload = {
+            name: data.name,
+            type: 'LEVEL',
+            parent_id: data.dialectId,
+            metadata_json: {
+                status: data.status || 'APPROVED',
+                audio_url: data.audioUrl ?? null,
+                level_order: data.levelOrder,
+                ai_threshold: data.aiThreshold ?? null,
+                error_tag_id: data.errorTagId ?? null,
+                rejection_reason: data.rejectionReason ?? null,
+                min_stars_required: data.minStarsRequired,
+                description: data.description || '',
+            },
+        };
+        return apiClient.post('/admin/content/levels', payload);
     },
-    deleteLevel: async (id: string) => {
-        return apiClient.delete(`/admin/content/levels/${id}`);
+    updateLevel: async (levelId: string, data: any) => {
+        const payload = {
+            name: data.name,
+            type: 'LEVEL',
+            parent_id: data.dialectId,
+            metadata_json: {
+                status: data.status || 'APPROVED',
+                audio_url: data.audioUrl ?? null,
+                level_order: data.levelOrder,
+                ai_threshold: data.aiThreshold ?? null,
+                error_tag_id: data.errorTagId ?? null,
+                rejection_reason: data.rejectionReason ?? null,
+                min_stars_required: data.minStarsRequired,
+                description: data.description || '',
+            },
+            comment: data.comment,
+        };
+        return apiClient.put(`/admin/content/levels/${levelId}`, payload);
+    },
+    deleteLevel: async (levelId: string) => {
+        return apiClient.delete(`/admin/content/levels/${levelId}`);
     },
 
     // --- Content Management (Challenges) ---
     getChallenges: async () => {
         return apiClient.get('/admin/content/challenges');
     },
-    createChallenge: async (data: ChallengeRequest) => {
+    getChallengesByLevel: async (levelId: string) => {
+        return apiClient.get(`/admin/content/challenges/level/${levelId}`);
+    },
+    createChallenge: async (data: any) => {
         return apiClient.post('/admin/content/challenges', data);
     },
-    updateChallenge: async (id: string, data: ChallengeRequest) => {
+    updateChallenge: async (id: string, data: any) => {
         return apiClient.put(`/admin/content/challenges/${id}`, data);
     },
     deleteChallenge: async (id: string) => {
         return apiClient.delete(`/admin/content/challenges/${id}`);
+    },
+
+    // --- Challenge Bank ---
+    getChallengeBank: async () => {
+        return apiClient.get('/admin/content/challenge-bank');
+    },
+    createChallengeBankItem: async (data: ChallengeBankRequest) => {
+        return apiClient.post('/admin/content/challenge-bank', data);
+    },
+    updateChallengeBankItem: async (id: string, data: ChallengeBankRequest) => {
+        return apiClient.put(`/admin/content/challenge-bank/${id}`, data);
+    },
+    deleteChallengeBankItem: async (id: string) => {
+        return apiClient.delete(`/admin/content/challenge-bank/${id}`);
+    },
+
+    // --- Quiz Management ---
+    getQuizzes: async () => {
+        return apiClient.get('/admin/content/quizzes');
+    },
+    getQuizzesByLevel: async (levelId: string) => {
+        return apiClient.get('/admin/content/quizzes', { params: { levelId } });
+    },
+    getQuizDetails: async (id: string) => {
+        return apiClient.get(`/admin/content/quizzes/${id}`);
+    },
+    createQuiz: async (data: any) => {
+        return apiClient.post('/admin/content/quizzes', data);
+    },
+    updateQuiz: async (id: string, data: any) => {
+        return apiClient.put(`/admin/content/quizzes/${id}`, data);
+    },
+    getQuizChallenges: async (quizId: string) => {
+        return apiClient.get(`/admin/content/quizzes/${quizId}/challenges`);
+    },
+    assignChallengesToQuiz: async (quizId: string, challengeIds: string[]) => {
+        return apiClient.post(`/admin/content/quizzes/${quizId}/challenges`, { challengeIds });
+    },
+    removeChallengeFromQuiz: async (quizId: string, challengeId: string) => {
+        return apiClient.delete(`/admin/content/quizzes/${quizId}/challenges/${challengeId}`);
+    },
+    createAssignment: async (data: any) => {
+        return apiClient.post('/admin/content/assignments', data);
+    },
+    deleteAssignment: async (assignmentId: string) => {
+        return apiClient.delete(`/admin/content/assignments/${assignmentId}`);
     },
 
     // --- User Analytics ---
@@ -112,16 +206,19 @@ export const adminService = {
     },
 
     // --- Error Tags Management ---
-    getErrorTags: async () => {
-        return apiClient.get('/public/error-tags');
+    getErrorTags: async (dialectId?: string) => {
+        const params: any = {};
+        if (dialectId) params.dialectId = dialectId;
+        // The backend exposes this via EducatorController for curriculum context
+        return apiClient.get('/educator/curriculum/error-tags', { params });
     },
     createErrorTag: async (tagCode: string, name: string, description: string, regions: string[]) => {
+        // Backend ErrorTagController uses @RequestParam, but we can try sending as JSON if the backend is updated, 
+        // or change to params if needed. For now, correcting the 404 path.
         return apiClient.post('/admin/error-tags', { tagCode, name, description, regions });
     },
     updateErrorTag: async (id: string, data: { tagCode?: string; name?: string; description?: string; regions?: string[] }) => {
-        return apiClient.put(`/admin/error-tags/${id}`, null, {
-            params: data
-        });
+        return apiClient.put(`/admin/error-tags/${id}`, data);
     },
     deleteErrorTag: async (id: string) => {
         return apiClient.delete(`/admin/error-tags/${id}`);
@@ -139,30 +236,6 @@ export const adminService = {
     },
     updateUser: async (id: string, data: any) => {
         return apiClient.patch(`/admin/users/${id}`, data);
-    },
-    getPendingLevels: async () => {
-        return apiClient.get('/admin/content/pending/levels');
-    },
-    getPendingChallenges: async () => {
-        return apiClient.get('/admin/content/pending/challenges');
-    },
-    getPendingQuizzes: async () => {
-        return apiClient.get('/admin/approvals/quizzes');
-    },
-    reviewLevel: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.put(`/admin/content/levels/${id}/review`, data);
-    },
-    reviewChallenge: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.put(`/admin/content/challenges/${id}/review`, data);
-    },
-    reviewQuiz: async (id: string, data: ReviewContentRequest) => {
-        return apiClient.post(`/admin/approvals/quizzes/${id}/review`, {
-            action: data.status,
-            reason: data.comment || data.rejectionReason
-        });
-    },
-    getQuizzes: async () => {
-        return apiClient.get('/admin/content/quizzes');
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/admin/content/${id}/history`);

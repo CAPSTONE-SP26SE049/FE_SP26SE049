@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useLocation } from 'react-router-dom';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined } from '@ant-design/icons';
-import { educatorService } from '../services/educatorService';
+import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
+import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { adminService } from '../services/adminService';
 
-const ChapterManagementPage: React.FC = () => {
+const AdminChapterManagementPage: React.FC = () => {
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -30,7 +30,6 @@ const ChapterManagementPage: React.FC = () => {
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
-    // Remove filterStatus as approval process is removed
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -38,11 +37,13 @@ const ChapterManagementPage: React.FC = () => {
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
     const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
+    const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+    const [selectedLevelForDetail, setSelectedLevelForDetail] = useState<any | null>(null);
 
     const fetchLevels = async () => {
         setLoading(true);
         try {
-            const response: any = await educatorService.getLevelsForSelection();
+            const response: any = await adminService.getLevelsForSelection();
             if (response && (response.status === 'success' || response.data)) {
                 setLevels(response.data || response);
             } else {
@@ -64,7 +65,7 @@ const ChapterManagementPage: React.FC = () => {
 
     const fetchDialects = async () => {
         try {
-            const response: any = await educatorService.getDialects();
+            const response: any = await adminService.getDialects();
             if (response && (response.status === 'success' || response.data)) {
                 setDialects(response.data || response);
             } else {
@@ -82,7 +83,7 @@ const ChapterManagementPage: React.FC = () => {
             return;
         }
         try {
-            const response: any = await educatorService.getErrorTags(dialectId);
+            const response: any = await adminService.getErrorTags(dialectId);
             if (response && (response.status === 'success' || response.data)) {
                 setErrorTags(response.data || response);
             } else {
@@ -103,7 +104,7 @@ const ChapterManagementPage: React.FC = () => {
     const handleCreateLevel = async (values: any) => {
         setCreating(true);
         try {
-            await educatorService.createLevel({
+            await adminService.createLevel({
                 dialectId: values.dialectId,
                 levelOrder: values.levelOrder || 1,
                 name: values.name,
@@ -135,7 +136,7 @@ const ChapterManagementPage: React.FC = () => {
             aiThreshold: record.aiThreshold,
             errorTagId: record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
             description: record.description || '',
-            comment: '',
+            comment: record.rejectionReason || '',
         });
         fetchErrorTags(record.dialectId || record.dialect?.id);
     };
@@ -144,7 +145,7 @@ const ChapterManagementPage: React.FC = () => {
         if (!editingLevel?.id) return;
         setUpdating(true);
         try {
-            await educatorService.updateLevel(editingLevel.id, {
+            await adminService.updateLevel(editingLevel.id, {
                 name: values.name,
                 description: values.description,
                 dialectId: values.dialectId ?? editingLevel.dialectId ?? editingLevel.dialect?.id,
@@ -221,7 +222,7 @@ const ChapterManagementPage: React.FC = () => {
                 questionOrder: index + 1,
             }));
 
-            await educatorService.createQuiz({
+            await adminService.createQuiz({
                 levelId: selectedLevelForQuiz.id,
                 title: values.title,
                 description: values.description,
@@ -247,7 +248,7 @@ const ChapterManagementPage: React.FC = () => {
     const loadAssignLevels = async () => {
         setAssigning(true);
         try {
-            const response: any = await educatorService.getLevelsForSelection();
+            const response: any = await adminService.getLevelsForSelection();
             const list = response?.data || response || [];
             setAssignLevels(Array.isArray(list) ? list : []);
         } catch (error) {
@@ -273,7 +274,7 @@ const ChapterManagementPage: React.FC = () => {
     const handleCreateAssignment = async (values: any) => {
         try {
             setAssigning(true);
-            await educatorService.createAssignment({
+            await adminService.createAssignment({
                 classroomId: values.classroomId,
                 learningUnitId: values.learningUnitId,
                 dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
@@ -297,7 +298,7 @@ const ChapterManagementPage: React.FC = () => {
             return;
         }
         try {
-            await educatorService.deleteAssignment(assignmentId);
+            await adminService.deleteAssignment(assignmentId);
             message.success('Đã gỡ chương học khỏi lớp');
             setRemovedAssignmentIds(prev => [...prev, assignmentId]);
         } catch (error: any) {
@@ -435,7 +436,7 @@ const ChapterManagementPage: React.FC = () => {
                 if (exists) { result.errors.push(`Dòng ${i + 1}: '${name}' đã tồn tại`); result.failed++; continue; }
 
                 try {
-                    await educatorService.createLevel({
+                    await adminService.createLevel({
                         dialectId: southDialect.id,
                         levelOrder: levels.length + result.success + 1,
                         name,
@@ -487,58 +488,15 @@ const ChapterManagementPage: React.FC = () => {
         {
             title: 'STT',
             key: 'stt',
-            width: 60,
+            width: 70,
             align: 'center' as const,
             render: (_: any, __: any, index: number) => index + 1,
-        },
-        {
-            title: 'ID',
-            dataIndex: 'id',
-            key: 'id',
-            width: 150,
-            render: (text: string) => <code style={{ fontSize: '12px' }}>{text.substring(0, 8)}...</code>,
-        },
-        {
-            title: 'Tên chương học',
-            dataIndex: 'name',
-            key: 'name',
-            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
-            render: (text: string) => <strong>{text}</strong>,
-        },
-        {
-            title: 'Mô tả',
-            dataIndex: 'description',
-            key: 'description',
-            width: 250,
-            ellipsis: true,
-            render: (text: string) => (
-                <Tooltip title={text}>
-                    <span style={{ color: '#64748b', fontSize: 13 }}>{text || '—'}</span>
-                </Tooltip>
-            ),
-        },
-        {
-            title: 'Thứ tự',
-            dataIndex: 'levelOrder',
-            key: 'levelOrder',
-            width: 80,
-            align: 'center' as const,
-            sorter: (a: any, b: any) => (a.levelOrder || 0) - (b.levelOrder || 0),
-            render: (val: number) => val ?? '—',
-        },
-        {
-            title: 'Số sao',
-            dataIndex: 'minStarsRequired',
-            key: 'minStarsRequired',
-            width: 80,
-            align: 'center' as const,
-            render: (val: number) => val != null ? <span>⭐ {val}</span> : '—',
         },
         {
             title: 'Vùng',
             dataIndex: 'dialectId',
             key: 'dialectId',
-            width: 120,
+            width: 140,
             sorter: (a: any, b: any) => {
                 const aRegion = getRegionKey(a.dialectId);
                 const bRegion = getRegionKey(b.dialectId);
@@ -553,16 +511,13 @@ const ChapterManagementPage: React.FC = () => {
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '3px 12px',
-                            borderRadius: 20,
-                            fontSize: 12,
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
                             fontWeight: 600,
-                            whiteSpace: 'nowrap',
                             color: info.color,
                             background: info.bg,
-                            border: `1.5px solid ${info.color}40`,
-                            letterSpacing: '0.03em',
-                            boxShadow: `0 1px 4px ${info.color}20`,
+                            border: `1px solid ${info.color}30`,
                         }}
                     >
                         {info.label}
@@ -571,10 +526,30 @@ const ChapterManagementPage: React.FC = () => {
             },
         },
         {
+            title: 'Tên chương học',
+            dataIndex: 'name',
+            key: 'name',
+            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
+            render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
+        },
+        {
             title: 'Hành Động',
             key: 'actions',
+            width: 180,
+            fixed: 'right' as const,
+            align: 'center' as const,
             render: (_: any, record: any) => (
-                <Space size="middle">
+                <Space size="small">
+                    <Tooltip title="Xem chi tiết">
+                        <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => {
+                                setSelectedLevelForDetail(record);
+                                setIsDetailDrawerOpen(true);
+                            }}
+                            style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff' }}
+                        />
+                    </Tooltip>
                     <Tooltip title="Tạo quiz">
                         <Button icon={<FileAddOutlined />} onClick={() => handleOpenCreateQuiz(record)} />
                     </Tooltip>
@@ -604,7 +579,7 @@ const ChapterManagementPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
+                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
                     {fromClassroomName ? (
                         <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
                             Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
@@ -618,9 +593,9 @@ const ChapterManagementPage: React.FC = () => {
                         style={{
                             height: '40px',
                             borderRadius: '10px',
-                            border: '1.5px solid #1890ff',
-                            color: '#1890ff',
-                            background: '#e6f7ff',
+                            border: '1.5px solid #000',
+                            color: '#000',
+                            background: '#fff',
                             fontWeight: 600,
                         }}
                     >
@@ -632,9 +607,9 @@ const ChapterManagementPage: React.FC = () => {
                         style={{
                             height: '40px',
                             borderRadius: '10px',
-                            border: '1.5px solid #52c41a',
-                            color: '#52c41a',
-                            background: '#f6ffed',
+                            border: '1.5px solid #000',
+                            color: '#000',
+                            background: '#fff',
                             fontWeight: 600,
                         }}
                     >
@@ -646,9 +621,9 @@ const ChapterManagementPage: React.FC = () => {
                         style={{
                             height: '40px',
                             borderRadius: '10px',
-                            border: '1.5px solid #fa8c16',
-                            color: '#fa8c16',
-                            background: '#fff7e6',
+                            border: '1.5px solid #000',
+                            color: '#000',
+                            background: '#fff',
                             fontWeight: 600,
                         }}
                     >
@@ -682,7 +657,7 @@ const ChapterManagementPage: React.FC = () => {
                             boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
                         }}
                     >
-                        Thêm Chương Học
+                        Thêm chương học
                     </Button>
                 </Space>
             </div>
@@ -696,7 +671,7 @@ const ChapterManagementPage: React.FC = () => {
                     border: '1px solid #e2e8f0',
                     background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
                 }}
-                bodyStyle={{ padding: '16px 20px' }}
+                styles={{ body: { padding: '16px 20px' } }}
             >
                 <Row gutter={[16, 12]} align="middle">
                     <Col xs={24} sm={24} md={8} lg={7}>
@@ -767,7 +742,7 @@ const ChapterManagementPage: React.FC = () => {
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}
+                title={<span style={{ fontWeight: 600 }}>Tạo chương học mới</span>}
                 open={isCreateModalOpen}
                 onCancel={() => {
                     form.resetFields();
@@ -909,6 +884,75 @@ const ChapterManagementPage: React.FC = () => {
                 </Form>
             </Modal>
 
+            <Drawer
+                title={<span style={{ fontWeight: 700, fontSize: 18 }}>Chi tiết chương học</span>}
+                placement="right"
+                width={500}
+                onClose={() => {
+                    setIsDetailDrawerOpen(false);
+                    setSelectedLevelForDetail(null);
+                }}
+                open={isDetailDrawerOpen}
+                styles={{ body: { padding: '24px' } }}
+            >
+                {selectedLevelForDetail && (
+                    <div className="space-y-6">
+                        <Descriptions column={1} bordered size="small" labelStyle={{ fontWeight: 600, width: 140, background: '#f8fafc' }}>
+                            <Descriptions.Item label="Tên chương học">
+                                <span style={{ fontWeight: 700, color: '#1e293b' }}>{selectedLevelForDetail.name}</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Vùng miền">
+                                {(() => {
+                                    const regionKey = getRegionKey(selectedLevelForDetail.dialectId);
+                                    const info = REGION_LABEL[regionKey];
+                                    return info ? <Tag color={info.color} style={{ background: info.bg, border: `1px solid ${info.color}30` }}>{info.label}</Tag> : <Tag>Không có</Tag>;
+                                })()}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Trạng thái">
+                                {(() => {
+                                    const val = selectedLevelForDetail.status;
+                                    if (val === 'APPROVED' || val === 'PUBLISHED') return <Tag color="success">Đã công bố</Tag>;
+                                    if (val === 'PENDING') return <Tag color="warning">Đang chờ</Tag>;
+                                    if (val === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
+                                    return <Tag color="default">Bản nháp</Tag>;
+                                })()}
+                            </Descriptions.Item>
+                        </Descriptions>
+
+                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
+                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Chỉ số & Yêu cầu
+                            </span>
+                        </Divider>
+
+                        <Descriptions column={1} size="small" labelStyle={{ color: '#64748b' }}>
+                            <Descriptions.Item label="Số sao tối thiểu">
+                                <span style={{ color: '#faad14', whiteSpace: 'nowrap', fontSize: '16px' }}>
+                                    {'⭐'.repeat(selectedLevelForDetail.minStarsRequired ?? 0)}
+                                </span>
+                            </Descriptions.Item>
+                        </Descriptions>
+
+                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
+                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Mô tả nội dung
+                            </span>
+                        </Divider>
+
+                        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', color: '#475569', lineHeight: 1.6 }}>
+                            {selectedLevelForDetail.description || selectedLevelForDetail.metadataJson?.description || 'Không có mô tả cho chương học này.'}
+                        </div>
+
+                        <Divider style={{ margin: '24px 0' }} />
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 12 }}>
+                            <span>Ngày tạo: {selectedLevelForDetail.createdAt ? dayjs(selectedLevelForDetail.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                            <span>Cập nhật: {selectedLevelForDetail.updatedAt ? dayjs(selectedLevelForDetail.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        </div>
+                    </div>
+                )}
+            </Drawer>
+
             <Card
                 variant="borderless"
                 style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
@@ -925,7 +969,7 @@ const ChapterManagementPage: React.FC = () => {
             </Card>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Cập Nhật Chương Học</span>}
+                title={<span style={{ fontWeight: 600 }}>Cập nhật chương học</span>}
                 open={isEditModalOpen}
                 onCancel={() => {
                     editForm.resetFields();
@@ -934,7 +978,7 @@ const ChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => editForm.submit()}
                 confirmLoading={updating}
-                okText="Cập Nhật"
+                okText="Cập nhật"
                 okButtonProps={{
                     style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
                 }}
@@ -1014,7 +1058,7 @@ const ChapterManagementPage: React.FC = () => {
             </Modal>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo Quiz cho Level {selectedLevelForQuiz?.name}</span>}
+                title={<span style={{ fontWeight: 600 }}>Tạo quiz cho level {selectedLevelForQuiz?.name}</span>}
                 open={isCreateQuizModalOpen}
                 onCancel={() => {
                     quizForm.resetFields();
@@ -1023,7 +1067,7 @@ const ChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => quizForm.submit()}
                 confirmLoading={creatingQuiz}
-                okText="Tạo Quiz"
+                okText="Tạo quiz"
                 okButtonProps={{
                     style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
                 }}
@@ -1153,7 +1197,7 @@ const ChapterManagementPage: React.FC = () => {
 
             {/* ===== IMPORT MODAL ===== */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import Chương Học từ CSV</span>}
+                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ CSV</span>}
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}
@@ -1205,4 +1249,4 @@ const ChapterManagementPage: React.FC = () => {
     );
 };
 
-export default ChapterManagementPage;
+export default AdminChapterManagementPage;

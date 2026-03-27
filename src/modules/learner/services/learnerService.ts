@@ -31,7 +31,11 @@ export interface Level {
     minStarsRequired?: number;
     aiThreshold?: number;
     audioUrl?: string;
+    status?: string;
 }
+
+// Chapter is just a Level without the lock/unlock concept
+export type Chapter = Level;
 
 export interface QuizQuestion {
     question: string;
@@ -42,8 +46,9 @@ export interface QuizQuestion {
 
 export interface Quiz {
     id: string;
-    levelId: string;
-    name: string;
+    levelId?: string;
+    title?: string;        // QuizResponse.title (ContentItem system)
+    name?: string;         // legacy fallback
     description?: string;
     timeLimitMinutes?: number;
     passingScore?: number;
@@ -52,22 +57,20 @@ export interface Quiz {
     skillType?: string;
     questionCount?: number;
     questions?: QuizQuestion[];
+    status?: string;
 }
 
 export const learnerService = {
     /**
      * GET /api/v1/classrooms
-     * Lấy danh sách các lớp học mà người dùng hiện tại đang tham gia
      */
     getMyClassrooms: async (): Promise<Classroom[]> => {
         const res: any = await apiClient.get('/classrooms');
-        // Tuỳ cấu trúc response: { status, message, data: [...] }
         return res?.data ?? res ?? [];
     },
 
     /**
      * GET /api/v1/dialects
-     * Lấy danh sách vùng miền (Bắc, Trung, Nam)
      */
     getDialects: async (): Promise<Dialect[]> => {
         const res: any = await apiClient.get('/dialects');
@@ -75,8 +78,8 @@ export const learnerService = {
     },
 
     /**
-     * GET /api/v1/levels
-     * Lấy danh sách các cấp độ đi kèm tiến độ
+     * GET /api/v1/levels?dialectId=
+     * Lấy danh sách các Chapter (Level) theo vùng miền — không có lock mechanic
      */
     getLevels: async (dialectId: string): Promise<Level[]> => {
         const res: any = await apiClient.get(`/levels?dialectId=${dialectId}`);
@@ -84,10 +87,18 @@ export const learnerService = {
     },
 
     /**
-     * GET /api/v1/quizzes/by-level?levelId=
-     * Lấy danh sách Quiz của một Level để người dùng bắt đầu học
+     * GET /api/v1/users/levels/{levelId}/quizzes
+     * Lấy danh sách Quiz của một Chapter (Level) — có lock/unlock
      */
     getQuizzesByLevel: async (levelId: string): Promise<Quiz[]> => {
+        const res: any = await apiClient.get(`/users/levels/${levelId}/quizzes`);
+        return res?.data ?? [];
+    },
+
+    /**
+     * @deprecated Still here for backward compat; use getQuizzesByLevel instead
+     */
+    getQuizzesByLevelOld: async (levelId: string): Promise<Quiz[]> => {
         const res: any = await apiClient.get(`/quizzes/by-level?levelId=${levelId}`);
         return res?.data ?? [];
     },
