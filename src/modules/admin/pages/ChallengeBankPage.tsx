@@ -858,24 +858,12 @@ const AdminChallengeBankPage: React.FC = () => {
                                     <TextArea rows={3} placeholder="Lúa nếp&#10;Lúa nết&#10;Núa nếp" style={{ borderRadius: 8 }} />
                                 </Form.Item>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
-                                        {({ getFieldValue }) => {
-                                            const optionsText = getFieldValue('options') || '';
-                                            const parsedOptions = optionsText.split('\n').map((s: string) => s.trim()).filter(Boolean);
-                                            return (
-                                                <Form.Item
-                                                    name="correctAnswer"
-                                                    label={<Text strong>Đáp án chính xác</Text>}
-                                                    rules={[{ required: true, message: 'Nhập đáp án đúng' }]}
-                                                >
-                                                    <Select placeholder="Chọn từ danh sách..." style={{ borderRadius: 8 }}>
-                                                        {parsedOptions.map((opt: string, idx: number) => (
-                                                            <Select.Option key={idx} value={opt}>{opt}</Select.Option>
-                                                        ))}
-                                                    </Select>
-                                                </Form.Item>
-                                            );
-                                        }}
+                                    <Form.Item
+                                        name="correctAnswer"
+                                        label={<Text strong>Đáp án chính xác</Text>}
+                                        rules={[{ required: true, message: 'Nhập đáp án đúng' }]}
+                                    >
+                                        <Input placeholder="Nhập đáp án đúng" style={{ borderRadius: 8 }} />
                                     </Form.Item>
                                     <Form.Item name="transcript" label={<Text strong>Bản phiên âm / Lời thoại (Transcript)</Text>}>
                                         <Input placeholder="Lúa nếp là lúa nếp làng" style={{ borderRadius: 8 }} />
