@@ -6,7 +6,8 @@ import {
     UploadOutlined,
     SaveOutlined,
     MailOutlined,
-    PhoneOutlined
+    PhoneOutlined,
+    SettingOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { updateProfileAPI, changePasswordAPI } from '../../../services/userService'
@@ -23,7 +24,6 @@ const AdminSettingsPage: React.FC = () => {
     const [savingProfile, setSavingProfile] = useState(false)
     const [savingPassword, setSavingPassword] = useState(false)
 
-    // Populate form with existing user data
     React.useEffect(() => {
         profileForm.setFieldsValue({
             fullName: user.fullName || user.name || '',
@@ -35,7 +35,6 @@ const AdminSettingsPage: React.FC = () => {
     const handleUpdateProfile = async (values: any) => {
         try {
             setSavingProfile(true)
-            // Call API
             await updateProfileAPI(values)
             message.success('Cập nhật hồ sơ thành công')
         } catch (error: any) {
@@ -48,7 +47,6 @@ const AdminSettingsPage: React.FC = () => {
     const handleChangePassword = async (values: any) => {
         try {
             setSavingPassword(true)
-            // Call API
             await changePasswordAPI({ oldPassword: values.oldPassword, newPassword: values.newPassword })
             message.success('Đổi mật khẩu thành công')
             passwordForm.resetFields()
@@ -64,14 +62,13 @@ const AdminSettingsPage: React.FC = () => {
             key: '1',
             label: (
                 <span>
-                    <UserOutlined />
-                    Hồ sơ cá nhân
+                    <UserOutlined /> Hồ sơ cá nhân
                 </span>
             ),
             children: (
                 <div className="max-w-2xl py-6">
                     <Title level={4} style={{ marginBottom: 24 }}>Thông tin chung</Title>
-                    <div className="flex gap-8 mb-8">
+                    <div className="flex gap-8 mb-8 flex-wrap">
                         <div className="flex flex-col items-center">
                             <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center mb-4 overflow-hidden">
                                 {user.avatar || user.avatarUrl ? (
@@ -85,39 +82,24 @@ const AdminSettingsPage: React.FC = () => {
                             </Upload>
                         </div>
 
-                        <div className="flex-1">
-                            <Form
-                                form={profileForm}
-                                layout="vertical"
-                                onFinish={handleUpdateProfile}
-                                requiredMark={false}
-                            >
-                                <Form.Item
-                                    name="fullName"
-                                    label={<span className="font-medium">Họ và tên</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
-                                >
+                        <div className="flex-1 min-w-[280px]">
+                            <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile} requiredMark={false}>
+                                <Form.Item name="fullName" label={<span className="font-medium">Họ và tên</span>} rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}>
                                     <Input size="large" prefix={<UserOutlined className="text-gray-400" />} />
                                 </Form.Item>
 
-                                <Form.Item
-                                    name="email"
-                                    label={<span className="font-medium">Email</span>}
-                                >
+                                <Form.Item name="email" label={<span className="font-medium">Email</span>}>
                                     <Input size="large" disabled prefix={<MailOutlined className="text-gray-400" />} />
                                 </Form.Item>
 
-                                <Form.Item
-                                    name="phoneNumber"
-                                    label={<span className="font-medium">Số điện thoại</span>}
-                                >
+                                <Form.Item name="phoneNumber" label={<span className="font-medium">Số điện thoại</span>}>
                                     <Input size="large" prefix={<PhoneOutlined className="text-gray-400" />} />
                                 </Form.Item>
 
                                 <Divider />
 
                                 <Form.Item>
-                                    <Button type="primary" htmlType="submit" size="large" loading={savingProfile} icon={<SaveOutlined />} className="!bg-[#1677ff] hover:!bg-[#1677ff] !border-[#1677ff] hover:!border-[#1677ff]">
+                                    <Button type="primary" htmlType="submit" size="large" loading={savingProfile} icon={<SaveOutlined />} style={{ borderRadius: 10, height: 48, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 32 }}>
                                         Lưu thay đổi
                                     </Button>
                                 </Form.Item>
@@ -131,8 +113,7 @@ const AdminSettingsPage: React.FC = () => {
             key: '2',
             label: (
                 <span>
-                    <LockOutlined />
-                    Bảo mật
+                    <LockOutlined /> Bảo mật
                 </span>
             ),
             children: (
@@ -142,17 +123,8 @@ const AdminSettingsPage: React.FC = () => {
                         Sử dụng mật khẩu mạnh bao gồm chữ cái, số và ký tự đặc biệt để bảo vệ tài khoản của bạn.
                     </Text>
 
-                    <Form
-                        form={passwordForm}
-                        layout="vertical"
-                        onFinish={handleChangePassword}
-                        requiredMark={false}
-                    >
-                        <Form.Item
-                            name="oldPassword"
-                            label={<span className="font-medium">Mật khẩu hiện tại</span>}
-                            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
-                        >
+                    <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} requiredMark={false}>
+                        <Form.Item name="oldPassword" label={<span className="font-medium">Mật khẩu hiện tại</span>} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}>
                             <Input.Password size="large" />
                         </Form.Item>
 
@@ -176,9 +148,9 @@ const AdminSettingsPage: React.FC = () => {
                                 ({ getFieldValue }) => ({
                                     validator(_, value) {
                                         if (!value || getFieldValue('newPassword') === value) {
-                                            return Promise.resolve();
+                                            return Promise.resolve()
                                         }
-                                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'))
                                     },
                                 }),
                             ]}
@@ -187,7 +159,7 @@ const AdminSettingsPage: React.FC = () => {
                         </Form.Item>
 
                         <Form.Item className="mt-8">
-                            <Button type="primary" htmlType="submit" size="large" loading={savingPassword} icon={<LockOutlined />} className="!bg-[#1677ff] hover:!bg-[#1677ff] !border-[#1677ff] hover:!border-[#1677ff]">
+                            <Button type="primary" htmlType="submit" size="large" loading={savingPassword} icon={<LockOutlined />} style={{ borderRadius: 10, height: 48, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 32 }}>
                                 Cập nhật mật khẩu
                             </Button>
                         </Form.Item>
@@ -195,16 +167,21 @@ const AdminSettingsPage: React.FC = () => {
                 </div>
             ),
         },
-    ];
+    ]
 
     return (
-        <div className="space-y-6">
-            <div>
-                <Title level={2} style={{ margin: 0 }}>Cài đặt hệ thống</Title>
-                <Text type="secondary">Quản lý tài khoản cá nhân và các tuỳ chọn bảo mật</Text>
+        <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SettingOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                </div>
+                <div>
+                    <Title level={2} style={{ margin: 0, fontSize: 24 }}>Cài đặt hệ thống</Title>
+                    <Text type="secondary">Quản lý tài khoản cá nhân và các tuỳ chọn bảo mật</Text>
+                </div>
             </div>
 
-            <Card className="shadow-sm border-gray-100 rounded-xl" bodyStyle={{ paddingTop: 0 }}>
+            <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} bodyStyle={{ paddingTop: 0 }}>
                 <Tabs defaultActiveKey="1" items={items} size="large" />
             </Card>
         </div>

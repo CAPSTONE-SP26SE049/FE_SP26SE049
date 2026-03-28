@@ -2,13 +2,12 @@ import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
 import {
     DashboardOutlined,
     UserOutlined,
-    FileProtectOutlined,
+    FileTextOutlined,
     SettingOutlined,
     LogoutOutlined,
     BellOutlined,
     TrophyOutlined,
     BookOutlined,
-    FileTextOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -39,17 +38,12 @@ const AdminLayout = () => {
         {
             key: '/admin/chapters',
             icon: <BookOutlined />,
-            label: <Link to="/admin/chapters">Quản lý chương học</Link>,
+            label: <Link to="/admin/chapters">Quản lý level</Link>,
         },
         {
             key: '/admin/challenges',
             icon: <FileTextOutlined />,
-            label: <Link to="/admin/challenges">Kho thử thách</Link>,
-        },
-        {
-            key: '/admin/quizzes',
-            icon: <FileProtectOutlined />,
-            label: <Link to="/admin/quizzes">Quản lý bài kiểm tra</Link>,
+            label: <Link to="/admin/challenges">Quản lý câu hỏi</Link>,
         },
         {
             key: '/admin/rewards',
@@ -66,9 +60,15 @@ const AdminLayout = () => {
         },
     ] as any
 
-    const findMenuLabel = (path: string) => {
-        const item = menuItems.find((i: any) => i.key === path) as any
+    const getHeaderLabel = (pathname: string) => {
+        if (pathname.startsWith('/admin/quizzes')) return 'Quản lý bài kiểm tra'
+        const item = menuItems.find((i: any) => i.key === pathname) as any
         return item?.label?.props?.children || 'Admin Portal'
+    }
+
+    const getSelectedKey = (pathname: string) => {
+        if (pathname.startsWith('/admin/quizzes')) return '/admin/chapters'
+        return pathname
     }
 
     return (
@@ -94,7 +94,7 @@ const AdminLayout = () => {
                 <Menu
                     theme="dark"
                     mode="inline"
-                    selectedKeys={[location.pathname]}
+                    selectedKeys={[getSelectedKey(location.pathname)]}
                     items={menuItems}
                     className="mt-4 text-base"
                 />
@@ -102,7 +102,7 @@ const AdminLayout = () => {
             <Layout style={{ marginLeft: 260 }}>
                 <Header className="bg-white shadow-sm px-6 flex justify-between items-center h-16 z-10 sticky top-0">
                     <h2 className="text-xl font-semibold text-gray-800 m-0">
-                        {findMenuLabel(location.pathname)}
+                        {getHeaderLabel(location.pathname)}
                     </h2>
                     <div className="flex items-center gap-6">
                         <Button

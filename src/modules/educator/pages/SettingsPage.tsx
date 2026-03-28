@@ -117,7 +117,8 @@ const SettingsPage: React.FC = () => {
                 <Divider />
 
                 <Form.Item>
-                  <Button type="primary" htmlType="submit" size="large" loading={savingProfile} icon={<SaveOutlined />} className="!bg-[#1677ff] hover:!bg-[#1677ff] !border-[#1677ff] hover:!border-[#1677ff]">
+                  <Button type="primary" htmlType="submit" size="large" loading={savingProfile} icon={<SaveOutlined />}
+                    style={{ borderRadius: 10, height: 44, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 24 }}>
                     Lưu thay đổi
                   </Button>
                 </Form.Item>
@@ -187,7 +188,8 @@ const SettingsPage: React.FC = () => {
             </Form.Item>
 
             <Form.Item className="mt-8">
-              <Button type="primary" htmlType="submit" size="large" loading={savingPassword} icon={<LockOutlined />} className="!bg-[#1677ff] hover:!bg-[#1677ff] !border-[#1677ff] hover:!border-[#1677ff]">
+              <Button type="primary" htmlType="submit" size="large" loading={savingPassword} icon={<LockOutlined />}
+                style={{ borderRadius: 10, height: 44, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 24 }}>
                 Cập nhật mật khẩu
               </Button>
             </Form.Item>

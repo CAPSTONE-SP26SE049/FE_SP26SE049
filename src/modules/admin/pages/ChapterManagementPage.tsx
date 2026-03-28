@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 
 const AdminChapterManagementPage: React.FC = () => {
+    const navigate = useNavigate();
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -109,7 +110,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 levelOrder: values.levelOrder || 1,
                 name: values.name,
                 description: values.description || '',
-                minStarsRequired: values.minStarsRequired,
+                minStarsRequired: values.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || null,
                 aiThreshold: values.aiThreshold || 75,
             });
@@ -150,7 +151,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 description: values.description,
                 dialectId: values.dialectId ?? editingLevel.dialectId ?? editingLevel.dialect?.id,
                 levelOrder: values.levelOrder || editingLevel.levelOrder || 1,
-                minStarsRequired: values.minStarsRequired,
+                minStarsRequired: values.minStarsRequired ?? editingLevel.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || (editingLevel.errorTag && typeof editingLevel.errorTag === 'object' ? editingLevel.errorTag.id : editingLevel.errorTag) || null,
                 aiThreshold: values.aiThreshold || editingLevel.aiThreshold || 75,
                 status: editingLevel.status || 'APPROVED',
@@ -526,7 +527,7 @@ const AdminChapterManagementPage: React.FC = () => {
             },
         },
         {
-            title: 'Tên chương học',
+            title: 'Tên level',
             dataIndex: 'name',
             key: 'name',
             sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
@@ -549,9 +550,6 @@ const AdminChapterManagementPage: React.FC = () => {
                             }}
                             style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff' }}
                         />
-                    </Tooltip>
-                    <Tooltip title="Tạo quiz">
-                        <Button icon={<FileAddOutlined />} onClick={() => handleOpenCreateQuiz(record)} />
                     </Tooltip>
                     <Tooltip title="Chỉnh sửa">
                         <Button icon={<EditOutlined />} onClick={() => handleEditLevel(record)} />
@@ -576,27 +574,33 @@ const AdminChapterManagementPage: React.FC = () => {
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
-                    {fromClassroomName ? (
-                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
-                        </div>
-                    ) : null}
+        <div style={{ padding: '24px' }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: '24px', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BookOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý level</h2>
+                        {fromClassroomName ? (
+                            <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                                Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
                 <Space>
                     <Button
                         icon={<DownloadOutlined />}
                         onClick={handleDownloadTemplate}
                         style={{
-                            height: '40px',
+                            height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
+                            border: '1.5px solid #1890ff',
+                            color: '#1890ff',
+                            background: '#e6f7ff',
                             fontWeight: 600,
+                            paddingInline: 16,
                         }}
                     >
                         Template
@@ -605,12 +609,13 @@ const AdminChapterManagementPage: React.FC = () => {
                         icon={<UploadOutlined />}
                         onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true); }}
                         style={{
-                            height: '40px',
+                            height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
+                            border: '1.5px solid #52c41a',
+                            color: '#52c41a',
+                            background: '#f6ffed',
                             fontWeight: 600,
+                            paddingInline: 16,
                         }}
                     >
                         Import
@@ -619,12 +624,13 @@ const AdminChapterManagementPage: React.FC = () => {
                         icon={<FileExcelOutlined />}
                         onClick={handleExportCSV}
                         style={{
-                            height: '40px',
+                            height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
+                            border: '1.5px solid #fa8c16',
+                            color: '#fa8c16',
+                            background: '#fff7e6',
                             fontWeight: 600,
+                            paddingInline: 16,
                         }}
                     >
                         Export
@@ -650,11 +656,13 @@ const AdminChapterManagementPage: React.FC = () => {
                         icon={<PlusOutlined />}
                         onClick={() => setIsCreateModalOpen(true)}
                         style={{
-                            height: '40px',
+                            height: '44px',
                             borderRadius: '10px',
-                            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
+                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
                             border: 'none',
-                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                            fontWeight: 600,
+                            paddingInline: 20,
+                            boxShadow: '0 4px 12px rgba(24,144,255,0.3)'
                         }}
                     >
                         Thêm chương học
@@ -752,9 +760,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={creating}
                 okText="Xác Nhận"
                 okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
+                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 centered
             >
                 <Form
@@ -795,13 +804,6 @@ const AdminChapterManagementPage: React.FC = () => {
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
                         <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
                             <InputNumber min={0} max={100} style={{ width: '100%' }} />
                         </Form.Item>
@@ -826,9 +828,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={assigning}
                 okText="Gán chương"
                 okButtonProps={{
-                    style: { background: '#059669', border: 'none', borderRadius: '6px' }
+                    style: { background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(16,185,129,0.25)' }
                 }}
                 cancelText="Hủy"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 centered
             >
                 <Form
@@ -962,9 +965,19 @@ const AdminChapterManagementPage: React.FC = () => {
                     columns={columns}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} chương học` }}
+                    scroll={{ x: 'max-content', y: 400 }}
+                    pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Tổng ${total} chương học`, style: { padding: '16px 24px' } }}
                     locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
                     showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
+                    onRow={(record) => ({
+                        onClick: (e) => {
+                            // Không navigate nếu click vào button hành động
+                            const target = e.target as HTMLElement;
+                            if (target.closest('button') || target.closest('.ant-btn')) return;
+                            navigate(`/admin/quizzes/${record.id}`);
+                        },
+                        style: { cursor: 'pointer' }
+                    })}
                 />
             </Card>
 
@@ -980,9 +993,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={updating}
                 okText="Cập nhật"
                 okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
+                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 centered
             >
                 <Form
@@ -1020,13 +1034,6 @@ const AdminChapterManagementPage: React.FC = () => {
                             label="Thứ tự level"
                             name="levelOrder"
                             hidden
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
@@ -1069,9 +1076,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={creatingQuiz}
                 okText="Tạo quiz"
                 okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
+                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 centered
                 width={850}
             >
@@ -1227,7 +1235,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         disabled={!importFile}
                         block
                         size="large"
-                        style={{ borderRadius: 10, background: '#52c41a', border: 'none', fontWeight: 600 }}
+                        style={{ borderRadius: 10, background: 'linear-gradient(90deg, #15803d, #16a34a)', border: 'none', fontWeight: 600, height: 44, boxShadow: '0 4px 12px rgba(21,128,61,0.25)' }}
                     >
                         {importing ? 'Đang import...' : 'Bắt đầu Import'}
                     </Button>

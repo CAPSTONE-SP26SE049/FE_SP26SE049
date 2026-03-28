@@ -54,6 +54,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="chapters" element={<AdminChapterManagementPage />} />
           <Route path="challenges" element={<AdminChallengeBankPage />} />
           <Route path="quizzes" element={<AdminQuizManagementPage />} />
+          <Route path="quizzes/:levelId" element={<AdminQuizManagementPage />} />
           <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>

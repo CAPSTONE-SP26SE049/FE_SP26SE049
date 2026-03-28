@@ -40,12 +40,11 @@ import {
     DownloadOutlined,
     UploadOutlined,
     ExportOutlined,
-    DeleteOutlined,
-    ArrowRightOutlined,
-    CheckCircleOutlined
+    DeleteOutlined
 } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { excelService, downloadBlob } from '../../educator/services/excelService';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -70,12 +69,21 @@ const REGION_LABEL: Record<string, { label: string; color: string; bg: string }>
 };
 
 const AdminQuizManagementPage: React.FC = () => {
+    const { levelId: urlLevelId } = useParams<{ levelId: string }>();
+    const navigate = useNavigate();
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
-    const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(undefined);
+    const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(urlLevelId);
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [quiz, setQuiz] = useState<any | null>(null);
     const [loadingQuiz, setLoadingQuiz] = useState(false);
+
+    // Auto-load quiz when opened with levelId from URL
+    React.useEffect(() => {
+        if (urlLevelId) {
+            setSelectedLevelId(urlLevelId);
+        }
+    }, [urlLevelId]);
 
     // --- State for Adding Challenges ---
     const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
@@ -220,6 +228,25 @@ const AdminQuizManagementPage: React.FC = () => {
         }
     };
 
+    // Auto-load quizzes when navigated with levelId from URL
+    useEffect(() => {
+        if (urlLevelId) {
+            handleLevelChange(urlLevelId);
+        }
+    }, [urlLevelId]);
+
+    const handleBackToChapters = () => {
+        if (urlLevelId) {
+            // Came from chapter page via URL – go back there
+            navigate('/admin/chapters');
+        } else {
+            // Inline navigation – just reset state
+            setSelectedLevelId(undefined);
+            setQuiz(null);
+            setQuizzes([]);
+        }
+    };
+
     const fetchBank = async () => {
         setLoadingBank(true);
         try {
@@ -251,15 +278,6 @@ const AdminQuizManagementPage: React.FC = () => {
         });
     }, [levels, searchTerm, regionFilter]);
 
-    const handleBackToChapters = () => {
-        if (quiz) {
-            setQuiz(null);
-        } else {
-            setSelectedLevelId(undefined);
-            setQuizzes([]);
-        }
-    };
-
     const handleOpenEditQuiz = () => {
         if (!quiz) return;
 
@@ -273,8 +291,6 @@ const AdminQuizManagementPage: React.FC = () => {
             title: quiz.name || quiz.title,
             description: quiz.description,
             instructions: quiz.instructions,
-            passingScore: quiz.passingScore || 80,
-            timeLimitMinutes: quiz.timeLimitMinutes || 15,
             pointsPerQuestion: quiz.pointsPerQuestion || 10,
             readingCount,
             listeningCount,
@@ -336,8 +352,8 @@ const AdminQuizManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
+                passingScore: quiz.passingScore ?? 80,
+                timeLimitMinutes: quiz.timeLimitMinutes ?? 15,
                 skillType: values.skillType,
                 questionCount: finalQuestions.length,
                 comment: values.comment || 'Cập nhật quiz',
@@ -364,8 +380,8 @@ const AdminQuizManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore || 80,
-                timeLimitMinutes: values.timeLimitMinutes || 15,
+                passingScore: 80,
+                timeLimitMinutes: 15,
                 skillType: values.skillType || 'MIXED',
                 questionCount: 0,
                 comment: 'Tạo quiz mới',
@@ -896,26 +912,9 @@ const AdminQuizManagementPage: React.FC = () => {
 
                             <div style={{ fontSize: 14 }}>
                                 {skill === 'READING' && Array.isArray(meta.words) && (
-                                    <>
-                                        <div>
-                                            {meta.words.map((w: string, i: number) => (
-                                                <span key={i} style={{
-                                                    color: i === meta.error_index ? '#ef4444' : '#334155',
-                                                    textDecoration: i === meta.error_index ? 'line-through' : 'none',
-                                                    fontWeight: i === meta.error_index ? 600 : 400,
-                                                    marginRight: 4
-                                                }}>
-                                                    {w}
-                                                </span>
-                                            ))}
-                                            {meta.correct_word && (
-                                                <Text type="success" strong style={{ marginLeft: 6 }}>
-                                                    <ArrowRightOutlined style={{ fontSize: 12, marginRight: 6 }} />
-                                                    {meta.correct_word}
-                                                </Text>
-                                            )}
-                                        </div>
-                                    </>
+                                    <div>
+                                        <Text style={{ color: '#334155' }}>{meta.words.join(' ')}</Text>
+                                    </div>
                                 )}
 
                                 {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
@@ -1024,20 +1023,41 @@ const AdminQuizManagementPage: React.FC = () => {
 
     const levelColumns = [
         {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => (
+                <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
+            ),
+        },
+        {
             title: 'Tên chương',
             dataIndex: 'name',
             key: 'name',
-            render: (text: string, record: any) => {
+            render: (text: string) => (
+                <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
+            )
+        },
+        {
+            title: 'Miền',
+            key: 'region',
+            width: 130,
+            render: (_: any, record: any) => {
                 const rInfo = getRegionInfo(record.dialectId);
+                if (!rInfo) return <Text type="secondary">—</Text>;
                 return (
-                    <Space direction="vertical" size={0}>
-                        <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
-                        {rInfo && (
-                            <Tag color={rInfo.color} style={{ fontSize: 11, borderRadius: 10, background: `${rInfo.color}15`, border: `1px solid ${rInfo.color}40` }}>
-                                {rInfo.label}
-                            </Tag>
-                        )}
-                    </Space>
+                    <Tag style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 20,
+                        padding: '2px 10px',
+                        background: `${rInfo.color}15`,
+                        border: `1px solid ${rInfo.color}40`,
+                        color: rInfo.color,
+                    }}>
+                        {rInfo.label}
+                    </Tag>
                 );
             }
         },
@@ -1048,47 +1068,9 @@ const AdminQuizManagementPage: React.FC = () => {
             ellipsis: true,
             render: (text: string) => <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
         },
-        {
-            title: 'Thứ tự',
-            dataIndex: 'levelOrder',
-            key: 'levelOrder',
-            align: 'center' as const,
-            width: 80,
-            render: (val: number) => <Badge count={val} showZero color="#64748b" />
-        },
-        {
-            title: 'Sao yêu cầu',
-            dataIndex: 'minStarsRequired',
-            key: 'minStarsRequired',
-            align: 'center' as const,
-            width: 120,
-            render: (val: number) => (
-                <span style={{ color: '#f59e0b', fontWeight: 600 }}>
-                    ⭐ {val ?? 0}
-                </span>
-            )
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            align: 'center' as const,
-            width: 120,
-            render: (_: any, record: any) => (
-                <Button
-                    type="primary"
-                    size="small"
-                    icon={<ArrowRightOutlined />}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleLevelChange(record.id);
-                    }}
-                    style={{ borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                >
-                    Mở
-                </Button>
-            )
-        }
+
     ];
+
 
     const quizColumns = [
         {
@@ -1130,14 +1112,6 @@ const AdminQuizManagementPage: React.FC = () => {
                     <Tooltip title="Số câu hỏi">
                         <Tag color="blue" icon={<FileTextOutlined />}>{record.questions?.length ?? record.questionCount ?? 0}</Tag>
                     </Tooltip>
-                    <Tooltip title="Điểm đạt">
-                        <Tag color="green" icon={<CheckCircleOutlined />}>{record.passingScore ?? 0}%</Tag>
-                    </Tooltip>
-                    {record.timeLimitMinutes && (
-                        <Tooltip title="Thời gian">
-                            <Tag color="orange" icon={<ClockCircleOutlined />}>{record.timeLimitMinutes}p</Tag>
-                        </Tooltip>
-                    )}
                 </Space>
             )
         },
@@ -1192,127 +1166,175 @@ const AdminQuizManagementPage: React.FC = () => {
     const regionInfo = selectedLevel ? getRegionInfo(selectedLevel.dialectId) : null;
 
     return (
-        <div style={{ padding: 0 }}>
-            {/* Header */}
-            <div
-                style={{
-                    marginBottom: 28,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                    gap: 12,
-                }}
-            >
-                <div>
-                    <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center' }}>
-                        {selectedLevelId && (
-                            <Button
-                                icon={<ArrowLeftOutlined />}
-                                onClick={handleBackToChapters}
-                                style={{ marginRight: 16, borderRadius: 10, border: '1.5px solid #e2e8f0' }}
-                            />
-                        )}
-                        <FileTextOutlined style={{ marginRight: 10, color: '#2563eb' }} />
-                        {selectedLevelId && selectedLevel ? (
-                            <>Quản lý quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
-                        ) : 'Quản lý quiz'}
-                    </Title>
-                    <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                        {selectedLevelId && selectedLevel
-                            ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
-                            : 'Xem danh sách quiz và câu hỏi theo từng chương học'}
-                    </Text>
+        <div style={{ padding: '24px' }}>
+            {/* Header - đồng bộ với ChallengeBankPage */}
+            <div className="flex justify-between items-center" style={{ marginBottom: '24px', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {selectedLevelId && (
+                        <Button
+                            icon={<ArrowLeftOutlined />}
+                            onClick={handleBackToChapters}
+                            style={{ borderRadius: 10, border: '1.5px solid #e2e8f0', height: 44, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        />
+                    )}
+                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>
+                            {selectedLevelId && selectedLevel
+                                ? <>
+                                    Quản lý bài kiểm tra
+                                    <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
+                                    <span style={{ color: '#1890ff', fontSize: 20 }}>{selectedLevel.name}</span>
+                                </>
+                                : quiz
+                                    ? <>
+                                        Quản lý bài kiểm tra
+                                        <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
+                                        <span style={{ color: '#1890ff', fontSize: 20 }}>{quiz.name || quiz.title}</span>
+                                    </>
+                                    : 'Quản lý bài kiểm tra'
+                            }
+                        </h2>
+                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                            {quiz
+                                ? 'Chi tiết và câu hỏi của bài kiểm tra'
+                                : selectedLevelId && selectedLevel
+                                    ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
+                                    : 'Chọn chương học để xem và quản lý bài kiểm tra'}
+                        </div>
+                    </div>
                 </div>
-                {selectedLevelId && !quiz && (
-                    <Space size={8}>
-                        <Button icon={<DownloadOutlined />} onClick={handleDownloadQuizTemplate}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0f9ff', color: '#0369a1', border: '1.5px solid #bae6fd' }}>
-                            Template
-                        </Button>
-                        <Button icon={<UploadOutlined />} onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}>
-                            Import
-                        </Button>
-                        <Button icon={<ExportOutlined />} onClick={handleExportQuizCSV}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#fefce8', color: '#a16207', border: '1.5px solid #fde047' }}>
-                            Export
-                        </Button>
-                    </Space>
-                )}
+                <Space size={12}>
+                    {selectedLevelId && !quiz && (
+                        <>
+                            <Button
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadQuizTemplate}
+                                style={{
+                                    height: '44px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #1890ff',
+                                    color: '#1890ff',
+                                    background: '#e6f7ff',
+                                    fontWeight: 600,
+                                    paddingInline: 16,
+                                }}
+                            >
+                                Template
+                            </Button>
+                            <Button
+                                icon={<UploadOutlined />}
+                                onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
+                                style={{
+                                    height: '44px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #52c41a',
+                                    color: '#52c41a',
+                                    background: '#f6ffed',
+                                    fontWeight: 600,
+                                    paddingInline: 16,
+                                }}
+                            >
+                                Import
+                            </Button>
+                            <Button
+                                icon={<ExportOutlined />}
+                                onClick={handleExportQuizCSV}
+                                style={{
+                                    height: '44px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #fa8c16',
+                                    color: '#fa8c16',
+                                    background: '#fff7e6',
+                                    fontWeight: 600,
+                                    paddingInline: 16,
+                                }}
+                            >
+                                Export
+                            </Button>
+                            <Button
+                                icon={<PlusOutlined />}
+                                onClick={() => setIsCreateQuizModalOpen(true)}
+                                style={{
+                                    height: '44px',
+                                    borderRadius: '10px',
+                                    border: 'none',
+                                    background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                    color: '#fff',
+                                    fontWeight: 600,
+                                    paddingInline: 20,
+                                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
+                                }}
+                            >
+                                Tạo bài kiểm tra
+                            </Button>
+                        </>
+                    )}
+                </Space>
             </div>
 
 
 
-            {/* Content Area */}
+            {/* Content Area - Chọn chương học */}
             {!selectedLevelId && !loadingQuiz && (
                 <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
-                        <div>
-                            <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Khám phá các chương học
-                            </Title>
-                            <Text style={{ color: '#64748b', fontSize: 15 }}>
-                                Tìm kiếm và chọn một hệ chương trình bên dưới
-                            </Text>
+                    {/* Filter row - đồng bộ style với ChallengeBankPage */}
+                    <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <Input
+                            placeholder="Tìm tên chương..."
+                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                            style={{ width: 320, borderRadius: 10, height: 42 }}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            allowClear
+                        />
+                        <Select
+                            placeholder="Lọc vùng miền"
+                            style={{ minWidth: 160, height: 42 }}
+                            allowClear
+                            onChange={(val) => setRegionFilter(val)}
+                            options={dialects.map((d: any) => {
+                                const regionKey = (d.name || '').toUpperCase();
+                                const info = REGION_LABEL[regionKey];
+                                return {
+                                    value: d.id,
+                                    label: info?.label || d.description || d.name || d.id,
+                                };
+                            })}
+                        />
+                        <div style={{
+                            background: '#e6f7ff',
+                            padding: '0 20px',
+                            borderRadius: 10,
+                            border: '1px solid #91d5ff',
+                            height: 42,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                        }}>
+                            <Badge count={filteredLevels.length} color="#1890ff" />
+                            <Text strong style={{ color: '#1890ff', fontSize: 13 }}>Chương học</Text>
                         </div>
-
-                        <Space size={12} className="filter-controls">
-                            <Input
-                                placeholder="Tìm tên chương..."
-                                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                style={{ width: 260, borderRadius: 12, height: 42 }}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                allowClear
-                            />
-                            <Select
-                                placeholder="Lọc vùng miền"
-                                style={{ width: 160, height: 42 }}
-                                allowClear
-                                onChange={(val) => setRegionFilter(val)}
-                                options={dialects.map((d: any) => {
-                                    const regionKey = (d.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: d.id,
-                                        label: info?.label || d.description || d.name || d.id,
-                                    };
-                                })}
-                                dropdownStyle={{ borderRadius: 12 }}
-                            />
-                            <div style={{
-                                background: '#eff6ff',
-                                padding: '0 20px',
-                                borderRadius: 12,
-                                border: '1px solid #dbeafe',
-                                height: 42,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8
-                            }}>
-                                <Badge count={filteredLevels.length} color="#2563eb" />
-                                <Text strong style={{ color: '#2563eb', fontSize: 13 }}>Chương</Text>
-                            </div>
-                        </Space>
                     </div>
 
-                    <Table
-                        columns={levelColumns}
-                        dataSource={filteredLevels}
-                        rowKey="id"
-                        pagination={{ pageSize: 15, showSizeChanger: true }}
-                        onRow={(record) => ({
-                            onClick: () => handleLevelChange(record.id),
-                            style: { cursor: 'pointer' }
-                        })}
-                        style={{
-                            background: '#fff',
-                            borderRadius: 16,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            border: '1px solid #f1f5f9'
-                        }}
-                    />
+                    <Card
+                        style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
+                        styles={{ body: { padding: 0 } }}
+                    >
+                        <Table
+                            columns={levelColumns}
+                            dataSource={filteredLevels}
+                            rowKey="id"
+                            scroll={{ x: 'max-content', y: 400 }}
+                            pagination={{ pageSize: 15, showSizeChanger: true, style: { padding: '16px 24px' } }}
+                            onRow={(record) => ({
+                                onClick: () => handleLevelChange(record.id),
+                                style: { cursor: 'pointer' }
+                            })}
+                            size="large"
+                        />
+                    </Card>
                 </div>
             )}
 
@@ -1336,64 +1358,41 @@ const AdminQuizManagementPage: React.FC = () => {
 
             {!loadingQuiz && selectedLevelId && !quiz && quizzes.length > 0 && (
                 <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-                        <div>
-                            <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Danh sách bài kiểm tra
-                            </Title>
-                            <Text style={{ color: '#64748b', fontSize: 15 }}>
-                                Vui lòng chọn một bài kiểm tra để xem và quản lý chi tiết
-                            </Text>
-                        </div>
-                        <Space size={12} className="filter-controls" wrap>
-                            <Input
-                                placeholder="Tìm bài kiểm tra..."
-                                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                style={{ width: 220, borderRadius: 12, height: 42 }}
-                                onChange={(e) => setQuizSearchTerm(e.target.value)}
-                                allowClear
-                            />
-                            <Select
-                                placeholder="Lọc kỹ năng"
-                                allowClear
-                                style={{ width: 140, height: 42 }}
-                                onChange={(val) => setQuizSkillFilter(val)}
-                                options={Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
-                            />
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => setIsCreateQuizModalOpen(true)}
-                                size="large"
-                                style={{
-                                    borderRadius: 12,
-                                    fontWeight: 600,
-                                    background: '#1890ff',
-                                    height: 42
-                                }}
-                            >
-                                Tạo bài kiểm tra
-                            </Button>
-                        </Space>
+                    {/* Filter row cho quiz list */}
+                    <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <Input
+                            placeholder="Tìm bài kiểm tra..."
+                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                            style={{ width: 320, borderRadius: 10, height: 42 }}
+                            onChange={(e) => setQuizSearchTerm(e.target.value)}
+                            allowClear
+                        />
+                        <Select
+                            placeholder="Lọc theo kỹ năng"
+                            allowClear
+                            style={{ minWidth: 180, height: 42 }}
+                            onChange={(val) => setQuizSkillFilter(val)}
+                            options={Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
+                        />
                     </div>
 
-                    <Table
-                        columns={quizColumns}
-                        dataSource={filteredAndSortedQuizzes}
-                        rowKey="id"
-                        pagination={{ pageSize: 15, showSizeChanger: true }}
-                        onRow={(record) => ({
-                            onClick: () => setQuiz(record),
-                            style: { cursor: 'pointer' }
-                        })}
-                        style={{
-                            background: '#fff',
-                            borderRadius: 16,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                            border: '1px solid #f1f5f9'
-                        }}
-                    />
+                    <Card
+                        style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
+                        styles={{ body: { padding: 0 } }}
+                    >
+                        <Table
+                            columns={quizColumns}
+                            dataSource={filteredAndSortedQuizzes}
+                            rowKey="id"
+                            scroll={{ x: 'max-content', y: 400 }}
+                            pagination={{ pageSize: 15, showSizeChanger: true, style: { padding: '16px 24px' } }}
+                            onRow={(record) => ({
+                                onClick: () => setQuiz(record),
+                                style: { cursor: 'pointer' }
+                            })}
+                            size="large"
+                        />
+                    </Card>
                 </div>
             )}
 
@@ -1493,15 +1492,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                     valueStyle={{ fontSize: 22, fontWeight: 700, color: '#2563eb' }}
                                 />
                             </Col>
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Điểm đạt</span>}
-                                    value={quiz.passingScore ?? '—'}
-                                    suffix={quiz.passingScore ? '%' : ''}
-                                    prefix={<TrophyOutlined style={{ color: '#f59e0b' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#f59e0b' }}
-                                />
-                            </Col>
+
                             <Col xs={12} sm={6}>
                                 <Statistic
                                     title={<span style={{ fontSize: 12, color: '#64748b' }}>Thời gian</span>}
@@ -1511,27 +1502,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                     valueStyle={{ fontSize: 22, fontWeight: 700, color: '#0891b2' }}
                                 />
                             </Col>
-                            <Col xs={12} sm={6}>
-                                <div>
-                                    <Text style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>
-                                        ID quiz
-                                    </Text>
-                                    <Tooltip title={quiz.id}>
-                                        <code
-                                            style={{
-                                                fontSize: 13,
-                                                background: '#f1f5f9',
-                                                padding: '3px 8px',
-                                                borderRadius: 6,
-                                                color: '#475569',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            {quiz.id?.substring(0, 8)}...
-                                        </code>
-                                    </Tooltip>
-                                </div>
-                            </Col>
+
                         </Row>
                     </Card>
 
@@ -1620,31 +1591,31 @@ const AdminQuizManagementPage: React.FC = () => {
                                 icon={<DownloadOutlined />}
                                 onClick={handleDownloadChallengeTemplate}
                                 style={{
-                                    borderRadius: 8,
+                                    height: 36,
+                                    borderRadius: 10,
                                     fontWeight: 600,
-                                    background: '#fff',
-                                    color: '#0369a1',
-                                    border: '1.5px solid #7dd3fc',
-                                    fontSize: 12,
+                                    border: '1.5px solid #1890ff',
+                                    color: '#1890ff',
+                                    background: '#e6f7ff',
+                                    paddingInline: 14,
                                 }}
-                                size="small"
                             >
-                                📥 Tải Template {quiz.skillType === 'MIXED' ? 'Tổng hợp' : SKILL_CONFIG[quiz.skillType]?.label || ''}
+                                Template {quiz.skillType === 'MIXED' ? 'Tổng hợp' : SKILL_CONFIG[quiz.skillType]?.label || ''}
                             </Button>
                             <Button
                                 icon={<UploadOutlined />}
                                 onClick={openImportChallengesModal}
                                 style={{
-                                    borderRadius: 8,
+                                    height: 36,
+                                    borderRadius: 10,
                                     fontWeight: 600,
-                                    background: '#15803d',
-                                    color: '#fff',
-                                    border: '1.5px solid #15803d',
-                                    fontSize: 12,
+                                    border: '1.5px solid #52c41a',
+                                    color: '#52c41a',
+                                    background: '#f6ffed',
+                                    paddingInline: 14,
                                 }}
-                                size="small"
                             >
-                                📤 Import câu hỏi từ Excel
+                                Import câu hỏi từ Excel
                             </Button>
                             <Text type="secondary" style={{ fontSize: 11, flex: 1, minWidth: 150 }}>
                                 {quiz.skillType === 'MIXED'
@@ -1687,14 +1658,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                         type="primary"
                                         icon={<BankOutlined />}
                                         onClick={() => openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING')}
-                                        style={{ borderRadius: 8, fontWeight: 600, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
+                                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
                                     >
                                         Chọn từ Ngân hàng đề
                                     </Button>
                                     <Button
                                         icon={<PlusOutlined />}
                                         onClick={() => { openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING'); setIsCreatingNew(true); }}
-                                        style={{ borderRadius: 8, fontWeight: 600, background: '#f0fdf4', color: '#15803d', borderColor: '#86efac' }}
+                                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}
                                     >
                                         Tạo câu hỏi mới
                                     </Button>
@@ -1792,7 +1763,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                                     <div>
                                                                         {meta.words.map((w: string, i: number) => (
                                                                             <span key={i} style={{
-                                                                                color: i === meta.error_index ? '#ef4444' : '#334155',
+                                                                                color: '#334155',
                                                                                 textDecoration: i === meta.error_index ? 'line-through' : 'none',
                                                                                 fontWeight: i === meta.error_index ? 600 : 400,
                                                                                 marginRight: 4
@@ -1800,11 +1771,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                                                 {w}
                                                                             </span>
                                                                         ))}
-                                                                        {meta.correct_word && (
-                                                                            <Text type="success" strong style={{ marginLeft: 6 }}>
-                                                                                → {meta.correct_word}
-                                                                            </Text>
-                                                                        )}
+
                                                                     </div>
                                                                 )}
 
@@ -1854,13 +1821,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                         pagination={{ pageSize: 5 }}
                                     />
                                     <Divider />
-                                    <div style={{ display: 'flex', justifySelf: 'end', gap: 12 }}>
-                                        <Button onClick={() => setIsChallengeModalOpen(false)}>Hủy</Button>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                                        <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
                                         <Button
                                             type="primary"
                                             onClick={handleAssignFromBank}
                                             disabled={selectedBankIds.length === 0}
                                             loading={submittingAssign}
+                                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
                                         >
                                             Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
                                         </Button>
@@ -1995,8 +1963,9 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                     <div style={{ textAlign: 'right', marginTop: 16 }}>
                                         <Space>
-                                            <Button onClick={() => setIsChallengeModalOpen(false)}>Hủy</Button>
-                                            <Button type="primary" htmlType="submit" loading={submittingCreate}>
+                                            <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
+                                            <Button type="primary" htmlType="submit" loading={submittingCreate}
+                                                style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
                                                 {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
                                             </Button>
                                         </Space>
@@ -2019,7 +1988,8 @@ const AdminQuizManagementPage: React.FC = () => {
                 open={isDetailModalOpen}
                 onCancel={() => setIsDetailModalOpen(false)}
                 footer={[
-                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary" style={{ borderRadius: 6 }}>
+                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
+                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
                         Đóng
                     </Button>
                 ]}
@@ -2160,6 +2130,11 @@ const AdminQuizManagementPage: React.FC = () => {
                 onOk={() => editQuizForm.submit()}
                 confirmLoading={updatingQuiz}
                 okText="Lưu thay đổi"
+                okButtonProps={{
+                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                }}
+                cancelText="Hủy bỏ"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 width={800}
                 centered
             >
@@ -2218,13 +2193,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     </Row>
 
                     <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item label="Điểm đạt (%)" name="passingScore" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Thời gian (phút)" name="timeLimitMinutes" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
                             <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
                                 <InputNumber style={{ width: '100%' }} />
                             </Form.Item>
@@ -2275,7 +2244,11 @@ const AdminQuizManagementPage: React.FC = () => {
                 onOk={() => newQuizForm.submit()}
                 confirmLoading={creatingQuiz}
                 okText="Tạo mới"
+                okButtonProps={{
+                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                }}
                 cancelText="Hủy"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 width={700}
                 centered
             >
@@ -2283,10 +2256,6 @@ const AdminQuizManagementPage: React.FC = () => {
                     form={newQuizForm}
                     layout="vertical"
                     onFinish={handleCreateQuiz}
-                    initialValues={{
-                        passingScore: 80,
-                        timeLimitMinutes: 15,
-                    }}
                     style={{ marginTop: 20 }}
                 >
                     <Form.Item name="title" label={<Text strong>Tên bài kiểm tra</Text>} rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra' }]}>
@@ -2299,13 +2268,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                        <Form.Item name="passingScore" label={<Text strong>Điểm cần đạt (%)</Text>} rules={[{ required: true, message: 'Nhập điểm cần đạt' }]}>
-                            <InputNumber min={1} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item name="timeLimitMinutes" label={<Text strong>Thời gian (phút)</Text>} rules={[{ required: true, message: 'Nhập thời gian làm bài' }]}>
-                            <InputNumber min={1} max={300} style={{ width: '100%' }} />
-                        </Form.Item>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
                         <Form.Item name="skillType" label={<Text strong>Loại kỹ năng</Text>} rules={[{ required: true, message: 'Chọn loại kỹ năng' }]}>
                             <Select placeholder="Chọn loại" options={[
                                 { value: 'READING', label: '📖 Reading' },
@@ -2353,7 +2316,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         loading={importing}
                         disabled={!importFile}
                         size="large"
-                        style={{ width: '100%', borderRadius: 8, fontWeight: 600, background: '#15803d', borderColor: '#15803d', marginBottom: 16 }}
+                        style={{ width: '100%', borderRadius: 10, fontWeight: 700, background: 'linear-gradient(90deg, #15803d, #16a34a)', border: 'none', color: '#fff', marginBottom: 16, height: 44, boxShadow: '0 4px 12px rgba(21,128,61,0.25)' }}
                     >
                         {importing ? 'Đang import...' : 'Bắt đầu Import'}
                     </Button>
@@ -2484,13 +2447,15 @@ const AdminQuizManagementPage: React.FC = () => {
                         size="large"
                         style={{
                             width: '100%',
-                            borderRadius: 8,
-                            fontWeight: 600,
-                            background: '#15803d',
-                            borderColor: '#15803d',
+                            borderRadius: 10,
+                            fontWeight: 700,
+                            background: 'linear-gradient(90deg, #15803d, #16a34a)',
+                            border: 'none',
                             marginBottom: 16,
                             height: 48,
                             fontSize: 15,
+                            color: '#fff',
+                            boxShadow: '0 4px 12px rgba(21,128,61,0.25)'
                         }}
                     >
                         {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}

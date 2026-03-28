@@ -494,11 +494,11 @@ const RewardManagementPage = () => {
             key: 'badge',
             width: 300,
             render: (_: unknown, r: Reward) => (
-                <div className="flex items-center gap-3">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
                         width: 48, height: 48, borderRadius: 14, padding: 3,
-                        background: 'linear-gradient(135deg, #f59e0b, #f97316)',
-                        flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.4)'
+                        background: 'linear-gradient(135deg, #1890ff, #0076e4)',
+                        flexShrink: 0, boxShadow: '0 2px 8px rgba(24,144,255,0.35)'
                     }}>
                         <div style={{
                             width: '100%', height: '100%', borderRadius: 11,
@@ -514,17 +514,17 @@ const RewardManagementPage = () => {
                                         const target = e.target as HTMLImageElement
                                         target.style.display = 'none'
                                         const parent = target.parentElement
-                                        if (parent) { parent.style.background = 'linear-gradient(135deg,#f59e0b,#f97316)'; parent.innerHTML = '<span style="font-size:22px">🏆</span>' }
+                                        if (parent) { parent.style.background = 'linear-gradient(135deg,#1890ff,#0076e4)'; parent.innerHTML = '<span style="font-size:22px">🏆</span>' }
                                     }}
                                 />
                             ) : (
-                                <TrophyOutlined style={{ color: '#f97316', fontSize: 24 }} />
+                                <TrophyOutlined style={{ color: '#1890ff', fontSize: 24 }} />
                             )}
                         </div>
                     </div>
                     <div>
-                        <div className="font-semibold text-gray-800 text-sm">{r.name}</div>
-                        <div className="text-xs text-gray-400 font-mono mt-0.5">{r.code}</div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'monospace', marginTop: 2 }}>{r.code}</div>
                     </div>
                 </div>
             ),
@@ -652,117 +652,115 @@ const RewardManagementPage = () => {
     }
 
     return (
-        <div className="space-y-4">
-            {/* ── Compact Header Bar ─────────────────────────────────────────── */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: '#fff', borderRadius: 16, padding: '14px 20px',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.07)', gap: 12
-            }}>
-                {/* Left: title + stats chips */}
-                <div className="flex items-center gap-4 flex-wrap flex-1 min-w-0">
-                    <div className="flex items-center gap-2 shrink-0">
-                        <div style={{
-                            width: 36, height: 36, borderRadius: 10,
-                            background: 'linear-gradient(135deg,#f59e0b,#f97316)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <TrophyOutlined style={{ color: '#fff', fontSize: 18 }} />
-                        </div>
-                        <div>
-                            <div className="font-bold text-gray-800 text-base leading-tight">Quản lý huy hiệu</div>
-                            <div className="text-xs text-gray-400">Badge management</div>
-                        </div>
+        <div style={{ padding: '24px' }}>
+            {/* ── Header - đồng bộ với ChallengeBankPage ─────────────────────────────── */}
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                        background: '#e6f7ff',
+                        padding: '10px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <TrophyOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
                     </div>
-
-                    {/* Stat chips */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {[
-                            { label: 'Tổng', val: stats.total, bg: '#eff6ff', color: '#2563eb', dot: '#3b82f6' },
-                            { label: 'Đang hiện', val: stats.active, bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
-                            { label: 'Danh mục', val: stats.categories, bg: '#faf5ff', color: '#7c3aed', dot: '#a855f7' },
-                            { label: 'Kết quả lọc', val: filtered.length, bg: '#fff7ed', color: '#c2410c', dot: '#f97316' },
-                        ].map(s => (
-                            <div key={s.label} style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                background: s.bg, borderRadius: 20, padding: '4px 12px'
-                            }}>
-                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot }} />
-                                <span style={{ fontSize: 12, color: s.color, fontWeight: 600 }}>{s.val}</span>
-                                <span style={{ fontSize: 11, color: '#9ca3af' }}>{s.label}</span>
-                            </div>
-                        ))}
+                    <div>
+                        <div style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1e293b' }}>Quản lý huy hiệu</div>
+                        <div style={{ color: '#8c8c8c', fontSize: 14 }}>Quản lý và cấu hình hệ thống huy hiệu</div>
                     </div>
                 </div>
 
-                {/* Right: Add button */}
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={openCreate}
-                    size="middle"
-                    id="btn-create-reward"
-                    style={{
-                        background: 'linear-gradient(135deg,#f59e0b,#f97316)',
-                        border: 'none', borderRadius: 10, fontWeight: 600,
-                        boxShadow: '0 2px 8px rgba(245,158,11,0.35)', flexShrink: 0
-                    }}
-                >
-                    Thêm huy hiệu
-                </Button>
+                {/* Right: Stats + Add button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    {/* Stat chips */}
+                    {[
+                        { label: 'Tổng', val: stats.total, bg: '#e6f7ff', color: '#1890ff', dot: '#1890ff' },
+                        { label: 'Đang hiện', val: stats.active, bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
+                        { label: 'Danh mục', val: stats.categories, bg: '#faf5ff', color: '#7c3aed', dot: '#a855f7' },
+                        { label: 'Kết quả lọc', val: filtered.length, bg: '#fff7ed', color: '#c2410c', dot: '#f97316' },
+                    ].map(s => (
+                        <div key={s.label} style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            background: s.bg, borderRadius: 20, padding: '6px 14px',
+                            border: `1px solid ${s.dot}30`
+                        }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot }} />
+                            <span style={{ fontSize: 13, color: s.color, fontWeight: 700 }}>{s.val}</span>
+                            <span style={{ fontSize: 12, color: '#8c8c8c' }}>{s.label}</span>
+                        </div>
+                    ))}
+
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={openCreate}
+                        size="large"
+                        id="btn-create-reward"
+                        style={{
+                            borderRadius: 10,
+                            height: 44,
+                            fontWeight: 600,
+                            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
+                            border: 'none',
+                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                            color: 'white',
+                            paddingInline: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                        }}
+                    >
+                        Thêm huy hiệu
+                    </Button>
+                </div>
             </div>
 
-            {/* ── Filter Bar ─────────────────────────────────────────────────── */}
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                background: '#fff', borderRadius: 14, padding: '10px 16px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
-            }}>
-                {/* Category filter */}
+            {/* ── Filter Bar - đồng bộ với ChallengeBankPage ─────────────────────── */}
+            <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <Select
                     value={categoryFilter}
                     onChange={(v) => setCategoryFilter(v)}
-                    size="middle"
-                    style={{ width: 185, borderRadius: 8 }}
+                    style={{ minWidth: 200, height: 42 }}
                     options={[
                         { value: 'ALL', label: '🏆 Tất cả danh mục' },
                         ...CATEGORIES.map(c => ({ value: c, label: CATEGORY_LABELS[c] }))
                     ]}
                 />
 
-                {/* Search */}
                 <Input
                     placeholder="Tìm theo tên hoặc code..."
-                    prefix={<SearchOutlined style={{ color: '#d1d5db' }} />}
+                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                     value={searchText}
                     onChange={e => setSearchText(e.target.value)}
-                    style={{ width: 260, borderRadius: 8 }}
+                    style={{ width: 280, borderRadius: 10, height: 42 }}
                     allowClear
                 />
 
-                {/* Refresh icon button */}
                 <Tooltip title="Tải lại dữ liệu">
                     <Button
                         icon={<ReloadOutlined />}
                         onClick={fetchRewards}
                         loading={loading}
-                        style={{ borderRadius: 8 }}
+                        style={{ borderRadius: 10, height: 42, width: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     />
                 </Tooltip>
-
             </div>
 
             {/* Table */}
-            <Card className="rounded-2xl shadow-sm border-none">
+            <Card
+                style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
+                styles={{ body: { padding: 0 } }}
+            >
                 <Table
                     rowKey="id"
                     dataSource={filtered}
                     columns={columns}
                     loading={loading}
-                    pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Tổng ${total} huy hiệu` }}
-                    size="middle"
-                    rowClassName="hover:bg-blue-50 transition-colors"
-                    scroll={{ x: 'max-content' }}
+                    pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Tổng ${total} huy hiệu`, style: { padding: '16px 24px' } }}
+                    size="large"
+                    scroll={{ x: 'max-content', y: 400 }}
                 />
             </Card>
 
@@ -780,6 +778,8 @@ const RewardManagementPage = () => {
                 }
                 okText={editing ? 'Lưu thay đổi' : 'Tạo'}
                 cancelText="Hủy"
+                okButtonProps={{ style: { borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 40, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' } }}
+                cancelButtonProps={{ style: { borderRadius: 8 } }}
                 width={640}
                 destroyOnClose
             >

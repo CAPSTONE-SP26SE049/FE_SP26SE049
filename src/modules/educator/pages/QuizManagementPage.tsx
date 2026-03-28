@@ -1318,7 +1318,7 @@ const QuizManagementPage: React.FC = () => {
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description={<Text type="secondary">Chương học này chưa có bài kiểm tra nào</Text>}
                     />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: '#1890ff', borderColor: '#1890ff', color: '#fff', fontWeight: 600, borderRadius: 8 }}>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: 10, height: 44, boxShadow: '0 4px 12px rgba(24,144,255,0.35)', paddingInline: 24 }}>
                         Tạo bài kiểm tra đầu tiên
                     </Button>
                 </div>
@@ -1358,8 +1358,11 @@ const QuizManagementPage: React.FC = () => {
                                 style={{
                                     borderRadius: 12,
                                     fontWeight: 600,
-                                    background: '#1890ff',
-                                    height: 42
+                                    background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                    border: 'none',
+                                    height: 42,
+                                    boxShadow: '0 4px 12px rgba(24,144,255,0.25)',
+                                    color: 'white'
                                 }}
                             >
                                 Tạo bài kiểm tra
@@ -1676,7 +1679,7 @@ const QuizManagementPage: React.FC = () => {
                                         type="primary"
                                         icon={<BankOutlined />}
                                         onClick={() => openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING')}
-                                        style={{ borderRadius: 8, fontWeight: 600, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
+                                        style={{ borderRadius: 10, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 40, boxShadow: '0 4px 12px rgba(24,144,255,0.2)' }}
                                     >
                                         Chọn từ Ngân hàng đề
                                     </Button>
@@ -1849,6 +1852,7 @@ const QuizManagementPage: React.FC = () => {
                                             onClick={handleAssignFromBank}
                                             disabled={selectedBankIds.length === 0}
                                             loading={submittingAssign}
+                                            style={{ borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 38, boxShadow: '0 4px 8px rgba(24,144,255,0.2)' }}
                                         >
                                             Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
                                         </Button>
@@ -1983,8 +1987,8 @@ const QuizManagementPage: React.FC = () => {
 
                                     <div style={{ textAlign: 'right', marginTop: 16 }}>
                                         <Space>
-                                            <Button onClick={() => setIsChallengeModalOpen(false)}>Hủy</Button>
-                                            <Button type="primary" htmlType="submit" loading={submittingCreate}>
+                                            <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8 }}>Hủy</Button>
+                                            <Button type="primary" htmlType="submit" loading={submittingCreate} style={{ borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
                                                 {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
                                             </Button>
                                         </Space>
@@ -2007,7 +2011,7 @@ const QuizManagementPage: React.FC = () => {
                 open={isDetailModalOpen}
                 onCancel={() => setIsDetailModalOpen(false)}
                 footer={[
-                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary" style={{ borderRadius: 6 }}>
+                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary" style={{ borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 38, paddingInline: 24, boxShadow: '0 4px 10px rgba(24,144,255,0.2)' }}>
                         Đóng
                     </Button>
                 ]}
@@ -2148,6 +2152,8 @@ const QuizManagementPage: React.FC = () => {
                 onOk={() => editQuizForm.submit()}
                 confirmLoading={updatingQuiz}
                 okText="Lưu thay đổi"
+                okButtonProps={{ style: { borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 38, paddingInline: 20 } }}
+                cancelButtonProps={{ style: { borderRadius: 8 } }}
                 width={800}
                 centered
             >
@@ -2264,6 +2270,8 @@ const QuizManagementPage: React.FC = () => {
                 confirmLoading={creatingQuiz}
                 okText="Tạo mới"
                 cancelText="Hủy"
+                okButtonProps={{ style: { borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 38, paddingInline: 20 } }}
+                cancelButtonProps={{ style: { borderRadius: 8 } }}
                 width={700}
                 centered
             >
@@ -2341,7 +2349,7 @@ const QuizManagementPage: React.FC = () => {
                         loading={importing}
                         disabled={!importFile}
                         size="large"
-                        style={{ width: '100%', borderRadius: 8, fontWeight: 600, background: '#15803d', borderColor: '#15803d', marginBottom: 16 }}
+                        style={{ width: '100%', borderRadius: 10, fontWeight: 700, background: 'linear-gradient(90deg, #15803d, #16a34a)', border: 'none', color: '#fff', height: 48, boxShadow: '0 4px 12px rgba(21,128,61,0.25)', marginBottom: 16 }}
                     >
                         {importing ? 'Đang import...' : 'Bắt đầu Import'}
                     </Button>

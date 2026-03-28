@@ -35,7 +35,6 @@ import {
     DownloadOutlined,
     UploadOutlined,
     FileExcelOutlined,
-    ArrowRightOutlined,
     DeleteOutlined
 } from '@ant-design/icons';
 import { adminService, type ChallengeBank, type ChallengeBankRequest } from '../services/adminService';
@@ -181,7 +180,7 @@ const AdminChallengeBankPage: React.FC = () => {
                 await adminService.createChallengeBankItem(payload);
                 message.success("Tạo câu hỏi thành công");
             }
-            
+
             setIsModalOpen(false);
             form.resetFields();
             setEditingChallengeId(null);
@@ -197,10 +196,10 @@ const AdminChallengeBankPage: React.FC = () => {
 
     const handleEdit = (record: ChallengeBank) => {
         setEditingChallengeId(record.id);
-        
+
         let meta = record.metadataJson;
         if (typeof meta === 'string') {
-            try { meta = JSON.parse(meta); } catch(e) { meta = {}; }
+            try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
         }
         meta = meta || {};
 
@@ -368,29 +367,12 @@ const AdminChallengeBankPage: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
                             {text || '—'}
                         </Text>
-                        
+
                         <div style={{ fontSize: 14 }}>
                             {skill === 'READING' && Array.isArray(meta.words) && (
-                                <>
-                                    <div>
-                                        {meta.words.map((w: string, i: number) => (
-                                            <span key={i} style={{
-                                                color: i === meta.error_index ? '#ef4444' : '#334155',
-                                                textDecoration: i === meta.error_index ? 'line-through' : 'none',
-                                                fontWeight: i === meta.error_index ? 600 : 400,
-                                                marginRight: 4
-                                            }}>
-                                                {w}
-                                            </span>
-                                        ))}
-                                        {meta.correct_word && (
-                                            <Text type="success" strong style={{ marginLeft: 6 }}>
-                                                <ArrowRightOutlined style={{ fontSize: 12, marginRight: 6 }} />
-                                                {meta.correct_word}
-                                            </Text>
-                                        )}
-                                    </div>
-                                </>
+                                <div>
+                                    <Text style={{ color: '#334155' }}>{meta.words.join(' ')}</Text>
+                                </div>
                             )}
 
                             {(skill === 'LISTENING' || skill === 'SPEAKING' || skill === 'ENTRY_TEST') && meta.transcript && (
@@ -497,7 +479,7 @@ const AdminChallengeBankPage: React.FC = () => {
                         <DatabaseOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
                     </div>
                     <div>
-                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Ngân hàng thử thách</Title>
+                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Quản lý câu hỏi</Title>
                         <Text type="secondary">Quản lý và tạo câu hỏi cho các bài kiểm tra</Text>
                     </div>
                 </div>
@@ -643,9 +625,10 @@ const AdminChallengeBankPage: React.FC = () => {
                         columns={columns}
                         dataSource={filteredChallenges}
                         rowKey="id"
-                        scroll={{ x: 'max-content' }}
+                        scroll={{ x: 'max-content', y: 400 }}
                         pagination={{
                             pageSize: 10,
+                            showSizeChanger: true,
                             showTotal: (total) => `Tổng cộng ${total} câu hỏi`,
                             style: { padding: '16px 24px' }
                         }}
@@ -690,7 +673,7 @@ const AdminChallengeBankPage: React.FC = () => {
                 okText={editingChallengeId ? "Lưu cập nhật" : "Thêm mới"}
                 cancelText="Hủy"
                 okButtonProps={{
-                    style: { height: 40, borderRadius: 8, paddingInline: 24, fontWeight: 600 }
+                    style: { height: 40, borderRadius: 8, paddingInline: 24, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
                 }}
                 cancelButtonProps={{
                     style: { height: 40, borderRadius: 8 }
@@ -700,7 +683,7 @@ const AdminChallengeBankPage: React.FC = () => {
                     form={form}
                     layout="vertical"
                     onFinish={handleSubmit}
-                initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', region: 'BAC' }}
+                    initialValues={{ skillType: 'READING', difficultyTag: 'BEGINNER', region: 'BAC' }}
                     style={{ marginTop: 24 }}
                 >
                     <Form.Item
@@ -830,7 +813,7 @@ const AdminChallengeBankPage: React.FC = () => {
                                         >
                                             <Button icon={<UploadOutlined />}>Chọn file âm thanh</Button>
                                         </Upload>
-                                        
+
                                         <Form.Item name="audioUrl" noStyle>
                                             <Input hidden />
                                         </Form.Item>
@@ -840,10 +823,10 @@ const AdminChallengeBankPage: React.FC = () => {
                                                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                                                     Xem trước âm thanh:
                                                 </Text>
-                                                <audio 
-                                                    controls 
-                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
-                                                    style={{ width: '100%', height: 32 }} 
+                                                <audio
+                                                    controls
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')}
+                                                    style={{ width: '100%', height: 32 }}
                                                 />
                                             </div>
                                         )}
@@ -913,7 +896,6 @@ const AdminChallengeBankPage: React.FC = () => {
                             <>
                                 <Form.Item
                                     label={<Text strong>Âm thanh mẫu</Text>}
-                                    required={!editingChallengeId}
                                 >
                                     <Space direction="vertical" style={{ width: '100%' }}>
                                         <Upload
@@ -938,10 +920,10 @@ const AdminChallengeBankPage: React.FC = () => {
                                                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                                                     Nghe thử:
                                                 </Text>
-                                                <audio 
-                                                    controls 
-                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
-                                                    style={{ width: '100%', height: 32 }} 
+                                                <audio
+                                                    controls
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')}
+                                                    style={{ width: '100%', height: 32 }}
                                                 />
                                             </div>
                                         )}
