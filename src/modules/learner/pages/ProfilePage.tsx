@@ -5,6 +5,7 @@ import { Flame, Zap, Lock, Shield } from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { motion } from 'framer-motion'
 import { apiClient } from '../../../services/apiClient'
+import { getRegionLabel as formatRegion } from '../../../utils/regionDisplay'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -13,12 +14,19 @@ const regionOptions = [
     { value: 'north', label: 'Miền Bắc' },
     { value: 'central', label: 'Miền Trung' },
     { value: 'south', label: 'Miền Nam' },
+    { value: 'BAC', label: 'Miền Bắc' },
+    { value: 'TRUNG', label: 'Miền Trung' },
+    { value: 'NAM', label: 'Miền Nam' },
 ]
 
 const getRegionLabel = (region: string | undefined) => {
     if (!region) return 'Mặc định'
-    const found = regionOptions.find(r => r.value === region.toLowerCase() || r.value === region)
-    return found ? found.label : region
+    const found = regionOptions.find(
+        (r) => r.value.toLowerCase() === region.toLowerCase() || r.value === region
+    )
+    if (found) return found.label
+    const unified = formatRegion(region)
+    return unified === '—' ? region : unified
 }
 
 const BadgeItem = ({ imageUrl, icon: Icon, title, level, locked }: any) => (

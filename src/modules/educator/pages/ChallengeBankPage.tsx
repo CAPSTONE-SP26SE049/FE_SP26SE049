@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
     Typography,
     Card,
+    Row,
+    Col,
     Table,
     Tag,
     Space,
@@ -17,12 +19,10 @@ import {
     Divider,
     Dropdown,
     Upload,
-    Alert
 } from 'antd';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../firebase';
 import {
-    DatabaseOutlined,
     ReadOutlined,
     SoundOutlined,
     AudioOutlined,
@@ -82,12 +82,6 @@ const ChallengeBankPage: React.FC = () => {
     const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null);
     const [regionFilter, setRegionFilter] = useState<string | null>(null);
 
-    // Import/Export states
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [importSkillType, setImportSkillType] = useState<string>('READING');
-    const [importFile, setImportFile] = useState<File | null>(null);
-    const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<any>(null);
     const [exporting, setExporting] = useState(false);
 
     const filteredChallenges = useMemo(() => {
@@ -261,10 +255,6 @@ const ChallengeBankPage: React.FC = () => {
         setIsDetailModalOpen(true);
     };
 
-    // ════════════════════════════════════════
-    //  IMPORT / EXPORT HANDLERS
-    // ════════════════════════════════════════
-
     const handleDownloadTemplate = async (skillType: string) => {
         try {
             message.loading({ content: 'Đang tải template...', key: 'dl' });
@@ -292,26 +282,6 @@ const ChallengeBankPage: React.FC = () => {
             message.error({ content: 'Không thể export dữ liệu', key: 'exp' });
         } finally {
             setExporting(false);
-        }
-    };
-
-    const handleImportSubmit = async () => {
-        if (!importFile) {
-            message.warning('Vui lòng chọn file Excel');
-            return;
-        }
-        setImporting(true);
-        setImportResult(null);
-        try {
-            const res: any = await excelService.importChallenges(importSkillType, importFile);
-            setImportResult(res?.data || res);
-            message.success('Import hoàn tất!');
-            fetchChallenges(); // Refresh list
-        } catch (err: any) {
-            console.error('[Excel] Import error:', err);
-            message.error(err?.response?.data?.message || 'Lỗi khi import');
-        } finally {
-            setImporting(false);
         }
     };
 
@@ -485,23 +455,7 @@ const ChallengeBankPage: React.FC = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        background: '#e6f7ff',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <DatabaseOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Ngân hàng thử thách</Title>
-                        <Text type="secondary">Quản lý và tạo câu hỏi cho các bài kiểm tra</Text>
-                    </div>
-                </div>
+            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                 <Space size={12}>
                     <Dropdown menu={{ items: templateMenuItems }} trigger={['click']} placement="bottomRight">
                         <Button
@@ -523,29 +477,6 @@ const ChallengeBankPage: React.FC = () => {
                             Template
                         </Button>
                     </Dropdown>
-                    <Button
-                        icon={<UploadOutlined />}
-                        size="large"
-                        onClick={() => {
-                            setImportResult(null);
-                            setImportFile(null);
-                            setIsImportModalOpen(true);
-                        }}
-                        style={{
-                            borderRadius: 10,
-                            height: 44,
-                            fontWeight: 600,
-                            border: '1.5px solid #52c41a',
-                            color: '#52c41a',
-                            paddingInline: 16,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            background: '#f6ffed',
-                        }}
-                    >
-                        Import
-                    </Button>
                     <Dropdown menu={{ items: exportMenuItems }} trigger={['click']} placement="bottomRight">
                         <Button
                             icon={<FileExcelOutlined />}
@@ -590,46 +521,54 @@ const ChallengeBankPage: React.FC = () => {
                 </Space>
             </div>
 
-            {/* Filter Row */}
-            <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <Input
-                    placeholder="Tìm kiếm nội dung câu hỏi..."
-                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                    style={{ width: 320, borderRadius: 10, height: 42 }}
-                    allowClear
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
-                <Select
-                    placeholder="Lọc theo kỹ năng"
-                    allowClear
-                    style={{ minWidth: 180, height: 42 }}
-                    onChange={val => setSkillFilter(val)}
-                >
-                    {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
-                <Select
-                    placeholder="Lọc theo độ khó"
-                    allowClear
-                    style={{ minWidth: 180, height: 42 }}
-                    onChange={val => setDifficultyFilter(val)}
-                >
-                    {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
-                <Select
-                    placeholder="Lọc theo miền"
-                    allowClear
-                    style={{ minWidth: 160, height: 42 }}
-                    onChange={val => setRegionFilter(val)}
-                >
-                    {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
-            </div>
+            {/* Filter Row — Row/Col tránh 1 ô xuống dòng lẻ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} lg={6}>
+                    <Input
+                        placeholder="Tìm kiếm nội dung câu hỏi..."
+                        prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                        style={{ width: '100%', borderRadius: 10, height: 42 }}
+                        allowClear
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Select
+                        placeholder="Lọc theo kỹ năng"
+                        allowClear
+                        style={{ width: '100%', height: 42 }}
+                        onChange={val => setSkillFilter(val)}
+                    >
+                        {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
+                            <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                        ))}
+                    </Select>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Select
+                        placeholder="Lọc theo độ khó"
+                        allowClear
+                        style={{ width: '100%', height: 42 }}
+                        onChange={val => setDifficultyFilter(val)}
+                    >
+                        {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
+                            <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                        ))}
+                    </Select>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Select
+                        placeholder="Lọc theo miền"
+                        allowClear
+                        style={{ width: '100%', height: 42 }}
+                        onChange={val => setRegionFilter(val)}
+                    >
+                        {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
+                            <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                        ))}
+                    </Select>
+                </Col>
+            </Row>
 
             <Card
                 style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
@@ -1126,113 +1065,6 @@ const ChallengeBankPage: React.FC = () => {
                         </div>
                     </div>
                 )}
-            </Modal>
-
-            {/* Modal: Import Excel */}
-            <Modal
-                title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
-                        <UploadOutlined style={{ color: '#52c41a', fontSize: 20 }} />
-                        <Typography.Title level={4} style={{ margin: 0 }}>Import câu hỏi từ Excel</Typography.Title>
-                    </div>
-                }
-                open={isImportModalOpen}
-                onCancel={() => {
-                    setIsImportModalOpen(false);
-                    setImportResult(null);
-                    setImportFile(null);
-                }}
-                onOk={handleImportSubmit}
-                confirmLoading={importing}
-                okText="Import"
-                cancelText="Hủy"
-                okButtonProps={{
-                    disabled: !importFile,
-                    icon: <UploadOutlined />,
-                    style: { height: 40, borderRadius: 8, paddingInline: 24, fontWeight: 600, background: '#52c41a', border: 'none' }
-                }}
-                cancelButtonProps={{ style: { height: 40, borderRadius: 8 } }}
-                width={600}
-                centered
-            >
-                <div style={{ marginTop: 20 }}>
-                    {/* Step 1: Chọn kỹ năng */}
-                    <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Chọn kỹ năng</Text>
-                        <Select
-                            value={importSkillType}
-                            onChange={val => setImportSkillType(val)}
-                            style={{ width: '100%' }}
-                            size="large"
-                        >
-                            {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
-                                <Select.Option key={key} value={key}>
-                                    <Space>{cfg.icon} {cfg.label}</Space>
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </div>
-
-                    {/* Step 2: Download template */}
-                    <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>2. Tải template mẫu</Text>
-                        <Button
-                            icon={<DownloadOutlined />}
-                            onClick={() => handleDownloadTemplate(importSkillType)}
-                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
-                        >
-                            Tải template {SKILL_CONFIG[importSkillType]?.label}
-                        </Button>
-                        <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-                            Tải file mẫu, điền dữ liệu theo hướng dẫn, rồi upload ở bước 3
-                        </Text>
-                    </div>
-
-                    {/* Step 3: Upload file */}
-                    <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>3. Upload file Excel đã điền</Text>
-                        <Upload.Dragger
-                            accept=".xlsx,.xls"
-                            maxCount={1}
-                            beforeUpload={(file) => {
-                                setImportFile(file);
-                                return false; // prevent auto upload
-                            }}
-                            onRemove={() => setImportFile(null)}
-                            fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' } as any] : []}
-                            style={{ borderRadius: 12, borderColor: '#52c41a' }}
-                        >
-                            <p style={{ fontSize: 32, color: '#52c41a', marginBottom: 8 }}>
-                                <FileExcelOutlined />
-                            </p>
-                            <p style={{ fontWeight: 600 }}>Kéo thả file hoặc click để chọn</p>
-                            <p style={{ color: '#999', fontSize: 12 }}>Chỉ hỗ trợ file .xlsx, .xls</p>
-                        </Upload.Dragger>
-                    </div>
-
-                    {/* Import Result */}
-                    {importResult && (
-                        <div style={{ marginTop: 16 }}>
-                            <Alert
-                                type={importResult.errorCount > 0 ? 'warning' : 'success'}
-                                message={`Thành công: ${importResult.successCount} | Bỏ qua: ${importResult.skipCount} | Lỗi: ${importResult.errorCount}`}
-                                description={
-                                    importResult.messages?.length > 0 && (
-                                        <ul style={{ margin: '8px 0 0', paddingLeft: 20, maxHeight: 150, overflow: 'auto' }}>
-                                            {importResult.messages.map((msg: string, idx: number) => (
-                                                <li key={idx} style={{ fontSize: 12, color: msg.includes('Lỗi') ? '#ff4d4f' : msg.includes('bỏ qua') ? '#faad14' : '#52c41a' }}>
-                                                    {msg}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )
-                                }
-                                showIcon
-                                style={{ borderRadius: 10 }}
-                            />
-                        </div>
-                    )}
-                </div>
             </Modal>
         </div>
     );

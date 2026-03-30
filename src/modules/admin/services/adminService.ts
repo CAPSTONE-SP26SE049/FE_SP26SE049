@@ -52,6 +52,24 @@ export interface ChallengeBankRequest {
     metadataJson: Record<string, any>;
 }
 
+/** Phản hồi API quản trị tài khoản — khớp UserManagementResponse (backend) */
+export interface AdminUser {
+    id: string;
+    email: string;
+    fullName: string;
+    roleCode: string;
+    isActive: boolean;
+    emailVerified: boolean;
+    createdAt?: string;
+    totalStars?: number;
+    currentStreakDays?: number;
+    phone?: string | null;
+    region?: string | null;
+    avatarUrl?: string | null;
+    lastLoginDate?: string | null;
+    totalExperience?: number;
+}
+
 export const adminService = {
     // --- Account Management ---
     createEducator: async (data: CreateEducatorRequest) => {
@@ -156,6 +174,13 @@ export const adminService = {
     },
 
     // --- Quiz Management ---
+    getLevelEngagementStats: async () => {
+        return apiClient.get('/admin/content/levels/engagement-stats');
+    },
+    /** Số bài kiểm tra (QUIZ) theo từng học phần — dùng cho thẻ danh sách level */
+    getLevelQuizCounts: async () => {
+        return apiClient.get('/admin/content/levels/quiz-counts');
+    },
     getQuizzes: async () => {
         return apiClient.get('/admin/content/quizzes');
     },

@@ -16,10 +16,17 @@ import { AuthProvider } from './core/auth/AuthContext';
 import { AppRoutes } from './router/AppRouter';
 
 import { ConfigProvider, App as AntdApp } from 'antd';
+import viVN from 'antd/locale/vi_VN';
 
 function App() {
 	return (
 		<ConfigProvider
+			locale={viVN}
+			form={{
+				validateMessages: {
+					required: 'Vui lòng nhập ${label}',
+				},
+			}}
 			theme={{
 				token: {
 					colorPrimary: '#1cb0f6', // Brand Blue

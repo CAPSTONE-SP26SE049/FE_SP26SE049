@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "verify:challenge-bank": "node scripts/verify-challenge-bank-wiring.mjs",
-    "verify": "npm run verify:challenge-bank && tsc --noEmit && echo \"tsc: OK\"",
+    "verify:admin-chapters": "node scripts/verify-admin-chapters-page.mjs",
+    "verify:chapter-level-stats": "node scripts/verify-admin-chapters-page.mjs",
+    "verify": "npm run verify:challenge-bank && npm run verify:admin-chapters && tsc --noEmit && echo \"tsc: OK\"",
     "check": "npm run verify && npm run build"
   },
   "dependencies": {
