@@ -8,13 +8,9 @@ import ForgotPassword from '../apps/auth/ForgotPassword'
 import ResetPassword from '../apps/auth/ResetPassword'
 import FacebookCallback from '../apps/auth/FacebookCallback'
 import EducatorLayout from '../modules/educator/components/EducatorLayout'
-import DashboardPage from '../modules/educator/pages/DashboardPage'
-import RoadmapManager from '../modules/educator/pages/RoadmapManager'
-import AssessmentMatrix from '../modules/educator/pages/AssessmentMatrix'
-import StudentAnalyticsPage from '../modules/educator/pages/StudentAnalyticsPage'
+
 import SettingsPage from '../modules/educator/pages/SettingsPage'
-import ClassroomManagementPage from '../modules/educator/pages/ClassroomManagementPage'
-import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
+
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
@@ -27,6 +23,7 @@ import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagement
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AdminChallengeBankPage from '../modules/admin/pages/ChallengeBankPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
+import LearningRoadmapPage from '../modules/learner/pages/LearningRoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
@@ -63,17 +60,12 @@ export const AppRoutes: React.FC = () => {
       {/* Educator protected area */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
-          {/* <Route path="/educator" element={<div>Educator Layout Placeholder</div>}> */}
-          <Route index element={<DashboardPage />} />
-          <Route path="classrooms" element={<ClassroomManagementPage />} />
-          <Route path="classrooms/:classId/students" element={<StudentManagementPage />} />
-          <Route path="students" element={<StudentManagementPage />} />
-          <Route path="roadmap" element={<RoadmapManager />} />
+          <Route index element={<Navigate to="challenges" replace />} />
+
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
-          <Route path="matrix" element={<AssessmentMatrix />} />
-          <Route path="analytics" element={<StudentAnalyticsPage />} />
+
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
@@ -88,6 +80,7 @@ export const AppRoutes: React.FC = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<LearnerDashboardPage />} />
           <Route path="roadmap" element={<RoadmapPage />} />
+          <Route path="roadmap-v2" element={<LearningRoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>
