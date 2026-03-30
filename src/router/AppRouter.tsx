@@ -27,6 +27,7 @@ import LearningRoadmapPage from '../modules/learner/pages/LearningRoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
+import LearnerFriendsPage from '../modules/learner/pages/LearnerFriendsPage'
 import QuizPage from '../modules/learner/pages/QuizPage'
 import Entrytest from '../pages/Entrytest'
 import { ProtectedRoute } from '../core/auth/ProtectedRoute'
@@ -82,6 +83,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="roadmap" element={<RoadmapPage />} />
           <Route path="roadmap-v2" element={<LearningRoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="friends" element={<LearnerFriendsPage />} />
         </Route>
       </Route>
 

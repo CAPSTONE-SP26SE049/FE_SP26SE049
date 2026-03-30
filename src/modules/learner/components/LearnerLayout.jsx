@@ -12,6 +12,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
 import { motion } from "framer-motion";
@@ -98,6 +99,18 @@ export default function LearnerLayout() {
           className="font-semibold text-base tracking-wide"
         >
           Lộ Trình Học Tập
+        </Link>
+      ),
+    },
+    {
+      key: "/learner/friends",
+      icon: <TeamOutlined style={{ fontSize: "18px" }} />,
+      label: (
+        <Link
+          to="/learner/friends"
+          className="font-semibold text-base tracking-wide"
+        >
+          Bạn Bè
         </Link>
       ),
     },
@@ -192,12 +205,6 @@ export default function LearnerLayout() {
                   {user?.streak || "0"} Ngày Học
                 </span>
               </div>
-              <div className="flex items-center gap-3 bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-                <TrophyOutlined className="text-brand-blue text-lg" />
-                <span className="font-bold text-blue-600 text-sm whitespace-nowrap">
-                  {user?.totalXp || "0"} XP Tổng
-                </span>
-              </div>
             </div>
 
             {/* Collapsed Stats Version */}
@@ -205,9 +212,6 @@ export default function LearnerLayout() {
               <div className="flex flex-col gap-3 items-center">
                 <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100">
                   <FireFilled />
-                </div>
-                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue border border-blue-100">
-                  <TrophyOutlined />
                 </div>
               </div>
             )}

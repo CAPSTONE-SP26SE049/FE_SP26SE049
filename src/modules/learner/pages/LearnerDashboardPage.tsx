@@ -125,7 +125,6 @@ export default function LearnerDashboardPage() {
 
     const stats = [
         { label: 'Chuỗi Ngày Học', value: displayUser.currentStreakDays || displayUser.streak || '0', icon: <FireOutlined />, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100' },
-        { label: 'Tổng Điểm XP', value: displayUser.totalExperience || displayUser.totalXp || '0', icon: <TrophyOutlined />, color: 'text-brand-blue', bg: 'bg-blue-50', border: 'border-blue-100' },
         { label: 'Bài Đã Học', value: displayUser.completedLessons || '0', icon: <ReadOutlined />, color: 'text-brand-green', bg: 'bg-green-50', border: 'border-green-100' },
     ]
 
