@@ -41,7 +41,7 @@ export default function LearnerDashboardPage() {
                 // 1. Lấy dữ liệu user mới nhất và huy hiệu
                 const [meRes, badgesRes, dialectsRes] = await Promise.all([
                     apiClient.get('/users/me').catch(() => null),
-                    apiClient.get('/badges/my-badges').catch(() => null),
+                    apiClient.get('/learner/my-badges').catch(() => null),
                     learnerService.getDialects().catch(() => [])
                 ]);
 
@@ -64,17 +64,17 @@ export default function LearnerDashboardPage() {
                     (userRegion === 'BAC' && (d.name?.includes('Bắc') || d.name?.toUpperCase() === 'NORTH')) ||
                     (userRegion === 'TRUNG' && (d.name?.includes('Trung') || d.name?.toUpperCase() === 'CENTRAL')) ||
                     (userRegion === 'NAM' && (d.name?.includes('Nam') || d.name?.toUpperCase() === 'SOUTH'))
-                // Fallback: nếu không match, lấy dialect đầu tiên
+                    // Fallback: nếu không match, lấy dialect đầu tiên
                 ) ?? dialectsRes[0];
 
                 if (matchedDialect) {
                     const levelData = await learnerService.getLevels(matchedDialect.id).catch(() => []);
                     const completedCount = levelData.filter((l: any) => l.isCompleted).length;
-                    
+
                     setStatsData((prev: any) => ({ ...prev, completedLessons: completedCount }));
 
                     const activeLevel = levelData.find((lvl: any) => !lvl.isCompleted && !lvl.isLocked);
-                    
+
                     if (activeLevel) {
                         setCurrentLesson({
                             title: activeLevel.name,
@@ -187,7 +187,7 @@ export default function LearnerDashboardPage() {
                                     {recentBadges.map((b, i) => (
                                         <motion.div key={b.id || i} whileHover={{ y: -4 }} className="flex flex-col items-center bg-white p-6 rounded-3xl border-2 border-yellow-400 shadow-sm transition-shadow hover:shadow-lg">
                                             <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3 bg-brand-yellow text-yellow-700 overflow-hidden shadow-inner">
-                                                {b.badge?.imageUrl || b.imageUrl ? <img src={b.badge?.imageUrl || b.imageUrl} alt={b.badge?.name || b.name} className="w-full h-full object-cover" /> : <TrophyOutlined style={{fontSize: 28}} />}
+                                                {b.badge?.imageUrl || b.imageUrl ? <img src={b.badge?.imageUrl || b.imageUrl} alt={b.badge?.name || b.name} className="w-full h-full object-cover" /> : <TrophyOutlined style={{ fontSize: 28 }} />}
                                             </div>
                                             <div className="font-extrabold text-gray-700 text-sm text-center line-clamp-2">{b.badge?.name || b.name || 'Huy hiệu'}</div>
                                         </motion.div>

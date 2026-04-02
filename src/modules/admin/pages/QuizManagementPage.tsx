@@ -10,7 +10,6 @@ import {
     Space,
     Badge,
     Tooltip,
-    Statistic,
     Row,
     Col,
     Divider,
@@ -21,6 +20,7 @@ import {
     Input,
     InputNumber,
     message,
+    Upload,
 } from 'antd';
 import {
     FileTextOutlined,
@@ -40,10 +40,13 @@ import {
     DownloadOutlined,
     UploadOutlined,
     ExportOutlined,
-    DeleteOutlined
+    DeleteOutlined,
+    MinusCircleOutlined
 } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { excelService, downloadBlob } from '../../educator/services/excelService';
+import { uploadToCloudinary } from '../../../services/cloudinaryService';
+import { synthesizeSpeechFPT, waitForAudioLink } from '../../../services/ttsService';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
@@ -67,6 +70,30 @@ const REGION_LABEL: Record<string, { label: string; color: string; bg: string }>
     SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
     CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
 };
+
+interface BatchQuestion {
+    tempId: string;
+    id: string; // The Bank Item ID
+    relationId: string; // The specific QuizChallenge ID
+    isExisting: boolean;
+    skillType: string;
+    difficultyTag: string;
+    contentText: string;
+    // READING (Error Correction)
+    fullSentence: string;
+    wrongWord: string;
+    correctWord: string;
+    // LISTENING
+    audioUrl: string;
+    options: string[];
+    correctAnswer: string;
+    transcript: string;
+    // WRITING (Fill in blank)
+    blankSentence: string;
+    alternatives: string;
+    // HELPERS
+    hint: string;
+}
 
 const AdminQuizManagementPage: React.FC = () => {
     const { levelId: urlLevelId } = useParams<{ levelId: string }>();
@@ -120,6 +147,75 @@ const AdminQuizManagementPage: React.FC = () => {
     const [importResult, setImportResult] = useState<{ success: number; errors: string[] } | null>(null);
     const [quizChallenges, setQuizChallenges] = useState<any[]>([]);
     const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
+    const [uploadingSingle, setUploadingSingle] = useState(false);
+    const [uploadingBatch, setUploadingBatch] = useState<Record<string, boolean>>({});
+
+    // --- TTS Handlers ---
+    const handleAutoGenerateAudioSingle = async () => {
+        const transcript = createForm.getFieldValue('transcript');
+        if (!transcript) {
+            message.warning('Vui lòng nhập nội dung Transcript trước!');
+            return;
+        }
+        setUploadingSingle(true);
+        const ttsKey = 'tts_single';
+        try {
+            message.loading({ content: 'Đang tạo giọng đọc AI...', key: ttsKey });
+            const fptUrl = await synthesizeSpeechFPT(transcript);
+            let readyUrl = await waitForAudioLink(fptUrl);
+            if (readyUrl && !readyUrl.startsWith('http')) {
+                readyUrl = 'https://' + readyUrl;
+            }
+            const cloudinaryUrl = await uploadToCloudinary(readyUrl, 'video');
+            createForm.setFieldsValue({ audioUrl: cloudinaryUrl });
+            message.success({ content: 'Tạo giọng đọc AI thành công!', key: ttsKey });
+        } catch (err: any) {
+            message.error({ content: err?.message || 'Lỗi khi tạo giọng đọc', key: ttsKey });
+        } finally {
+            setUploadingSingle(false);
+        }
+    };
+
+    const handleAutoGenerateAudioBatch = async (tempId: string) => {
+        const q = batchQuestions.find(i => i.tempId === tempId);
+        if (!q || !q.transcript) {
+            message.warning('Vui lòng nhập Transcript trước!');
+            return;
+        }
+        setUploadingBatch(prev => ({ ...prev, [tempId]: true }));
+        const ttsKey = `tts_${tempId}`;
+        try {
+            message.loading({ content: 'Đang tạo giọng đọc AI...', key: ttsKey });
+            const fptUrl = await synthesizeSpeechFPT(q.transcript);
+            let readyUrl = await waitForAudioLink(fptUrl);
+            if (readyUrl && !readyUrl.startsWith('http')) {
+                readyUrl = 'https://' + readyUrl;
+            }
+            const cloudinaryUrl = await uploadToCloudinary(readyUrl, 'video');
+            updateBatchQuestionField(tempId, 'audioUrl', cloudinaryUrl);
+            message.success({ content: 'Tạo giọng đọc AI thành công!', key: ttsKey });
+        } catch (err: any) {
+            message.error({ content: err?.message || 'Lỗi khi tạo giọng đọc', key: ttsKey });
+        } finally {
+            setUploadingBatch(prev => ({ ...prev, [tempId]: false }));
+        }
+    };
+
+    // Filtered/Merged questions to ensure we always show the latest data from quizChallenges (detailed) 
+    // over quiz.questions (metadata placeholder)
+    const displayQuestions = useMemo(() => {
+        if (!loadingQuizChallenges && quizChallenges && quizChallenges.length > 0) {
+            return quizChallenges.map(qc => ({
+                ...qc,                   // Root mapping data (orderIndex, points)
+                ...qc.challenge,         // Flattened challenge data
+                questionOrder: qc.orderIndex,
+                difficulty: qc.challenge?.difficultyTag || qc.challenge?.difficulty,
+                id: qc.challenge?.id || qc.id, // Ensure we have the challenge ID for bank updates
+                relationId: qc.id              // Preserve the unique QuizChallenge relation ID
+            }));
+        }
+        return quiz?.questions || [];
+    }, [quizChallenges, quiz?.questions, loadingQuizChallenges]);
 
     // --- Import Challenges Excel to Quiz State ---
     const [isImportChallengesModalOpen, setIsImportChallengesModalOpen] = useState(false);
@@ -129,6 +225,11 @@ const AdminQuizManagementPage: React.FC = () => {
     const [importChallengesResult, setImportChallengesResult] = useState<any | null>(null);
 
     const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
+
+    // --- Batch Manual Questions State (Kahoot style) ---
+    const [isBatchQuestionsModalOpen, setIsBatchQuestionsModalOpen] = useState(false);
+    const [submittingBatchQuestions, setSubmittingBatchQuestions] = useState(false);
+    const [batchQuestions, setBatchQuestions] = useState<BatchQuestion[]>([]);
 
     useEffect(() => {
         const fetchLevels = async () => {
@@ -307,13 +408,14 @@ const AdminQuizManagementPage: React.FC = () => {
         if (!quiz?.id || !selectedLevelId) return;
         setUpdatingQuiz(true);
         try {
-            const readingCount = Number(values.readingCount || 0);
-            const listeningCount = Number(values.listeningCount || 0);
-            const speakingCount = Number(values.speakingCount || 0);
-            const writingCount = Number(values.writingCount || 0);
+            // Always sync question counts from current quiz data (read-only in UI)
+            const currentQuestions = Array.isArray(quiz.questions) ? [...quiz.questions] : [];
+            const readingCount = currentQuestions.filter((q: any) => q.skillType === 'READING').length;
+            const listeningCount = currentQuestions.filter((q: any) => q.skillType === 'LISTENING').length;
+            const speakingCount = currentQuestions.filter((q: any) => q.skillType === 'SPEAKING').length;
+            const writingCount = currentQuestions.filter((q: any) => q.skillType === 'WRITING').length;
 
             // Logic to preserve existing questions but adjust counts
-            const currentQuestions = Array.isArray(quiz.questions) ? [...quiz.questions] : [];
             const newQuestions: any[] = [];
 
             const skills = [
@@ -357,6 +459,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 skillType: values.skillType,
                 questionCount: finalQuestions.length,
                 comment: values.comment || 'Cập nhật quiz',
+                orderIndex: quiz.orderIndex,
                 questions: finalQuestions
             };
 
@@ -374,6 +477,10 @@ const AdminQuizManagementPage: React.FC = () => {
     const handleCreateQuiz = async (values: any) => {
         if (!selectedLevelId) return;
         setCreatingQuiz(true);
+        const nextOrder = quizzes.length > 0
+            ? Math.max(...quizzes.map(q => q.orderIndex || 0)) + 1
+            : 1;
+
         try {
             const payload = {
                 levelId: selectedLevelId,
@@ -385,6 +492,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 skillType: values.skillType || 'MIXED',
                 questionCount: 0,
                 comment: 'Tạo quiz mới',
+                orderIndex: nextOrder,
                 questions: []
             };
 
@@ -516,9 +624,9 @@ const AdminQuizManagementPage: React.FC = () => {
 
                 const skill = bankItem.challenge.skillType;
                 if (skill === 'READING') {
-                    formVals.words = meta.words?.join('|');
-                    formVals.error_index = meta.error_index;
-                    formVals.correct_word = meta.correct_word;
+                    formVals.fullSentence = meta.words?.join(' ');
+                    formVals.wrongWord = (meta.words && meta.error_index != null) ? meta.words[meta.error_index] : '';
+                    formVals.correctWord = meta.correct_word || meta.correctWord;
                     formVals.hint = meta.hint;
                 } else if (skill === 'LISTENING') {
                     formVals.audioUrl = meta.audioUrl;
@@ -526,8 +634,9 @@ const AdminQuizManagementPage: React.FC = () => {
                     formVals.correctAnswer = meta.correctAnswer;
                     formVals.transcript = meta.transcript;
                 } else if (skill === 'WRITING') {
-                    formVals.scrambledWords = meta.scrambledWords?.join('\n');
-                    formVals.correctSentence = meta.correctSentence;
+                    formVals.blankSentence = meta.blankSentence || meta.correctSentence;
+                    formVals.correctAnswer = meta.correctAnswer;
+                    formVals.alternatives = Array.isArray(meta.alternatives) ? meta.alternatives.join(', ') : '';
                     formVals.hint = meta.hint;
                 } else if (skill === 'SPEAKING') {
                     formVals.audioUrl = meta.audioUrl;
@@ -592,36 +701,51 @@ const AdminQuizManagementPage: React.FC = () => {
     const handleCreateNewChallenge = async (values: any) => {
         if (!quiz?.id) return;
         setSubmittingCreate(true);
+        console.log('[handleCreateNewChallenge] values received:', values);
+
+        // Dùng trực tiếp form values từ createForm để đảm bảo lấy được audioUrl
+        const formValues = createForm.getFieldsValue();
+        console.log('[handleCreateNewChallenge] createForm values:', formValues);
+
         try {
             let metadataJson: any = {};
             const skill = activeSkillType || values.skillType;
+            const finalAudioUrl = formValues.audioUrl || values.audioUrl || "";
 
             if (skill === 'READING') {
+                const words = values.fullSentence.trim().split(/\s+/);
+                const errIdx = words.findIndex((w: string) => w.toLowerCase().replace(/[.,!?;:]/g, '') === values.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+
                 metadataJson = {
-                    words: values.words ? values.words.split('|').map((o: string) => o.trim()).filter(Boolean) : [],
-                    error_index: values.error_index,
-                    correct_word: values.correct_word,
+                    words: words,
+                    error_index: errIdx === -1 ? 0 : errIdx,
+                    correct_word: values.correctWord.trim(),
                     hint: values.hint || ""
                 };
             } else if (skill === 'LISTENING') {
                 metadataJson = {
-                    audioUrl: values.audioUrl || "",
+                    audioUrl: finalAudioUrl,
                     options: values.options ? values.options.split('\n').filter((o: string) => o.trim()) : [],
                     correctAnswer: values.correctAnswer,
+                    answer: values.correctAnswer, // Giữ cả answer cho tương thích
                     transcript: values.transcript || ""
                 };
+                console.log('[handleCreateNewChallenge] Prepared LISTENING metadata:', metadataJson);
             } else if (skill === 'WRITING') {
+                const altArr = values.alternatives ? values.alternatives.split(/[,;]+/).map((s: string) => s.trim()).filter(Boolean) : [];
                 metadataJson = {
-                    scrambledWords: values.scrambledWords ? values.scrambledWords.split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean) : [],
-                    correctSentence: values.correctSentence,
+                    blankSentence: values.blankSentence,
+                    correctAnswer: values.correctAnswer,
+                    alternatives: altArr,
                     hint: values.hint || ""
                 };
             } else if (skill === 'SPEAKING') {
                 metadataJson = {
-                    audioUrl: values.audioUrl || "",
+                    audioUrl: finalAudioUrl,
                     transcript: values.transcript || "",
                     hint: values.hint || ""
                 };
+                console.log('[handleCreateNewChallenge] Prepared SPEAKING metadata:', metadataJson);
             }
 
             const payload = {
@@ -630,6 +754,8 @@ const AdminQuizManagementPage: React.FC = () => {
                 difficultyTag: values.difficultyTag,
                 metadataJson: metadataJson
             };
+
+            console.log('[handleCreateNewChallenge] Final payload before save:', payload);
 
             if (editingChallengeId) {
                 await adminService.updateChallengeBankItem(editingChallengeId, payload);
@@ -694,6 +820,9 @@ const AdminQuizManagementPage: React.FC = () => {
             const errors: string[] = [];
 
             const existingNames = quizzes.map(q => (q.name || q.title || '').toLowerCase().trim());
+            let currentMaxOrder = quizzes.length > 0
+                ? Math.max(...quizzes.map(q => q.orderIndex || 0))
+                : 0;
 
             for (let i = 0; i < rows.length; i++) {
                 const cols = rows[i].split(',');
@@ -713,6 +842,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 }
 
                 try {
+                    currentMaxOrder++;
                     const payload = {
                         levelId: selectedLevelId,
                         title,
@@ -723,6 +853,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         skillType,
                         questionCount: 0,
                         comment: `Import từ CSV - ${skillType}`,
+                        orderIndex: currentMaxOrder,
                         questions: [],
                     };
                     await adminService.createQuiz(payload);
@@ -837,6 +968,261 @@ const AdminQuizManagementPage: React.FC = () => {
         setIsImportChallengesModalOpen(true);
     };
 
+    const createEmptyBatchQuestion = (skillType?: string) => ({
+        tempId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id: '',
+        relationId: '',
+        isExisting: false,
+        skillType: skillType || (quiz?.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING'),
+        difficultyTag: 'BEGINNER',
+        contentText: '',
+        fullSentence: '',
+        wrongWord: '',
+        correctWord: '',
+        audioUrl: '',
+        options: ['', '', '', ''],
+        correctAnswer: '',
+        transcript: '',
+        // Writing (Fill in blank)
+        blankSentence: '',
+        alternatives: '',
+        hint: ''
+    });
+
+    const openBatchQuestionsModal = () => {
+        if (displayQuestions && displayQuestions.length > 0) {
+            const seenBankIds = new Set<string>();
+            const existing: BatchQuestion[] = displayQuestions.map((c: any, idx: number) => {
+                const parsed = parseMetadata(c);
+                const bankId = parsed.id;
+                // If this bank item is already in our editor session, we 'detach' subsequent ones
+                // so they can be edited independently as new items upon save.
+                const isDuplicate = seenBankIds.has(bankId);
+                seenBankIds.add(bankId);
+
+                const meta = parsed.metadataJson || {};
+                return {
+                    tempId: `existing-${bankId}-${idx}`,
+                    id: isDuplicate ? '' : bankId,
+                    relationId: parsed.relationId || '',
+                    isExisting: !isDuplicate,
+                    skillType: parsed.skillType || 'READING',
+                    difficultyTag: parsed.difficultyTag || 'BEGINNER',
+                    contentText: parsed.contentText || '',
+                    fullSentence: Array.isArray(meta.words) ? meta.words.join(' ') : (parsed.contentText || ''),
+                    wrongWord: (Array.isArray(meta.words) && meta.error_index != null) ? meta.words[meta.error_index] : '',
+                    correctWord: meta.correct_word || meta.correctWord || '',
+                    audioUrl: meta.audioUrl || '',
+                    options: Array.isArray(meta.options) ? [...meta.options, '', '', ''].slice(0, 4) : ['', '', '', ''],
+                    correctAnswer: meta.correctAnswer || meta.answer || '',
+                    transcript: meta.transcript || '',
+                    blankSentence: meta.blankSentence || meta.correctSentence || '', // fallback to old correctSentence if any
+                    alternatives: Array.isArray(meta.alternatives) ? meta.alternatives.join(', ') : '',
+                    hint: meta.hint || ''
+                };
+            });
+            setBatchQuestions(existing);
+        } else {
+            setBatchQuestions([createEmptyBatchQuestion()]);
+        }
+        setIsBatchQuestionsModalOpen(true);
+    };
+
+    const addBatchQuestion = () => {
+        const allowedSkill = quiz?.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : undefined;
+        setBatchQuestions(prev => [...prev, createEmptyBatchQuestion(allowedSkill)]);
+    };
+
+    const removeBatchQuestion = (tempId: string) => {
+        setBatchQuestions(prev => {
+            if (prev.length <= 1) return prev;
+            return prev.filter(q => q.tempId !== tempId);
+        });
+    };
+
+    const updateBatchQuestionField = (tempId: string, field: string, value: any) => {
+        setBatchQuestions(prev => prev.map(q => q.tempId === tempId ? { ...q, [field]: value } : q));
+    };
+
+    const updateBatchOption = (tempId: string, optionIndex: number, value: string) => {
+        setBatchQuestions(prev => prev.map(q => {
+            if (q.tempId !== tempId) return q;
+            const nextOptions = [...q.options];
+            nextOptions[optionIndex] = value;
+            return { ...q, options: nextOptions };
+        }));
+    };
+
+    const handleSubmitBatchQuestions = async () => {
+        if (!quiz?.id) return;
+
+        const normalized = batchQuestions.map((q, idx) => {
+            const options = (q.options || []).map(o => (o || '').trim()).filter(Boolean);
+            const wordsArr = (q.words || '').split('|').map(w => w.trim()).filter(Boolean);
+
+            return {
+                ...q,
+                _index: idx + 1,
+                options,
+                wordsArr
+            };
+        });
+
+        for (const q of normalized) {
+            if (!q.contentText.trim()) {
+                message.warning(`Câu ${q._index}: vui lòng nhập nội dung câu hỏi`);
+                return;
+            }
+
+            if (q.skillType === 'READING') {
+                if (!q.fullSentence.trim()) {
+                    message.warning(`Câu ${q._index}: vui lòng nhập câu chứa lỗi`);
+                    return;
+                }
+                if (!q.wrongWord.trim()) {
+                    message.warning(`Câu ${q._index}: vui lòng nhập từ bị sai`);
+                    return;
+                }
+                if (!q.correctWord.trim()) {
+                    message.warning(`Câu ${q._index}: vui lòng nhập từ viết đúng`);
+                    return;
+                }
+
+                // Logic: split sentence and find index of wrongWord
+                const words = q.fullSentence.trim().split(/\s+/);
+                const errIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+
+                if (errIdx === -1) {
+                    message.warning(`Câu ${q._index}: Không tìm thấy từ "${q.wrongWord}" trong câu đã nhập`);
+                    return;
+                }
+            }
+
+            if (q.skillType === 'LISTENING') {
+                if (q.options.length < 2) {
+                    message.warning(`Câu ${q._index}: Nghe hiểu cần ít nhất 2 đáp án`);
+                    return;
+                }
+                if (!q.correctAnswer.trim()) {
+                    message.warning(`Câu ${q._index}: vui lòng chọn đáp án đúng`);
+                    return;
+                }
+                if (!q.options.includes(q.correctAnswer.trim())) {
+                    message.warning(`Câu ${q._index}: đáp án đúng phải nằm trong danh sách đáp án`);
+                    return;
+                }
+            }
+
+            if (q.skillType === 'WRITING') {
+                if (!q.blankSentence.includes('_')) {
+                    message.warning(`Câu ${q._index}: Nội dung câu đố cần chứa ký hiệu "_" để đục lỗ`);
+                    return;
+                }
+                if (!q.correctAnswer.trim()) {
+                    message.warning(`Câu ${q._index}: vui lòng nhập đáp án đúng`);
+                    return;
+                }
+            }
+
+            if (q.skillType === 'SPEAKING') {
+                if (!q.transcript.trim()) {
+                    message.warning(`Câu ${q._index}: Nói cần transcript`);
+                    return;
+                }
+            }
+        }
+
+        setSubmittingBatchQuestions(true);
+        try {
+            // 1. Determine the final set of Bank IDs for the quiz
+            const processedBankIds: string[] = [];
+            const seenBankIdsForUpdate = new Set<string>();
+
+            for (const q of normalized) {
+                let metadataJson: any = {};
+                if (q.skillType === 'READING') {
+                    const words = q.fullSentence.trim().split(/\s+/);
+                    const errIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+
+                    metadataJson = {
+                        words: words,
+                        error_index: errIdx === -1 ? 0 : errIdx,
+                        correct_word: q.correctWord.trim(),
+                        hint: q.hint || ''
+                    };
+                } else if (q.skillType === 'LISTENING') {
+                    metadataJson = {
+                        audioUrl: q.audioUrl || '',
+                        options: q.options,
+                        correctAnswer: q.correctAnswer.trim(),
+                        answer: q.correctAnswer.trim(),
+                        transcript: q.transcript || ''
+                    };
+                    console.log(`[handleSubmitBatchQuestions] Câu ${q._index} LISTENING Meta:`, metadataJson);
+                } else if (q.skillType === 'WRITING') {
+                    const altArr = q.alternatives.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                    metadataJson = {
+                        blankSentence: q.blankSentence.trim(),
+                        correctAnswer: q.correctAnswer.trim(),
+                        alternatives: altArr,
+                        hint: q.hint || ''
+                    };
+                } else if (q.skillType === 'SPEAKING') {
+                    metadataJson = {
+                        audioUrl: q.audioUrl || '',
+                        transcript: q.transcript || '',
+                        hint: q.hint || ''
+                    };
+                    console.log(`[handleSubmitBatchQuestions] Câu ${q._index} SPEAKING Meta:`, metadataJson);
+                }
+
+                const payload = {
+                    contentText: q.contentText.trim(),
+                    skillType: q.skillType,
+                    difficultyTag: q.difficultyTag || 'BEGINNER',
+                    metadataJson
+                };
+
+                // Logic: If q.id exists but we've already updated it in this session (duplicate),
+                // or if it's new, we CREATE a new bank item.
+                // This ensures every slot in the quiz gets its own unique bank record if edited.
+                const shouldCreateNew = !q.isExisting || !q.id || seenBankIdsForUpdate.has(q.id);
+
+                if (!shouldCreateNew) {
+                    await adminService.updateChallengeBankItem(q.id, payload);
+                    processedBankIds.push(q.id);
+                    seenBankIdsForUpdate.add(q.id);
+                } else {
+                    const res: any = await adminService.createChallengeBankItem(payload as any);
+                    const newId = res?.data?.id || res?.id;
+                    if (newId) processedBankIds.push(newId);
+                }
+            }
+
+            // 2. Perform a FULL RESET of quiz assignments to ensure correct order and unique references
+            // First, remove absolutely everything currently in the quiz
+            const currentBankIds = Array.from(new Set(displayQuestions.map((d: any) => d.id).filter(Boolean)));
+            for (const bid of currentBankIds) {
+                await adminService.removeChallengeFromQuiz(quiz.id, bid as string).catch(() => { });
+            }
+
+            // 3. Re-assign the entire processed list in the correct order
+            if (processedBankIds.length > 0) {
+                // We call assignChallengesToQuiz with the whole array to set the new sequence
+                await adminService.assignChallengesToQuiz(quiz.id, processedBankIds);
+            }
+
+            message.success('Đã đồng bộ toàn bộ câu hỏi và gán vào quiz thành công');
+            setIsBatchQuestionsModalOpen(false);
+            setBatchQuestions([]);
+            if (selectedLevelId) handleLevelChange(selectedLevelId);
+        } catch (err: any) {
+            message.error(err?.message || 'Có lỗi khi lưu các câu hỏi');
+        } finally {
+            setSubmittingBatchQuestions(false);
+        }
+    };
+
     const questionColumns = [
         {
             title: 'STT',
@@ -912,8 +1298,20 @@ const AdminQuizManagementPage: React.FC = () => {
 
                             <div style={{ fontSize: 14 }}>
                                 {skill === 'READING' && Array.isArray(meta.words) && (
-                                    <div>
-                                        <Text style={{ color: '#334155' }}>{meta.words.join(' ')}</Text>
+                                    <div style={{ background: '#fef2f2', padding: '6px 10px', borderRadius: 6, border: '1px solid #fee2e2' }}>
+                                        {meta.words.map((w: string, i: number) => (
+                                            <span key={i} style={{
+                                                marginRight: 4,
+                                                color: i === meta.error_index ? '#ef4444' : '#475569',
+                                                fontWeight: i === meta.error_index ? 700 : 400,
+                                                textDecoration: i === meta.error_index ? 'underline' : 'none'
+                                            }}>
+                                                {w}
+                                            </span>
+                                        ))}
+                                        <div style={{ marginTop: 4, fontSize: 12, color: '#059669', borderTop: '1px solid #fee2e2', paddingTop: 2 }}>
+                                            <span style={{ fontStyle: 'italic' }}>Correct: {meta.correct_word || meta.correctWord}</span>
+                                        </div>
                                     </div>
                                 )}
 
@@ -921,8 +1319,11 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
                                 )}
 
-                                {skill === 'WRITING' && meta.correctSentence && (
-                                    <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
+                                {skill === 'WRITING' && (meta.blankSentence || meta.correctSentence) && (
+                                    <Text strong style={{ color: '#0f172a' }}>
+                                        {meta.blankSentence || meta.correctSentence}
+                                        {meta.correctAnswer && <Tag color="blue" style={{ marginLeft: 8 }}>{meta.correctAnswer}</Tag>}
+                                    </Text>
                                 )}
                             </div>
                         </div>
@@ -996,23 +1397,23 @@ const AdminQuizManagementPage: React.FC = () => {
                     <Space size="small">
                         <Tooltip title="Xem chi tiết">
                             <Button
-                                type="text"
                                 icon={<EyeOutlined style={{ color: '#2563eb' }} />}
                                 onClick={() => showDetail(record, index)}
+                                style={{ borderRadius: 6, border: '1.5px solid #dbeafe', background: '#eff6ff' }}
                             />
                         </Tooltip>
-                        <Tooltip title="Chỉnh sửa câu hỏi này">
+                        <Tooltip title="Chỉnh sửa">
                             <Button
-                                type="text"
-                                icon={<EditOutlined style={{ color: '#faad14' }} />}
+                                icon={<EditOutlined style={{ color: '#d97706' }} />}
                                 onClick={() => handleEditQuestion(record, index)}
+                                style={{ borderRadius: 6, border: '1.5px solid #fef3c7', background: '#fffbeb' }}
                             />
                         </Tooltip>
-                        <Tooltip title="Gỡ khỏi bài thi">
+                        <Tooltip title="Gỡ khỏi quiz">
                             <Button
-                                type="text"
-                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                                icon={<DeleteOutlined style={{ color: '#dc2626' }} />}
                                 onClick={() => handleRemoveQuestion(record, index)}
+                                style={{ borderRadius: 6, border: '1.5px solid #fee2e2', background: '#fef2f2' }}
                             />
                         </Tooltip>
                     </Space>
@@ -1074,6 +1475,15 @@ const AdminQuizManagementPage: React.FC = () => {
 
     const quizColumns = [
         {
+            title: 'STT',
+            dataIndex: 'orderIndex',
+            key: 'orderIndex',
+            width: 70,
+            align: 'center' as const,
+            sorter: (a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0),
+            render: (stt: number) => <span style={{ fontWeight: 600, color: '#64748b' }}>{stt}</span>
+        },
+        {
             title: 'Tên bài kiểm tra',
             dataIndex: 'name',
             key: 'name',
@@ -1105,17 +1515,6 @@ const AdminQuizManagementPage: React.FC = () => {
             }
         },
         {
-            title: 'Thông số',
-            key: 'stats',
-            render: (_: any, record: any) => (
-                <Space size={8}>
-                    <Tooltip title="Số câu hỏi">
-                        <Tag color="blue" icon={<FileTextOutlined />}>{record.questions?.length ?? record.questionCount ?? 0}</Tag>
-                    </Tooltip>
-                </Space>
-            )
-        },
-        {
             title: 'Thao tác',
             key: 'action',
             align: 'center' as const,
@@ -1124,13 +1523,13 @@ const AdminQuizManagementPage: React.FC = () => {
                 <Button
                     type="primary"
                     ghost
-                    size="small"
+                    size="middle"
                     icon={<EyeOutlined />}
                     onClick={(e) => {
                         e.stopPropagation();
                         setQuiz(record);
                     }}
-                    style={{ borderRadius: 6, fontWeight: 600 }}
+                    style={{ borderRadius: 8, fontWeight: 600, border: '1.5px solid #1890ff' }}
                 >
                     Chi tiết
                 </Button>
@@ -1147,16 +1546,19 @@ const AdminQuizManagementPage: React.FC = () => {
             result = result.filter(q => q.skillType === quizSkillFilter);
         }
 
-        // Tự động sắp xếp (ví dụ: Màn 1, Màn 2, ... Màn 10, Màn 11)
+        // Ưu tiên sắp xếp theo orderIndex (STT)
         result = [...result].sort((a, b) => {
+            if (a.orderIndex != null && b.orderIndex != null) {
+                return a.orderIndex - b.orderIndex;
+            }
+            if (a.orderIndex != null) return -1;
+            if (b.orderIndex != null) return 1;
+
             const titleA = a.title || a.name || '';
             const titleB = b.title || b.name || '';
-
             const numA = parseInt(titleA.match(/\d+/)?.[0] || '0');
             const numB = parseInt(titleB.match(/\d+/)?.[0] || '0');
-            if (numA !== numB) {
-                return numA - numB;
-            }
+            if (numA !== numB) return numA - numB;
             return titleA.localeCompare(titleB);
         });
 
@@ -1173,99 +1575,104 @@ const AdminQuizManagementPage: React.FC = () => {
                     {selectedLevelId && (
                         <Button
                             icon={<ArrowLeftOutlined />}
-                            onClick={handleBackToChapters}
-                            style={{ borderRadius: 10, border: '1.5px solid #e2e8f0', height: 44, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => {
+                                if (quiz) {
+                                    setQuiz(null);
+                                    setQuizChallenges([]);
+                                } else {
+                                    handleBackToChapters();
+                                }
+                            }}
+                            style={{ borderRadius: 10, border: '1.5px solid #e2e8f0', height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         />
                     )}
-                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                    <div style={{ background: '#e6f7ff', padding: 8, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FileTextOutlined style={{ fontSize: 20, color: '#1890ff' }} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>
-                            {selectedLevelId && selectedLevel
+                        <h2 className="text-xl font-bold text-gray-800" style={{ margin: 0, lineHeight: 1.2 }}>
+                            {quiz
                                 ? <>
-                                    Quản lý bài kiểm tra
+                                    <span style={{ cursor: 'pointer', color: '#64748b', fontWeight: 400 }} onClick={handleBackToChapters}>Quản lý bài kiểm tra</span>
                                     <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
-                                    <span style={{ color: '#1890ff', fontSize: 20 }}>{selectedLevel.name}</span>
+                                    <span style={{ cursor: 'pointer', color: '#64748b' }} onClick={() => { setQuiz(null); setQuizChallenges([]); }}>{selectedLevel?.name}</span>
+                                    <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
+                                    <span style={{ color: '#1890ff', fontSize: 19 }}>{quiz.name || quiz.title}</span>
                                 </>
-                                : quiz
+                                : selectedLevelId && selectedLevel
                                     ? <>
-                                        Quản lý bài kiểm tra
+                                        <span style={{ cursor: 'pointer', color: '#64748b', fontWeight: 400 }} onClick={handleBackToChapters}>Quản lý bài kiểm tra</span>
                                         <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
-                                        <span style={{ color: '#1890ff', fontSize: 20 }}>{quiz.name || quiz.title}</span>
+                                        <span style={{ color: '#1890ff', fontSize: 19 }}>{selectedLevel.name}</span>
                                     </>
                                     : 'Quản lý bài kiểm tra'
                             }
                         </h2>
-                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                        <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
                             {quiz
-                                ? 'Chi tiết và câu hỏi của bài kiểm tra'
+                                ? `Chi tiết và câu hỏi của bài kiểm tra thuộc chương "${selectedLevel?.name}"`
                                 : selectedLevelId && selectedLevel
                                     ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
                                     : 'Chọn chương học để xem và quản lý bài kiểm tra'}
                         </div>
                     </div>
                 </div>
-                <Space size={12}>
+                <Space size={8}>
                     {selectedLevelId && !quiz && (
                         <>
                             <Button
                                 icon={<DownloadOutlined />}
+                                size="middle"
                                 onClick={handleDownloadQuizTemplate}
                                 style={{
-                                    height: '44px',
-                                    borderRadius: '10px',
+                                    borderRadius: '8px',
                                     border: '1.5px solid #1890ff',
                                     color: '#1890ff',
                                     background: '#e6f7ff',
                                     fontWeight: 600,
-                                    paddingInline: 16,
                                 }}
                             >
                                 Template
                             </Button>
                             <Button
                                 icon={<UploadOutlined />}
+                                size="middle"
                                 onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
                                 style={{
-                                    height: '44px',
-                                    borderRadius: '10px',
+                                    borderRadius: '8px',
                                     border: '1.5px solid #52c41a',
                                     color: '#52c41a',
                                     background: '#f6ffed',
                                     fontWeight: 600,
-                                    paddingInline: 16,
                                 }}
                             >
                                 Import
                             </Button>
                             <Button
                                 icon={<ExportOutlined />}
+                                size="middle"
                                 onClick={handleExportQuizCSV}
                                 style={{
-                                    height: '44px',
-                                    borderRadius: '10px',
+                                    borderRadius: '8px',
                                     border: '1.5px solid #fa8c16',
                                     color: '#fa8c16',
                                     background: '#fff7e6',
                                     fontWeight: 600,
-                                    paddingInline: 16,
                                 }}
                             >
                                 Export
                             </Button>
                             <Button
+                                type="primary"
                                 icon={<PlusOutlined />}
+                                size="middle"
                                 onClick={() => setIsCreateQuizModalOpen(true)}
                                 style={{
-                                    height: '44px',
-                                    borderRadius: '10px',
-                                    border: 'none',
+                                    borderRadius: '8px',
                                     background: 'linear-gradient(90deg, #1890ff, #0076e4)',
-                                    color: '#fff',
+                                    border: 'none',
                                     fontWeight: 600,
-                                    paddingInline: 20,
-                                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
+                                    boxShadow: '0 2px 8px rgba(24, 144, 255, 0.2)',
                                 }}
                             >
                                 Tạo bài kiểm tra
@@ -1398,112 +1805,70 @@ const AdminQuizManagementPage: React.FC = () => {
 
             {!loadingQuiz && quiz && (
                 <>
-                    {/* Quiz Info Card */}
+                    {/* Quiz Info Card (Compact) */}
                     <Card
                         style={{
                             borderRadius: 16,
-                            marginBottom: 24,
-                            boxShadow: '0 4px 20px rgba(37,99,235,0.08)',
-                            border: '1.5px solid #bfdbfe',
-                            background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)',
+                            marginBottom: 20,
+                            boxShadow: '0 2px 10px rgba(37,99,235,0.05)',
+                            border: '1px solid #e2e8f0',
+                            background: '#fff',
                         }}
-                        styles={{ body: { padding: '24px 28px' } }}
+                        styles={{ body: { padding: '16px 20px' } }}
                     >
-                        {/* Title row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                            <div
-                                style={{
-                                    width: 48,
-                                    height: 48,
-                                    borderRadius: 12,
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: 10,
                                     background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <FileTextOutlined style={{ fontSize: 22, color: '#fff' }} />
-                            </div>
-                            <div>
-                                <Title level={4} style={{ margin: 0, fontSize: 18 }}>
-                                    {quiz.name || quiz.title}
-                                    <Tooltip title="Chỉnh sửa thông tin quiz">
-                                        <Button
-                                            type="text"
-                                            icon={<EditOutlined style={{ color: '#2563eb' }} />}
-                                            size="small"
-                                            style={{ marginLeft: 8 }}
-                                            onClick={handleOpenEditQuiz}
-                                        />
-                                    </Tooltip>
-                                </Title>
-                                {regionInfo && (
-                                    <span
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: '2px 10px',
-                                            borderRadius: 20,
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            color: regionInfo.color,
-                                            background: regionInfo.bg,
-                                            border: `1.5px solid ${regionInfo.color}40`,
-                                            marginTop: 4,
-                                        }}
-                                    >
-                                        {regionInfo.label}
-                                    </span>
-                                )}
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <FileTextOutlined style={{ fontSize: 20, color: '#fff' }} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+                                            {quiz.name || quiz.title}
+                                        </Title>
+                                        <Tooltip title="Chỉnh sửa thông tin">
+                                            <Button
+                                                size="small"
+                                                icon={<EditOutlined style={{ color: '#2563eb' }} />}
+                                                onClick={handleOpenEditQuiz}
+                                                style={{ marginLeft: 8, borderRadius: 6, border: '1.5px solid #e2e8f0', background: '#f8fafc' }}
+                                            />
+                                        </Tooltip>
+                                        {regionInfo && (
+                                            <Tag color="processing" style={{ borderRadius: 10, border: 'none', margin: 0, paddingInline: 8 }}>
+                                                {regionInfo.label}
+                                            </Tag>
+                                        )}
+                                    </div>
+                                    <Space split={<Divider type="vertical" />} style={{ marginTop: 4 }}>
+                                        <span style={{ color: '#64748b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <QuestionCircleOutlined style={{ fontSize: 14 }} />
+                                            <strong>{loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)}</strong> câu hỏi
+                                        </span>
+                                        <span style={{ color: '#64748b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <ClockCircleOutlined style={{ fontSize: 14 }} />
+                                            <strong>{quiz.timeLimitMinutes || 15}</strong> phút
+                                        </span>
+                                        {quiz.difficultyTag && (
+                                            <Tag color={DIFFICULTY_CONFIG[quiz.difficultyTag]?.color || 'default'} style={{ borderRadius: 6, margin: 0, fontSize: 11 }}>
+                                                {DIFFICULTY_CONFIG[quiz.difficultyTag]?.label || quiz.difficultyTag}
+                                            </Tag>
+                                        )}
+                                    </Space>
+                                </div>
                             </div>
                         </div>
 
-                        {quiz.description && (
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 13 }}>
-                                {quiz.description}
-                            </Text>
-                        )}
-
-                        {quiz.instructions && (
-                            <div
-                                style={{
-                                    background: '#fef9c3',
-                                    border: '1px solid #fde68a',
-                                    borderRadius: 8,
-                                    padding: '10px 14px',
-                                    marginBottom: 16,
-                                    fontSize: 13,
-                                    color: '#92400e',
-                                }}
-                            >
-                                <strong>Hướng dẫn:</strong> {quiz.instructions}
+                        {(quiz.description || quiz.instructions) && (
+                            <div style={{ marginTop: 12, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 12, color: '#475569', border: '1px solid #f1f5f9' }}>
+                                {quiz.description && <div>{quiz.description}</div>}
+                                {quiz.instructions && <div style={{ marginTop: 4, color: '#1e293b' }}>📝 <strong>Học viên lưu ý:</strong> {quiz.instructions}</div>}
                             </div>
                         )}
-
-                        <Divider style={{ margin: '16px 0' }} />
-
-                        {/* Stats */}
-                        <Row gutter={[24, 16]}>
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Số câu hỏi</span>}
-                                    value={quiz.questions?.length ?? quiz.questionCount ?? 0}
-                                    prefix={<QuestionCircleOutlined style={{ color: '#2563eb' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#2563eb' }}
-                                />
-                            </Col>
-
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Thời gian</span>}
-                                    value={quiz.timeLimitMinutes ?? '—'}
-                                    suffix={quiz.timeLimitMinutes ? ' phút' : ''}
-                                    prefix={<ClockCircleOutlined style={{ color: '#0891b2' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#0891b2' }}
-                                />
-                            </Col>
-
-                        </Row>
                     </Card>
 
                     {/* Action Buttons - Always visible */}
@@ -1514,124 +1879,88 @@ const AdminQuizManagementPage: React.FC = () => {
                             boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                             border: '1px solid #e2e8f0',
                         }}
-                        headStyle={{ borderRadius: '16px 16px 0 0' }}
+                        headStyle={{ borderRadius: '16px 16px 0 0', borderBottom: '1px solid #f1f5f9' }}
                         title={
                             <Space>
                                 <QuestionCircleOutlined style={{ color: '#2563eb' }} />
                                 <span style={{ fontWeight: 600 }}>
-                                    Danh sách câu hỏi ({quiz.questions?.length ?? quiz.questionCount ?? 0} câu)
+                                    Danh sách câu hỏi ({loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)} câu)
                                 </span>
                             </Space>
                         }
+                        extra={
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={openBatchQuestionsModal}
+                                style={{
+                                    borderRadius: 8,
+                                    height: 36,
+                                    fontWeight: 700,
+                                    background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                    border: 'none',
+                                    boxShadow: '0 4px 12px rgba(24,144,255,0.25)'
+                                }}
+                            >
+                                Nhập trực tiếp nhiều câu
+                            </Button>
+                        }
                     >
-                        {/* Skill summary pills + Add buttons */}
-                        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Text strong style={{ marginRight: 8 }}>Thêm câu hỏi theo kỹ năng:</Text>
-                            {Object.entries(SKILL_CONFIG)
-                                .filter(([key]) => !quiz.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
-                                .map(([key, cfg]) => {
-                                    const count = (quiz.questions || []).filter((q: any) => q.skillType === key).length;
-                                    return (
-                                        <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 6,
-                                                    padding: '6px 14px',
-                                                    borderRadius: '20px 0 0 20px',
-                                                    background: `${cfg.color}12`,
-                                                    border: `1px solid ${cfg.color}30`,
-                                                    borderRight: 'none',
-                                                    color: cfg.color,
-                                                    fontWeight: 600,
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                {cfg.icon}
-                                                {cfg.label}: {count}
-                                            </span>
-                                            <Tooltip title={`Thêm câu hỏi ${cfg.label}`}>
-                                                <Button
-                                                    size="small"
-                                                    icon={<PlusOutlined />}
-                                                    onClick={() => openChallengeModal(key)}
-                                                    style={{
-                                                        borderRadius: '0 20px 20px 0',
-                                                        height: 33,
-                                                        background: cfg.color,
-                                                        color: '#fff',
-                                                        border: `1px solid ${cfg.color}`,
-                                                        padding: '0 10px',
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        </div>
-                                    );
-                                })}
-                        </div>
-
-                        {/* Import Excel buttons */}
+                        {/* Import Excel buttons - Inline Row */}
                         <div style={{
                             display: 'flex',
-                            gap: 10,
-                            marginBottom: 20,
-                            padding: '12px 16px',
-                            background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                            gap: 12,
+                            padding: '10px 16px',
+                            background: '#f8fafc',
                             borderRadius: 12,
-                            border: '1px solid #bbf7d0',
+                            border: '1px solid #e2e8f0',
                             alignItems: 'center',
                             flexWrap: 'wrap',
+                            marginBottom: 16
                         }}>
-                            <UploadOutlined style={{ fontSize: 18, color: '#15803d' }} />
-                            <Text strong style={{ color: '#166534', fontSize: 13, marginRight: 8 }}>
-                                Import hàng loạt từ Excel:
+                            <UploadOutlined style={{ fontSize: 16, color: '#64748b' }} />
+                            <Text strong style={{ color: '#475569', fontSize: 12 }}>
+                                Excel:
                             </Text>
                             <Button
+                                size="small"
                                 icon={<DownloadOutlined />}
                                 onClick={handleDownloadChallengeTemplate}
                                 style={{
-                                    height: 36,
-                                    borderRadius: 10,
-                                    fontWeight: 600,
-                                    border: '1.5px solid #1890ff',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    border: '1px solid #1890ff',
                                     color: '#1890ff',
-                                    background: '#e6f7ff',
-                                    paddingInline: 14,
                                 }}
                             >
-                                Template {quiz.skillType === 'MIXED' ? 'Tổng hợp' : SKILL_CONFIG[quiz.skillType]?.label || ''}
+                                Template mẫu
                             </Button>
                             <Button
-                                icon={<UploadOutlined />}
+                                size="small"
+                                icon={<PlusOutlined />}
                                 onClick={openImportChallengesModal}
                                 style={{
-                                    height: 36,
-                                    borderRadius: 10,
-                                    fontWeight: 600,
-                                    border: '1.5px solid #52c41a',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    border: '1px solid #52c41a',
                                     color: '#52c41a',
-                                    background: '#f6ffed',
-                                    paddingInline: 14,
                                 }}
                             >
-                                Import câu hỏi từ Excel
+                                Import câu hỏi
                             </Button>
-                            <Text type="secondary" style={{ fontSize: 11, flex: 1, minWidth: 150 }}>
-                                {quiz.skillType === 'MIXED'
-                                    ? 'Template gồm 4 sheet: Đọc, Nghe, Viết, Nói'
-                                    : `Template cho kỹ năng ${SKILL_CONFIG[quiz.skillType]?.label || quiz.skillType}`}
+                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
+                                (Đọc, Nghe, Viết, Nói)
                             </Text>
                         </div>
 
                         {/* Questions Table */}
-                        {quiz.questions && quiz.questions.length > 0 ? (
+                        {displayQuestions && displayQuestions.length > 0 ? (
                             <Table
-                                dataSource={quiz.questions}
+                                dataSource={displayQuestions}
                                 columns={questionColumns}
                                 rowKey={(r: any) => `${r.id}-${r.questionOrder}-${r.skillType}`}
                                 locale={{ emptyText: 'Không có câu hỏi nào' }}
-                                scroll={{ x: 'max-content' }}
+                                scroll={{ x: 'max-content', y: 600 }}
                                 rowClassName={(_, index) =>
                                     index % 2 === 0 ? '' : 'quiz-row-alt'
                                 }
@@ -1675,6 +2004,336 @@ const AdminQuizManagementPage: React.FC = () => {
                     </Card>
                 </>
             )}
+
+            <Modal
+                title="Nhập trực tiếp nhiều câu hỏi"
+                open={isBatchQuestionsModalOpen}
+                onCancel={() => setIsBatchQuestionsModalOpen(false)}
+                width={1100}
+                footer={
+                    <div style={{ padding: '8px 16px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                        <Button
+                            type="primary"
+                            loading={submittingBatchQuestions}
+                            onClick={handleSubmitBatchQuestions}
+                            style={{
+                                borderRadius: 8,
+                                height: 44,
+                                fontWeight: 700,
+                                paddingInline: 32,
+                                background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(24,144,255,0.25)'
+                            }}
+                        >
+                            Lưu tất cả & thêm vào quiz
+                        </Button>
+                    </div>
+                }
+                centered
+                destroyOnHidden
+            >
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Text type="secondary">
+                        Nhập từng câu hỏi + đáp án, có thể thêm không giới hạn. Hệ thống sẽ gửi tất cả trong một lần lưu.
+                    </Text>
+                    <Button icon={<PlusOutlined />} onClick={addBatchQuestion} style={{ borderRadius: 8, fontWeight: 600 }}>
+                        Thêm câu hỏi
+                    </Button>
+                </div>
+
+                <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
+                    {batchQuestions.map((q, idx) => {
+                        const filteredOptions = (q.options || []).map(o => (o || '').trim()).filter(Boolean);
+                        return (
+                            <Card
+                                key={q.tempId}
+                                size="small"
+                                style={{ marginBottom: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}
+                                title={<Text strong>Câu {idx + 1}</Text>}
+                                extra={
+                                    <Button
+                                        type="text"
+                                        danger
+                                        icon={<MinusCircleOutlined />}
+                                        disabled={batchQuestions.length <= 1}
+                                        onClick={() => removeBatchQuestion(q.tempId)}
+                                    >
+                                        Xóa
+                                    </Button>
+                                }
+                            >
+                                <Row gutter={16}>
+                                    <Col xs={24} md={8}>
+                                        <Text strong>Kỹ năng</Text>
+                                        <Select
+                                            style={{ width: '100%', marginTop: 6 }}
+                                            value={q.skillType}
+                                            onChange={(val) => updateBatchQuestionField(q.tempId, 'skillType', val)}
+                                            disabled={!!(quiz?.skillType && quiz.skillType !== 'MIXED')}
+                                            options={Object.entries(SKILL_CONFIG)
+                                                .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
+                                                .map(([key, cfg]) => ({ value: key, label: cfg.label }))}
+                                        />
+                                    </Col>
+                                </Row>
+
+                                <div style={{ marginTop: 12 }}>
+                                    <Text strong>Tiêu đề bài tập / Yêu cầu</Text>
+                                    <Input.TextArea
+                                        rows={2}
+                                        placeholder="Ví dụ: Chọn từ đúng chính tả để điền vào chỗ trống"
+                                        value={q.contentText}
+                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'contentText', e.target.value)}
+                                        style={{ marginTop: 6, borderRadius: 8 }}
+                                    />
+                                </div>
+
+                                {q.skillType === 'READING' && (
+                                    <>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>
+                                            <Input.TextArea
+                                                rows={2}
+                                                placeholder="Ví dụ: Em đi nàm nương rẫy."
+                                                value={q.fullSentence}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'fullSentence', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                        <Row gutter={12} style={{ marginTop: 12 }}>
+                                            <Col xs={24} md={12}>
+                                                <Text strong>Từ bị sai (Wrong Word)</Text>
+                                                <Input
+                                                    placeholder="Ví dụ: nàm"
+                                                    value={q.wrongWord}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'wrongWord', e.target.value)}
+                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={12}>
+                                                <Text strong>Từ viết đúng (Correct Word)</Text>
+                                                <Input
+                                                    placeholder="Ví dụ: làm"
+                                                    value={q.correctWord}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctWord', e.target.value)}
+                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                />
+                                            </Col>
+                                        </Row>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Gợi ý / Giải thích (Hint)</Text>
+                                            <Input
+                                                placeholder="Ví dụ: Động từ 'làm' phải bắt đầu bằng 'L'."
+                                                value={q.hint}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {q.skillType === 'LISTENING' && (
+                                    <>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>File âm thanh</Text>
+                                            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <Upload
+                                                    accept="audio/*"
+                                                    maxCount={1}
+                                                    showUploadList={false}
+                                                    beforeUpload={async (file) => {
+                                                        setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
+                                                        try {
+                                                            const url = await uploadToCloudinary(file);
+                                                            updateBatchQuestionField(q.tempId, 'audioUrl', url);
+                                                            message.success('Tải file lên thành công!');
+                                                        } catch (err) {
+                                                            message.error('Lỗi khi tải file lên Cloudinary');
+                                                        } finally {
+                                                            setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
+                                                        }
+                                                        return false;
+                                                    }}
+                                                >
+                                                    <Button
+                                                        icon={<UploadOutlined />}
+                                                        loading={uploadingBatch[q.tempId]}
+                                                        style={{ borderRadius: 8 }}
+                                                    >
+                                                        {q.audioUrl ? 'Thay đổi file' : 'Chọn file âm thanh'}
+                                                    </Button>
+                                                </Upload>
+
+                                                <Button
+                                                    icon={<AudioOutlined />}
+                                                    onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
+                                                    loading={uploadingBatch[q.tempId]}
+                                                    style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                >
+                                                    Tạo bằng AI (từ Transcript)
+                                                </Button>
+                                                {q.audioUrl && (
+                                                    <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
+                                                )}
+                                            </div>
+                                            {/* Hidden input to keep value in form logic if needed, though updateBatchQuestionField handles it */}
+                                            <Input hidden value={q.audioUrl} />
+                                        </div>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Transcript</Text>
+                                            <Input.TextArea
+                                                rows={2}
+                                                placeholder="Nội dung audio"
+                                                value={q.transcript}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Đáp án</Text>
+                                            <Row gutter={[10, 10]} style={{ marginTop: 6 }}>
+                                                {q.options.map((opt, optIdx) => (
+                                                    <Col xs={24} md={12} key={`${q.tempId}-opt-${optIdx}`}>
+                                                        <Input
+                                                            placeholder={`Đáp án ${optIdx + 1}`}
+                                                            value={opt}
+                                                            onChange={(e) => updateBatchOption(q.tempId, optIdx, e.target.value)}
+                                                            style={{ borderRadius: 8 }}
+                                                        />
+                                                    </Col>
+                                                ))}
+                                            </Row>
+                                        </div>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Đáp án đúng</Text>
+                                            <Select
+                                                style={{ width: '100%', marginTop: 6 }}
+                                                value={q.correctAnswer || undefined}
+                                                placeholder="Chọn đáp án đúng"
+                                                onChange={(val) => updateBatchQuestionField(q.tempId, 'correctAnswer', val)}
+                                                options={filteredOptions.map((o) => ({ value: o, label: o }))}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {q.skillType === 'WRITING' && (
+                                    <>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Nội dung câu đố (với ký hiệu _ )</Text>
+                                            <Input.TextArea
+                                                rows={2}
+                                                placeholder="Ví dụ: Lúa _ là lúa nếp làng."
+                                                value={q.blankSentence}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'blankSentence', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                        <Row gutter={12} style={{ marginTop: 12 }}>
+                                            <Col xs={24} md={12}>
+                                                <Text strong>Đáp án đúng (Correct Answer)</Text>
+                                                <Input
+                                                    placeholder="Ví dụ: nếp"
+                                                    value={q.correctAnswer}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctAnswer', e.target.value)}
+                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={12}>
+                                                <Text strong>Đáp án chấp nhận khác (Alternative)</Text>
+                                                <Input
+                                                    placeholder="Cách nhau bởi dấu phẩy"
+                                                    value={q.alternatives}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'alternatives', e.target.value)}
+                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                />
+                                            </Col>
+                                        </Row>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Gợi ý (Hint)</Text>
+                                            <Input
+                                                placeholder="Ví dụ: Ngược lại với nếp là tẻ."
+                                                value={q.hint}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {q.skillType === 'SPEAKING' && (
+                                    <>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>File âm thanh mẫu</Text>
+                                            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <Upload
+                                                    accept="audio/*"
+                                                    maxCount={1}
+                                                    showUploadList={false}
+                                                    beforeUpload={async (file) => {
+                                                        setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
+                                                        try {
+                                                            const url = await uploadToCloudinary(file);
+                                                            updateBatchQuestionField(q.tempId, 'audioUrl', url);
+                                                            message.success('Tải file lên thành công!');
+                                                        } catch (err) {
+                                                            message.error('Lỗi khi tải file lên Cloudinary');
+                                                        } finally {
+                                                            setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
+                                                        }
+                                                        return false;
+                                                    }}
+                                                >
+                                                    <Button
+                                                        icon={<UploadOutlined />}
+                                                        loading={uploadingBatch[q.tempId]}
+                                                        style={{ borderRadius: 8 }}
+                                                    >
+                                                        {q.audioUrl ? 'Thay đổi file mẫu' : 'Chọn file mẫu từ máy tính'}
+                                                    </Button>
+                                                </Upload>
+
+                                                <Button
+                                                    icon={<AudioOutlined />}
+                                                    onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
+                                                    loading={uploadingBatch[q.tempId]}
+                                                    style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                >
+                                                    Tạo bằng AI (từ Transcript)
+                                                </Button>
+                                                {q.audioUrl && (
+                                                    <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
+                                                )}
+                                            </div>
+                                            <Input hidden value={q.audioUrl} />
+                                        </div>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Transcript</Text>
+                                            <Input.TextArea
+                                                rows={2}
+                                                placeholder="Nội dung cần nói"
+                                                value={q.transcript}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text strong>Gợi ý</Text>
+                                            <Input
+                                                placeholder="Gợi ý (không bắt buộc)"
+                                                value={q.hint}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
+                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                            </Card>
+                        );
+                    })}
+                </div>
+            </Modal>
 
             <Modal
                 title={
@@ -1872,50 +2531,75 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
                                         {activeSkillType === 'READING' && (
                                             <>
-                                                <Form.Item
-                                                    name="words"
-                                                    label="Các từ trong câu (phân cách bằng |)"
-                                                    extra="Ví dụ: Ông|lội|kể|chuyện"
-                                                    rules={[{ required: true }]}
-                                                >
-                                                    <Input.TextArea rows={2} placeholder="Con|lai|kia|chạy|lên|nương" />
+                                                <Form.Item name="fullSentence" label={<Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>} rules={[{ required: true }]}>
+                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Em đi nàm nương rẫy." />
                                                 </Form.Item>
-                                                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.words !== currentValues.words}>
-                                                    {({ getFieldValue }) => {
-                                                        const wordsText = getFieldValue('words') || '';
-                                                        const parsedWords = wordsText.split('|').map((s: string) => s.trim()).filter(Boolean);
-                                                        return (
-                                                            <Form.Item
-                                                                name="error_index"
-                                                                label="Từ bị viết sai"
-                                                                rules={[{ required: true }]}
-                                                            >
-                                                                <Select placeholder="Chọn từ bị sai">
-                                                                    {parsedWords.map((word: string, idx: number) => (
-                                                                        <Option key={idx} value={idx}>{word}</Option>
-                                                                    ))}
-                                                                </Select>
-                                                            </Form.Item>
-                                                        );
-                                                    }}
-                                                </Form.Item>
-                                                <Form.Item
-                                                    name="correct_word"
-                                                    label="Từ viết đúng"
-                                                    rules={[{ required: true }]}
-                                                >
-                                                    <Input placeholder="Ví dụ: nai" />
-                                                </Form.Item>
-                                                <Form.Item name="hint" label="Gợi ý (Không bắt buộc)">
-                                                    <Input placeholder="Gợi ý cho người học..." />
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                                    <Form.Item name="wrongWord" label={<Text strong>Từ bị sai (Wrong Word)</Text>} rules={[{ required: true }]}>
+                                                        <Input placeholder="Ví dụ: nàm" />
+                                                    </Form.Item>
+                                                    <Form.Item name="correctWord" label={<Text strong>Từ viết lại đúng</Text>} rules={[{ required: true }]}>
+                                                        <Input placeholder="Ví dụ: làm" />
+                                                    </Form.Item>
+                                                </div>
+                                                <Form.Item name="hint" label={<Text strong>Gợi ý / Giải thích (Hint)</Text>}>
+                                                    <Input placeholder="Giải thích cho người học..." />
                                                 </Form.Item>
                                             </>
                                         )}
 
                                         {activeSkillType === 'LISTENING' && (
                                             <>
-                                                <Form.Item name="audioUrl" label="Link file âm thanh URL" rules={[{ required: true }]}>
-                                                    <Input placeholder="https://..." />
+                                                <Form.Item label={<Text strong>File âm thanh</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                                        <Upload
+                                                            accept="audio/*"
+                                                            maxCount={1}
+                                                            showUploadList={false}
+                                                            beforeUpload={async (file) => {
+                                                                setUploadingSingle(true);
+                                                                try {
+                                                                    const url = await uploadToCloudinary(file);
+                                                                    createForm.setFieldsValue({ audioUrl: url });
+                                                                    message.success('Tải file âm thanh lên thành công!');
+                                                                } catch (err) {
+                                                                    message.error('Lỗi khi tải file lên Cloudinary');
+                                                                } finally {
+                                                                    setUploadingSingle(false);
+                                                                }
+                                                                return false;
+                                                            }}
+                                                        >
+                                                            <Button
+                                                                icon={<UploadOutlined />}
+                                                                loading={uploadingSingle}
+                                                                style={{ borderRadius: 8 }}
+                                                            >
+                                                                {createForm.getFieldValue('audioUrl') ? 'Thay đổi file' : 'Chọn file từ máy tính'}
+                                                            </Button>
+                                                        </Upload>
+                                                        <Button
+                                                            icon={<AudioOutlined />}
+                                                            onClick={handleAutoGenerateAudioSingle}
+                                                            loading={uploadingSingle}
+                                                            style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                        >
+                                                            Tạo bằng AI (từ Transcript)
+                                                        </Button>
+
+                                                        {createForm.getFieldValue('audioUrl') && (
+                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử:</Text>
+                                                                <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
+                                                            </div>
+                                                        )}
+                                                        <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh' }]} noStyle>
+                                                            <Input hidden />
+                                                        </Form.Item>
+                                                    </Space>
+                                                </Form.Item>
+                                                <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc">
+                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} />
                                                 </Form.Item>
                                                 <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }]}>
                                                     <Input.TextArea rows={3} />
@@ -1940,26 +2624,79 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                         {activeSkillType === 'WRITING' && (
                                             <>
-                                                <Form.Item name="scrambledWords" label="Các từ bị xáo trộn (Cách nhau bởi dấu phẩy)" rules={[{ required: true }]}>
-                                                    <Input.TextArea placeholder="Con, mèo, đang, ngủ" />
+                                                <Form.Item name="blankSentence" label={<Text strong>Nội dung câu đố (với ký hiệu _ )</Text>} rules={[{ required: true }]}>
+                                                    <Input placeholder="Ví dụ: Lúa _ là lúa nếp làng." />
                                                 </Form.Item>
-                                                <Form.Item name="correctSentence" label="Câu hoàn chỉnh đúng" rules={[{ required: true }]}>
-                                                    <Input />
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                                    <Form.Item name="correctAnswer" label={<Text strong>Đáp án đúng</Text>} rules={[{ required: true }]}>
+                                                        <Input placeholder="Ví dụ: nếp" />
+                                                    </Form.Item>
+                                                    <Form.Item name="alternatives" label={<Text strong>Đáp án chấp nhận khác</Text>}>
+                                                        <Input placeholder="Cách nhau bởi dấu phẩy" />
+                                                    </Form.Item>
+                                                </div>
+                                                <Form.Item name="hint" label={<Text strong>Gợi ý (Hint)</Text>}>
+                                                    <Input placeholder="Gợi ý khi gặp khó khăn..." />
                                                 </Form.Item>
                                             </>
                                         )}
 
                                         {activeSkillType === 'SPEAKING' && (
                                             <>
-                                                <Form.Item name="transcript" label="Nội dung cần nói" rules={[{ required: true }]}>
-                                                    <Input.TextArea />
+                                                <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} rules={[{ required: true }]}>
+                                                    <Input.TextArea rows={2} style={{ borderRadius: 8 }} />
                                                 </Form.Item>
-                                                <Form.Item name="audioUrl" label="Link file âm thanh mẫu" rules={[{ required: true }]}>
-                                                    <Input />
+                                                <Form.Item label={<Text strong>File âm thanh mẫu</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                                        <Upload
+                                                            accept="audio/*"
+                                                            maxCount={1}
+                                                            showUploadList={false}
+                                                            beforeUpload={async (file) => {
+                                                                setUploadingSingle(true);
+                                                                try {
+                                                                    const url = await uploadToCloudinary(file);
+                                                                    createForm.setFieldsValue({ audioUrl: url });
+                                                                    message.success('Tải file âm thanh mẫu lên thành công!');
+                                                                } catch (err) {
+                                                                    message.error('Lỗi khi tải file lên Cloudinary');
+                                                                } finally {
+                                                                    setUploadingSingle(false);
+                                                                }
+                                                                return false;
+                                                            }}
+                                                        >
+                                                            <Button
+                                                                icon={<UploadOutlined />}
+                                                                loading={uploadingSingle}
+                                                                style={{ borderRadius: 8 }}
+                                                            >
+                                                                {createForm.getFieldValue('audioUrl') ? 'Thay đổi file mẫu' : 'Chọn file từ máy tính'}
+                                                            </Button>
+                                                        </Upload>
+                                                        <Button
+                                                            icon={<AudioOutlined />}
+                                                            onClick={handleAutoGenerateAudioSingle}
+                                                            loading={uploadingSingle}
+                                                            style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                        >
+                                                            Tạo bằng AI (từ Transcript)
+                                                        </Button>
+
+                                                        {createForm.getFieldValue('audioUrl') && (
+                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
+                                                                <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
+                                                            </div>
+                                                        )}
+                                                        <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh mẫu' }]} noStyle>
+                                                            <Input hidden />
+                                                        </Form.Item>
+                                                    </Space>
                                                 </Form.Item>
                                             </>
                                         )}
-                                    </Card>
+                                    </Card >
 
                                     <div style={{ textAlign: 'right', marginTop: 16 }}>
                                         <Space>
@@ -1970,29 +2707,30 @@ const AdminQuizManagementPage: React.FC = () => {
                                             </Button>
                                         </Space>
                                     </div>
-                                </Form>
+                                </Form >
                             )
                         }
                     ]}
                 />
-            </Modal>
+            </Modal >
 
             {/* Detail View Modal (Nested or separate) */}
-            <Modal
+            < Modal
                 title={
-                    <Space>
+                    < Space >
                         <EyeOutlined style={{ color: '#2563eb' }} />
                         <span>Chi tiết câu hỏi</span>
-                    </Space>
+                    </Space >
                 }
                 open={isDetailModalOpen}
                 onCancel={() => setIsDetailModalOpen(false)}
-                footer={[
-                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
-                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
-                        Đóng
-                    </Button>
-                ]}
+                footer={
+                    [
+                        <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
+                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
+                            Đóng
+                        </Button>
+                    ]}
                 width={650}
                 centered
                 zIndex={2000} // Ensure it's above the first modal
@@ -2089,16 +2827,40 @@ const AdminQuizManagementPage: React.FC = () => {
                             {selectedDetailChallenge.skillType === 'WRITING' && (
                                 <>
                                     <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Từ ngữ xáo trộn:</Text>
-                                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            {selectedDetailChallenge.metadataJson?.scrambledWords?.map((word: string, idx: number) => (
-                                                <Tag key={idx} style={{ background: '#fff', border: '1px dashed #d9d9d9' }}>{word}</Tag>
-                                            ))}
+                                        <Text strong>Nội dung câu đố:</Text>
+                                        <div style={{ marginTop: 8, padding: '16px', background: '#fff', borderRadius: 12, border: '1px dashed #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                                            <span style={{ fontSize: 18, color: '#1e293b', letterSpacing: '0.01em' }}>
+                                                {selectedDetailChallenge.metadataJson?.blankSentence || selectedDetailChallenge.metadataJson?.correctSentence}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong style={{ display: 'block' }}>Câu hoàn chỉnh:</Text>
-                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedDetailChallenge.metadataJson?.correctSentence}</Text>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <Card size="small" style={{ borderRadius: 10, border: '1px solid #dcfce7', background: '#f0fdf4' }}>
+                                            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN ĐÚNG</Text>
+                                            <Text strong style={{ fontSize: 16, color: '#16a34a' }}>
+                                                {selectedDetailChallenge.metadataJson?.correctAnswer || '—'}
+                                            </Text>
+                                        </Card>
+
+                                        {selectedDetailChallenge.metadataJson?.alternatives?.length > 0 && (
+                                            <Card size="small" style={{ borderRadius: 10, border: '1px solid #e0f2fe', background: '#f0f9ff' }}>
+                                                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN CHẤP NHẬN KHÁC</Text>
+                                                <Space wrap>
+                                                    {selectedDetailChallenge.metadataJson?.alternatives.map((alt: string, i: number) => (
+                                                        <Tag key={i} color="blue" style={{ borderRadius: 4, margin: 0 }}>{alt}</Tag>
+                                                    ))}
+                                                </Space>
+                                            </Card>
+                                        )}
+
+                                        {selectedDetailChallenge.metadataJson?.hint && (
+                                            <div style={{ gridColumn: 'span 2', marginTop: 8, padding: '12px', background: '#fef3c7', borderRadius: 10, border: '1px solid #fde68a' }}>
+                                                <Text strong style={{ color: '#92400e', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                    <InfoCircleOutlined /> Gợi ý (Hint)
+                                                </Text>
+                                                <Text style={{ color: '#b45309' }}>{selectedDetailChallenge.metadataJson?.hint}</Text>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -2120,11 +2882,11 @@ const AdminQuizManagementPage: React.FC = () => {
                         </div>
                     </div>
                 )}
-            </Modal>
+            </Modal >
 
             {/* Edit Quiz Modal */}
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Chỉnh sửa quiz</span>}
+            < Modal
+                title={< span style={{ fontWeight: 600 }}> Chỉnh sửa quiz</span >}
                 open={isEditQuizModalOpen}
                 onCancel={() => setIsEditQuizModalOpen(false)}
                 onOk={() => editQuizForm.submit()}
@@ -2193,33 +2955,8 @@ const AdminQuizManagementPage: React.FC = () => {
                     </Row>
 
                     <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
-
-                        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.skillType !== cur.skillType}>
-                            {({ getFieldValue }) => {
-                                const skillType = getFieldValue('skillType');
-                                const showAll = !skillType || skillType === 'MIXED';
-                                const fields = [
-                                    { key: 'READING', label: 'Số câu Reading', name: 'readingCount' },
-                                    { key: 'LISTENING', label: 'Số câu Listening', name: 'listeningCount' },
-                                    { key: 'SPEAKING', label: 'Số câu Speaking', name: 'speakingCount' },
-                                    { key: 'WRITING', label: 'Số câu Writing', name: 'writingCount' },
-                                ];
-                                const visibleFields = showAll ? fields : fields.filter(f => f.key === skillType);
-                                return (
-                                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleFields.length}, 1fr)`, gap: '12px' }}>
-                                        {visibleFields.map(f => (
-                                            <Form.Item key={f.key} label={f.label} name={f.name} style={{ marginBottom: 0 }}>
-                                                <InputNumber min={0} style={{ width: '100%' }} />
-                                            </Form.Item>
-                                        ))}
-                                    </div>
-                                );
-                            }}
+                        <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
+                            <InputNumber style={{ width: '100%' }} />
                         </Form.Item>
                     </div>
 
@@ -2227,7 +2964,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         <Input placeholder="Lý do chỉnh sửa..." />
                     </Form.Item>
                 </Form>
-            </Modal>
+            </Modal >
 
             <Modal
                 title={
@@ -2657,9 +3394,8 @@ const AdminQuizManagementPage: React.FC = () => {
                     transform: translateX(4px);
                 }
             `}</style>
-        </div>
+        </div >
     );
-
 };
 
 export default AdminQuizManagementPage;

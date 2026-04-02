@@ -24,7 +24,7 @@ const getRegionLabel = (region: string | undefined) => {
 const BadgeItem = ({ imageUrl, icon: Icon, title, level, locked }: any) => (
     <div className={`flex flex-col items-center p-4 rounded-2xl border-2 ${locked ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-white border-yellow-400 shadow-sm'}`}>
         <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 overflow-hidden ${locked ? 'bg-gray-200 text-gray-400' : 'bg-brand-yellow text-yellow-700'}`}>
-            {imageUrl ? <img src={imageUrl} alt={title} className="w-full h-full object-cover" /> : (locked ? <Lock size={24} /> : (Icon ? <Icon size={32} /> : <TrophyOutlined style={{fontSize: 32}} />))}
+            {imageUrl ? <img src={imageUrl} alt={title} className="w-full h-full object-cover" /> : (locked ? <Lock size={24} /> : (Icon ? <Icon size={32} /> : <TrophyOutlined style={{ fontSize: 32 }} />))}
         </div>
         <div className="font-bold text-gray-700 text-sm text-center">{title}</div>
         <div className="text-xs text-gray-400 font-bold uppercase mt-1">{level ? `Cấp độ ${level}` : 'Đã đạt'}</div>
@@ -49,10 +49,10 @@ export default function ProfilePage() {
             try {
                 setLoading(true);
                 const [badgesRes, progressRes] = await Promise.all([
-                    apiClient.get('/badges/my-badges').catch(() => ({ data: { data: [] } })),
+                    apiClient.get('/learner/my-badges').catch(() => ({ data: { data: [] } })),
                     apiClient.get('/users/me/progress').catch(() => ({ data: { data: { progressByRegion: {} } } }))
                 ]);
-                
+
                 if (badgesRes.data?.data) {
                     setBadges(badgesRes.data.data);
                 }
@@ -65,7 +65,7 @@ export default function ProfilePage() {
                 setLoading(false);
             }
         };
-        
+
         loadProfileData();
     }, []);
 
@@ -83,7 +83,7 @@ export default function ProfilePage() {
         try {
             const values = await form.validateFields();
             setSaving(true);
-            
+
             await apiClient.patch('/users/me', {
                 fullName: values.fullName,
                 phone: values.phone,
@@ -128,7 +128,7 @@ export default function ProfilePage() {
                         <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
                     </div>
                 </div>
-                
+
                 <div className="flex-1 text-center md:text-left flex flex-col justify-center gap-1">
                     <div className="flex flex-col md:flex-row justify-between items-center md:items-start">
                         <div>
@@ -142,8 +142,8 @@ export default function ProfilePage() {
                                 Tham gia từ {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
                             </div>
                         </div>
-                        <Button 
-                            className="mt-4 md:mt-0 font-bold text-gray-500 hover:text-brand-blue rounded-xl border-gray-200 shadow-sm" 
+                        <Button
+                            className="mt-4 md:mt-0 font-bold text-gray-500 hover:text-brand-blue rounded-xl border-gray-200 shadow-sm"
                             icon={<SettingOutlined />}
                             onClick={handleEdit}
                         >
@@ -214,7 +214,7 @@ export default function ProfilePage() {
 
                 {/* Cột phải: Tiến trình & Thành tích (Scrollable) */}
                 <div className="w-full md:w-2/3 space-y-8">
-                    
+
                     {/* Tiến độ ngôn ngữ */}
                     <Card className="rounded-3xl shadow-sm border-gray-100 overflow-hidden" bodyStyle={{ padding: 0 }} title={<span className="font-extrabold text-lg text-gray-700 px-8 pt-6 pb-2 block border-b border-gray-50">Tiến độ ngôn ngữ</span>}>
                         <div className="max-h-[350px] overflow-y-auto px-8 py-6 custom-scrollbar">

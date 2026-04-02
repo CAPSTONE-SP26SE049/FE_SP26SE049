@@ -1,413 +1,96 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-    Table, Button, Modal, Form, Input, Select, Switch, Tag, Space,
-    Tooltip, Popconfirm, message, Typography, Card,
-    Drawer, Row, Col, Divider, Upload
+    Table, Card, Input, Tag, Space, Button, Tooltip, Modal, Form,
+    message, Typography, Switch, Popconfirm, Upload, Row, Col
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, TrophyOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import {
+    SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
+    TrophyOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined
+} from '@ant-design/icons'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../../../firebase'
 import rewardService from '../services/rewardService'
 
-const { Text } = Typography
+const { Title, Text } = Typography
 const { TextArea } = Input
-const { Option } = Select
 
-
+// ─── Types ──────────────────────────────────────────────────────────────────
 interface Reward {
     id: string
     code: string
     name: string
     description: string
-    category: string
     iconUrl: string
-    criteriaJson: string
     isActive: boolean
     createdAt: string
     updatedAt: string
+    linkedQuizId: string | null
+    linkedQuizName: string | null
+    linkedLevelName: string | null
 }
 
-interface CriteriaData {
-    type?: string
-    threshold?: number
-    region?: string
-    level?: string
-    pair?: string
-    game?: string
-    max_rank?: number
-    from?: number
-    to?: number
-    [key: string]: unknown
-}
-
-
-// ─── Định nghĩa các loại criteria trigger ──────────────────────────────────
-const CRITERIA_TYPES = [
-    { value: 'levels_completed', label: 'Số màn đã hoàn thành' },
-    { value: 'region_completed', label: 'Hoàn thành 1 vùng miền' },
-    { value: 'all_regions_completed', label: 'Hoàn thành tất cả vùng' },
-    { value: 'difficulty_completed', label: 'Hoàn thành độ khó' },
-    { value: 'three_star_count', label: 'Số lần đạt 3 sao' },
-    { value: 'all_levels_three_star', label: 'Tất cả màn đạt 3 sao' },
-    { value: 'fail_then_pass_same_level', label: 'Thua rồi thắng cùng màn' },
-    { value: 'pronunciation_level_passed', label: 'Màn phát âm passed' },
-    { value: 'phoneme_accuracy', label: 'Độ chính xác phụ âm (%)' },
-    { value: 'all_phoneme_pairs_mastered', label: 'Thành thạo tất cả phụ âm' },
-    { value: 'tone_accuracy', label: 'Độ chính xác thanh điệu (%)' },
-    { value: 'perfect_pronunciation_session', label: 'Phiên phát âm hoàn hảo' },
-    { value: 'entry_test_completed', label: 'Hoàn thành bài kiểm tra đầu vào' },
-    { value: 'fast_pronunciation_count', label: 'Phát âm nhanh (<3s)' },
-    { value: 'minigame_played', label: 'Số lần chơi mini-game' },
-    { value: 'minigame_type_played', label: 'Chơi loại mini-game cụ thể' },
-    { value: 'reading_saga_completed', label: 'Hoàn thành Saga Đọc' },
-    { value: 'writing_levels_completed', label: 'Màn Viết hoàn thành' },
-    { value: 'mario_levels_completed', label: 'Màn Mario hoàn thành' },
-    { value: 'all_minigame_types_played', label: 'Đã chơi tất cả loại game' },
-    { value: 'minigame_perfect_score', label: 'Điểm tuyệt đối mini-game' },
-    { value: 'total_stars', label: 'Tổng số sao tích lũy' },
-    { value: 'perfect_score_count', label: 'Số lần đạt điểm tuyệt đối' },
-    { value: 'friend_count', label: 'Số bạn bè' },
-    { value: 'leaderboard_rank', label: 'Thứ hạng bảng xếp hạng' },
-    { value: 'study_hour_range', label: 'Học trong khung giờ đặc biệt' },
-]
-
-const CATEGORIES = ['LEARNING', 'PRONUNCIATION', 'MINI_GAMES', 'SCORE', 'SOCIAL', 'SPECIAL']
-const CATEGORY_COLORS: Record<string, string> = {
-    LEARNING: 'blue', PRONUNCIATION: 'purple', MINI_GAMES: 'green',
-    SCORE: 'gold', SOCIAL: 'cyan', SPECIAL: 'magenta',
-    GENERAL: 'default', CHALLENGE: 'orange'
-}
-const CATEGORY_LABELS: Record<string, string> = {
-    LEARNING: 'Học tập', PRONUNCIATION: 'Phát âm', MINI_GAMES: 'Mini-games',
-    SCORE: 'Điểm số', SOCIAL: 'Xã hội', SPECIAL: 'Đặc biệt',
-    GENERAL: 'Chung', CHALLENGE: 'Thử thách'
-}
-
-/**
- * Ánh xạ Danh mục → danh sách loại tiêu chí cho phép
- * Khi người dùng chọn Danh mục, chỉ hiển thị các tiêu chí liên quan.
- */
-const CATEGORY_CRITERIA_MAP: Record<string, string[]> = {
-    LEARNING: [
-        'levels_completed',         // Số màn hoàn thành
-        'region_completed',          // Hoàn thành 1 vùng miền
-        'all_regions_completed',     // Hoàn thành tất cả vùng
-        'difficulty_completed',      // Hoàn thành độ khó
-        'three_star_count',          // Số lần đạt 3 sao
-        'all_levels_three_star',     // Tất cả màn đạt 3 sao
-        'fail_then_pass_same_level', // Thua rồi thắng cùng màn
-    ],
-    PRONUNCIATION: [
-        'pronunciation_level_passed',    // Màn phát âm passed
-        'phoneme_accuracy',              // Độ chính xác phụ âm
-        'all_phoneme_pairs_mastered',    // Thành thạo tất cả phụ âm
-        'tone_accuracy',                // Độ chính xác thanh điệu
-        'perfect_pronunciation_session', // Phiên phát âm hoàn hảo
-        'entry_test_completed',          // Kiểm tra đầu vào
-        'fast_pronunciation_count',      // Phát âm nhanh
-    ],
-    MINI_GAMES: [
-        'minigame_played',           // Số lần chơi mini-game
-        'minigame_type_played',      // Chơi loại mini-game cụ thể
-        'reading_saga_completed',    // Hoàn thành Saga Đọc
-        'writing_levels_completed',  // Màn Viết hoàn thành
-        'mario_levels_completed',    // Màn Mario hoàn thành
-        'all_minigame_types_played', // Đã chơi tất cả loại game
-        'minigame_perfect_score',    // Điểm tuyệt đối mini-game
-    ],
-    SCORE: [
-        'total_stars',         // Tổng số sao tích lũy
-        'perfect_score_count', // Số lần đạt điểm tuyệt đối
-    ],
-    SOCIAL: [
-        'friend_count',        // Số bạn bè
-        'leaderboard_rank',    // Thứ hạng bảng xếp hạng
-    ],
-    SPECIAL: [
-        'study_hour_range',    // Học trong khung giờ đặc biệt
-    ],
-}
-
-// ─── Helper: Build criteriaJson từ form ─────────────────────────────────────
-const buildCriteriaJson = (type: string, fields: Record<string, unknown>): string => {
-    const base = { type }
-    switch (type) {
-        case 'levels_completed':
-        case 'three_star_count':
-        case 'fail_then_pass_same_level':
-        case 'pronunciation_level_passed':
-        case 'perfect_pronunciation_session':
-        case 'minigame_played':
-        case 'writing_levels_completed':
-        case 'mario_levels_completed':
-        case 'minigame_perfect_score':
-        case 'total_stars':
-        case 'perfect_score_count':
-        case 'friend_count':
-            return JSON.stringify({ ...base, threshold: Number(fields.threshold) })
-        case 'region_completed':
-            return JSON.stringify({ ...base, region: fields.region })
-        case 'difficulty_completed':
-            return JSON.stringify({ ...base, level: fields.level })
-        case 'phoneme_accuracy':
-            return JSON.stringify({ ...base, pair: fields.pair, threshold: Number(fields.threshold) })
-        case 'tone_accuracy':
-            return JSON.stringify({ ...base, threshold: Number(fields.threshold) })
-        case 'fast_pronunciation_count':
-            return JSON.stringify({ ...base, ms_limit: 3000, threshold: Number(fields.threshold) })
-        case 'minigame_type_played':
-            return JSON.stringify({ ...base, game: fields.game, threshold: Number(fields.threshold || 1) })
-        case 'leaderboard_rank':
-            return JSON.stringify({ ...base, max_rank: Number(fields.max_rank) })
-        case 'study_hour_range':
-            return JSON.stringify({ ...base, from: Number(fields.from), to: Number(fields.to), threshold: Number(fields.threshold) })
-        case 'all_regions_completed':
-        case 'all_levels_three_star':
-        case 'all_phoneme_pairs_mastered':
-        case 'entry_test_completed':
-        case 'reading_saga_completed':
-        case 'all_minigame_types_played':
-            return JSON.stringify(base)
-        default:
-            return JSON.stringify(base)
-    }
-}
-
-// ─── Helper: Parse criteriaJson để fill form ────────────────────────────────────
-const parseCriteriaJson = (json: string): CriteriaData => {
-    try { return JSON.parse(json) } catch { return {} }
-}
-
-// ─── Helper: Format criteria thành tiếng Việt dễ hiểu ───────────────────────────
-type CriteriaDisplay = { icon: string; label: string; detail: string; fullText: string }
-
-const formatCriteria = (parsed: CriteriaData): CriteriaDisplay => {
-    const t = parsed.threshold
-    const r = parsed.region
-    const g = parsed.game
-    const l = parsed.level
-    switch (parsed.type) {
-        // LEARNING
-        case 'levels_completed':
-            return { icon: '🗺️', label: 'Hoàn thành màn', detail: `≥ ${t} màn học`, fullText: `Người chơi phải hoàn thành ít nhất ${t} màn học` }
-        case 'region_completed':
-            return { icon: '🏴', label: 'Hoàn thành vùng', detail: `Vùng ${r}`, fullText: `Hoàn thành toàn bộ màn thuộc vùng ${r}` }
-        case 'all_regions_completed':
-            return { icon: '🇺🇳', label: 'Cả 3 vùng miền', detail: 'Bắc + Trung + Nam', fullText: 'Hoàn thành tất cả vùng miền (Bắc, Trung, Nam)' }
-        case 'difficulty_completed':
-            return { icon: '💪', label: 'Độ khó học', detail: `Độ ${l || ''}`, fullText: `Hoàn thành tất cả màn ở độ khó ${l || ''}` }
-        case 'three_star_count':
-            return { icon: '⭐', label: '3 Sao', detail: `≥ ${t} lần`, fullText: `Đạt ít nhất ${t} lần 3 sao trong bất kỳ màn nào` }
-        case 'all_levels_three_star':
-            return { icon: '🌟', label: 'Tất cả 3 sao', detail: 'Mọi màn', fullText: 'Mọi màn đếu phải đạt 3 sao' }
-        case 'fail_then_pass_same_level':
-            return { icon: '🔄', label: 'Kiên trì', detail: 'Thua → Thắng', fullText: 'Thua một màn rồi sau đó thắng lại chính màn đó' }
-        // PRONUNCIATION
-        case 'pronunciation_level_passed':
-            return { icon: '🎤', label: 'Màn phát âm', detail: `≥ ${t} màn`, fullText: `Vượt qua ít nhất ${t} màn phát âm` }
-        case 'phoneme_accuracy':
-            return { icon: '🔊', label: 'Chính xác phụ âm', detail: `≥ ${t}%`, fullText: `Đạt độ chính xác ≥ ${t}% khi luyện phụ âm` }
-        case 'all_phoneme_pairs_mastered':
-            return { icon: '🎯', label: 'Thành thạo phụ âm', detail: 'Tất cả', fullText: 'Thành thạo toàn bộ cặp phụ âm trong hệ thống' }
-        case 'tone_accuracy':
-            return { icon: '🎧', label: 'Chính xác thanh điệu', detail: `≥ ${t}%`, fullText: `Đạt độ chính xác ≥ ${t}% khi luyện thanh điệu` }
-        case 'perfect_pronunciation_session':
-            return { icon: '💎', label: 'Phiên hoàn hảo', detail: `≥ ${t} phiên`, fullText: `Hoàn thành ít nhất ${t} phiên phát âm 100%` }
-        case 'entry_test_completed':
-            return { icon: '📝', label: 'Kiểm tra đầu vào', detail: 'Hoàn thành', fullText: 'Hoàn thành bài kiểm tra phát âm đầu vào' }
-        case 'fast_pronunciation_count':
-            return { icon: '⚡', label: 'Phát âm nhanh', detail: `≥ ${t} lần`, fullText: `Phát âm chính xác trong < 3 giây ít nhất ${t} lần` }
-        // MINI-GAMES
-        case 'minigame_played':
-            return { icon: '🎮', label: 'Chơi mini-game', detail: `≥ ${t} lần`, fullText: `Chơi mini-game ít nhất ${t} lần` }
-        case 'minigame_type_played':
-            return { icon: '🎲', label: `Game ${g || ''}`, detail: `≥ ${t} lần`, fullText: `Chơi mini-game loại ${g} ít nhất ${t} lần` }
-        case 'reading_saga_completed':
-            return { icon: '📖', label: 'Saga Đọc', detail: 'Hoàn thành', fullText: 'Hoàn thành toàn bộ màn Saga Đọc' }
-        case 'writing_levels_completed':
-            return { icon: '✏️', label: 'Màn Viết', detail: `≥ ${t} màn`, fullText: `Hoàn thành ít nhất ${t} màn luyện Viết` }
-        case 'mario_levels_completed':
-            return { icon: '🍄', label: 'Màn Mario', detail: `≥ ${t} màn`, fullText: `Hoàn thành ít nhất ${t} màn Mario` }
-        case 'all_minigame_types_played':
-            return { icon: '🇺🇳', label: 'Đủ loại game', detail: 'Tất cả', fullText: 'Đã chơi qua tất cả các loại mini-game' }
-        case 'minigame_perfect_score':
-            return { icon: '💥', label: 'Điểm tuyệt đối', detail: `≥ ${t} lần`, fullText: `Đạt điểm tuyệt đối trong mini-game ít nhất ${t} lần` }
-        // SCORE
-        case 'total_stars':
-            return { icon: '🌟', label: 'Tích lũy sao', detail: `≥ ${t} ⭐`, fullText: `Tích lũy tổng cộng ít nhất ${t} sao` }
-        case 'perfect_score_count':
-            return { icon: '🏆', label: 'Điểm tuyệt đối', detail: `≥ ${t} lần`, fullText: `Đạt điểm tuyệt đối 100% ít nhất ${t} lần` }
-        // SOCIAL
-        case 'friend_count':
-            return { icon: '👥', label: 'Bạn bè', detail: `≥ ${t} người`, fullText: `Có ít nhất ${t} bạn bè trong ứng dụng` }
-        case 'leaderboard_rank':
-            return { icon: '🥇', label: 'Xếp hạng', detail: `Top ${parsed.max_rank}`, fullText: `Lọc vào top ${parsed.max_rank} bảng xếp hạng` }
-        // SPECIAL
-        case 'study_hour_range':
-            return { icon: '🌙', label: 'Khung giờ', detail: `${parsed.from}h–${parsed.to}h (≥${t}×)`, fullText: `Học ít nhất ${t} lần trong khung giờ ${parsed.from}h–${parsed.to}h` }
-        default:
-            return { icon: '❓', label: parsed.type || '—', detail: '', fullText: 'Chưa xác định' }
-    }
-}
-
-// ─── Dynamic Criteria Fields ─────────────────────────────────────────────────
-const CriteriaFields = ({ criteriaType }: { criteriaType: string | null }) => {
-    if (!criteriaType) return null
-    const needsThreshold = [
-        'levels_completed', 'three_star_count', 'fail_then_pass_same_level',
-        'pronunciation_level_passed', 'perfect_pronunciation_session', 'minigame_played',
-        'writing_levels_completed', 'mario_levels_completed', 'minigame_perfect_score',
-        'total_stars', 'perfect_score_count', 'friend_count', 'tone_accuracy',
-        'fast_pronunciation_count',
-    ]
-    const noFields = [
-        'all_regions_completed', 'all_levels_three_star', 'all_phoneme_pairs_mastered',
-        'entry_test_completed', 'reading_saga_completed', 'all_minigame_types_played',
-    ]
-    if (noFields.includes(criteriaType)) {
-        return <Text type="secondary" className="text-xs">Không cần thêm tham số</Text>
-    }
-    return (
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 space-y-3">
-            {needsThreshold.includes(criteriaType) && (
-                <Form.Item name="threshold" label="Ngưỡng (threshold)" rules={[{ required: true }]}>
-                    <Input type="number" min={1} placeholder="VD: 5" />
-                </Form.Item>
-            )}
-            {criteriaType === 'region_completed' && (
-                <Form.Item name="region" label="Vùng miền" rules={[{ required: true }]}>
-                    <Select placeholder="Chọn vùng">
-                        <Option value="NORTH">🔵 Vùng Bắc</Option>
-                        <Option value="CENTRAL">🟡 Vùng Trung</Option>
-                        <Option value="SOUTH">🔴 Vùng Nam</Option>
-                    </Select>
-                </Form.Item>
-            )}
-            {criteriaType === 'difficulty_completed' && (
-                <Form.Item name="level" label="Độ khó" rules={[{ required: true }]}>
-                    <Select>
-                        <Option value="BEGINNER">Sơ cấp</Option>
-                        <Option value="INTERMEDIATE">Trung cấp</Option>
-                        <Option value="ADVANCED">Cao cấp</Option>
-                    </Select>
-                </Form.Item>
-            )}
-            {criteriaType === 'phoneme_accuracy' && (
-                <>
-                    <Form.Item name="pair" label="Cặp phụ âm" rules={[{ required: true }]}>
-                        <Select>
-                            <Option value="N_L">N/L</Option>
-                            <Option value="S_X">S/X</Option>
-                            <Option value="D_GI_R">D/GI/R</Option>
-                            <Option value="TR_CH">TR/CH</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item name="threshold" label="Ngưỡng chính xác (%)" rules={[{ required: true }]}>
-                        <Input type="number" min={1} max={100} placeholder="VD: 90" />
-                    </Form.Item>
-                </>
-            )}
-            {criteriaType === 'minigame_type_played' && (
-                <>
-                    <Form.Item name="game" label="Loại mini-game" rules={[{ required: true }]}>
-                        <Select>
-                            <Option value="READING">📖 Reading</Option>
-                            <Option value="WRITING">✏️ Writing</Option>
-                            <Option value="MARIO">🍄 Mario</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item name="threshold" label="Số lần" rules={[{ required: true }]}>
-                        <Input type="number" min={1} placeholder="VD: 1" />
-                    </Form.Item>
-                </>
-            )}
-            {criteriaType === 'leaderboard_rank' && (
-                <Form.Item name="max_rank" label="Top (max rank)" rules={[{ required: true }]}>
-                    <Input type="number" min={1} placeholder="VD: 10" />
-                </Form.Item>
-            )}
-            {criteriaType === 'study_hour_range' && (
-                <>
-                    <Row gutter={8}>
-                        <Col span={12}>
-                            <Form.Item name="from" label="Từ giờ" rules={[{ required: true }]}>
-                                <Input type="number" min={0} max={23} placeholder="VD: 5" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="to" label="Đến giờ" rules={[{ required: true }]}>
-                                <Input type="number" min={0} max={23} placeholder="VD: 8" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="threshold" label="Số lần tối thiểu" rules={[{ required: true }]}>
-                        <Input type="number" min={1} placeholder="VD: 10" />
-                    </Form.Item>
-                </>
-            )}
-        </div>
-    )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ──────────────────────────────────────────────────────────────
 const RewardManagementPage = () => {
     const [rewards, setRewards] = useState<Reward[]>([])
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [searchText, setSearchText] = useState('')
-    const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState<Reward | null>(null)
-    const [detailDrawer, setDetailDrawer] = useState<Reward | null>(null)
-    const [criteriaType, setCriteriaType] = useState<string | null>(null)
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [submitting, setSubmitting] = useState(false)
     const [fileList, setFileList] = useState<any[]>([])
-    const [uploading, setUploading] = useState(false)
     const [form] = Form.useForm()
 
-    const fetchRewards = useCallback(async () => {
-        setLoading(true)
+    // ── Fetch ────────────────────────────────────────────────────────────────
+    const fetchRewards = async () => {
         try {
-            const res = await rewardService.getAll()
-            setRewards(res?.data || [])
-        } catch {
-            message.error('Không thể tải danh sách hùy hiệu')
+            setLoading(true)
+            const res: any = await rewardService.getAll().catch(() => null)
+            console.log('Rewards raw response:', res)
+
+            let list: Reward[] = []
+            if (Array.isArray(res)) {
+                list = res
+            } else if (res.data && Array.isArray(res.data)) {
+                list = res.data
+            } else if (Array.isArray(res.content)) {
+                list = res.content
+            } else if (res.data?.data && Array.isArray(res.data.data)) {
+                // Thêm trường hợp bọc 2 lớp data (thường gặp khi proxy/axios interceptor)
+                list = res.data.data
+            }
+
+            console.log('Final rewards list to render:', list)
+            setRewards(list)
+        } catch (error) {
+            console.error('Failed to fetch rewards:', error)
+            message.error('Không thể tải danh sách huy hiệu')
         } finally {
             setLoading(false)
         }
+    }
+
+    useEffect(() => {
+        fetchRewards()
     }, [])
 
-    useEffect(() => { fetchRewards() }, [fetchRewards])
-
+    // ── Create / Edit ────────────────────────────────────────────────────────
     const openCreate = () => {
         setEditing(null)
         form.resetFields()
-        setCriteriaType(null)
-        setSelectedCategory(null)
+        form.setFieldsValue({ isActive: true })
         setFileList([])
         setModalOpen(true)
     }
 
     const openEdit = (record: Reward) => {
         setEditing(record)
-        setSelectedCategory(record.category)
-        const parsed = parseCriteriaJson(record.criteriaJson)
-        setCriteriaType(parsed.type || null)
         form.setFieldsValue({
             code: record.code,
             name: record.name,
             description: record.description,
-            category: record.category,
             iconUrl: record.iconUrl,
             isActive: record.isActive,
-            criteriaType: parsed.type,
-            threshold: parsed.threshold,
-            region: parsed.region,
-            level: parsed.level,
-            pair: parsed.pair,
-            game: parsed.game,
-            max_rank: parsed.max_rank,
-            from: parsed.from,
-            to: parsed.to,
         })
         setFileList(record.iconUrl ? [{
             uid: '-1',
@@ -421,9 +104,9 @@ const RewardManagementPage = () => {
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields()
-            setUploading(true)
+            setSubmitting(true)
 
-            // 1. Handle File Upload if exists
+            // Handle file upload
             let finalIconUrl = values.iconUrl || ''
             const file = fileList[0]?.originFileObj
             if (file) {
@@ -432,93 +115,97 @@ const RewardManagementPage = () => {
                 finalIconUrl = await getDownloadURL(snapshot.ref)
             }
 
-            // 2. Build Payload
-            const criteriaJson = buildCriteriaJson(values.criteriaType, values)
             const payload = {
                 code: values.code,
                 name: values.name,
-                description: values.description,
-                category: values.category,
+                description: values.description || '',
                 iconUrl: finalIconUrl,
-                criteriaJson,
                 isActive: values.isActive ?? true,
             }
 
             if (editing) {
                 await rewardService.update(editing.id, payload)
-                message.success('Cập nhật hùy hiệu thành công!')
+                message.success('Cập nhật huy hiệu thành công!')
             } else {
                 await rewardService.create(payload)
-                message.success('Tạo hùy hiệu thành công!')
+                message.success('Tạo huy hiệu thành công!')
             }
+
             setModalOpen(false)
             fetchRewards()
         } catch (err: any) {
-            if (err?.errorFields) return
+            if (err?.errorFields) return // form validation
             message.error(err?.message || 'Có lỗi xảy ra')
         } finally {
-            setUploading(false)
+            setSubmitting(false)
         }
     }
 
+    // ── Toggle ───────────────────────────────────────────────────────────────
     const handleToggle = async (record: Reward) => {
         try {
             await rewardService.toggleActive(record.id)
-            message.success(`Đã ${record.isActive ? 'ẩn' : 'kích hoạt'} huy hiệu`)
+            message.success(`Đã ${record.isActive ? 'ẩn' : 'hiển thị'} huy hiệu`)
             fetchRewards()
         } catch {
             message.error('Không thể cập nhật trạng thái')
         }
     }
 
+    // ── Delete ───────────────────────────────────────────────────────────────
     const handleDelete = async (id: string) => {
         try {
             await rewardService.delete(id)
-            message.success('Đã xóa phần thưởng')
+            message.success('Đã xóa huy hiệu')
             fetchRewards()
         } catch {
-            message.error('Không thể xóa phần thưởng')
+            message.error('Không thể xóa huy hiệu')
         }
     }
 
-    const filtered = rewards.filter((r: Reward) => {
-        const matchText = r.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-            r.code?.toLowerCase().includes(searchText.toLowerCase())
-        const matchCat = categoryFilter === 'ALL' || r.category === categoryFilter
-        return matchText && matchCat
-    })
+    // ── Filter ───────────────────────────────────────────────────────────────
+    const filteredData = rewards.filter((r) =>
+        r.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        r.code?.toLowerCase().includes(searchText.toLowerCase())
+    )
 
+    // ── Columns ──────────────────────────────────────────────────────────────
     const columns = [
+        {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => (
+                <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
+            ),
+        },
         {
             title: 'Huy hiệu',
             key: 'badge',
-            width: 300,
-            render: (_: unknown, r: Reward) => (
+            width: 280,
+            render: (_: any, r: Reward) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
-                        width: 48, height: 48, borderRadius: 14, padding: 3,
+                        width: 44, height: 44, borderRadius: 12, padding: 2,
                         background: 'linear-gradient(135deg, #1890ff, #0076e4)',
-                        flexShrink: 0, boxShadow: '0 2px 8px rgba(24,144,255,0.35)'
+                        flexShrink: 0, boxShadow: '0 2px 8px rgba(24,144,255,0.3)'
                     }}>
                         <div style={{
-                            width: '100%', height: '100%', borderRadius: 11,
+                            width: '100%', height: '100%', borderRadius: 10,
                             background: '#fff', overflow: 'hidden',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                             {r.iconUrl ? (
                                 <img
-                                    src={r.iconUrl}
-                                    alt={r.name}
+                                    src={r.iconUrl} alt={r.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => {
-                                        const target = e.target as HTMLImageElement
-                                        target.style.display = 'none'
-                                        const parent = target.parentElement
-                                        if (parent) { parent.style.background = 'linear-gradient(135deg,#1890ff,#0076e4)'; parent.innerHTML = '<span style="font-size:22px">🏆</span>' }
+                                        (e.target as HTMLImageElement).style.display = 'none'
                                     }}
                                 />
                             ) : (
-                                <TrophyOutlined style={{ color: '#1890ff', fontSize: 24 }} />
+                                <TrophyOutlined style={{ color: '#1890ff', fontSize: 20 }} />
                             )}
                         </div>
                     </div>
@@ -530,114 +217,89 @@ const RewardManagementPage = () => {
             ),
         },
         {
-            title: 'Danh mục',
-            dataIndex: 'category',
-            width: 150,
-            render: (v: string) => (
-                <Tag color={CATEGORY_COLORS[v] || 'default'}>
-                    {CATEGORY_LABELS[v] || v || '—'}
-                </Tag>
+            title: 'Mô tả',
+            dataIndex: 'description',
+            key: 'description',
+            width: 200,
+            ellipsis: true,
+            render: (text: string) => (
+                <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
             ),
         },
         {
-            title: 'Tiêu chí mở khóa',
-            dataIndex: 'criteriaJson',
+            title: 'Quiz liên kết',
+            key: 'linkedQuiz',
             width: 200,
-            render: (v: string) => {
-                const parsed = parseCriteriaJson(v)
-                const { icon, label, detail, fullText } = formatCriteria(parsed)
+            render: (_: any, r: Reward) => {
+                if (!r.linkedQuizName) {
+                    return <Text type="secondary" style={{ fontSize: 13 }}>Chưa gắn quiz</Text>
+                }
                 return (
-                    <Tooltip
-                        title={
-                            <div>
-                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{icon} {label}</div>
-                                <div style={{ fontSize: 12, opacity: 0.85 }}>{fullText}</div>
-                                <div style={{ fontSize: 10, marginTop: 6, opacity: 0.5, fontFamily: 'monospace' }}>
-                                    {v}
-                                </div>
+                    <div>
+                        <div style={{ fontWeight: 500, color: '#1e293b', fontSize: 13 }}>{r.linkedQuizName}</div>
+                        {r.linkedLevelName && (
+                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                                Level: {r.linkedLevelName}
                             </div>
-                        }
-                        color="#1e1b4b"
-                    >
-                        <div style={{ cursor: 'help' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                <span style={{ fontSize: 14 }}>{icon}</span>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#312e81' }}>{label}</span>
-                            </div>
-                            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1, paddingLeft: 19 }}>{detail}</div>
-                        </div>
-                    </Tooltip>
+                        )}
+                    </div>
                 )
             },
         },
         {
-            title: 'Hiển thị',
+            title: 'Trạng thái',
             dataIndex: 'isActive',
+            key: 'isActive',
             width: 130,
-            render: (v: boolean, r: Reward) => (
-                <Tooltip
-                    title={v
-                        ? 'Huy hiệu đang hiển thị với người chơi. Click để ẩn đi.'
-                        : 'Huy hiệu đang bị ẩn, người chơi không thấy. Click để hiển thị.'
+            render: (isActive: boolean, r: Reward) => (
+                <Popconfirm
+                    title={isActive ? 'Ẩn huy hiệu này?' : 'Hiện huy hiệu này?'}
+                    description={isActive
+                        ? 'Người chơi sẽ không thấy huy hiệu này nữa.'
+                        : 'Người chơi sẽ thấy và có thể mở khóa huy hiệu này.'
                     }
+                    onConfirm={() => handleToggle(r)}
+                    okText={isActive ? 'Ẩn đi' : 'Hiện lên'}
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: isActive }}
                 >
-                    <Popconfirm
-                        title={v ? 'Ẩn huy hiệu này?' : 'Hiện huy hiệu này?'}
-                        description={v
-                            ? 'Người chơi sẽ không thấy huy hiệu này nữa.'
-                            : 'Người chơi sẽ thấy và có thể mở khóa huy hiệu này.'
-                        }
-                        onConfirm={() => handleToggle(r)}
-                        okText={v ? 'Ẩn đi' : 'Hiện lên'}
-                        cancelText="Hủy"
-                        okButtonProps={{ danger: v }}
+                    <Tag
+                        icon={isActive ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                        color={isActive ? 'success' : 'default'}
+                        style={{ cursor: 'pointer' }}
                     >
-                        <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
-                            border: `1.5px solid ${v ? '#86efac' : '#d1d5db'}`,
-                            background: v ? '#f0fdf4' : '#f9fafb',
-                            transition: 'all 0.2s',
-                            userSelect: 'none',
-                        }}>
-                            <div style={{
-                                width: 8, height: 8, borderRadius: '50%',
-                                background: v ? '#22c55e' : '#9ca3af',
-                                boxShadow: v ? '0 0 6px rgba(34,197,94,0.6)' : 'none',
-                            }} />
-                            <span style={{
-                                fontSize: 12, fontWeight: 600,
-                                color: v ? '#16a34a' : '#6b7280'
-                            }}>
-                                {v ? 'Hiển thị' : 'Đang ẩn'}
-                            </span>
-                        </div>
-                    </Popconfirm>
-                </Tooltip>
+                        {isActive ? 'Hiển thị' : 'Đang ẩn'}
+                    </Tag>
+                </Popconfirm>
             ),
+        },
+        {
+            title: 'Ngày tạo',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            width: 120,
+            render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A',
         },
         {
             title: 'Hành động',
             key: 'actions',
             width: 120,
-            render: (_: unknown, r: Reward) => (
-                <Space size={4}>
-                    <Tooltip title="Xem chi tiết">
-                        <Button type="text" size="small" icon={<EyeOutlined />}
-                            onClick={() => setDetailDrawer(r)} />
-                    </Tooltip>
+            align: 'center' as const,
+            render: (_: any, r: Reward) => (
+                <Space size="middle">
                     <Tooltip title="Chỉnh sửa">
-                        <Button type="text" size="small" icon={<EditOutlined />}
+                        <Button type="text" icon={<EditOutlined style={{ color: '#f59e0b', fontSize: 17 }} />}
                             onClick={() => openEdit(r)} />
                     </Tooltip>
-                    <Tooltip title="Xóa vĩnh viễn">
+                    <Tooltip title="Xóa">
                         <Popconfirm
-                            title="Xóa hùy hiệu này?"
+                            title="Xóa huy hiệu này?"
                             description="Hành động này không thể hoàn tác."
                             onConfirm={() => handleDelete(r.id)}
-                            okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}
+                            okText="Xóa" cancelText="Hủy"
+                            okButtonProps={{ danger: true }}
                         >
-                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                            <Button type="text" danger icon={<DeleteOutlined style={{ fontSize: 17 }} />} />
                         </Popconfirm>
                     </Tooltip>
                 </Space>
@@ -645,100 +307,47 @@ const RewardManagementPage = () => {
         },
     ]
 
-    const stats = {
-        total: rewards.length,
-        active: rewards.filter((r: Reward) => r.isActive).length,
-        categories: [...new Set(rewards.map((r: Reward) => r.category))].length,
-    }
-
+    // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div style={{ padding: '24px' }}>
-            {/* ── Header - đồng bộ với ChallengeBankPage ─────────────────────────────── */}
+            {/* Header */}
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                        background: '#e6f7ff',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <TrophyOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <TrophyOutlined style={{ fontSize: 24, color: '#1890ff' }} />
                     </div>
                     <div>
-                        <div style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1e293b' }}>Quản lý huy hiệu</div>
-                        <div style={{ color: '#8c8c8c', fontSize: 14 }}>Quản lý và cấu hình hệ thống huy hiệu</div>
+                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Quản lý huy hiệu</Title>
+                        <Text type="secondary">Quản lý và cấu hình hệ thống huy hiệu thành tựu</Text>
                     </div>
                 </div>
-
-                {/* Right: Stats + Add button */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    {/* Stat chips */}
-                    {[
-                        { label: 'Tổng', val: stats.total, bg: '#e6f7ff', color: '#1890ff', dot: '#1890ff' },
-                        { label: 'Đang hiện', val: stats.active, bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
-                        { label: 'Danh mục', val: stats.categories, bg: '#faf5ff', color: '#7c3aed', dot: '#a855f7' },
-                        { label: 'Kết quả lọc', val: filtered.length, bg: '#fff7ed', color: '#c2410c', dot: '#f97316' },
-                    ].map(s => (
-                        <div key={s.label} style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            background: s.bg, borderRadius: 20, padding: '6px 14px',
-                            border: `1px solid ${s.dot}30`
-                        }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot }} />
-                            <span style={{ fontSize: 13, color: s.color, fontWeight: 700 }}>{s.val}</span>
-                            <span style={{ fontSize: 12, color: '#8c8c8c' }}>{s.label}</span>
-                        </div>
-                    ))}
-
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={openCreate}
-                        size="large"
-                        id="btn-create-reward"
-                        style={{
-                            borderRadius: 10,
-                            height: 44,
-                            fontWeight: 600,
-                            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
-                            border: 'none',
-                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
-                            color: 'white',
-                            paddingInline: 20,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8
-                        }}
-                    >
-                        Thêm huy hiệu
-                    </Button>
-                </div>
+                <Button
+                    icon={<PlusOutlined />}
+                    onClick={openCreate}
+                    style={{
+                        borderRadius: 10, height: 44, fontWeight: 600,
+                        boxShadow: '0 4px 12px rgba(24,144,255,0.35)',
+                        border: 'none',
+                        background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                        color: 'white', paddingInline: 20,
+                    }}
+                >
+                    Thêm huy hiệu
+                </Button>
             </div>
 
-            {/* ── Filter Bar - đồng bộ với ChallengeBankPage ─────────────────────── */}
-            <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <Select
-                    value={categoryFilter}
-                    onChange={(v) => setCategoryFilter(v)}
-                    style={{ minWidth: 200, height: 42 }}
-                    options={[
-                        { value: 'ALL', label: '🏆 Tất cả danh mục' },
-                        ...CATEGORIES.map(c => ({ value: c, label: CATEGORY_LABELS[c] }))
-                    ]}
-                />
-
+            {/* Filter */}
+            <div style={{ marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <Input
-                    placeholder="Tìm theo tên hoặc code..."
+                    placeholder="Tìm kiếm theo tên hoặc code..."
                     prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                    size="large"
+                    style={{ width: 360, borderRadius: 10, height: 42 }}
                     value={searchText}
-                    onChange={e => setSearchText(e.target.value)}
-                    style={{ width: 280, borderRadius: 10, height: 42 }}
+                    onChange={(e) => setSearchText(e.target.value)}
                     allowClear
                 />
-
-                <Tooltip title="Tải lại dữ liệu">
+                <Tooltip title="Tải lại">
                     <Button
                         icon={<ReloadOutlined />}
                         onClick={fetchRewards}
@@ -749,192 +358,115 @@ const RewardManagementPage = () => {
             </div>
 
             {/* Table */}
-            <Card
-                style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
-                styles={{ body: { padding: 0 } }}
-            >
+            <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
                 <Table
-                    rowKey="id"
-                    dataSource={filtered}
                     columns={columns}
-                    loading={loading}
-                    pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Tổng ${total} huy hiệu`, style: { padding: '16px 24px' } }}
-                    size="large"
+                    dataSource={filteredData}
+                    rowKey="id"
                     scroll={{ x: 'max-content', y: 400 }}
+                    pagination={{
+                        pageSize: 10,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['5', '10', '20', '50'],
+                        showTotal: (total) => `Tổng ${total} huy hiệu`,
+                        style: { padding: '16px 24px' },
+                    }}
+                    loading={loading}
+                    locale={{ emptyText: 'Chưa có dữ liệu' }}
+                    size="large"
                 />
             </Card>
 
             {/* Create / Edit Modal */}
             <Modal
-                open={modalOpen}
-                onCancel={() => setModalOpen(false)}
-                onOk={handleSubmit}
-                confirmLoading={uploading}
                 title={
-                    <div className="flex items-center gap-2 text-lg font-semibold">
-                        <TrophyOutlined className="text-yellow-500" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 600 }}>
+                        <TrophyOutlined style={{ color: '#faad14' }} />
                         {editing ? 'Chỉnh sửa huy hiệu' : 'Tạo huy hiệu mới'}
                     </div>
                 }
-                okText={editing ? 'Lưu thay đổi' : 'Tạo'}
-                cancelText="Hủy"
-                okButtonProps={{ style: { borderRadius: 8, fontWeight: 600, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 40, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' } }}
-                cancelButtonProps={{ style: { borderRadius: 8 } }}
-                width={640}
+                open={modalOpen}
+                onCancel={() => setModalOpen(false)}
+                footer={null}
+                width={560}
                 destroyOnClose
             >
-                <Form form={form} layout="vertical" className="pt-4">
+                <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="code" label="Mã Code (unique)" rules={[{ required: true, message: 'Nhập mã code' }]}>
-                                <Input placeholder="VD: LEARN_FIRST_LEVEL" className="font-mono" />
+                            <Form.Item
+                                name="code"
+                                label="Mã Code (unique)"
+                                rules={[{ required: true, message: 'Nhập mã code' }]}
+                            >
+                                <Input placeholder="VD: LEARN_FIRST_LEVEL" style={{ fontFamily: 'monospace' }} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="category" label="Danh mục" rules={[{ required: true, message: 'Chọn danh mục' }]}>
-                                <Select
-                                    placeholder="Chọn danh mục"
-                                    onChange={(v: string) => {
-                                        setSelectedCategory(v)
-                                        // Reset tiêu chí khi đổi danh mục
-                                        setCriteriaType(null)
-                                        form.resetFields(['criteriaType', 'threshold', 'region', 'level', 'pair', 'game', 'max_rank', 'from', 'to'])
-                                    }}
-                                >
-                                    {CATEGORIES.map(c => (
-                                        <Option key={c} value={c}>
-                                            <span>{CATEGORY_LABELS[c]}</span>
-                                            <span style={{ marginLeft: 8, fontSize: 11, color: '#9ca3af' }}>
-                                                ({(CATEGORY_CRITERIA_MAP[c] || []).length} tiêu chí)
-                                            </span>
-                                        </Option>
-                                    ))}
-                                </Select>
+                            <Form.Item
+                                name="name"
+                                label="Tên hiển thị"
+                                rules={[{ required: true, message: 'Nhập tên huy hiệu' }]}
+                            >
+                                <Input placeholder="VD: Bước Chân Đầu Tiên" />
                             </Form.Item>
                         </Col>
                     </Row>
-
-                    <Form.Item name="name" label="Tên hiển thị" rules={[{ required: true, message: 'Nhập tên huy hiệu' }]}>
-                        <Input placeholder="VD: Bước Chân Đầu Tiên 👣" />
-                    </Form.Item>
 
                     <Form.Item name="description" label="Mô tả">
                         <TextArea rows={2} placeholder="Mô tả ngắn hiển thị cho người chơi..." />
                     </Form.Item>
 
-                    <Form.Item label="Hình ảnh huy hiệu" required>
+                    <Form.Item label="Icon huy hiệu">
                         <Upload
                             listType="picture-card"
                             fileList={fileList}
-                            onChange={({ fileList }) => setFileList(fileList)}
-                            beforeUpload={() => false} // Don't upload automatically
+                            beforeUpload={() => false}
+                            onChange={({ fileList: newList }) => setFileList(newList.slice(-1))}
+                            onRemove={() => { setFileList([]); form.setFieldsValue({ iconUrl: '' }) }}
+                            accept="image/*"
                             maxCount={1}
                         >
-                            {fileList.length < 1 && (
+                            {fileList.length === 0 && (
                                 <div>
                                     <PlusOutlined />
-                                    <div style={{ marginTop: 8 }}>Tải ảnh</div>
+                                    <div style={{ marginTop: 8, fontSize: 12 }}>Upload</div>
                                 </div>
                             )}
                         </Upload>
-                        <Text type="secondary" className="text-xs">
-                            Khuyên dùng ảnh PNG trong suốt, kích thước 256x256px.
-                        </Text>
-                    </Form.Item>
-
-                    <Form.Item name="iconUrl" hidden>
-                        <Input />
-                    </Form.Item>
-
-                    <Divider className="text-sm font-medium text-purple-600">
-                        🔓 Điều kiện Unlock
-                    </Divider>
-
-                    {!selectedCategory ? (
-                        <div className="text-center py-3 px-4 bg-gray-50 rounded-lg text-gray-400 text-sm mb-4">
-                            ← Hãy chọn <strong>Danh mục</strong> trước để xem các tiêu chí phù hợp
-                        </div>
-                    ) : (
-                        <Form.Item
-                            name="criteriaType"
-                            label={
-                                <span>
-                                    Kiểu tiêu chí
-                                    <span style={{ marginLeft: 8, fontSize: 11, color: '#6b7280' }}>
-                                        (theo danh mục <strong>{CATEGORY_LABELS[selectedCategory]}</strong>)
-                                    </span>
-                                </span>
-                            }
-                            rules={[{ required: true, message: 'Chọn kiểu tiêu chí' }]}
-                        >
-                            <Select
-                                showSearch
-                                placeholder={`Chọn tiêu chí cho ${CATEGORY_LABELS[selectedCategory]}...`}
-                                onChange={(v: string) => {
-                                    setCriteriaType(v)
-                                    form.resetFields(['threshold', 'region', 'level', 'pair', 'game', 'max_rank', 'from', 'to'])
-                                }}
-                                optionFilterProp="label"
-                                options={(
-                                    CATEGORY_CRITERIA_MAP[selectedCategory] || []
-                                ).map(criteriaKey => {
-                                    const found = CRITERIA_TYPES.find(c => c.value === criteriaKey)
-                                    return found ? { value: found.value, label: found.label } : null
-                                }).filter(Boolean) as { value: string; label: string }[]}
-                            />
+                        <Form.Item name="iconUrl" noStyle>
+                            <Input type="hidden" />
                         </Form.Item>
-                    )}
-
-                    <CriteriaFields criteriaType={criteriaType} />
-
-                    <Form.Item name="isActive" label="Trạng thái" valuePropName="checked" initialValue={true} className="mt-4">
-                        <Switch checkedChildren="Hiện với người chơi" unCheckedChildren="Ẩn" />
                     </Form.Item>
+
+                    <Form.Item name="isActive" label="Hiển thị với người chơi" valuePropName="checked">
+                        <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" />
+                    </Form.Item>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24 }}>
+                        <Button
+                            onClick={() => setModalOpen(false)}
+                            style={{ borderRadius: 8, height: 40, fontWeight: 500 }}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            loading={submitting}
+                            style={{
+                                borderRadius: 8, height: 40, fontWeight: 600,
+                                border: 'none',
+                                background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                color: 'white',
+                                boxShadow: '0 4px 12px rgba(24,144,255,0.25)',
+                                paddingInline: 24,
+                            }}
+                        >
+                            {editing ? 'Lưu thay đổi' : 'Tạo huy hiệu'}
+                        </Button>
+                    </div>
                 </Form>
             </Modal>
-
-            {/* Detail Drawer */}
-            <Drawer
-                open={!!detailDrawer}
-                onClose={() => setDetailDrawer(null)}
-                title={<span className="font-bold">{detailDrawer?.name}</span>}
-                width={420}
-            >
-                {detailDrawer && (
-                    <div className="space-y-4">
-                        <div className="flex justify-center py-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl">
-                            <div style={{ width: 80, height: 80, borderRadius: 20, padding: 4, background: 'linear-gradient(135deg,#f59e0b,#f97316)', boxShadow: '0 4px 16px rgba(245,158,11,0.4)' }}>
-                                <div style={{ width: '100%', height: '100%', borderRadius: 16, background: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {detailDrawer?.iconUrl
-                                        ? <img src={detailDrawer.iconUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        : <TrophyOutlined style={{ color: '#f97316', fontSize: 36 }} />
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <Tag color={CATEGORY_COLORS[detailDrawer?.category || ''] || 'default'}>
-                                {CATEGORY_LABELS[detailDrawer?.category || ''] || detailDrawer?.category || '—'}
-                            </Tag>
-                        </div>
-                        {([
-                            ['Code', <code key="code" className="font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{detailDrawer?.code}</code>],
-                            ['Mô tả', detailDrawer?.description || '—'],
-                            ['Trạng thái', detailDrawer?.isActive ? <Tag key="tag-active" color="green">Đang hiện</Tag> : <Tag key="tag-hidden">Đã ẩn</Tag>],
-                        ] as [string, React.ReactNode][]).map(([label, val]) => (
-                            <div key={label}>
-                                <Text type="secondary" className="text-xs uppercase tracking-wider">{label}</Text>
-                                <div className="mt-1 font-medium">{val}</div>
-                            </div>
-                        ))}
-                        <Divider />
-                        <Text type="secondary" className="text-xs uppercase tracking-wider">Tiêu chí Unlock (JSON)</Text>
-                        <pre className="mt-2 bg-gray-900 text-green-400 p-4 rounded-xl text-xs overflow-auto max-h-48">
-                            {JSON.stringify(parseCriteriaJson(detailDrawer?.criteriaJson || ''), null, 2)}
-                        </pre>
-                    </div>
-                )}
-            </Drawer>
         </div>
     )
 }
