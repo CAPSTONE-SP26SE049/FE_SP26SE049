@@ -6,8 +6,8 @@ import {
     SettingOutlined,
     LogoutOutlined,
     BellOutlined,
-    TrophyOutlined,
     BookOutlined,
+    TrophyOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -46,9 +46,9 @@ const AdminLayout = () => {
             label: <Link to="/admin/challenges">Quản lý câu hỏi</Link>,
         },
         {
-            key: '/admin/rewards',
+            key: '/admin/achievements',
             icon: <TrophyOutlined />,
-            label: <Link to="/admin/rewards">Huy hiệu & Thành tích</Link>,
+            label: <Link to="/admin/achievements">Quản lý thành tựu</Link>,
         },
         {
             type: 'divider',

@@ -50,7 +50,7 @@ export interface Quiz {
     title?: string;        // QuizResponse.title (ContentItem system)
     name?: string;         // legacy fallback
     description?: string;
-    timeLimitMinutes?: number;
+    timeLimitSeconds?: number;
     passingScore?: number;
     pointsPerQuestion?: number;
     difficulty?: string;
@@ -58,7 +58,12 @@ export interface Quiz {
     questionCount?: number;
     questions?: QuizQuestion[];
     status?: string;
+    isCompleted?: boolean;
+    rewardEarned?: boolean;
+    starsEarned?: number;
+    passed?: boolean;
 }
+
 
 export const learnerService = {
     /**
@@ -87,13 +92,23 @@ export const learnerService = {
     },
 
     /**
-     * GET /api/v1/users/levels/{levelId}/quizzes
-     * Lấy danh sách Quiz của một Chapter (Level) — có lock/unlock
+     * GET /api/v1/users/levels/{levelId}/progress
+     * Lấy danh sách Quiz của một Chapter (Level) kèm tiến trình người chơi
      */
     getQuizzesByLevel: async (levelId: string): Promise<Quiz[]> => {
-        const res: any = await apiClient.get(`/users/levels/${levelId}/quizzes`);
-        return res?.data ?? [];
+        const res: any = await apiClient.get(`/users/levels/${levelId}/progress`);
+        // Extract from LevelProgressResponse.quizzes
+        const list: any[] = res?.data?.quizzes || res?.quizzes || [];
+        return list.map(q => ({
+            id: q.quizId,
+            name: q.quizName,
+            isCompleted: q.completed,
+            starsEarned: q.starsEarned,
+            passingScore: q.passingScore,
+            rewardEarned: q.rewardEarned,
+        }));
     },
+
 
     /**
      * @deprecated Still here for backward compat; use getQuizzesByLevel instead

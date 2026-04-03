@@ -273,7 +273,8 @@ const QuizManagementPage: React.FC = () => {
             description: quiz.description,
             instructions: quiz.instructions,
             passingScore: quiz.passingScore || 80,
-            timeLimitMinutes: quiz.timeLimitMinutes || 15,
+            questionCount: quiz.questionCount || 10,
+            secondsPerQuestion: Math.round((quiz.timeLimitSeconds || 900) / (quiz.questionCount || 10)),
             pointsPerQuestion: quiz.pointsPerQuestion || 10,
             readingCount,
             listeningCount,
@@ -335,10 +336,10 @@ const QuizManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
+                passingScore: quiz.passingScore || 80,
+                timeLimitSeconds: (quiz.questionCount || 10) * (values.secondsPerQuestion || 90),
                 skillType: values.skillType,
-                questionCount: finalQuestions.length,
+                questionCount: quiz.questionCount || 10,
                 comment: values.comment || 'Cập nhật quiz',
                 questions: finalQuestions
             };
@@ -363,10 +364,10 @@ const QuizManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore || 80,
-                timeLimitMinutes: values.timeLimitMinutes || 15,
+                passingScore: 80,
+                timeLimitSeconds: 10 * (values.secondsPerQuestion || 90),
                 skillType: values.skillType || 'MIXED',
-                questionCount: 0,
+                questionCount: 10,
                 comment: 'Tạo quiz mới',
                 questions: []
             };
@@ -651,8 +652,8 @@ const QuizManagementPage: React.FC = () => {
 
     // --- Import/Export/Template Handlers ---
     const handleDownloadQuizTemplate = () => {
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng';
-        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,5,READING';
+        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng';
+        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,300,READING';
         const blob = new Blob([`\uFEFF${header}\n${sample}`], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -686,7 +687,7 @@ const QuizManagementPage: React.FC = () => {
                 const description = cols[1]?.trim() || '';
                 const instructions = cols[2]?.trim() || '';
                 const passingScore = parseInt(cols[3]?.trim() || '70');
-                const timeLimitMinutes = parseInt(cols[4]?.trim() || '10');
+                const timeLimitSeconds = parseInt(cols[4]?.trim() || '600');
                 const skillType = cols[5]?.trim() || 'MIXED';
 
                 if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên quiz`); continue; }
@@ -702,7 +703,7 @@ const QuizManagementPage: React.FC = () => {
                         description,
                         instructions,
                         passingScore: isNaN(passingScore) ? 70 : passingScore,
-                        timeLimitMinutes: isNaN(timeLimitMinutes) ? 10 : timeLimitMinutes,
+                        timeLimitSeconds: isNaN(timeLimitSeconds) ? 600 : timeLimitSeconds,
                         skillType,
                         questionCount: 0,
                         comment: `Import từ CSV - ${skillType}`,
@@ -731,12 +732,12 @@ const QuizManagementPage: React.FC = () => {
 
     const handleExportQuizCSV = () => {
         if (quizzes.length === 0) { message.warning('Không có quiz để export'); return; }
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng,Số câu hỏi';
+        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng,Số câu hỏi';
         const rows = quizzes.map(q => {
             const name = (q.name || q.title || '').replace(/,/g, ';');
             const desc = (q.description || '').replace(/,/g, ';');
             const inst = (q.instructions || '').replace(/,/g, ';');
-            return `${name},${desc},${inst},${q.passingScore || ''},${q.timeLimitMinutes || ''},${q.skillType || 'MIXED'},${q.questions?.length ?? q.questionCount ?? 0}`;
+            return `${name},${desc},${inst},${q.passingScore || ''},${q.timeLimitSeconds || ''},${q.skillType || 'MIXED'},${q.questions?.length ?? q.questionCount ?? 0}`;
         });
 
         const csv = [header, ...rows].join('\n');
@@ -1498,8 +1499,8 @@ const QuizManagementPage: React.FC = () => {
                             <Col xs={12} sm={6}>
                                 <Statistic
                                     title={<span style={{ fontSize: 12, color: '#64748b' }}>Thời gian</span>}
-                                    value={quiz.timeLimitMinutes ?? '—'}
-                                    suffix={quiz.timeLimitMinutes ? ' phút' : ''}
+                                    value={quiz.timeLimitSeconds ?? '—'}
+                                    suffix={quiz.timeLimitSeconds ? ' giây' : ''}
                                     prefix={<ClockCircleOutlined style={{ color: '#0891b2' }} />}
                                     valueStyle={{ fontSize: 22, fontWeight: 700, color: '#0891b2' }}
                                 />
@@ -2212,11 +2213,8 @@ const QuizManagementPage: React.FC = () => {
                     </Row>
 
                     <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item label="Điểm đạt (%)" name="passingScore" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Thời gian (phút)" name="timeLimitMinutes" style={{ marginBottom: 0 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                            <Form.Item label="Thời gian mỗi câu (giây)" name="secondsPerQuestion" style={{ marginBottom: 0 }}>
                                 <InputNumber style={{ width: '100%' }} />
                             </Form.Item>
                             <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
@@ -2281,7 +2279,8 @@ const QuizManagementPage: React.FC = () => {
                     onFinish={handleCreateQuiz}
                     initialValues={{
                         passingScore: 80,
-                        timeLimitMinutes: 15,
+                        questionCount: 10,
+                        secondsPerQuestion: 90,
                     }}
                     style={{ marginTop: 20 }}
                 >
@@ -2295,13 +2294,7 @@ const QuizManagementPage: React.FC = () => {
                         <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                        <Form.Item name="passingScore" label={<Text strong>Điểm cần đạt (%)</Text>} rules={[{ required: true, message: 'Nhập điểm cần đạt' }]}>
-                            <InputNumber min={1} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item name="timeLimitMinutes" label={<Text strong>Thời gian (phút)</Text>} rules={[{ required: true, message: 'Nhập thời gian làm bài' }]}>
-                            <InputNumber min={1} max={300} style={{ width: '100%' }} />
-                        </Form.Item>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="skillType" label={<Text strong>Loại kỹ năng</Text>} rules={[{ required: true, message: 'Chọn loại kỹ năng' }]}>
                             <Select placeholder="Chọn loại" options={[
                                 { value: 'READING', label: '📖 Reading' },
@@ -2310,6 +2303,9 @@ const QuizManagementPage: React.FC = () => {
                                 { value: 'WRITING', label: '✍️ Writing' },
                                 { value: 'MIXED', label: '🎯 Tổng hợp' },
                             ]} />
+                        </Form.Item>
+                        <Form.Item name="secondsPerQuestion" label={<Text strong>Số giây mỗi câu hỏi</Text>} initialValue={90} rules={[{ required: true, message: 'Nhập số giây mỗi câu' }]}>
+                            <InputNumber min={1} max={18000} style={{ width: '100%' }} />
                         </Form.Item>
                     </div>
                 </Form>
@@ -2333,7 +2329,7 @@ const QuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
                         <Text style={{ color: '#0369a1', fontSize: 13 }}>
                             <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
-                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (phút), Độ khó
+                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây), Độ khó
                         </Text>
                     </div>
                     <input

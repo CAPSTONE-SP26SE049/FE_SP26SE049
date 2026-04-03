@@ -17,17 +17,17 @@ import { learnerService, type Level, type Dialect, type Quiz } from '../services
 const DIALECT_ORDER = ['NORTH', 'CENTRAL', 'SOUTH']
 
 const DIALECT_META: Record<string, { viName: string; abbr: string; color: string; darkColor: string }> = {
-  NORTH:   { viName: 'Miền Bắc',   abbr: 'Bắc',   color: '#2563eb', darkColor: '#1d4ed8' },
-  CENTRAL: { viName: 'Miền Trung', abbr: 'Trung',  color: '#d97706', darkColor: '#b45309' },
-  SOUTH:   { viName: 'Miền Nam',   abbr: 'Nam',    color: '#059669', darkColor: '#047857' },
+  NORTH: { viName: 'Miền Bắc', abbr: 'Bắc', color: '#2563eb', darkColor: '#1d4ed8' },
+  CENTRAL: { viName: 'Miền Trung', abbr: 'Trung', color: '#d97706', darkColor: '#b45309' },
+  SOUTH: { viName: 'Miền Nam', abbr: 'Nam', color: '#059669', darkColor: '#047857' },
 }
 
 const getDialectMeta = (dialect: Dialect) => {
   const key = dialect.name?.toUpperCase()
   if (DIALECT_META[key]) return { key, ...DIALECT_META[key] }
-  if (dialect.description?.includes('Bắc'))  return { key: 'NORTH',   ...DIALECT_META['NORTH'] }
+  if (dialect.description?.includes('Bắc')) return { key: 'NORTH', ...DIALECT_META['NORTH'] }
   if (dialect.description?.includes('Trung')) return { key: 'CENTRAL', ...DIALECT_META['CENTRAL'] }
-  if (dialect.description?.includes('Nam'))  return { key: 'SOUTH',   ...DIALECT_META['SOUTH'] }
+  if (dialect.description?.includes('Nam')) return { key: 'SOUTH', ...DIALECT_META['SOUTH'] }
   return { key, viName: dialect.description || dialect.name, abbr: '?', color: '#6366f1', darkColor: '#4f46e5' }
 }
 
@@ -178,17 +178,17 @@ const RoadmapNode = ({ node, index, onClick }: { node: any; index: number; onCli
   const getStyles = () => {
     switch (node.type) {
       case 'completed': return 'bg-brand-yellow shadow-yellow-200/50 border-b-yellow-600'
-      case 'active':    return 'bg-brand-green shadow-green-200/50 border-b-green-700 ring-4 ring-green-100'
+      case 'active': return 'bg-brand-green shadow-green-200/50 border-b-green-700 ring-4 ring-green-100'
       case 'locked':
-      default:          return 'bg-gray-200 shadow-gray-100 border-b-gray-300 text-gray-400'
+      default: return 'bg-gray-200 shadow-gray-100 border-b-gray-300 text-gray-400'
     }
   }
 
   const getIcon = () => {
     switch (node.type) {
       case 'completed': return <CheckCircleFilled className="text-3xl text-white" />
-      case 'active':    return <PlayCircleFilled className="text-3xl text-white" />
-      case 'locked':    return <LockFilled className="text-2xl text-gray-400" />
+      case 'active': return <PlayCircleFilled className="text-3xl text-white" />
+      case 'locked': return <LockFilled className="text-2xl text-gray-400" />
     }
   }
 
@@ -261,23 +261,45 @@ const QuizRoadmapStep = ({
 }) => {
   const navigate = useNavigate()
 
-  const roadmapNodes = useMemo(() => quizzes.map((quiz, index) => ({
-    id: quiz.id,
-    title: quiz.title ?? quiz.name ?? `Bài ${index + 1}`,
-    // First quiz always active; rest locked unless has passingScore history (stub)
-    type: index === 0 ? 'active' : 'locked',
-    stars: 0,
-    quiz,
-    position: {
-      x: index % 4 === 0 ? 50 : index % 4 === 1 ? 25 : index % 4 === 2 ? 50 : 75,
-      y: index,
-    },
-  })), [quizzes])
+  const roadmapNodes = useMemo(() => {
+    return quizzes.map((quiz, index) => {
+      let type: 'completed' | 'active' | 'locked' = 'locked'
+      const stars = quiz.starsEarned ?? 0
+
+      if (quiz.isCompleted) {
+        type = 'completed'
+      } else {
+        // Unlock logic
+        if (index === 0) {
+          type = 'active'
+        } else {
+          const prev = quizzes[index - 1]
+          // Next quiz unlocks ONLY if previous was passed with >= 2 stars
+          if (prev.isCompleted && (prev.starsEarned ?? 0) >= 2) {
+            type = 'active'
+          }
+        }
+      }
+
+      return {
+        id: quiz.id,
+        title: quiz.title ?? quiz.name ?? `Bài ${index + 1}`,
+        type,
+        stars,
+        quiz,
+        position: {
+          x: index % 4 === 0 ? 50 : index % 4 === 1 ? 25 : index % 4 === 2 ? 50 : 75,
+          y: index,
+        },
+      }
+    })
+  }, [quizzes])
+
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[400px]">
-        <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải bài kiểm tra...</div></Spin>
+        <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải bài kiểm tra...</div></Spin>
       </div>
     )
   }
@@ -291,44 +313,74 @@ const QuizRoadmapStep = ({
   }
 
   return (
-    <div className="w-full relative pb-32 pt-4 flex justify-center">
-      <div
-        className="relative w-full max-w-md"
-        style={{ height: `${Math.max(600, roadmapNodes.length * 180 + 100)}px` }}
-      >
-        {/* SVG Connector Path */}
-        <svg
-          className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
-          viewBox={`0 0 100 ${Math.max(600, roadmapNodes.length * 180 + 100)}`}
-          preserveAspectRatio="none"
+    <div className="w-full max-w-4xl mx-auto px-4">
+      {/* Scrollable Container Box */}
+      <div className="bg-white/40 backdrop-blur-sm border border-white/60 rounded-[3rem] shadow-2xl overflow-hidden relative group">
+        <div
+          className="w-full overflow-y-auto custom-scrollbar relative px-4"
+          style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}
         >
-          {roadmapNodes.map((node, i) => {
-            if (i === 0) return null
-            const prev = roadmapNodes[i - 1]
-            return (
-              <path
-                key={`path-${i}`}
-                d={`M ${prev.position.x} ${prev.position.y * 180 + 80} C ${prev.position.x} ${prev.position.y * 180 + 150}, ${node.position.x} ${node.position.y * 180 + 10}, ${node.position.x} ${node.position.y * 180 + 80}`}
-                fill="none"
-                stroke={prev.type === 'completed' ? '#a7f3d0' : '#e5e7eb'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-              />
-            )
-          })}
-        </svg>
+          <div className="w-full flex justify-center py-20">
+            <div
+              className="relative w-full max-w-md"
+              style={{ height: `${Math.max(600, roadmapNodes.length * 180 + 100)}px` }}
+            >
+              {/* SVG Connector Path */}
+              <svg
+                className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
+                viewBox={`0 0 100 ${Math.max(600, roadmapNodes.length * 180 + 100)}`}
+                preserveAspectRatio="none"
+              >
+                {roadmapNodes.map((node, i) => {
+                  if (i === 0) return null
+                  const prev = roadmapNodes[i - 1]
+                  return (
+                    <path
+                      key={`path-${i}`}
+                      d={`M ${prev.position.x} ${prev.position.y * 180 + 80} C ${prev.position.x} ${prev.position.y * 180 + 150}, ${node.position.x} ${node.position.y * 180 + 10}, ${node.position.x} ${node.position.y * 180 + 80}`}
+                      fill="none"
+                      stroke={prev.type === 'completed' ? '#a7f3d0' : '#f3f4f6'}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )
+                })}
+              </svg>
 
-        {/* Quiz Nodes */}
-        {roadmapNodes.map((node, i) => (
-          <RoadmapNode
-            key={node.id}
-            node={node}
-            index={i}
-            onClick={() => navigate(`/learner/quiz/${node.id}`)}
-          />
-        ))}
+              {/* Quiz Nodes */}
+              {roadmapNodes.map((node, i) => (
+                <RoadmapNode
+                  key={node.id}
+                  node={node}
+                  index={i}
+                  onClick={() => navigate(`/learner/quiz/${node.id}`)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Subtle scroll indicators */}
+        <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-white/30 to-transparent pointer-events-none z-20" />
+        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white/30 to-transparent pointer-events-none z-20" />
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
     </div>
   )
 }
@@ -451,7 +503,7 @@ const RoadmapPage: React.FC = () => {
             >
               {dialectsLoading ? (
                 <div className="flex justify-center items-center h-48">
-                  <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải vùng miền...</div></Spin>
+                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải vùng miền...</div></Spin>
                 </div>
               ) : (
                 <DialectStep dialects={dialects} onSelect={handleSelectDialect} />
@@ -471,7 +523,7 @@ const RoadmapPage: React.FC = () => {
             >
               {chaptersLoading ? (
                 <div className="flex justify-center items-center h-[400px]">
-                  <Spin size="large"><div style={{padding:32,textAlign:'center',color:'#888'}}>Đang tải danh sách chương...</div></Spin>
+                  <Spin size="large"><div style={{ padding: 32, textAlign: 'center', color: '#888' }}>Đang tải danh sách chương...</div></Spin>
                 </div>
               ) : chapters.length === 0 ? (
                 <div className="flex justify-center items-center h-40">

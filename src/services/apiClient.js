@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_API_URL || '/api/v1'
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 30000,
 })
 
 // REQUEST INTERCEPTOR

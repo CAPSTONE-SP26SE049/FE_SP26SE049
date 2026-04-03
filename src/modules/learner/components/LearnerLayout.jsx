@@ -13,6 +13,7 @@ import {
   MenuUnfoldOutlined,
   SettingOutlined,
   TeamOutlined,
+  SoundOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
 import { motion } from "framer-motion";
@@ -30,16 +31,6 @@ export default function LearnerLayout() {
   // Fallbacks if session is missing
   const user = session?.user || { fullName: "Learner", avatar: null };
 
-  useEffect(() => {
-    if (
-      session &&
-      session.user.role === "USER" &&
-      !session.user.region &&
-      location.pathname !== "/learner/entrytest"
-    ) {
-      navigate("/learner/entrytest", { replace: true });
-    }
-  }, [session, location.pathname, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -114,7 +105,32 @@ export default function LearnerLayout() {
         </Link>
       ),
     },
+    {
+      key: "/learner/pronunciation",
+      icon: <SoundOutlined style={{ fontSize: "18px" }} />,
+      label: (
+        <Link
+          to="/learner/pronunciation"
+          className="font-semibold text-base tracking-wide"
+        >
+          Mô Hình Phát Âm
+        </Link>
+      ),
+    },
+    {
+      key: "/learner/leaderboard",
+      icon: <TrophyOutlined style={{ fontSize: "18px" }} />,
+      label: (
+        <Link
+          to="/learner/leaderboard"
+          className="font-semibold text-base tracking-wide"
+        >
+          Bảng Xếp Hạng
+        </Link>
+      ),
+    },
   ];
+
 
   // Activate the menu item based on current path
   const selectedKey =

@@ -239,5 +239,22 @@ export const adminService = {
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/admin/content/${id}/history`);
+    },
+
+    // --- Badge/Reward Management ---
+    getBadgesForAdmin: async () => {
+        return apiClient.get('/admin/rewards');
+    },
+    createReward: async (data: any) => {
+        return apiClient.post('/admin/rewards', data);
+    },
+    updateReward: async (id: string, data: any) => {
+        return apiClient.put(`/admin/rewards/${id}`, data);
+    },
+    deleteReward: async (id: string) => {
+        return apiClient.delete(`/admin/rewards/${id}`);
+    },
+    attachRewardToQuiz: async (quizId: string, rewardId: string) => {
+        return apiClient.post(`/admin/rewards/${rewardId}/attach/${quizId}`);
     }
 };

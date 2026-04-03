@@ -105,7 +105,7 @@ export interface QuizCreateRequest {
     description?: string;
     instructions?: string;
     passingScore: number;
-    timeLimitMinutes?: number;
+    timeLimitSeconds?: number;
     questionCount?: number;
     comment?: string;
     skillType?: string;
@@ -141,7 +141,7 @@ export interface Quiz {
     description: string;
     instructions: string;
     passingScore: number;
-    timeLimitMinutes?: number;
+    timeLimitSeconds?: number;
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
     questions: QuizQuestion[];
     createdAt: string;

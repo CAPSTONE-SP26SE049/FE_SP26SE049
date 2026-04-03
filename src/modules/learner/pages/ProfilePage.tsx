@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, Avatar, Typography, Button, Switch, Progress, Select, Modal, Form, Input, Divider, message } from 'antd'
-import { UserOutlined, SettingOutlined, BellOutlined, TrophyOutlined, EditOutlined, PhoneOutlined, EnvironmentOutlined, CameraOutlined } from '@ant-design/icons'
+import { UserOutlined, SettingOutlined, BellOutlined, TrophyOutlined, EditOutlined, PhoneOutlined, EnvironmentOutlined, CameraOutlined, StarFilled } from '@ant-design/icons'
+
 import { Flame, Zap, Lock, Shield } from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { motion } from 'framer-motion'
@@ -53,11 +54,11 @@ export default function ProfilePage() {
                     apiClient.get('/users/me/progress').catch(() => ({ data: { data: { progressByRegion: {} } } }))
                 ]);
 
-                if (badgesRes.data?.data) {
-                    setBadges(badgesRes.data.data);
+                if (badgesRes?.data) {
+                    setBadges(Array.isArray(badgesRes.data) ? badgesRes.data : []);
                 }
-                if (progressRes.data?.data?.progressByRegion) {
-                    setProgress(progressRes.data.data.progressByRegion);
+                if (progressRes?.data?.progressByRegion) {
+                    setProgress(progressRes.data.progressByRegion);
                 }
             } catch (error) {
                 console.error("Failed to load profile data", error);
@@ -165,12 +166,19 @@ export default function ProfilePage() {
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tổng XP</div>
                         </div>
                         <div className="flex flex-col items-center md:items-start group">
+                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xl mb-1 group-hover:text-yellow-500 transition-colors">
+                                <StarFilled style={{ color: '#fadb14' }} /> {user?.totalStars || 0}
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tổng sao</div>
+                        </div>
+                        <div className="flex flex-col items-center md:items-start group">
                             <div className="flex items-center gap-2 text-gray-800 font-bold text-xl mb-1 group-hover:text-brand-blue transition-colors">
                                 <Shield className="text-brand-blue" /> Đồng
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Hạng đấu</div>
                         </div>
                     </div>
+
                 </div>
             </motion.div>
 

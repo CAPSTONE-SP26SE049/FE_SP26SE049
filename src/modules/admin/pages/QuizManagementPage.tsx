@@ -93,6 +93,7 @@ interface BatchQuestion {
     alternatives: string;
     // HELPERS
     hint: string;
+    words?: string;
 }
 
 const AdminQuizManagementPage: React.FC = () => {
@@ -229,6 +230,11 @@ const AdminQuizManagementPage: React.FC = () => {
     // --- Batch Manual Questions State (Kahoot style) ---
     const [isBatchQuestionsModalOpen, setIsBatchQuestionsModalOpen] = useState(false);
     const [submittingBatchQuestions, setSubmittingBatchQuestions] = useState(false);
+    // --- Achievement Assignment State ---
+    const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+    const [rewards, setRewards] = useState<any[]>([]);
+    const [loadingRewards, setLoadingRewards] = useState(false);
+    const [submittingReward, setSubmittingReward] = useState(false);
     const [batchQuestions, setBatchQuestions] = useState<BatchQuestion[]>([]);
 
     useEffect(() => {
@@ -392,6 +398,9 @@ const AdminQuizManagementPage: React.FC = () => {
             title: quiz.name || quiz.title,
             description: quiz.description,
             instructions: quiz.instructions,
+            passingScore: quiz.passingScore || 80,
+            questionCount: quiz.questionCount || 10,
+            secondsPerQuestion: Math.round((quiz.timeLimitSeconds || 900) / (quiz.questionCount || 10)),
             pointsPerQuestion: quiz.pointsPerQuestion || 10,
             readingCount,
             listeningCount,
@@ -400,6 +409,7 @@ const AdminQuizManagementPage: React.FC = () => {
             comment: quiz.comment,
             difficulty: quiz.difficulty || 'BEGINNER',
             skillType: quiz.skillType || 'MIXED',
+            orderIndex: quiz.orderIndex || 1,
         });
         setIsEditQuizModalOpen(true);
     };
@@ -454,12 +464,12 @@ const AdminQuizManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: quiz.passingScore ?? 80,
-                timeLimitMinutes: quiz.timeLimitMinutes ?? 15,
+                passingScore: quiz.passingScore || 80,
+                timeLimitSeconds: (quiz.questionCount || 10) * (values.secondsPerQuestion || 90),
                 skillType: values.skillType,
-                questionCount: finalQuestions.length,
+                questionCount: quiz.questionCount || 10,
                 comment: values.comment || 'Cập nhật quiz',
-                orderIndex: quiz.orderIndex,
+                orderIndex: values.orderIndex,
                 questions: finalQuestions
             };
 
@@ -477,10 +487,6 @@ const AdminQuizManagementPage: React.FC = () => {
     const handleCreateQuiz = async (values: any) => {
         if (!selectedLevelId) return;
         setCreatingQuiz(true);
-        const nextOrder = quizzes.length > 0
-            ? Math.max(...quizzes.map(q => q.orderIndex || 0)) + 1
-            : 1;
-
         try {
             const payload = {
                 levelId: selectedLevelId,
@@ -488,11 +494,10 @@ const AdminQuizManagementPage: React.FC = () => {
                 description: values.description,
                 instructions: values.instructions,
                 passingScore: 80,
-                timeLimitMinutes: 15,
+                timeLimitSeconds: 10 * (values.secondsPerQuestion || 90),
                 skillType: values.skillType || 'MIXED',
-                questionCount: 0,
+                questionCount: 10,
                 comment: 'Tạo quiz mới',
-                orderIndex: nextOrder,
                 questions: []
             };
 
@@ -698,6 +703,35 @@ const AdminQuizManagementPage: React.FC = () => {
         });
     };
 
+    const openRewardModal = async () => {
+        setIsRewardModalOpen(true);
+        setLoadingRewards(true);
+        try {
+            const res: any = await adminService.getBadgesForAdmin();
+            setRewards(res?.data || (Array.isArray(res) ? res : []));
+        } catch {
+            message.error('Không thể tải danh sách thành tựu');
+        } finally {
+            setLoadingRewards(false);
+        }
+    };
+
+    const handleAttachReward = async (rewardId: string) => {
+        if (!quiz?.id) return;
+        setSubmittingReward(true);
+        try {
+            await adminService.attachRewardToQuiz(quiz.id, rewardId);
+            message.success('Gán thành tựu cho bài kiểm tra thành công!');
+            setIsRewardModalOpen(false);
+            // Refresh quiz data
+            handleLevelChange(selectedLevelId || "");
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi gán thành tựu');
+        } finally {
+            setSubmittingReward(false);
+        }
+    };
+
     const handleCreateNewChallenge = async (values: any) => {
         if (!quiz?.id) return;
         setSubmittingCreate(true);
@@ -794,8 +828,8 @@ const AdminQuizManagementPage: React.FC = () => {
 
     // --- Import/Export/Template Handlers ---
     const handleDownloadQuizTemplate = () => {
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng';
-        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,5,READING';
+        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng';
+        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,300,READING';
         const blob = new Blob([`\uFEFF${header}\n${sample}`], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -1065,7 +1099,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 _index: idx + 1,
                 options,
                 wordsArr
-            };
+            } as any;
         });
 
         for (const q of normalized) {
@@ -1090,7 +1124,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
                 // Logic: split sentence and find index of wrongWord
                 const words = q.fullSentence.trim().split(/\s+/);
-                const errIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+                const errIdx = words.findIndex((w: string) => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
 
                 if (errIdx === -1) {
                     message.warning(`Câu ${q._index}: Không tìm thấy từ "${q.wrongWord}" trong câu đã nhập`);
@@ -1142,7 +1176,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 let metadataJson: any = {};
                 if (q.skillType === 'READING') {
                     const words = q.fullSentence.trim().split(/\s+/);
-                    const errIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+                    const errIdx = words.findIndex((w: string) => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
 
                     metadataJson = {
                         words: words,
@@ -1160,7 +1194,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     };
                     console.log(`[handleSubmitBatchQuestions] Câu ${q._index} LISTENING Meta:`, metadataJson);
                 } else if (q.skillType === 'WRITING') {
-                    const altArr = q.alternatives.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                    const altArr = q.alternatives.split(/[,;]+/).map((s: string) => s.trim()).filter(Boolean);
                     metadataJson = {
                         blankSentence: q.blankSentence.trim(),
                         correctAnswer: q.correctAnswer.trim(),
@@ -1817,51 +1851,122 @@ const AdminQuizManagementPage: React.FC = () => {
                         styles={{ body: { padding: '16px 20px' } }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                            {/* Left Side: Quiz Identity & Stats */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{
-                                    width: 40, height: 40, borderRadius: 10,
+                                    width: 44, height: 44, borderRadius: 12,
                                     background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 4px 10px rgba(37,99,235,0.2)'
                                 }}>
-                                    <FileTextOutlined style={{ fontSize: 20, color: '#fff' }} />
+                                    <FileTextOutlined style={{ fontSize: 22, color: '#fff' }} />
                                 </div>
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>
                                             {quiz.name || quiz.title}
                                         </Title>
-                                        <Tooltip title="Chỉnh sửa thông tin">
+                                        <Tooltip title="Chỉnh sửa thông tin bài kiểm tra">
                                             <Button
                                                 size="small"
-                                                icon={<EditOutlined style={{ color: '#2563eb' }} />}
+                                                type="text"
+                                                icon={<EditOutlined style={{ color: '#64748b' }} />}
                                                 onClick={handleOpenEditQuiz}
-                                                style={{ marginLeft: 8, borderRadius: 6, border: '1.5px solid #e2e8f0', background: '#f8fafc' }}
+                                                style={{ borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                             />
                                         </Tooltip>
                                         {regionInfo && (
-                                            <Tag color="processing" style={{ borderRadius: 10, border: 'none', margin: 0, paddingInline: 8 }}>
+                                            <Tag color="blue" style={{ borderRadius: 20, border: 'none', margin: 0, paddingInline: 10, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8' }}>
                                                 {regionInfo.label}
                                             </Tag>
                                         )}
                                     </div>
-                                    <Space split={<Divider type="vertical" />} style={{ marginTop: 4 }}>
-                                        <span style={{ color: '#64748b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <QuestionCircleOutlined style={{ fontSize: 14 }} />
+                                    <Space split={<Divider type="vertical" style={{ borderColor: '#e2e8f0', height: 12 }} />} style={{ marginTop: 0 }}>
+                                        <span style={{ color: '#64748b', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <QuestionCircleOutlined style={{ fontSize: 13 }} />
                                             <strong>{loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)}</strong> câu hỏi
                                         </span>
-                                        <span style={{ color: '#64748b', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <ClockCircleOutlined style={{ fontSize: 14 }} />
-                                            <strong>{quiz.timeLimitMinutes || 15}</strong> phút
+                                        <span style={{ color: '#64748b', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <ClockCircleOutlined style={{ fontSize: 13 }} />
+                                            <strong>{quiz.timeLimitSeconds || 900}</strong> s
                                         </span>
                                         {quiz.difficultyTag && (
-                                            <Tag color={DIFFICULTY_CONFIG[quiz.difficultyTag]?.color || 'default'} style={{ borderRadius: 6, margin: 0, fontSize: 11 }}>
+                                            <Tag color={DIFFICULTY_CONFIG[quiz.difficultyTag]?.color || 'default'} style={{ borderRadius: 4, margin: 0, fontSize: 10, height: 20, lineHeight: '18px' }}>
                                                 {DIFFICULTY_CONFIG[quiz.difficultyTag]?.label || quiz.difficultyTag}
                                             </Tag>
                                         )}
                                     </Space>
                                 </div>
                             </div>
+
+                            {/* Right Side: Reward Section */}
+                            <div style={{
+                                padding: '8px 12px',
+                                background: quiz.rewardCatalogId ? '#fffbeb' : '#f8fafc',
+                                borderRadius: 12,
+                                border: quiz.rewardCatalogId ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                minHeight: 60,
+                                transition: 'all 0.3s ease'
+                            }}>
+                                {quiz.rewardCatalogId ? (
+                                    <>
+                                        <div style={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 8,
+                                            background: '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            overflow: 'hidden',
+                                            padding: 4,
+                                            boxShadow: '0 2px 5px rgba(217,119,6,0.1)'
+                                        }}>
+                                            <img
+                                                src={quiz.rewardIconUrl || 'https://via.placeholder.com/30'}
+                                                alt={quiz.rewardName}
+                                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.2, color: '#b45309' }}>Phần thưởng:</Text>
+                                            <Text strong style={{ fontSize: 13, color: '#92400e' }}>{quiz.rewardName}</Text>
+                                        </div>
+                                        <Divider type="vertical" style={{ height: 24, margin: '0 4px' }} />
+                                        <Tooltip title="Thay đổi phần thưởng">
+                                            <Button
+                                                type="text"
+                                                icon={<EditOutlined style={{ color: '#f59e0b' }} />}
+                                                onClick={openRewardModal}
+                                                style={{ borderRadius: 6 }}
+                                            />
+                                        </Tooltip>
+                                    </>
+                                ) : (
+                                    <Button
+                                        type="dashed"
+                                        icon={<TrophyOutlined />}
+                                        onClick={openRewardModal}
+                                        style={{
+                                            height: 40,
+                                            borderRadius: 8,
+                                            color: '#d97706',
+                                            borderColor: '#fcd34d',
+                                            background: '#fff',
+                                            fontWeight: 600,
+                                            fontSize: 13
+                                        }}
+                                    >
+                                        Thiết lập phần thưởng
+                                    </Button>
+                                )}
+                            </div>
                         </div>
+
+
 
                         {(quiz.description || quiz.instructions) && (
                             <div style={{ marginTop: 12, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 12, color: '#475569', border: '1px solid #f1f5f9' }}>
@@ -2004,6 +2109,9 @@ const AdminQuizManagementPage: React.FC = () => {
                     </Card>
                 </>
             )}
+
+
+
 
             <Modal
                 title="Nhập trực tiếp nhiều câu hỏi"
@@ -2927,16 +3035,8 @@ const AdminQuizManagementPage: React.FC = () => {
                             </Form.Item>
                         </Col>
                         <Col span={7}>
-                            <Form.Item label="Loại kỹ năng" name="skillType">
-                                <Select
-                                    options={[
-                                        { value: 'READING', label: '📖 Reading' },
-                                        { value: 'LISTENING', label: '🎧 Listening' },
-                                        { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                        { value: 'WRITING', label: '✍️ Writing' },
-                                        { value: 'MIXED', label: '🎯 Tổng hợp' },
-                                    ]}
-                                />
+                            <Form.Item label="Mỗi câu (giây)" name="secondsPerQuestion">
+                                <InputNumber min={1} style={{ width: '100%' }} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -2954,15 +3054,39 @@ const AdminQuizManagementPage: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                        <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
-                            <InputNumber style={{ width: '100%' }} />
-                        </Form.Item>
-                    </div>
+                    <Row gutter={24}>
+                        <Col span={12}>
+                            <Form.Item label="Kỹ năng" name="skillType">
+                                <Select
+                                    options={[
+                                        { value: 'READING', label: '📖 Reading' },
+                                        { value: 'LISTENING', label: '🎧 Listening' },
+                                        { value: 'SPEAKING', label: '🎙️ Speaking' },
+                                        { value: 'WRITING', label: '✍️ Writing' },
+                                        { value: 'MIXED', label: '🎯 Tổng hợp' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion">
+                                <InputNumber style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <Form.Item label="Ghi chú cập nhật" name="comment">
-                        <Input placeholder="Lý do chỉnh sửa..." />
-                    </Form.Item>
+                    <Row gutter={24}>
+                        <Col span={12}>
+                            <Form.Item label="Số thứ tự (STT)" name="orderIndex" tooltip="Thứ tự hiển thị trong level">
+                                <InputNumber min={1} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label="Ghi chú cập nhật" name="comment">
+                                <Input placeholder="Lý do chỉnh sửa..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 </Form>
             </Modal >
 
@@ -3005,7 +3129,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="skillType" label={<Text strong>Loại kỹ năng</Text>} rules={[{ required: true, message: 'Chọn loại kỹ năng' }]}>
                             <Select placeholder="Chọn loại" options={[
                                 { value: 'READING', label: '📖 Reading' },
@@ -3014,6 +3138,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                 { value: 'WRITING', label: '✍️ Writing' },
                                 { value: 'MIXED', label: '🎯 Tổng hợp' },
                             ]} />
+                        </Form.Item>
+                        <Form.Item
+                            name="secondsPerQuestion"
+                            label={<Text strong>Số giây mỗi câu hỏi</Text>}
+                            initialValue={90}
+                            rules={[{ required: true, message: 'Nhập số giây mỗi câu' }]}
+                        >
+                            <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
                     </div>
                 </Form>
@@ -3037,7 +3169,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
                         <Text style={{ color: '#0369a1', fontSize: 13 }}>
                             <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
-                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (phút), Độ khó
+                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây), Độ khó
                         </Text>
                     </div>
                     <input
@@ -3255,6 +3387,100 @@ const AdminQuizManagementPage: React.FC = () => {
                             )}
                         </div>
                     )}
+                </div>
+            </Modal>
+
+            {/* Achievement Assignment Modal */}
+            <Modal
+                title={
+                    <Space>
+                        <TrophyOutlined style={{ color: '#f59e0b' }} />
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>Thiết lập thành tựu cho bài kiểm tra</span>
+                    </Space>
+                }
+                open={isRewardModalOpen}
+                onCancel={() => setIsRewardModalOpen(false)}
+                footer={null}
+                width={600}
+                centered
+            >
+                <div style={{ marginTop: 20 }}>
+                    <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                        <Text style={{ color: '#92400e', fontSize: 13 }}>
+                            💡 Mỗi bài kiểm tra chỉ được gán duy nhất <strong>01 thành tựu</strong>. Nếu bài kiểm tra này hoàn thành xuất sắc, học viên sẽ nhận được huy hiệu này.
+                        </Text>
+                    </div>
+
+                    <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                        {loadingRewards ? (
+                            <div style={{ padding: '40px 0', textAlign: 'center' }}><Spin tip="Đang tải danh sách..." /></div>
+                        ) : rewards.length === 0 ? (
+                            <Empty description="Chưa có thành tựu nào trong kho" />
+                        ) : (
+                            <Row gutter={[12, 12]}>
+                                {rewards.map((reward) => {
+                                    const isCurrent = quiz?.rewardCatalogId === reward.id;
+                                    const hasOtherReward = quiz?.rewardCatalogId && !isCurrent;
+                                    const isAssignedToOther = reward.assignedToQuiz && !isCurrent;
+
+                                    return (
+                                        <Col span={24} key={reward.id}>
+                                            <div style={{
+                                                padding: 12,
+                                                borderRadius: 12,
+                                                border: isCurrent ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                                                background: isCurrent ? '#fffbeb' : (isAssignedToOther || hasOtherReward ? '#f1f5f9' : '#fff'),
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                opacity: (isAssignedToOther || (hasOtherReward && !isCurrent)) ? 0.6 : 1,
+                                                transition: 'all 0.2s'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <img
+                                                        src={reward.iconUrl || 'https://via.placeholder.com/40'}
+                                                        alt={reward.name}
+                                                        style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 8 }}
+                                                    />
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, color: isCurrent ? '#92400e' : '#1e293b' }}>
+                                                            {reward.name}
+                                                            {isCurrent && <Tag color="orange" style={{ marginLeft: 8, borderRadius: 4 }}>Đang gán</Tag>}
+                                                        </div>
+                                                        <div style={{ fontSize: 12, color: '#64748b' }}>{reward.description}</div>
+                                                        {isAssignedToOther ? (
+                                                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2, fontWeight: 500 }}>
+                                                                ⚠️ Đã gán cho Quiz khác: {reward.assignedToQuizTitle}
+                                                            </div>
+                                                        ) : hasOtherReward && (
+                                                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                                                                (Gỡ thành tựu hiện tại để gán mới)
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    type={isCurrent ? "default" : "primary"}
+                                                    disabled={(isAssignedToOther || (hasOtherReward && !isCurrent)) || submittingReward}
+                                                    loading={submittingReward && isCurrent}
+                                                    onClick={() => handleAttachReward(reward.id)}
+                                                    style={{
+                                                        borderRadius: 8,
+                                                        fontWeight: 600,
+                                                        background: isCurrent ? '#fff' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#e2e8f0' : '#f59e0b'),
+                                                        borderColor: isCurrent ? '#f59e0b' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#e2e8f0' : '#f59e0b'),
+                                                        color: isCurrent ? '#f59e0b' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#94a3b8' : '#fff')
+                                                    }}
+                                                >
+                                                    {isCurrent ? 'Hủy gán' : 'Gán ngay'}
+                                                </Button>
+                                            </div>
+                                        </Col>
+                                    );
+                                })}
+                            </Row>
+                        )}
+                    </div>
                 </div>
             </Modal>
 

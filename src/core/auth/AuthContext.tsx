@@ -15,9 +15,12 @@ export interface AuthUser {
   phoneNumber?: string
   streak?: number
   totalXp?: number
+  totalStars?: number
+  totalExperience?: number
   completedLessons?: number
   createdAt?: string
 }
+
 
 export interface AuthSession {
   accessToken: string
@@ -107,7 +110,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             phone: data.user.phone,
             phoneNumber: data.user.phoneNumber || data.user.phone,
             streak: data.user.currentStreakDays ?? 0,
+            totalStars: data.user.totalStars ?? 0,
+            totalExperience: data.user.totalExperience ?? 0,
+            totalXp: data.user.totalExperience ?? 0,
           },
+
         }
 
         setSession(fullSession)
@@ -129,7 +136,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             region: data.user.region,
             avatar: data.user.avatar,
             streak: data.user.currentStreakDays ?? 0,
+            totalStars: data.user.totalStars ?? 0,
+            totalExperience: data.user.totalExperience ?? 0,
+            totalXp: data.user.totalExperience ?? 0,
           },
+
         }
 
         setSession(fullSession)

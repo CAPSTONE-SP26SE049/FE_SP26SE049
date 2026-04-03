@@ -175,7 +175,7 @@ const ChapterManagementPage: React.FC = () => {
         quizForm.setFieldsValue({
             title: record?.name ? `Quiz ${record.name}` : '',
             passingScore: 80,
-            timeLimitMinutes: 15,
+            timeLimitSeconds: 900,
             pointsPerQuestion: 10,
             readingCount: 0,
             listeningCount: 0,
@@ -226,8 +226,8 @@ const ChapterManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
+                passingScore: 80,
+                timeLimitSeconds: questionCount * (values.secondsPerQuestion || 90),
                 questionCount,
                 comment: values.comment,
                 questions,
@@ -1083,21 +1083,14 @@ const ChapterManagementPage: React.FC = () => {
                         border: '1px solid #e2e8f0',
                         marginBottom: '20px'
                     }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
                             <Form.Item
-                                label="Điểm đạt (%)"
-                                name="passingScore"
-                                rules={[{ required: true, message: 'Vui lòng nhập điểm đạt' }]}
+                                label="Mỗi câu (giây)"
+                                name="secondsPerQuestion"
+                                initialValue={90}
                                 style={{ marginBottom: 0 }}
                             >
-                                <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Giới hạn (phút)"
-                                name="timeLimitMinutes"
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={1} style={{ width: '100%' }} />
+                                <InputNumber min={1} max={18000} style={{ width: '100%' }} />
                             </Form.Item>
                             <Form.Item
                                 label="Điểm mỗi câu"

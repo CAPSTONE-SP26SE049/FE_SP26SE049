@@ -19,6 +19,7 @@ import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
 import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
+import AchievementManagementPage from '../modules/admin/pages/AchievementManagementPage'
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AdminChallengeBankPage from '../modules/admin/pages/ChallengeBankPage'
@@ -28,8 +29,10 @@ import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
 import LearnerFriendsPage from '../modules/learner/pages/LearnerFriendsPage'
+import PronunciationModelPage from '../modules/learner/pages/PronunciationModelPage'
 import QuizPage from '../modules/learner/pages/QuizPage'
-import Entrytest from '../pages/Entrytest'
+import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardPage'
+
 import { ProtectedRoute } from '../core/auth/ProtectedRoute'
 
 export const AppRoutes: React.FC = () => {
@@ -54,6 +57,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="quizzes" element={<AdminQuizManagementPage />} />
           <Route path="quizzes/:levelId" element={<AdminQuizManagementPage />} />
           <Route path="rewards" element={<RewardManagementPage />} />
+          <Route path="achievements" element={<AchievementManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
       </Route>
@@ -75,7 +79,6 @@ export const AppRoutes: React.FC = () => {
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         {/* Standalone quiz page without LearnerLayout */}
         <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
-        <Route path="/learner/entrytest" element={<Entrytest />} />
         <Route path="/learner" element={<LearnerLayout />}>
           {/* Default redirect to dashboard or first child */}
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -84,7 +87,10 @@ export const AppRoutes: React.FC = () => {
           <Route path="roadmap-v2" element={<LearningRoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="friends" element={<LearnerFriendsPage />} />
+          <Route path="pronunciation" element={<PronunciationModelPage />} />
+          <Route path="leaderboard" element={<LearnerLeaderboardPage />} />
         </Route>
+
       </Route>
 
       {/* Fallback */}
