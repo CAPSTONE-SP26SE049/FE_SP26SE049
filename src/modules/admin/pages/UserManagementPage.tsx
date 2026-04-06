@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
-import { Table, Card, Input, Tag, Space, Button, Tooltip, Avatar, Modal, Form, message, Select, Typography } from 'antd'
+import React, { useState, useRef } from 'react'
+import { Table, Card, Input, Tag, Space, Button, Tooltip, Avatar, Modal, Form, message, Select, Typography, Upload, Alert } from 'antd'
 import { SearchOutlined, UserOutlined, PlusOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, StopOutlined, EditOutlined, TeamOutlined } from '@ant-design/icons'
 import { Lock, Unlock } from 'lucide-react'
 import { adminService } from '../services/adminService'
+import { adminExcelService } from '../services/adminExcelService'
+import { downloadBlob } from '../../educator/services/excelService'
 
 const { Title, Text } = Typography
 
@@ -18,6 +20,14 @@ const UserManagementPage = () => {
     const [editingUser, setEditingUser] = useState<any>(null)
     const [editForm] = Form.useForm()
     const [dialects, setDialects] = useState<any[]>([])
+
+    // Import/Export Excel states
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+    const [importFile, setImportFile] = useState<File | null>(null)
+    const [importing, setImporting] = useState(false)
+    const [importResult, setImportResult] = useState<any>(null)
+    const [templateDownloading, setTemplateDownloading] = useState(false)
+    const templateDownloadInFlight = useRef(false)
 
     const fetchUsers = async () => {
         try {
@@ -62,6 +72,54 @@ const UserManagementPage = () => {
         fetchUsers()
         fetchDialects()
     }, [])
+
+    /** GET /api/v1/admin/excel/users/template — dùng chung, không dùng link tĩnh */
+    const downloadTeacherTemplateExcel = async () => {
+        if (templateDownloadInFlight.current) return
+        templateDownloadInFlight.current = true
+        setTemplateDownloading(true)
+        try {
+            message.loading({ content: 'Đang tải template...', key: 'tpl' })
+            const blob = await adminExcelService.downloadTeacherTemplate()
+            downloadBlob(blob, 'template_teachers.xlsx')
+            message.success({ content: 'Tải template thành công!', key: 'tpl' })
+        } catch (e) {
+            message.error({ content: 'Không thể tải template', key: 'tpl' })
+        } finally {
+            templateDownloadInFlight.current = false
+            setTemplateDownloading(false)
+        }
+    }
+
+    const handleExportExcel = async () => {
+        try {
+            message.loading({ content: 'Đang export...', key: 'exp' })
+            const blob = await adminExcelService.exportTeachers()
+            downloadBlob(blob, `teachers_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
+            message.success({ content: 'Export thành công!', key: 'exp' })
+        } catch (e) {
+            message.error({ content: 'Không thể export', key: 'exp' })
+        }
+    }
+
+    const handleImportExcel = async () => {
+        if (!importFile) {
+            message.warning('Vui lòng chọn file Excel')
+            return
+        }
+        setImporting(true)
+        setImportResult(null)
+        try {
+            const res: any = await adminExcelService.importTeachers(importFile)
+            setImportResult(res?.data || res)
+            message.success('Import hoàn tất!')
+            fetchUsers()
+        } catch (e: any) {
+            message.error(e?.response?.data?.message || e?.message || 'Lỗi khi import')
+        } finally {
+            setImporting(false)
+        }
+    }
 
     const handleCreateEducator = async (values: { email: string; fullName: string }) => {
         try {
@@ -233,8 +291,29 @@ const UserManagementPage = () => {
                     </div>
                 </div>
                 <Space size={12}>
-                    <Button icon={<DownloadOutlined />} style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #1890ff', color: '#1890ff', background: '#e6f7ff' }} onClick={() => message.info('Tính năng Export Excel đang phát triển')}>Export</Button>
-                    <Button icon={<UploadOutlined />} style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #52c41a', color: '#52c41a', background: '#f6ffed' }} onClick={() => message.info('Tính năng Import Excel đang phát triển')}>Import</Button>
+                    <Button
+                        htmlType="button"
+                        icon={<DownloadOutlined />}
+                        loading={templateDownloading}
+                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #1890ff', color: '#1890ff', background: '#e6f7ff' }}
+                        onClick={downloadTeacherTemplateExcel}
+                    >
+                        Template
+                    </Button>
+                    <Button
+                        icon={<UploadOutlined />}
+                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #52c41a', color: '#52c41a', background: '#f6ffed' }}
+                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true) }}
+                    >
+                        Import
+                    </Button>
+                    <Button
+                        icon={<DownloadOutlined />}
+                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #fa8c16', color: '#fa8c16', background: '#fff7e6' }}
+                        onClick={handleExportExcel}
+                    >
+                        Export
+                    </Button>
                     <Button icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)} style={{ borderRadius: 10, height: 44, fontWeight: 600, boxShadow: '0 4px 12px rgba(24,144,255,0.35)', border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', paddingInline: 20 }}>
                         Thêm giáo viên
                     </Button>
@@ -295,6 +374,71 @@ const UserManagementPage = () => {
                         <Button type="primary" htmlType="submit" loading={submitting} style={{ borderRadius: 8, height: 40, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>Tạo tài khoản</Button>
                     </div>
                 </Form>
+            </Modal>
+
+            {/* Modal: Import Excel giáo viên */}
+            <Modal
+                title="Import giáo viên từ Excel"
+                open={isImportModalOpen}
+                onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null) }}
+                onOk={handleImportExcel}
+                confirmLoading={importing}
+                okText="Import"
+                cancelText="Hủy"
+                okButtonProps={{ disabled: !importFile }}
+                centered
+                width={560}
+            >
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Tải template mẫu (API)</Text>
+                        <Button
+                            htmlType="button"
+                            icon={<DownloadOutlined />}
+                            loading={templateDownloading}
+                            onClick={downloadTeacherTemplateExcel}
+                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
+                        >
+                            Tải template giáo viên
+                        </Button>
+                    </div>
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="File Excel cần có 2 cột: Email, Họ và tên"
+                        description="Mỗi dòng sẽ map thành { email, fullName } và gọi API tạo giáo viên."
+                    />
+
+                    <Upload.Dragger
+                        accept=".xlsx,.xls"
+                        maxCount={1}
+                        beforeUpload={(file) => { setImportFile(file); return false }}
+                        onRemove={() => setImportFile(null)}
+                        fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' } as any] : []}
+                        style={{ borderRadius: 12 }}
+                    >
+                        <p style={{ fontWeight: 600, marginBottom: 0 }}>Kéo thả file hoặc click để chọn</p>
+                        <p style={{ color: '#999', fontSize: 12, marginTop: 6 }}>Chỉ hỗ trợ .xlsx/.xls</p>
+                    </Upload.Dragger>
+
+                    {importResult && (
+                        <Alert
+                            type={importResult?.errorCount > 0 ? 'warning' : 'success'}
+                            showIcon
+                            message={`Thành công: ${importResult.successCount} | Bỏ qua: ${importResult.skipCount} | Lỗi: ${importResult.errorCount}`}
+                            description={
+                                importResult?.messages?.length ? (
+                                    <ul style={{ margin: '8px 0 0', paddingLeft: 18, maxHeight: 180, overflow: 'auto' }}>
+                                        {importResult.messages.map((m: string, idx: number) => (
+                                            <li key={idx} style={{ fontSize: 12 }}>{m}</li>
+                                        ))}
+                                    </ul>
+                                ) : null
+                            }
+                            style={{ borderRadius: 10 }}
+                        />
+                    )}
+                </div>
             </Modal>
 
             {/* Modal: Chỉnh sửa user */}
