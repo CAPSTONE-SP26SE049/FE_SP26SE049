@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
     Typography,
     Card,
@@ -38,7 +38,8 @@ import {
     DeleteOutlined
 } from '@ant-design/icons';
 import { adminService, type ChallengeBank, type ChallengeBankRequest } from '../services/adminService';
-import { excelService, downloadBlob } from '../../educator/services/excelService';
+import { downloadBlob } from '../../educator/services/excelService';
+import { adminExcelService } from '../services/adminExcelService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -82,11 +83,13 @@ const AdminChallengeBankPage: React.FC = () => {
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [importSkillType, setImportSkillType] = useState<string>('READING');
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<any>(null);
     const [exporting, setExporting] = useState(false);
+    /** Trạng thái tải template — dùng chung cho nút Template ngoài trang và trong Modal Import */
+    const [templateDownloading, setTemplateDownloading] = useState(false);
+    const templateDownloadInFlight = useRef(false);
 
     const filteredChallenges = useMemo(() => {
         return challenges.filter(c => {
@@ -263,15 +266,25 @@ const AdminChallengeBankPage: React.FC = () => {
     //  IMPORT / EXPORT HANDLERS
     // ════════════════════════════════════════
 
-    const handleDownloadTemplate = async (skillType: string) => {
+    /**
+     * Hàm duy nhất tải template Challenge Bank từ Backend (GET /api/v1/admin/excel/challenge-bank/template).
+     * Dùng chung cho nút "Template" trên header và nút trong Modal Import — không dùng file tĩnh hay href.
+     */
+    const downloadChallengeBankTemplateExcel = async () => {
+        if (templateDownloadInFlight.current) return;
+        templateDownloadInFlight.current = true;
+        setTemplateDownloading(true);
         try {
             message.loading({ content: 'Đang tải template...', key: 'dl' });
-            const blob = await excelService.downloadChallengeTemplate(skillType);
-            downloadBlob(blob, `template_${skillType.toLowerCase()}.xlsx`);
+            const blob = await adminExcelService.downloadChallengeBankTemplate();
+            downloadBlob(blob, `template_challenge_bank.xlsx`);
             message.success({ content: 'Tải template thành công!', key: 'dl' });
         } catch (err) {
             console.error('[Excel] Download template error:', err);
             message.error({ content: 'Không thể tải template', key: 'dl' });
+        } finally {
+            templateDownloadInFlight.current = false;
+            setTemplateDownloading(false);
         }
     };
 
@@ -279,7 +292,7 @@ const AdminChallengeBankPage: React.FC = () => {
         setExporting(true);
         try {
             message.loading({ content: 'Đang xuất dữ liệu...', key: 'exp' });
-            const blob = await excelService.exportChallenges(skillType);
+            const blob = await adminExcelService.exportChallengeBank(skillType);
             const filename = skillType
                 ? `challenge_bank_${skillType.toLowerCase()}.xlsx`
                 : 'challenge_bank_all.xlsx';
@@ -301,7 +314,7 @@ const AdminChallengeBankPage: React.FC = () => {
         setImporting(true);
         setImportResult(null);
         try {
-            const res: any = await excelService.importChallenges(importSkillType, importFile);
+            const res: any = await adminExcelService.importChallengeBank(importFile);
             setImportResult(res?.data || res);
             message.success('Import hoàn tất!');
             fetchChallenges(); // Refresh list
@@ -312,13 +325,6 @@ const AdminChallengeBankPage: React.FC = () => {
             setImporting(false);
         }
     };
-
-    const templateMenuItems = Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({
-        key: `template-${key}`,
-        icon: cfg.icon,
-        label: `Template ${cfg.label}`,
-        onClick: () => handleDownloadTemplate(key),
-    }));
 
     const exportMenuItems = [
         {
@@ -484,26 +490,27 @@ const AdminChallengeBankPage: React.FC = () => {
                     </div>
                 </div>
                 <Space size={12}>
-                    <Dropdown menu={{ items: templateMenuItems }} trigger={['click']} placement="bottomRight">
-                        <Button
-                            icon={<DownloadOutlined />}
-                            size="large"
-                            style={{
-                                borderRadius: 10,
-                                height: 44,
-                                fontWeight: 600,
-                                border: '1.5px solid #1890ff',
-                                color: '#1890ff',
-                                paddingInline: 16,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                background: '#e6f7ff',
-                            }}
-                        >
-                            Template
-                        </Button>
-                    </Dropdown>
+                    <Button
+                        htmlType="button"
+                        icon={<DownloadOutlined />}
+                        size="large"
+                        loading={templateDownloading}
+                        onClick={downloadChallengeBankTemplateExcel}
+                        style={{
+                            borderRadius: 10,
+                            height: 44,
+                            fontWeight: 600,
+                            border: '1.5px solid #1890ff',
+                            color: '#1890ff',
+                            paddingInline: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: '#e6f7ff',
+                        }}
+                    >
+                        Template
+                    </Button>
                     <Button
                         icon={<UploadOutlined />}
                         size="large"
@@ -1128,41 +1135,26 @@ const AdminChallengeBankPage: React.FC = () => {
                 centered
             >
                 <div style={{ marginTop: 20 }}>
-                    {/* Step 1: Chọn kỹ năng */}
+                    {/* Step 1: Download template */}
                     <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Chọn kỹ năng</Text>
-                        <Select
-                            value={importSkillType}
-                            onChange={val => setImportSkillType(val)}
-                            style={{ width: '100%' }}
-                            size="large"
-                        >
-                            {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
-                                <Select.Option key={key} value={key}>
-                                    <Space>{cfg.icon} {cfg.label}</Space>
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </div>
-
-                    {/* Step 2: Download template */}
-                    <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>2. Tải template mẫu</Text>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Tải template mẫu</Text>
                         <Button
+                            htmlType="button"
                             icon={<DownloadOutlined />}
-                            onClick={() => handleDownloadTemplate(importSkillType)}
+                            loading={templateDownloading}
+                            onClick={downloadChallengeBankTemplateExcel}
                             style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
                         >
-                            Tải template {SKILL_CONFIG[importSkillType]?.label}
+                            Tải template tổng hợp
                         </Button>
                         <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-                            Tải file mẫu, điền dữ liệu theo hướng dẫn, rồi upload ở bước 3
+                            Template có cột cố định + cột linh hoạt theo skillType (điền cột nào dùng thì điền)
                         </Text>
                     </div>
 
-                    {/* Step 3: Upload file */}
+                    {/* Step 2: Upload file */}
                     <div style={{ marginBottom: 20 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>3. Upload file Excel đã điền</Text>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>2. Upload file Excel đã điền</Text>
                         <Upload.Dragger
                             accept=".xlsx,.xls"
                             maxCount={1}

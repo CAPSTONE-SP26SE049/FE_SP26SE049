@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
+import { adminExcelService } from '../services/adminExcelService';
+import { downloadBlob } from '../../educator/services/excelService';
 
 const AdminChapterManagementPage: React.FC = () => {
     const navigate = useNavigate();
@@ -37,6 +39,8 @@ const AdminChapterManagementPage: React.FC = () => {
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+    const [templateDownloading, setTemplateDownloading] = useState(false);
+    const templateDownloadInFlight = useRef(false);
     const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
     const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
     const [selectedLevelForDetail, setSelectedLevelForDetail] = useState<any | null>(null);
@@ -380,109 +384,62 @@ const AdminChapterManagementPage: React.FC = () => {
     };
 
     // ============ IMPORT / EXPORT ============
-    const handleDownloadTemplate = () => {
-        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
-        const sampleRows = [
-            'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
-            'Nhóm chữ GI,"Phân biệt GI với D",3,75',
-            'Nhóm chữ R (Uốn lưỡi),"Luyện R uốn lưỡi",3,75',
-        ];
-        const csvContent = [headers, ...sampleRows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'template_chuong_hoc.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success('Đã tải template mẫu');
+    /** GET /api/v1/admin/excel/levels/template — một hàm duy nhất, không dùng file tĩnh */
+    const downloadLevelsTemplateExcel = async () => {
+        if (templateDownloadInFlight.current) return;
+        templateDownloadInFlight.current = true;
+        setTemplateDownloading(true);
+        try {
+            message.loading({ content: 'Đang tải template...', key: 'tpl' });
+            const blob = await adminExcelService.downloadLevelsTemplate();
+            downloadBlob(blob, 'template_levels.xlsx');
+            message.success({ content: 'Đã tải template mẫu', key: 'tpl' });
+        } catch (err) {
+            console.error('[Levels Excel] Template error:', err);
+            message.error({ content: 'Không thể tải template', key: 'tpl' });
+        } finally {
+            templateDownloadInFlight.current = false;
+            setTemplateDownloading(false);
+        }
     };
 
-    const handleImportCSV = async () => {
-        if (!importFile) { message.warning('Vui lòng chọn file CSV'); return; }
+    const handleImportExcel = async () => {
+        if (!importFile) { message.warning('Vui lòng chọn file Excel'); return; }
         setImporting(true);
-        const result = { success: 0, failed: 0, errors: [] as string[] };
+        setImportResult(null);
         try {
-            const text = await importFile.text();
-            const lines = text.split(/\r?\n/).filter(l => l.trim());
-            if (lines.length < 2) { message.error('File rỗng hoặc không có dữ liệu'); setImporting(false); return; }
-
-            // Find SOUTH dialect
-            const southDialect = dialects.find((d: any) => (d.name || '').toUpperCase() === 'SOUTH');
-            if (!southDialect) { message.error('Không tìm thấy phương ngữ Miền Nam (SOUTH) trong hệ thống'); setImporting(false); return; }
-
-            // Parse CSV rows (skip header)
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                // Simple CSV parse supporting quoted strings
-                const cols: string[] = [];
-                let current = '';
-                let inQuotes = false;
-                for (const ch of line) {
-                    if (ch === '"') { inQuotes = !inQuotes; }
-                    else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
-                    else { current += ch; }
-                }
-                cols.push(current.trim());
-
-                const name = cols[0];
-                const description = cols[1] || '';
-                const minStars = parseInt(cols[2]) || 3;
-                const aiThreshold = parseInt(cols[3]) || 75;
-
-                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
-
-                // Check duplicate
-                const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
-                if (exists) { result.errors.push(`Dòng ${i + 1}: '${name}' đã tồn tại`); result.failed++; continue; }
-
-                try {
-                    await adminService.createLevel({
-                        dialectId: southDialect.id,
-                        levelOrder: levels.length + result.success + 1,
-                        name,
-                        description,
-                        minStarsRequired: minStars,
-                        aiThreshold,
-                    });
-                    result.success++;
-                } catch (err: any) {
-                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo chương'}`);
-                    result.failed++;
-                }
-            }
-            setImportResult(result);
-            if (result.success > 0) {
-                message.success(`Import thành công ${result.success} chương học`);
+            const res: any = await adminExcelService.importLevels(importFile);
+            const data = res?.data || res;
+            setImportResult({
+                success: data?.successCount ?? 0,
+                failed: data?.errorCount ?? 0,
+                errors: data?.messages || [],
+            });
+            if ((data?.successCount ?? 0) > 0) {
+                message.success(`Import thành công ${data.successCount} chương học`);
                 fetchLevels();
+            } else {
+                message.info('Import hoàn tất');
             }
-            if (result.failed > 0) {
-                message.warning(`${result.failed} dòng bị lỗi`);
-            }
-        } catch (err) {
-            message.error('Lỗi đọc file CSV');
+            if ((data?.errorCount ?? 0) > 0) message.warning(`${data.errorCount} dòng bị lỗi`);
+        } catch (err: any) {
+            console.error('[Levels Excel] Import error:', err);
+            message.error(err?.response?.data?.message || err?.message || 'Lỗi khi import');
         } finally {
             setImporting(false);
         }
     };
 
-    const handleExportCSV = () => {
-        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
-        const rows = filteredLevels.map((item: any) => {
-            const regionKey = getRegionKey(item.dialectId);
-            const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
-            const desc = (item.description || item.metadataJson?.description || '').replace(/"/g, '""');
-            return `"${item.name || ''}","${desc}","${regionLabel}","${item.status || 'DRAFT'}",${item.minStarsRequired || 3}`;
-        });
-        const csvContent = [headers, ...rows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `chuong_hoc_export_${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} chương học`);
+    const handleExportExcel = async () => {
+        try {
+            message.loading({ content: 'Đang export...', key: 'exp' });
+            const blob = await adminExcelService.exportLevels();
+            downloadBlob(blob, `levels_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            message.success({ content: 'Export thành công!', key: 'exp' });
+        } catch (err) {
+            console.error('[Levels Excel] Export error:', err);
+            message.error({ content: 'Không thể export', key: 'exp' });
+        }
     };
 
     const columns = [
@@ -591,8 +548,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 </div>
                 <Space>
                     <Button
+                        htmlType="button"
                         icon={<DownloadOutlined />}
-                        onClick={handleDownloadTemplate}
+                        loading={templateDownloading}
+                        onClick={downloadLevelsTemplateExcel}
                         style={{
                             height: '44px',
                             borderRadius: '10px',
@@ -622,7 +581,7 @@ const AdminChapterManagementPage: React.FC = () => {
                     </Button>
                     <Button
                         icon={<FileExcelOutlined />}
-                        onClick={handleExportCSV}
+                        onClick={handleExportExcel}
                         style={{
                             height: '44px',
                             borderRadius: '10px',
@@ -1196,7 +1155,7 @@ const AdminChapterManagementPage: React.FC = () => {
 
             {/* ===== IMPORT MODAL ===== */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ CSV</span>}
+                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ Excel</span>}
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}
@@ -1204,17 +1163,32 @@ const AdminChapterManagementPage: React.FC = () => {
                 width={520}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                    <div>
+                        <span style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>1. Tải template mẫu (API)</span>
+                        <Button
+                            htmlType="button"
+                            icon={<DownloadOutlined />}
+                            loading={templateDownloading}
+                            onClick={downloadLevelsTemplateExcel}
+                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
+                        >
+                            Tải template chương học
+                        </Button>
+                        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>
+                            Cùng nguồn với nút Template trên header (GET /api/v1/admin/excel/levels/template).
+                        </p>
+                    </div>
                     <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
                         <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File CSV cần có các cột: <strong>Tên chương học, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
+                            📌 File Excel dùng header tiếng Việt: <strong>Tên chương học, Phương ngữ, Mô tả, Thứ tự level, Ngưỡng AI, Số sao tối thiểu, Ghi chú</strong>
                         </p>
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Chương trùng tên sẽ bị bỏ qua.
+                            Import map từng dòng thành payload tạo chương (metadata_json) qua API admin.
                         </p>
                     </div>
                     <input
                         type="file"
-                        accept=".csv"
+                        accept=".xlsx,.xls"
                         onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                         style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '8px 12px' }}
                     />
@@ -1222,7 +1196,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         type="primary"
                         icon={<UploadOutlined />}
                         loading={importing}
-                        onClick={handleImportCSV}
+                        onClick={handleImportExcel}
                         disabled={!importFile}
                         block
                         size="large"
