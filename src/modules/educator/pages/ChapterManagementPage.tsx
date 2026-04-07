@@ -379,11 +379,11 @@ const ChapterManagementPage: React.FC = () => {
 
     // ============ IMPORT / EXPORT ============
     const handleDownloadTemplate = () => {
-        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
+        const headers = 'Tên chương học,Phương ngữ,Mô tả';
         const sampleRows = [
-            'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
-            'Nhóm chữ GI,"Phân biệt GI với D",3,75',
-            'Nhóm chữ R (Uốn lưỡi),"Luyện R uốn lưỡi",3,75',
+            'Nhóm chữ D (Đọc nhẹ),Miền Nam,"Luyện phát âm chữ D đúng chuẩn"',
+            'Nhóm chữ GI,Miền Bắc,"Phân biệt GI với D"',
+            'Nhóm chữ R (Uốn lưỡi),Miền Trung,"Luyện R uốn lưỡi"',
         ];
         const csvContent = [headers, ...sampleRows].join('\n');
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -405,14 +405,18 @@ const ChapterManagementPage: React.FC = () => {
             const lines = text.split(/\r?\n/).filter(l => l.trim());
             if (lines.length < 2) { message.error('File rỗng hoặc không có dữ liệu'); setImporting(false); return; }
 
-            // Find SOUTH dialect
-            const southDialect = dialects.find((d: any) => (d.name || '').toUpperCase() === 'SOUTH');
-            if (!southDialect) { message.error('Không tìm thấy phương ngữ Miền Nam (SOUTH) trong hệ thống'); setImporting(false); return; }
+            // Map phương ngữ tiếng Việt -> dialect
+            const dialectMap: Record<string, any> = {};
+            for (const d of dialects) {
+                const key = (d.name || '').toUpperCase();
+                if (key === 'NORTH') dialectMap['miền bắc'] = d;
+                if (key === 'CENTRAL') dialectMap['miền trung'] = d;
+                if (key === 'SOUTH') dialectMap['miền nam'] = d;
+            }
 
             // Parse CSV rows (skip header)
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
-                // Simple CSV parse supporting quoted strings
                 const cols: string[] = [];
                 let current = '';
                 let inQuotes = false;
@@ -424,11 +428,13 @@ const ChapterManagementPage: React.FC = () => {
                 cols.push(current.trim());
 
                 const name = cols[0];
-                const description = cols[1] || '';
-                const minStars = parseInt(cols[2]) || 3;
-                const aiThreshold = parseInt(cols[3]) || 75;
+                const dialectText = (cols[1] || '').toLowerCase();
+                const description = cols[2] || '';
 
                 if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
+
+                const dialect = dialectMap[dialectText];
+                if (!dialect) { result.errors.push(`Dòng ${i + 1}: Phương ngữ không hợp lệ '${cols[1] || ''}'`); result.failed++; continue; }
 
                 // Check duplicate
                 const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
@@ -436,12 +442,12 @@ const ChapterManagementPage: React.FC = () => {
 
                 try {
                     await educatorService.createLevel({
-                        dialectId: southDialect.id,
+                        dialectId: dialect.id,
                         levelOrder: levels.length + result.success + 1,
                         name,
                         description,
-                        minStarsRequired: minStars,
-                        aiThreshold,
+                        minStarsRequired: 3,
+                        aiThreshold: 75,
                     });
                     result.success++;
                 } catch (err: any) {
@@ -465,12 +471,12 @@ const ChapterManagementPage: React.FC = () => {
     };
 
     const handleExportCSV = () => {
-        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
+        const headers = 'Tên chương học,Phương ngữ,Mô tả';
         const rows = filteredLevels.map((item: any) => {
             const regionKey = getRegionKey(item.dialectId);
             const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
             const desc = (item.description || item.metadataJson?.description || '').replace(/"/g, '""');
-            return `"${item.name || ''}","${desc}","${regionLabel}","${item.status || 'DRAFT'}",${item.minStarsRequired || 3}`;
+            return `"${item.name || ''}","${regionLabel}","${desc}"`;
         });
         const csvContent = [headers, ...rows].join('\n');
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -526,14 +532,7 @@ const ChapterManagementPage: React.FC = () => {
             sorter: (a: any, b: any) => (a.levelOrder || 0) - (b.levelOrder || 0),
             render: (val: number) => val ?? '—',
         },
-        {
-            title: 'Số sao',
-            dataIndex: 'minStarsRequired',
-            key: 'minStarsRequired',
-            width: 80,
-            align: 'center' as const,
-            render: (val: number) => val != null ? <span>⭐ {val}</span> : '—',
-        },
+
         {
             title: 'Vùng',
             dataIndex: 'dialectId',
@@ -820,11 +819,7 @@ const ChapterManagementPage: React.FC = () => {
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
+                        <Form.Item label="Số sao tối thiểu" name="minStarsRequired" hidden>
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
                         <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
@@ -979,11 +974,7 @@ const ChapterManagementPage: React.FC = () => {
                         >
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
+                        <Form.Item label="Số sao tối thiểu" name="minStarsRequired" hidden>
                             <InputNumber min={1} style={{ width: '100%' }} />
                         </Form.Item>
                         <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>

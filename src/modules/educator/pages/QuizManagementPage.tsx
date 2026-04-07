@@ -652,8 +652,8 @@ const QuizManagementPage: React.FC = () => {
 
     // --- Import/Export/Template Handlers ---
     const handleDownloadQuizTemplate = () => {
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng';
-        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,300,READING';
+        const header = 'Tên bài kiểm tra,Mô tả ngắn,Hướng dẫn cho học viên,Loại kỹ năng,Số giây mỗi câu hỏi';
+        const sample = 'Kiểm tra cuối khóa phát âm,Luyện kỹ năng nghe hiểu,Nghe kỹ và chọn từ đúng,LISTENING,90';
         const blob = new Blob([`\uFEFF${header}\n${sample}`], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -681,16 +681,15 @@ const QuizManagementPage: React.FC = () => {
 
             for (let i = 0; i < rows.length; i++) {
                 const cols = rows[i].split(',');
-                if (cols.length < 4) { errors.push(`Dòng ${i + 2}: thiếu cột`); continue; }
+                if (cols.length < 5) { errors.push(`Dòng ${i + 2}: thiếu cột (cần 5 cột)`); continue; }
 
                 const title = cols[0]?.trim();
                 const description = cols[1]?.trim() || '';
                 const instructions = cols[2]?.trim() || '';
-                const passingScore = parseInt(cols[3]?.trim() || '70');
-                const timeLimitSeconds = parseInt(cols[4]?.trim() || '600');
-                const skillType = cols[5]?.trim() || 'MIXED';
+                const skillType = cols[3]?.trim() || 'MIXED';
+                const secondsPerQuestion = parseInt(cols[4]?.trim() || '90');
 
-                if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên quiz`); continue; }
+                if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên bài kiểm tra`); continue; }
                 if (existingNames.includes(title.toLowerCase().trim())) {
                     errors.push(`Dòng ${i + 2}: "${title}" đã tồn tại`);
                     continue;
@@ -702,10 +701,10 @@ const QuizManagementPage: React.FC = () => {
                         title,
                         description,
                         instructions,
-                        passingScore: isNaN(passingScore) ? 70 : passingScore,
-                        timeLimitSeconds: isNaN(timeLimitSeconds) ? 600 : timeLimitSeconds,
+                        passingScore: 80, // Default passing score
+                        timeLimitSeconds: 10 * (isNaN(secondsPerQuestion) ? 90 : secondsPerQuestion), // Default 10 câu hỏi
                         skillType,
-                        questionCount: 0,
+                        questionCount: 10, // Default question count
                         comment: `Import từ CSV - ${skillType}`,
                         questions: [],
                     };
@@ -731,13 +730,16 @@ const QuizManagementPage: React.FC = () => {
     };
 
     const handleExportQuizCSV = () => {
-        if (quizzes.length === 0) { message.warning('Không có quiz để export'); return; }
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng,Số câu hỏi';
+        if (quizzes.length === 0) { message.warning('Không có bài kiểm tra để export'); return; }
+        const header = 'Tên bài kiểm tra,Mô tả ngắn,Hướng dẫn cho học viên,Loại kỹ năng,Số giây mỗi câu hỏi';
         const rows = quizzes.map(q => {
             const name = (q.name || q.title || '').replace(/,/g, ';');
             const desc = (q.description || '').replace(/,/g, ';');
             const inst = (q.instructions || '').replace(/,/g, ';');
-            return `${name},${desc},${inst},${q.passingScore || ''},${q.timeLimitSeconds || ''},${q.skillType || 'MIXED'},${q.questions?.length ?? q.questionCount ?? 0}`;
+            const questionCount = q.questions?.length ?? q.questionCount ?? 10;
+            const timeLimitSeconds = q.timeLimitSeconds ?? (q.timeLimitMinutes ? q.timeLimitMinutes * 60 : 900);
+            const secondsPerQuestion = questionCount > 0 ? Math.round(timeLimitSeconds / questionCount) : 90;
+            return `${name},${desc},${inst},${q.skillType || 'MIXED'},${secondsPerQuestion}`;
         });
 
         const csv = [header, ...rows].join('\n');
@@ -1090,6 +1092,13 @@ const QuizManagementPage: React.FC = () => {
     ];
 
     const quizColumns = [
+        {
+            title: 'STT',
+            key: 'stt',
+            width: 70,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
+        },
         {
             title: 'Tên bài kiểm tra',
             dataIndex: 'name',
@@ -2164,7 +2173,7 @@ const QuizManagementPage: React.FC = () => {
                     onFinish={handleUpdateQuiz}
                 >
                     <Row gutter={24}>
-                        <Col span={10}>
+                        <Col span={12}>
                             <Form.Item
                                 label="Tên quiz"
                                 name="title"
@@ -2173,20 +2182,16 @@ const QuizManagementPage: React.FC = () => {
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={7}>
-                            <Form.Item label="Độ khó" name="difficulty">
+                        <Col span={12}>
+                            <Form.Item label="Loại kỹ năng" name="skillType"
+                                extra={quizChallenges.length > 0 ? (
+                                    <span style={{ color: '#f59e0b', fontSize: 12 }}>
+                                        ⚠️ Không thể thay đổi khi đã có {quizChallenges.length} câu hỏi
+                                    </span>
+                                ) : undefined}
+                            >
                                 <Select
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={7}>
-                            <Form.Item label="Loại kỹ năng" name="skillType">
-                                <Select
+                                    disabled={quizChallenges.length > 0}
                                     options={[
                                         { value: 'READING', label: '📖 Reading' },
                                         { value: 'LISTENING', label: '🎧 Listening' },

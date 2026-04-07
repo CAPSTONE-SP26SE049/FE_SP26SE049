@@ -210,7 +210,6 @@ const AdminChapterManagementPage: React.FC = () => {
                 if (count <= 0) return [];
                 return Array.from({ length: count }, (_, index) => ({
                     skillType,
-                    difficulty: values.difficulty,
                     questionOrder: index + 1,
                     points: values.pointsPerQuestion,
                     challengeId: undefined,
@@ -484,7 +483,7 @@ const AdminChapterManagementPage: React.FC = () => {
             },
         },
         {
-            title: 'Tên level',
+            title: 'Tên chương học',
             dataIndex: 'name',
             key: 'name',
             sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
@@ -538,7 +537,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         <BookOutlined style={{ fontSize: 24, color: '#1890ff' }} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý level</h2>
+                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
                         {fromClassroomName ? (
                             <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
                                 Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
@@ -757,7 +756,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             />
                         </Form.Item>
                         <Form.Item
-                            label="Thứ tự level"
+                            label="Thứ tự chương học"
                             name="levelOrder"
                             hidden
                         >
@@ -881,19 +880,6 @@ const AdminChapterManagementPage: React.FC = () => {
                             </Descriptions.Item>
                         </Descriptions>
 
-                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
-                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Chỉ số & Yêu cầu
-                            </span>
-                        </Divider>
-
-                        <Descriptions column={1} size="small" labelStyle={{ color: '#64748b' }}>
-                            <Descriptions.Item label="Số sao tối thiểu">
-                                <span style={{ color: '#faad14', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                                    {'⭐'.repeat(selectedLevelForDetail.minStarsRequired ?? 0)}
-                                </span>
-                            </Descriptions.Item>
-                        </Descriptions>
 
                         <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
                             <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -990,7 +976,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             />
                         </Form.Item>
                         <Form.Item
-                            label="Thứ tự level"
+                            label="Thứ tự chương học"
                             name="levelOrder"
                             hidden
                         >
@@ -1048,28 +1034,13 @@ const AdminChapterManagementPage: React.FC = () => {
                     onFinish={handleCreateQuiz}
                 >
                     <Row gutter={24}>
-                        <Col span={12}>
+                        <Col span={24}>
                             <Form.Item
                                 label="Tên quiz"
                                 name="title"
                                 rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
                             >
                                 <Input placeholder="Ví dụ: Thử thách Level 1" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Độ khó"
-                                name="difficulty"
-                            >
-                                <Select
-                                    placeholder="Chọn độ khó"
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -1180,7 +1151,7 @@ const AdminChapterManagementPage: React.FC = () => {
                     </div>
                     <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
                         <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File Excel dùng header tiếng Việt: <strong>Tên chương học, Phương ngữ, Mô tả, Thứ tự level, Ngưỡng AI, Số sao tối thiểu, Ghi chú</strong>
+                            📌 File Excel dùng header tiếng Việt: <strong>Tên chương học, Phương ngữ, Mô tả</strong> (giống form tạo chương học mới)
                         </p>
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
                             Import map từng dòng thành payload tạo chương (metadata_json) qua API admin.

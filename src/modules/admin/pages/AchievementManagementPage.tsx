@@ -5,11 +5,8 @@ import {
     SearchOutlined,
     ClearOutlined,
     TrophyOutlined,
-    EyeOutlined,
     EditOutlined,
     LayoutOutlined,
-    ImportOutlined,
-    ExportOutlined,
     DeleteOutlined,
     StopOutlined,
     LoadingOutlined,
@@ -57,14 +54,7 @@ const AchievementManagementPage: React.FC = () => {
         }
     };
 
-    const handleExport = () => {
-        message.loading('Đang chuẩn bị xuất dữ liệu...');
-        setTimeout(() => message.success('Xuất file thành công!'), 1000);
-    };
 
-    const handleImport = () => {
-        message.info('Trình nhập dữ liệu CSV sẽ sớm khả dụng');
-    };
 
     const handleOpenModal = (achievement: any = null) => {
         setEditingAchievement(achievement);
@@ -108,11 +98,16 @@ const AchievementManagementPage: React.FC = () => {
             const values = await form.validateFields();
             setSubmitting(true);
 
+            const payload = {
+                ...values,
+                isActive: values.isActive ?? editingAchievement?.isActive ?? true,
+            };
+
             if (editingAchievement) {
-                await adminService.updateReward(editingAchievement.id, values);
+                await adminService.updateReward(editingAchievement.id, payload);
                 message.success('Cập nhật thành tựu thành công');
             } else {
-                await adminService.createReward(values);
+                await adminService.createReward(payload);
                 message.success('Thêm thành tựu thành công');
             }
 
@@ -180,12 +175,7 @@ const AchievementManagementPage: React.FC = () => {
             sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
             render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
         },
-        {
-            title: 'Mô tả',
-            dataIndex: 'description',
-            key: 'description',
-            render: (text: string) => <span style={{ color: '#64748b' }}>{text || '—'}</span>
-        },
+
         {
             title: 'Gán cho Quiz',
             key: 'assignment',
@@ -217,12 +207,7 @@ const AchievementManagementPage: React.FC = () => {
             align: 'center' as const,
             render: (record: any) => (
                 <Space size="small">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            icon={<EyeOutlined />}
-                            style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff', borderRadius: '8px' }}
-                        />
-                    </Tooltip>
+
                     <Tooltip title="Chỉnh sửa">
                         <Button
                             icon={<EditOutlined />}
@@ -262,38 +247,22 @@ const AchievementManagementPage: React.FC = () => {
                         <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý thành tựu</h2>
                     </div>
                 </div>
-                <Space>
-                    <Button
-                        icon={<ImportOutlined />}
-                        onClick={handleImport}
-                        style={{ height: '44px', borderRadius: '10px', fontWeight: 600 }}
-                    >
-                        Nhập CSV
-                    </Button>
-                    <Button
-                        icon={<ExportOutlined />}
-                        onClick={handleExport}
-                        style={{ height: '44px', borderRadius: '10px', fontWeight: 600 }}
-                    >
-                        Xuất file
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => handleOpenModal()}
-                        style={{
-                            height: '44px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
-                            border: 'none',
-                            fontWeight: 600,
-                            paddingInline: 20,
-                            boxShadow: '0 4px 12px rgba(24,144,255,0.3)'
-                        }}
-                    >
-                        Thêm thành tựu
-                    </Button>
-                </Space>
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleOpenModal()}
+                    style={{
+                        height: '44px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                        border: 'none',
+                        fontWeight: 600,
+                        paddingInline: 20,
+                        boxShadow: '0 4px 12px rgba(24,144,255,0.3)'
+                    }}
+                >
+                    Thêm thành tựu
+                </Button>
             </div>
 
             <Card
@@ -362,7 +331,20 @@ const AchievementManagementPage: React.FC = () => {
                 onCancel={() => setIsModalOpen(false)}
                 confirmLoading={submitting}
                 okText={editingAchievement ? "Cập nhật" : "Tạo mới"}
+                okButtonProps={{
+                    style: {
+                        borderRadius: 8,
+                        height: 40,
+                        fontWeight: 700,
+                        paddingInline: 24,
+                        background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                        border: 'none',
+                        color: '#fff',
+                        boxShadow: '0 4px 12px rgba(24,144,255,0.25)',
+                    }
+                }}
                 cancelText="Hủy"
+                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
                 width={600}
                 centered
             >
@@ -383,13 +365,7 @@ const AchievementManagementPage: React.FC = () => {
                         <Input placeholder="Vd: Học giả chuyên cần" style={{ borderRadius: 8, height: 40 }} />
                     </Form.Item>
 
-                    <Form.Item
-                        name="description"
-                        label="Mô tả"
-                        rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}
-                    >
-                        <Input.TextArea rows={3} placeholder="Mô tả cách đạt được thành tựu này" />
-                    </Form.Item>
+
 
                     <Form.Item
                         name="iconUrl"

@@ -9,6 +9,8 @@ const passwordRules = [
     { required: true, message: 'Vui lòng nhập mật khẩu mới' },
     { min: 8, message: 'Ít nhất 8 ký tự' },
     { pattern: /[A-Z]/, message: 'Ít nhất 1 chữ hoa' },
+    { pattern: /[a-z]/, message: 'Ít nhất 1 chữ thường' },
+    { pattern: /\d/, message: 'Ít nhất 1 số' },
     {
         pattern: /[!@#$%^&*(),.?":{}|<>]/,
         message: 'Ít nhất 1 ký tự đặc biệt',

@@ -828,8 +828,8 @@ const AdminQuizManagementPage: React.FC = () => {
 
     // --- Import/Export/Template Handlers ---
     const handleDownloadQuizTemplate = () => {
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (giây),Loại kỹ năng';
-        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,300,READING';
+        const header = 'Tên bài kiểm tra,Mô tả ngắn,Hướng dẫn cho học viên,Loại kỹ năng,Số giây mỗi câu hỏi';
+        const sample = 'Kiểm tra cuối khóa phát âm,Luyện kỹ năng nghe hiểu,Nghe kỹ và chọn từ đúng,LISTENING,90';
         const blob = new Blob([`\uFEFF${header}\n${sample}`], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -860,16 +860,15 @@ const AdminQuizManagementPage: React.FC = () => {
 
             for (let i = 0; i < rows.length; i++) {
                 const cols = rows[i].split(',');
-                if (cols.length < 4) { errors.push(`Dòng ${i + 2}: thiếu cột`); continue; }
+                if (cols.length < 5) { errors.push(`Dòng ${i + 2}: thiếu cột (cần 5 cột)`); continue; }
 
                 const title = cols[0]?.trim();
                 const description = cols[1]?.trim() || '';
                 const instructions = cols[2]?.trim() || '';
-                const passingScore = parseInt(cols[3]?.trim() || '70');
-                const timeLimitMinutes = parseInt(cols[4]?.trim() || '10');
-                const skillType = cols[5]?.trim() || 'MIXED';
+                const skillType = cols[3]?.trim() || 'MIXED';
+                const secondsPerQuestion = parseInt(cols[4]?.trim() || '90');
 
-                if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên quiz`); continue; }
+                if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên bài kiểm tra`); continue; }
                 if (existingNames.includes(title.toLowerCase().trim())) {
                     errors.push(`Dòng ${i + 2}: "${title}" đã tồn tại`);
                     continue;
@@ -882,10 +881,10 @@ const AdminQuizManagementPage: React.FC = () => {
                         title,
                         description,
                         instructions,
-                        passingScore: isNaN(passingScore) ? 70 : passingScore,
-                        timeLimitMinutes: isNaN(timeLimitMinutes) ? 10 : timeLimitMinutes,
+                        passingScore: 80, // Default passing score
+                        timeLimitSeconds: 10 * (isNaN(secondsPerQuestion) ? 90 : secondsPerQuestion), // Default 10 câu hỏi
                         skillType,
-                        questionCount: 0,
+                        questionCount: 10, // Default question count
                         comment: `Import từ CSV - ${skillType}`,
                         orderIndex: currentMaxOrder,
                         questions: [],
@@ -912,13 +911,16 @@ const AdminQuizManagementPage: React.FC = () => {
     };
 
     const handleExportQuizCSV = () => {
-        if (quizzes.length === 0) { message.warning('Không có quiz để export'); return; }
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng,Số câu hỏi';
+        if (quizzes.length === 0) { message.warning('Không có bài kiểm tra để export'); return; }
+        const header = 'Tên bài kiểm tra,Mô tả ngắn,Hướng dẫn cho học viên,Loại kỹ năng,Số giây mỗi câu hỏi';
         const rows = quizzes.map(q => {
             const name = (q.name || q.title || '').replace(/,/g, ';');
             const desc = (q.description || '').replace(/,/g, ';');
             const inst = (q.instructions || '').replace(/,/g, ';');
-            return `${name},${desc},${inst},${q.passingScore || ''},${q.timeLimitMinutes || ''},${q.skillType || 'MIXED'},${q.questions?.length ?? q.questionCount ?? 0}`;
+            const questionCount = q.questions?.length ?? q.questionCount ?? 10;
+            const timeLimitSeconds = q.timeLimitSeconds ?? (q.timeLimitMinutes ? q.timeLimitMinutes * 60 : 900);
+            const secondsPerQuestion = questionCount > 0 ? Math.round(timeLimitSeconds / questionCount) : 90;
+            return `${name},${desc},${inst},${q.skillType || 'MIXED'},${secondsPerQuestion}`;
         });
 
         const csv = [header, ...rows].join('\n');
@@ -1382,18 +1384,8 @@ const AdminQuizManagementPage: React.FC = () => {
                 return <Tag color={cfg.color}>{cfg.label}</Tag>;
             },
         },
-        {
-            title: 'Điểm',
-            dataIndex: 'points',
-            key: 'points',
-            align: 'center' as const,
-            render: (val: number) => (
-                <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: 15 }}>
-                    <TrophyOutlined style={{ marginRight: 4, fontSize: 13 }} />
-                    {val}
-                </span>
-            ),
-        },
+
+
         {
             title: 'Thao tác',
             key: 'action',
@@ -1510,12 +1502,10 @@ const AdminQuizManagementPage: React.FC = () => {
     const quizColumns = [
         {
             title: 'STT',
-            dataIndex: 'orderIndex',
-            key: 'orderIndex',
+            key: 'stt',
             width: 70,
             align: 'center' as const,
-            sorter: (a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0),
-            render: (stt: number) => <span style={{ fontWeight: 600, color: '#64748b' }}>{stt}</span>
+            render: (_: any, __: any, index: number) => <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
         },
         {
             title: 'Tên bài kiểm tra',
@@ -3014,7 +3004,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     onFinish={handleUpdateQuiz}
                 >
                     <Row gutter={24}>
-                        <Col span={10}>
+                        <Col span={14}>
                             <Form.Item
                                 label="Tên quiz"
                                 name="title"
@@ -3023,18 +3013,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={7}>
-                            <Form.Item label="Độ khó" name="difficulty">
-                                <Select
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={7}>
+                        <Col span={10}>
                             <Form.Item label="Mỗi câu (giây)" name="secondsPerQuestion">
                                 <InputNumber min={1} style={{ width: '100%' }} />
                             </Form.Item>
@@ -3056,8 +3035,15 @@ const AdminQuizManagementPage: React.FC = () => {
 
                     <Row gutter={24}>
                         <Col span={12}>
-                            <Form.Item label="Kỹ năng" name="skillType">
+                            <Form.Item label="Kỹ năng" name="skillType"
+                                extra={quizChallenges.length > 0 ? (
+                                    <span style={{ color: '#f59e0b', fontSize: 12 }}>
+                                        ⚠️ Không thể thay đổi kỹ năng khi đã có {quizChallenges.length} câu hỏi
+                                    </span>
+                                ) : undefined}
+                            >
                                 <Select
+                                    disabled={quizChallenges.length > 0}
                                     options={[
                                         { value: 'READING', label: '📖 Reading' },
                                         { value: 'LISTENING', label: '🎧 Listening' },
@@ -3169,7 +3155,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
                         <Text style={{ color: '#0369a1', fontSize: 13 }}>
                             <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
-                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây), Độ khó
+                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây)
                         </Text>
                     </div>
                     <input
@@ -3421,7 +3407,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 {rewards.map((reward) => {
                                     const isCurrent = quiz?.rewardCatalogId === reward.id;
                                     const hasOtherReward = quiz?.rewardCatalogId && !isCurrent;
-                                    const isAssignedToOther = reward.assignedToQuiz && !isCurrent;
+                                    const isAssignedToOther = reward.linkedQuizId && !isCurrent;
 
                                     return (
                                         <Col span={24} key={reward.id}>
@@ -3450,7 +3436,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                         <div style={{ fontSize: 12, color: '#64748b' }}>{reward.description}</div>
                                                         {isAssignedToOther ? (
                                                             <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2, fontWeight: 500 }}>
-                                                                ⚠️ Đã gán cho Quiz khác: {reward.assignedToQuizTitle}
+                                                                ⚠️ Đã gán cho Quiz khác: {reward.linkedQuizName}
                                                             </div>
                                                         ) : hasOtherReward && (
                                                             <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
@@ -3467,12 +3453,12 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     style={{
                                                         borderRadius: 8,
                                                         fontWeight: 600,
-                                                        background: isCurrent ? '#fff' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#e2e8f0' : '#f59e0b'),
-                                                        borderColor: isCurrent ? '#f59e0b' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#e2e8f0' : '#f59e0b'),
-                                                        color: isCurrent ? '#f59e0b' : (isAssignedToOther || (hasOtherReward && !isCurrent) ? '#94a3b8' : '#fff')
+                                                        background: isCurrent ? '#fff' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
+                                                        borderColor: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
+                                                        color: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#94a3b8' : (hasOtherReward && !isCurrent ? '#94a3b8' : '#fff'))
                                                     }}
                                                 >
-                                                    {isCurrent ? 'Hủy gán' : 'Gán ngay'}
+                                                    {isCurrent ? 'Hủy gán' : (isAssignedToOther ? 'Đã gán' : 'Gán ngay')}
                                                 </Button>
                                             </div>
                                         </Col>

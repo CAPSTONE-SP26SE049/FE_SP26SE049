@@ -24,6 +24,8 @@ const passwordRules = [
   { required: true, message: 'Vui lòng nhập mật khẩu' },
   { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự' },
   { pattern: /[A-Z]/, message: 'Phải chứa ít nhất 1 chữ hoa' },
+  { pattern: /[a-z]/, message: 'Phải chứa ít nhất 1 chữ thường' },
+  { pattern: /\d/, message: 'Phải chứa ít nhất 1 số' },
   {
     pattern: /[!@#$%^&*(),.?":{}|<>]/,
     message: 'Phải chứa ít nhất 1 ký tự đặc biệt',
@@ -161,7 +163,11 @@ export default function Register() {
         <div className="animate-fadeIn space-y-3">
           <Form.Item
             name="fullName"
-            rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập họ tên' },
+              { min: 2, message: 'Họ tên tối thiểu 2 ký tự' },
+              { max: 50, message: 'Họ tên tối đa 50 ký tự' }
+            ]}
           >
             <Input
               prefix={<User className="text-brand-green/60 w-5 h-5 mr-1" />}
@@ -172,7 +178,12 @@ export default function Register() {
 
           <Form.Item
             name="phone"
-            rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập số điện thoại' },
+              { pattern: /^\d+$/, message: 'Số điện thoại chỉ được chứa chữ số' },
+              { min: 10, message: 'Số điện thoại từ 10 đến 15 số' },
+              { max: 15, message: 'Số điện thoại từ 10 đến 15 số' }
+            ]}
           >
             <Input
               prefix={<Phone className="text-brand-green/60 w-5 h-5 mr-1" />}

@@ -79,7 +79,6 @@ const ChallengeBankPage: React.FC = () => {
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
     const [skillFilter, setSkillFilter] = useState<string | null>(null);
-    const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null);
     const [regionFilter, setRegionFilter] = useState<string | null>(null);
 
     // Import/Export states
@@ -94,11 +93,10 @@ const ChallengeBankPage: React.FC = () => {
         return challenges.filter(c => {
             const matchesSearch = !searchTerm || c.contentText?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesSkill = !skillFilter || c.skillType === skillFilter;
-            const matchesDifficulty = !difficultyFilter || c.difficultyTag === difficultyFilter;
             const matchesRegion = !regionFilter || c.region === regionFilter;
-            return matchesSearch && matchesSkill && matchesDifficulty && matchesRegion;
+            return matchesSearch && matchesSkill && matchesRegion;
         });
-    }, [challenges, searchTerm, skillFilter, difficultyFilter, regionFilter]);
+    }, [challenges, searchTerm, skillFilter, regionFilter]);
 
     // Watch skillType to change form fields dynamically
     const skillType = Form.useWatch('skillType', form);
@@ -182,7 +180,7 @@ const ChallengeBankPage: React.FC = () => {
                 await educatorService.createChallengeBankItem(payload);
                 message.success("Tạo câu hỏi thành công");
             }
-            
+
             setIsModalOpen(false);
             form.resetFields();
             setEditingChallengeId(null);
@@ -198,10 +196,10 @@ const ChallengeBankPage: React.FC = () => {
 
     const handleEdit = (record: ChallengeBank) => {
         setEditingChallengeId(record.id);
-        
+
         let meta = record.metadataJson;
         if (typeof meta === 'string') {
-            try { meta = JSON.parse(meta); } catch(e) { meta = {}; }
+            try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
         }
         meta = meta || {};
 
@@ -369,7 +367,7 @@ const ChallengeBankPage: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
                             {text || '—'}
                         </Text>
-                        
+
                         <div style={{ fontSize: 14 }}>
                             {skill === 'READING' && Array.isArray(meta.words) && (
                                 <>
@@ -430,16 +428,7 @@ const ChallengeBankPage: React.FC = () => {
                 );
             },
         },
-        {
-            title: 'Độ khó',
-            dataIndex: 'difficultyTag',
-            key: 'difficultyTag',
-            width: 120,
-            render: (tag: string) => {
-                const cfg = DIFFICULTY_CONFIG[tag] || { label: tag, color: 'default' };
-                return <Tag color={cfg.color}>{cfg.label}</Tag>;
-            },
-        },
+
         {
             title: 'Miền',
             dataIndex: 'region',
@@ -609,16 +598,7 @@ const ChallengeBankPage: React.FC = () => {
                         <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
                     ))}
                 </Select>
-                <Select
-                    placeholder="Lọc theo độ khó"
-                    allowClear
-                    style={{ minWidth: 180, height: 42 }}
-                    onChange={val => setDifficultyFilter(val)}
-                >
-                    {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
+
                 <Select
                     placeholder="Lọc theo miền"
                     allowClear
@@ -715,7 +695,7 @@ const ChallengeBankPage: React.FC = () => {
                         />
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="skillType"
                             label={<Text strong>Kỹ năng</Text>}
@@ -726,18 +706,6 @@ const ChallengeBankPage: React.FC = () => {
                                     <Select.Option key={key} value={key}>
                                         <Space>{cfg.icon} {cfg.label}</Space>
                                     </Select.Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="difficultyTag"
-                            label={<Text strong>Độ khó</Text>}
-                            rules={[{ required: true }]}
-                        >
-                            <Select style={{ width: '100%' }}>
-                                {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
-                                    <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
                                 ))}
                             </Select>
                         </Form.Item>
@@ -830,7 +798,7 @@ const ChallengeBankPage: React.FC = () => {
                                         >
                                             <Button icon={<UploadOutlined />}>Chọn file âm thanh</Button>
                                         </Upload>
-                                        
+
                                         <Form.Item name="audioUrl" noStyle>
                                             <Input hidden />
                                         </Form.Item>
@@ -840,10 +808,10 @@ const ChallengeBankPage: React.FC = () => {
                                                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                                                     Xem trước âm thanh:
                                                 </Text>
-                                                <audio 
-                                                    controls 
-                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
-                                                    style={{ width: '100%', height: 32 }} 
+                                                <audio
+                                                    controls
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')}
+                                                    style={{ width: '100%', height: 32 }}
                                                 />
                                             </div>
                                         )}
@@ -938,10 +906,10 @@ const ChallengeBankPage: React.FC = () => {
                                                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                                                     Nghe thử:
                                                 </Text>
-                                                <audio 
-                                                    controls 
-                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')} 
-                                                    style={{ width: '100%', height: 32 }} 
+                                                <audio
+                                                    controls
+                                                    src={audioFile ? URL.createObjectURL(audioFile) : form.getFieldValue('audioUrl')}
+                                                    style={{ width: '100%', height: 32 }}
                                                 />
                                             </div>
                                         )}

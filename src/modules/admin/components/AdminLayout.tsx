@@ -2,7 +2,6 @@ import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
 import {
     DashboardOutlined,
     UserOutlined,
-    FileTextOutlined,
     SettingOutlined,
     LogoutOutlined,
     BellOutlined,
@@ -38,12 +37,7 @@ const AdminLayout = () => {
         {
             key: '/admin/chapters',
             icon: <BookOutlined />,
-            label: <Link to="/admin/chapters">Quản lý level</Link>,
-        },
-        {
-            key: '/admin/challenges',
-            icon: <FileTextOutlined />,
-            label: <Link to="/admin/challenges">Quản lý câu hỏi</Link>,
+            label: <Link to="/admin/chapters">Quản lý chương học</Link>,
         },
         {
             key: '/admin/achievements',
