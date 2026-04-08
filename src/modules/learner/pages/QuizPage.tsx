@@ -10,11 +10,17 @@ import {
   AudioOutlined,
   ReadOutlined,
   ThunderboltFilled,
+  LoadingOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons'
 import { Spin, Button, Tag, Empty, Input } from 'antd'
 
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
+import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
+
+
+
 
 
 /*
@@ -202,8 +208,7 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
 const QuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>()
   const navigate = useNavigate()
-  const { session, updateSessionItem } = useAuth()
-  const user = session?.user
+  const { updateSessionItem } = useAuth()
 
 
   const [quiz, setQuiz] = useState<QuizDetail | null>(null)
@@ -220,6 +225,19 @@ const QuizPage: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [showHint, setShowHint] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // ── Speaking Quiz (Gemma 4) State ──────────────────────────────────────────
+  const recorder = useAudioRecorder()
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [ollamaResult, setOllamaResult] = useState<{
+    score: number
+    isCorrect: boolean
+    errorDetail: string
+    suggestion: string
+    transcription?: string
+  } | null>(null)
+
+
 
   // ── Handle Finish ─────────────────────────────────────────────────────────
   const handleFinish = async () => {
@@ -325,16 +343,160 @@ const QuizPage: React.FC = () => {
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = () => {
-    setWritingInput(''); setWordPicked(null); setTimeLeft(null); setShowHint(false)
+    // Only clear timing/temporary state initially
+    setTimeLeft(null)
+    setShowHint(false)
+    setOllamaResult(null)
+    recorder.resetRecording()
+
     if (idx + 1 >= (quiz?.challenges?.length ?? 0)) {
+      // Last question: finish immediately, DON'T clear inputs yet so the UI stays "Correct" while saving
       handleFinish()
+    } else {
+      // Middle of quiz: clear everything and move to next
+      setWritingInput('')
+      setWordPicked(null)
+      setSelected(null)
+      setAnswered(false)
+      setIdx(i => i + 1)
     }
-    else { setIdx(i => i + 1); setSelected(null); setAnswered(false) }
   }
 
 
 
+
+
+  // ── WebM to WAV Converter (Fixes missing FFmpeg on Windows Backend) ─────────
+  const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const arrayBuffer = await webmBlob.arrayBuffer()
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+    const numOfChan = audioBuffer.numberOfChannels
+    const length = audioBuffer.length * numOfChan * 2 + 44
+    const buffer = new ArrayBuffer(length)
+    const view = new DataView(buffer)
+    let pos = 0
+
+    const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
+    const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
+
+    setUint32(0x46464952) // "RIFF"
+    setUint32(length - 8) // file length - 8
+    setUint32(0x45564157) // "WAVE"
+    setUint32(0x20746d66) // "fmt " chunk
+    setUint32(16) // length = 16
+    setUint16(1) // PCM (uncompressed)
+    setUint16(numOfChan)
+    setUint32(audioBuffer.sampleRate)
+    setUint32(audioBuffer.sampleRate * 2 * numOfChan) // avg. bytes/sec
+    setUint16(numOfChan * 2) // block-align
+    setUint16(16) // 16-bit
+    setUint32(0x61746164) // "data" - chunk
+    setUint32(length - pos - 4) // chunk length
+
+    const channels = []
+    for (let i = 0; i < numOfChan; i++) channels.push(audioBuffer.getChannelData(i))
+
+    let offset = 0
+    while (pos < length) {
+      for (let i = 0; i < numOfChan; i++) {
+        let sample = Math.max(-1, Math.min(1, channels[i][offset]))
+        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
+        view.setInt16(pos, sample, true)
+        pos += 2
+      }
+      offset++
+    }
+    return new Blob([buffer], { type: "audio/wav" })
+  }
+
+  // ── Speaking Quiz (NVIDIA Parakeet + Gemma 4) Logic ───────────────────────
+  const evaluateSpeaking = async (blob: Blob, targetText: string) => {
+    if (!blob || blob.size < 100) return
+    setIsAnalyzing(true)
+
+    try {
+      // Chuyển đổi sang chuẩn WAV ở trình duyệt để Backend không cần cài ffmpeg
+      const wavBlob = await convertWebmToWav(blob)
+
+      // BƯỚC 1: Gửi Audio sang NVIDIA Parakeet (Local ASR Server)
+      const formData = new FormData()
+      formData.append('file', wavBlob, 'recording.wav')
+
+      const asrResponse = await fetch('http://localhost:8000/asr', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const asrData = await asrResponse.json()
+      if (!asrResponse.ok || asrData.error) {
+        throw new Error(`Lỗi ASR Server: ${asrData.error || 'Connection failed'}`)
+      }
+
+      const rawText = asrData.text || ""
+      const transcribedText = typeof rawText === 'object' ? (rawText.text || "") : rawText
+
+
+      console.log('[ASR Result]:', transcribedText)
+
+      // BƯỚC 2: Gửi Text nhận diện được sang Gemma 4 (Ollama) để lấy Feedback
+      const gemmaResponse = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemma4:e4b',
+          system: `Bạn là chuyên gia ngữ âm học Việt Nam. 
+NHIỆM VỤ: So sánh văn bản nhận diện được từ audio (ASR) với đáp án mẫu. 
+Mẫu: "${targetText}"
+Văn bản ASR nhận diện được: "${transcribedText}"
+
+YẾU TỐ QUAN TRỌNG: 
+1. Kiểm tra sự khác biệt, đặc biệt là các cặp âm TR/CH, N/L, S/X, D/GI/R.
+2. Nếu văn bản ASR khác mẫu ở các phụ âm đầu này (ví dụ ASR: "Núa", mẫu: "Lúa"), báo lỗi phát âm sai.
+3. CHẤM ĐIỂM (0-100) và TRẢ VỀ JSON: { "score": number, "isCorrect": boolean, "errorDetail": "mô tả lỗi dựa trên sự khác biệt", "suggestion": "cách sửa lỗi" }`,
+          prompt: `Dựa trên văn bản nhận diện được là "${transcribedText}", hãy đánh giá xem người nói có phát âm đúng mẫu "${targetText}" không?`,
+          stream: false,
+          format: 'json',
+          options: { temperature: 0 }
+        })
+      })
+
+      if (!gemmaResponse.ok) {
+        const errorText = await gemmaResponse.text()
+        throw new Error(`Ollama API error: ${errorText}`)
+      }
+      const gemmaData = await gemmaResponse.json()
+      const result = JSON.parse(gemmaData.response)
+
+      // Cập nhật kết quả hiển thị
+      setOllamaResult({
+        ...result,
+        transcription: transcribedText || "(Không nhận diện được giọng nói)"
+      })
+      setAnswered(true)
+      if (result.isCorrect) setScore(s => s + 1)
+
+    } catch (err: any) {
+      console.error('[Speaking Quiz Support] Failed:', err)
+      setOllamaResult({
+        score: 0,
+        isCorrect: false,
+        transcription: "Lỗi hệ thống",
+        errorDetail: err.message || 'Lỗi hệ thống',
+        suggestion: 'Mô hình Ollama có thể hết dung lượng RAM. Vui lòng tắt các app nặng hoặc đổi model nhỏ hơn.'
+      })
+      setAnswered(true)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // Tiện ích: Đổi tên hàm cũ sang hàm mới trong render
+  const evaluateWithOllama = evaluateSpeaking
+
   // ── Loading ───────────────────────────────────────────────────────────────
+
   if (loading) return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50"><Spin size="large" /></div>
   )
@@ -618,33 +780,163 @@ const QuizPage: React.FC = () => {
       // ═══════════════ SPEAKING ══════════════════════════════════════════════
       case 'SPEAKING_READ': {
         const speakText = ch.transcript || ch.content
+        const { isRecording, durationSeconds } = recorder
+
         return (
           <>
-            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-6 text-center">
-              <p className="text-purple-800 font-bold text-xl">{speakText}</p>
-              {ch.ipaText && <p className="text-purple-500 font-mono text-base mt-2">/{ch.ipaText}/</p>}
-              {ch.audioUrl && (
-                <button className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-100 text-purple-700 font-semibold text-sm hover:bg-purple-200 transition-colors mx-auto"
-                  onClick={() => { try { new Audio(ch.audioUrl!).play() } catch (_) { } }}>
-                  <SoundFilled /> Nghe mẫu
-                </button>
-              )}
-              <p className="text-purple-400 text-sm mt-3">Hãy đọc to câu trên theo đúng giọng miền.</p>
-            </div>
-            {!answered ? (
-              <Button type="primary" size="large" block icon={<AudioOutlined />}
-                className="bg-purple-500 border-purple-500 hover:bg-purple-600 rounded-2xl h-14 text-base font-bold mb-6"
-                onClick={() => { setAnswered(true); setScore(s => s + 1) }}>
-                Đã đọc xong ✓
-              </Button>
-            ) : (
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 text-green-700 flex items-center gap-2">
-                <CheckCircleFilled /> Tốt lắm! Tiếp tục nhé.
+            {/* ── Target Card ── */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-[2rem] p-8 mb-8 text-center shadow-xl shadow-purple-100 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <AudioOutlined style={{ fontSize: '100px', color: 'white' }} />
               </div>
-            )}
+
+              <h3 className="text-white/70 text-sm font-bold uppercase tracking-widest mb-2">Phát âm mẫu</h3>
+              <p className="text-white font-black text-4xl mb-4 leading-tight">{speakText}</p>
+
+              <div className="flex justify-center gap-4">
+                {ch.ipaText && (
+                  <span className="px-4 py-1.5 bg-white/20 rounded-full text-white/90 font-mono text-sm backdrop-blur-md">
+                    /{ch.ipaText}/
+                  </span>
+                )}
+                {ch.audioUrl && (
+                  <button
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-full text-purple-600 hover:scale-110 active:scale-95 transition-all shadow-lg"
+                    onClick={() => { try { new Audio(ch.audioUrl!).play() } catch (_) { } }}
+                  >
+                    <SoundFilled />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+
+            {/* ── Interaction Area ── */}
+            <div className="flex flex-col items-center gap-6">
+              {!answered && !isAnalyzing && (
+                <div className="flex flex-col items-center gap-4 w-full">
+                  <p className="text-gray-400 font-medium animate-pulse">
+                    {isRecording ? '🔴 Đang nghe...' : 'Nhấn và giữ nút bên dưới để nói'}
+                  </p>
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.9 }}
+                    onMouseDown={recorder.startRecording}
+                    onMouseUp={async () => {
+                      const blob = await recorder.stopRecording()
+                      if (blob) evaluateWithOllama(blob, speakText)
+                    }}
+                    onMouseLeave={() => { if (isRecording) recorder.stopRecording() }}
+                    onTouchStart={recorder.startRecording}
+                    onTouchEnd={async () => {
+                      const blob = await recorder.stopRecording()
+                      if (blob) evaluateWithOllama(blob, speakText)
+                    }}
+                    className={`w-28 h-28 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 relative ${isRecording
+                      ? 'bg-red-500 shadow-red-200 ring-8 ring-red-50'
+                      : 'bg-white border-4 border-purple-500 text-purple-600'
+                      }`}
+                  >
+                    {isRecording && (
+                      <motion.div
+                        initial={{ scale: 1 }}
+                        animate={{ scale: [1, 1.3, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="absolute inset-0 bg-red-400 rounded-full -z-10 opacity-30"
+                      />
+                    )}
+                    <AudioOutlined style={{ fontSize: '32px' }} />
+                    <span className="text-[10px] font-black uppercase mt-1">
+                      {isRecording ? `${durationSeconds}s` : 'Giữ'}
+                    </span>
+                  </motion.button>
+                </div>
+              )}
+
+              {/* Analyzing State */}
+              {isAnalyzing && (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="relative">
+                    <Spin size="large" indicator={<LoadingOutlined style={{ fontSize: 48, color: '#a855f7' }} spin />} />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      className="absolute -inset-4 border-2 border-dashed border-purple-200 rounded-full"
+                    />
+                  </div>
+                  <p className="text-purple-600 font-black text-lg animate-bounce">AI Gemma 4 đang chấm điểm...</p>
+                </div>
+              )}
+
+              {/* Result Modal-like Card */}
+              {answered && ollamaResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="w-full bg-white rounded-3xl p-6 border-2 shadow-xl"
+                  style={{ borderColor: ollamaResult.isCorrect ? '#22c55e' : '#f97316' }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white text-2xl ${ollamaResult.isCorrect ? 'bg-green-500' : 'bg-orange-500'
+                        }`}>
+                        {ollamaResult.isCorrect ? <CheckCircleFilled /> : <CloseCircleFilled />}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-gray-800 leading-none">Kết quả</h4>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">AI Evaluation</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-black" style={{ color: ollamaResult.isCorrect ? '#22c55e' : '#f97316' }}>
+                        {ollamaResult.score}<span className="text-sm text-gray-300">/100</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {ollamaResult.transcription && (
+                      <div className="bg-gray-100 rounded-2xl p-4 border-l-4 border-gray-400">
+                        <p className="text-xs text-gray-400 font-bold uppercase mb-1">Văn bản nhận diện (ASR):</p>
+                        <p className="text-gray-800 font-black text-lg italic">"{ollamaResult.transcription}"</p>
+                      </div>
+                    )}
+
+                    <div className="bg-gray-50 rounded-2xl p-4">
+                      <p className="text-xs text-gray-400 font-bold uppercase mb-1">Chi tiết lỗi:</p>
+                      <p className="text-gray-700 font-semibold italic">"{ollamaResult.errorDetail}"</p>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
+                      <span className="text-xl">💡</span>
+                      <div>
+                        <p className="text-xs text-blue-400 font-bold uppercase mb-1">Lời khuyên từ AI:</p>
+                        <p className="text-blue-800 text-sm font-bold leading-relaxed">{ollamaResult.suggestion}</p>
+                      </div>
+                    </div>
+
+                    {!ollamaResult.isCorrect && (
+                      <Button
+                        block
+                        icon={<ReloadOutlined />}
+                        onClick={() => { setAnswered(false); setOllamaResult(null); }}
+                        className="h-12 rounded-xl border-orange-200 text-orange-600 font-bold hover:border-orange-500"
+                      >
+                        Thử lại ngay
+                      </Button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </>
         )
       }
+
 
       // ═══════════════ GENERIC FALLBACK ══════════════════════════════════════
       default:
@@ -752,6 +1044,7 @@ const QuizPage: React.FC = () => {
             {(answered || ch.mode === 'GENERIC') && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Button type="primary" size="large" block
+                  loading={saving}
                   className="bg-green-500 border-green-500 hover:bg-green-600 rounded-2xl h-14 text-base font-bold"
                   onClick={goNext}>
                   {idx + 1 >= total ? 'Hoàn thành 🎉' : 'Tiếp theo →'}

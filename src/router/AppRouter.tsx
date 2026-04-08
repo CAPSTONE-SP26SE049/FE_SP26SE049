@@ -23,7 +23,6 @@ import AchievementManagementPage from '../modules/admin/pages/AchievementManagem
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
-import LearningRoadmapPage from '../modules/learner/pages/LearningRoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
 import ProfilePage from '../modules/learner/pages/ProfilePage'
@@ -82,7 +81,6 @@ export const AppRoutes: React.FC = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<LearnerDashboardPage />} />
           <Route path="roadmap" element={<RoadmapPage />} />
-          <Route path="roadmap-v2" element={<LearningRoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="friends" element={<LearnerFriendsPage />} />
           <Route path="pronunciation" element={<PronunciationModelPage />} />

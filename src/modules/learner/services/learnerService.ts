@@ -106,6 +106,7 @@ export const learnerService = {
             starsEarned: q.starsEarned,
             passingScore: q.passingScore,
             rewardEarned: q.rewardEarned,
+            skillType: q.skillType,
         }));
     },
 

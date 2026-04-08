@@ -271,7 +271,7 @@ export default function ProfilePage() {
                             <EditOutlined className="text-brand-blue text-lg" />
                         </div>
                         <div>
-                            <div className="font-extrabold text-gray-800 text-lg">Chỉnh Sửa Hồ Sơ</div>
+                            <div className="font-extrabold text-gray-800 text-lg">Chỉnh sửa hồ sơ</div>
                             <div className="text-xs text-gray-400 font-medium">Cập nhật thông tin cá nhân của bạn</div>
                         </div>
                     </div>
@@ -304,7 +304,7 @@ export default function ProfilePage() {
 
                     <Form.Item
                         name="fullName"
-                        label={<span className="font-bold text-gray-600">Họ và Tên</span>}
+                        label={<span className="font-bold text-gray-600">Họ và tên</span>}
                         rules={[
                             { required: true, message: 'Vui lòng nhập họ và tên' },
                             { min: 2, message: 'Họ tên phải có ít nhất 2 ký tự' },
@@ -321,7 +321,7 @@ export default function ProfilePage() {
 
                     <Form.Item
                         name="phone"
-                        label={<span className="font-bold text-gray-600">Số Điện Thoại</span>}
+                        label={<span className="font-bold text-gray-600">Số điện thoại</span>}
                         rules={[
                             {
                                 pattern: /^(0|\+84)[0-9]{9,10}$/,
@@ -339,7 +339,7 @@ export default function ProfilePage() {
 
                     <Form.Item
                         name="region"
-                        label={<span className="font-bold text-gray-600">Khu Vực Học</span>}
+                        label={<span className="font-bold text-gray-600">Khu vực học</span>}
                         rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}
                     >
                         <Select
@@ -358,7 +358,7 @@ export default function ProfilePage() {
 
                     <Form.Item
                         name="avatarUrl"
-                        label={<span className="font-bold text-gray-600">Link Ảnh Đại Diện</span>}
+                        label={<span className="font-bold text-gray-600">Link ảnh đại diện</span>}
                         rules={[
                             {
                                 type: 'url',
@@ -391,7 +391,7 @@ export default function ProfilePage() {
                             className="h-12 px-8 rounded-xl font-bold bg-brand-blue border-none shadow-md shadow-blue-100 hover:bg-blue-600"
                             size="large"
                         >
-                            {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                         </Button>
                     </div>
                 </Form>

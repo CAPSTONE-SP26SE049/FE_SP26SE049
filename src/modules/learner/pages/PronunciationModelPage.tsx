@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Typography, Card, Slider, Button, Tooltip } from 'antd';
+import { Slider, Button, Tooltip, Spin } from 'antd';
 import {
     SoundOutlined,
     PlayCircleOutlined,
@@ -8,9 +8,8 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 import '@google/model-viewer';
-
-const { Title, Text } = Typography;
 
 // Declare the model-viewer custom element for TypeScript
 declare global {
@@ -254,261 +253,213 @@ export default function PronunciationModelPage() {
     }, [initMorphTargets]);
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto pb-10">
+        <div className="space-y-10 max-w-5xl mx-auto pb-20 font-nunito relative z-10">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3">
                 <Button
                     type="text"
                     icon={<ArrowLeftOutlined />}
                     onClick={() => navigate(-1)}
-                    className="text-gray-500 hover:text-gray-800 font-medium"
+                    className="text-white/40 hover:text-white font-black text-[10px] uppercase tracking-widest transition-all"
                 >
                     Quay lại
                 </Button>
             </div>
 
-            <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-200">
-                    <SoundOutlined className="text-white text-2xl" />
-                </div>
+            <div className="flex items-center gap-6 mb-8">
+                <motion.div
+                    initial={{ scale: 0.8, rotate: -10 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-green to-teal-500 flex items-center justify-center shadow-[0_0_30px_rgba(88,204,2,0.4)]"
+                >
+                    <SoundOutlined className="text-white text-3xl" />
+                </motion.div>
                 <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, color: '#4b4b4b' }}>
-                        Mô Hình Phát Âm
-                    </Title>
-                    <Text className="text-gray-500">
-                        Khám phá cách đặt lưỡi khi phát âm các âm tiếng Việt.
-                    </Text>
+                    <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase drop-shadow-2xl leading-none">
+                        Mô Hình <span className="text-brand-green">Phát Âm</span>
+                    </h2>
+                    <p className="text-white/40 font-black text-[10px] uppercase tracking-[0.3em] mt-2">KHÁM PHÁ CƠ CHẾ TẠO ÂM TIẾNG VIỆT</p>
                 </div>
             </div>
 
             {/* Main Content */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <Card
-                    className="rounded-3xl shadow-sm border-gray-100 overflow-hidden"
-                    bodyStyle={{ padding: 0 }}
-                >
-                    {/* Sound Label */}
-                    <div
-                        style={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            padding: '16px 28px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                        }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                                <span className="text-white text-xl font-black">L</span>
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+                <div className="bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.4)]">
+                    {/* Sound Label Header */}
+                    <div className="bg-gradient-to-r from-brand-green/20 to-teal-500/20 px-10 py-8 border-b border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-brand-green shadow-[0_0_20px_rgba(88,204,2,0.4)] flex items-center justify-center border border-white/20">
+                                <span className="text-white text-3xl font-black italic">L</span>
                             </div>
                             <div>
-                                <Text className="text-white font-bold text-lg block" style={{ lineHeight: 1.2 }}>
-                                    Âm "L" — Phụ Âm Đầu Lưỡi
-                                </Text>
-                                <Text className="text-white/70 text-sm">
-                                    Đặt đầu lưỡi chạm vào nướu trên rồi bật ra
-                                </Text>
+                                <h3 className="text-2xl font-black text-white italic tracking-tight uppercase mb-1">Âm "L" — Phụ Âm Đầu Lưỡi</h3>
+                                <p className="text-white/40 text-[11px] font-black uppercase tracking-widest leading-none">Đặt đầu lưỡi chạm vào nướu trên rồi bật ra</p>
                             </div>
                         </div>
                         <Tooltip title="Nhấn nút hướng dẫn bên dưới để xem chuyển động của lưỡi khi phát âm L">
-                            <InfoCircleOutlined className="text-white/60 text-xl cursor-help hover:text-white transition-colors" />
+                            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center cursor-help hover:bg-white/10 transition-all group">
+                                <InfoCircleOutlined className="text-white/20 text-xl group-hover:text-white transition-colors" />
+                            </div>
                         </Tooltip>
                     </div>
 
-                    {/* 3D Model Viewer */}
-                    <div
-                        style={{
-                            width: '100%',
-                            height: '480px',
-                            background: 'linear-gradient(180deg, #f8f9ff 0%, #eef0f8 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            position: 'relative',
-                        }}
-                    >
-                        <model-viewer
-                            ref={(el: any) => {
-                                if (el && el !== modelRef.current) {
-                                    modelRef.current = el;
-                                    el.addEventListener('load', handleModelLoad);
-                                }
-                            }}
-                            src="/models/mieng_phat_am_L.glb"
-                            alt="Mô hình 3D phát âm chữ L"
-                            camera-controls
-                            shadow-intensity="0.5"
-                            exposure="1.2"
-                            camera-orbit="0deg 85deg 0.35m"
-                            field-of-view="35deg"
-                            interaction-prompt="auto"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                outline: 'none',
-                                '--poster-color': 'transparent',
-                            } as React.CSSProperties}
-                        />
+                    {/* 3D Model Viewer Container */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 pointer-events-none z-[1]" />
 
-                        {/* Loading overlay */}
-                        {!modelLoaded && (
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'rgba(248,249,255,0.9)',
-                                    backdropFilter: 'blur(4px)',
-                                    zIndex: 5,
+                        <div className="w-full h-[520px] bg-black/40 flex items-center justify-center relative overflow-hidden">
+                            {/* Background decoration */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-green/5 blur-[120px] rounded-full pointer-events-none" />
+
+                            <model-viewer
+                                ref={(el: any) => {
+                                    if (el && el !== modelRef.current) {
+                                        modelRef.current = el;
+                                        el.addEventListener('load', handleModelLoad);
+                                    }
                                 }}
-                            >
-                                <div
-                                    style={{
-                                        width: 48,
-                                        height: 48,
-                                        border: '4px solid #e0e7ff',
-                                        borderTopColor: '#667eea',
-                                        borderRadius: '50%',
-                                        animation: 'spin 1s linear infinite',
-                                    }}
-                                />
-                                <Text className="text-gray-400 mt-3 font-medium">Đang tải mô hình 3D...</Text>
+                                src="/models/mieng_phat_am_L.glb"
+                                alt="Mô hình 3D phát âm chữ L"
+                                camera-controls
+                                shadow-intensity="1"
+                                exposure="1.5"
+                                camera-orbit="0deg 85deg 0.35m"
+                                field-of-view="35deg"
+                                interaction-prompt="auto"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    outline: 'none',
+                                    '--poster-color': 'transparent',
+                                } as React.CSSProperties}
+                            />
+
+                            {/* Interaction Hint */}
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 opacity-40 group-hover:opacity-100 transition-all text-white/60 text-[9px] font-black uppercase tracking-widest pointer-events-none z-10">
+                                Dùng chuột để xoay mô hình 3D
                             </div>
-                        )}
+
+                            {/* Loading overlay */}
+                            {!modelLoaded && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-xl z-20">
+                                    <Spin size="large" />
+                                    <div className="mt-6 text-white/30 font-black uppercase text-[10px] tracking-[0.4em]">Đang đồng bộ thực tế ảo...</div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Controls Section */}
-                    <div
-                        style={{
-                            padding: '24px 32px 32px',
-                            background: '#fff',
-                            borderTop: '1px solid #f0f0f0',
-                        }}
-                    >
-                        {/* Guide Button */}
-                        <div className="flex items-center justify-center mb-8">
-                            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                                <Button
-                                    type="primary"
-                                    size="large"
-                                    icon={<PlayCircleOutlined />}
-                                    onClick={handleGuideAnimation}
-                                    disabled={isAnimating || !modelLoaded}
-                                    style={{
-                                        background: isAnimating
-                                            ? '#d1d5db'
-                                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        border: 'none',
-                                        height: 52,
-                                        paddingInline: 36,
-                                        borderRadius: 16,
-                                        fontWeight: 700,
-                                        fontSize: 16,
-                                        boxShadow: isAnimating ? 'none' : '0 8px 24px rgba(102, 126, 234, 0.35)',
-                                        letterSpacing: '0.5px',
-                                    }}
-                                >
-                                    {isAnimating ? 'Đang phát...' : 'Hướng Dẫn Âm L'}
-                                </Button>
-                            </motion.div>
-                        </div>
+                    {/* Controls & Info Section */}
+                    <div className="px-10 py-12 bg-white/2 backdrop-blur-xl space-y-10">
+                        {/* Action Row */}
+                        <div className="flex flex-col md:flex-row gap-10 items-center">
+                            {/* Guide Card */}
+                            <div className="flex-1 w-full">
+                                <motion.div whileHover={{ scale: 1.02 }} className="bg-white/5 border border-white/10 p-10 rounded-[2.5rem] flex flex-col items-center text-center relative group overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-green/10 blur-3xl rounded-full -mr-16 -mt-16" />
 
-                        {/* Manual Slider */}
-                        <div
-                            style={{
-                                background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
-                                borderRadius: 20,
-                                padding: '20px 28px 16px',
-                                border: '1px solid #e9e5f5',
-                            }}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <Text className="text-gray-600 font-semibold text-sm">
-                                    🎛️ Điều chỉnh thủ công
-                                </Text>
-                                <Text className="text-gray-400 text-xs">
-                                    Kéo thanh trượt để di chuyển lưỡi
-                                </Text>
+                                    <Button
+                                        type="primary"
+                                        size="large"
+                                        icon={<PlayCircleOutlined className="text-xl" />}
+                                        onClick={handleGuideAnimation}
+                                        disabled={isAnimating || !modelLoaded}
+                                        className={clsx(
+                                            "h-20 px-12 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] italic border-none shadow-2xl transition-all relative overflow-hidden",
+                                            isAnimating
+                                                ? "bg-white/10 text-white/20"
+                                                : "bg-brand-green hover:bg-brand-green transform hover:scale-105 active:scale-95 shadow-brand-green/20"
+                                        )}
+                                    >
+                                        <span className="relative z-10">{isAnimating ? 'Đang mô phỏng...' : 'Kích hoạt hướng dẫn'}</span>
+                                        {!isAnimating && (
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                        )}
+                                    </Button>
+                                    <p className="mt-6 text-white/30 text-[9px] font-black uppercase tracking-[0.2em]">Xem quy trình chuyển động của âm L</p>
+                                </motion.div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <Text className="text-xs text-gray-400 font-medium min-w-[36px]">Xuống</Text>
-                                <Slider
-                                    min={0}
-                                    max={100}
-                                    value={sliderValue}
-                                    onChange={handleSliderChange}
-                                    disabled={isAnimating || !modelLoaded}
-                                    tooltip={{
-                                        formatter: (val) => `${val}%`,
-                                    }}
-                                    style={{ flex: 1 }}
-                                    styles={{
-                                        track: {
-                                            background: 'linear-gradient(90deg, #667eea, #764ba2)',
-                                        },
-                                        rail: {
-                                            background: '#ddd6fe',
-                                        },
-                                    }}
-                                />
-                                <Text className="text-xs text-gray-400 font-medium min-w-[24px]">Lên</Text>
-                            </div>
-                            <div className="text-center mt-1">
-                                <Text
-                                    style={{
-                                        fontSize: 20,
-                                        fontWeight: 800,
-                                        background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent',
-                                    }}
-                                >
-                                    {sliderValue}%
-                                </Text>
+
+                            {/* Manual Settings */}
+                            <div className="flex-[1.5] w-full">
+                                <div className="bg-white/5 border border-white/10 p-10 rounded-[2.5rem] relative">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h4 className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em] flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-brand-green rounded-full shadow-[0_0_8px_#58cc02]" />
+                                            Điều chỉnh thủ công
+                                        </h4>
+                                        <div className="text-3xl font-black italic text-brand-green drop-shadow-[0_0_10px_rgba(88,204,2,0.3)]">{sliderValue}%</div>
+                                    </div>
+
+                                    <div className="flex items-center gap-6 mb-4">
+                                        <div className="text-[10px] font-black text-white/20 uppercase tracking-widest min-w-[50px]">Xuống</div>
+                                        <Slider
+                                            min={0}
+                                            max={100}
+                                            value={sliderValue}
+                                            onChange={handleSliderChange}
+                                            disabled={isAnimating || !modelLoaded}
+                                            tooltip={{ open: false }}
+                                            className="flex-1 pronunciation-slider"
+                                            styles={{
+                                                track: { background: '#58cc02', height: 8, boxShadow: '0 0 15px rgba(88,204,2,0.5)' },
+                                                rail: { background: 'rgba(255,255,255,0.05)', height: 8 },
+                                                handle: { width: 24, height: 24, background: 'white', border: 'none', boxShadow: '0 0 20px rgba(0,0,0,0.5)', marginTop: -8 }
+                                            }}
+                                        />
+                                        <div className="text-[10px] font-black text-white/20 uppercase tracking-widest min-w-[50px] text-right">Lên</div>
+                                    </div>
+                                    <p className="text-center text-white/30 text-[9px] font-black uppercase tracking-[0.1em] mt-6">Kéo thanh trượt để quan sát vị trí đầu lưỡi</p>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Info tip */}
-                        <div
-                            style={{
-                                marginTop: 20,
-                                padding: '12px 20px',
-                                borderRadius: 14,
-                                background: '#fffbeb',
-                                border: '1px solid #fef3c7',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 10,
-                            }}
-                        >
-                            <InfoCircleOutlined className="text-amber-500 mt-1" />
+                        {/* Pro Tip Card */}
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="bg-gradient-to-r from-brand-green/10 via-brand-green/20 to-brand-green/10 p-10 rounded-[2.5rem] border border-brand-green/20 flex gap-8 items-start relative overflow-hidden group">
+                            <div className="absolute top-0 left-0 w-2 h-full bg-brand-green shadow-[0_0_20px_#58cc02]" />
+                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 shadow-2xl group-hover:scale-110 transition-transform">
+                                <InfoCircleOutlined className="text-brand-green text-3xl" />
+                            </div>
                             <div>
-                                <Text className="text-amber-800 text-sm font-semibold block">Mẹo phát âm</Text>
-                                <Text className="text-amber-700 text-xs">
-                                    Để phát âm chữ "L" chuẩn, hãy đặt đầu lưỡi nhẹ nhàng chạm vào phần nướu phía sau răng cửa
-                                    trên, rồi bật lưỡi xuống khi phát âm. Luồng hơi thoát qua hai bên lưỡi tạo ra âm "L".
-                                </Text>
+                                <h4 className="text-lg font-black text-white italic tracking-tight uppercase mb-3 flex items-center gap-2">
+                                    Mẹo từ chuyên gia
+                                    <div className="px-2 py-0.5 bg-brand-green text-white text-[8px] font-black tracking-widest rounded-full shadow-lg">SECRET TIP</div>
+                                </h4>
+                                <p className="text-white/60 text-sm font-medium leading-relaxed italic">
+                                    "Để phát âm chữ 'L' chuẩn, hãy đặt đầu lưỡi nhẹ nhàng chạm vào phần nướu phía sau răng cửa trên, rồi bật lưỡi xuống dứt khoát. Luồng hơi sẽ thoát qua hai bên lưỡi tạo ra một âm thanh trong và sáng."
+                                </p>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </Card>
+                </div>
             </motion.div>
 
-            {/* CSS for loading spinner */}
             <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        model-viewer {
-          --progress-bar-color: #667eea;
-        }
-        model-viewer::part(default-progress-bar) {
-          display: none;
-        }
-      `}</style>
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
+                }
+                .pronunciation-slider .ant-slider-handle:after {
+                    background: #58cc02 !important;
+                    box-shadow: 0 0 10px rgba(88, 204, 2, 0.5) !important;
+                }
+                model-viewer::part(default-progress-bar) {
+                    display: none;
+                }
+                .ant-tooltip-inner {
+                    border-radius: 12px !important;
+                    font-size: 11px !important;
+                    font-weight: 700 !important;
+                    padding: 8px 16px !important;
+                    background: rgba(0,0,0,0.85) !important;
+                    backdrop-filter: blur(8px) !important;
+                }
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+                model-viewer {
+                  --progress-bar-color: #667eea;
+                }
+            `}</style>
         </div>
     );
 }
