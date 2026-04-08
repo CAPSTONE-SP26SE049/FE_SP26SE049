@@ -56,11 +56,8 @@ const SKILL_CONFIG: Record<string, { label: string; color: string; icon: React.R
     SPEAKING: { label: 'Nói', color: '#ea580c', icon: <AudioOutlined /> },
 };
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
-    BEGINNER: { label: 'Cơ bản', color: 'green' },
-    INTERMEDIATE: { label: 'Trung bình', color: 'gold' },
-    ADVANCED: { label: 'Nâng cao', color: 'red' },
-};
+
+
 
 const REGION_LABEL: Record<string, { label: string; color: string; bg: string }> = {
     NORTH: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
@@ -942,14 +939,45 @@ const QuizManagementPage: React.FC = () => {
             },
         },
         {
-            title: 'Độ khó',
-            dataIndex: 'difficulty',
-            key: 'difficulty',
-            render: (difficulty: string) => {
-                const cfg = DIFFICULTY_CONFIG[difficulty] || { label: difficulty || '—', color: 'default' };
-                return <Tag color={cfg.color}>{cfg.label}</Tag>;
+            title: 'Gợi ý',
+            key: 'hint',
+            width: 200,
+            render: (_: any, record: any, index: number) => {
+                let finalChallenge = null;
+                if (quizChallenges && quizChallenges.length > 0) {
+                    let bankItem = quizChallenges.find((item: any) =>
+                        (record.id && item.challenge?.id === record.id) ||
+                        (record.challengeId && item.challenge?.id === record.challengeId)
+                    );
+                    if (!bankItem && record.questionOrder != null) {
+                        bankItem = quizChallenges.find((item: any) => item.orderIndex === record.questionOrder);
+                    }
+                    if (!bankItem && index != null && index < quizChallenges.length) {
+                        bankItem = quizChallenges[index];
+                    }
+                    if (bankItem?.challenge) {
+                        finalChallenge = bankItem.challenge;
+                    }
+                }
+                if (!finalChallenge && record.metadataJson) {
+                    finalChallenge = record;
+                }
+                if (finalChallenge) {
+                    const parsed = parseMetadata(finalChallenge);
+                    const meta = parsed.metadataJson || {};
+                    const hint = meta.hint || meta.transcript || '';
+                    if (hint) {
+                        return (
+                            <Text style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>
+                                {hint}
+                            </Text>
+                        );
+                    }
+                }
+                return <Text type="secondary">—</Text>;
             },
         },
+
         {
             title: 'Thứ tự',
             dataIndex: 'questionOrder',
@@ -1821,16 +1849,7 @@ const QuizManagementPage: React.FC = () => {
                                                     );
                                                 }
                                             },
-                                            {
-                                                title: 'Độ khó',
-                                                dataIndex: 'difficultyTag',
-                                                key: 'difficultyTag',
-                                                width: 120,
-                                                render: (tag: string) => {
-                                                    const cfg = DIFFICULTY_CONFIG[tag] || { label: tag, color: 'default' };
-                                                    return <Tag color={cfg.color}>{cfg.label}</Tag>;
-                                                }
-                                            },
+
                                             {
                                                 title: 'Chi tiết',
                                                 key: 'action',
@@ -1893,15 +1912,7 @@ const QuizManagementPage: React.FC = () => {
                                         <Input.TextArea rows={2} placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} />
                                     </Form.Item>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        <Form.Item name="difficultyTag" label={<Text strong>Độ khó</Text>}>
-                                            <Select>
-                                                {Object.entries(DIFFICULTY_CONFIG).map(([k, v]) => (
-                                                    <Option key={k} value={k}>{v.label}</Option>
-                                                ))}
-                                            </Select>
-                                        </Form.Item>
-                                    </div>
+
 
                                     <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
                                         {activeSkillType === 'READING' && (
@@ -2044,10 +2055,7 @@ const QuizManagementPage: React.FC = () => {
                                     return <Tag color={cfg.color}>{cfg.label}</Tag>;
                                 })()}
                             </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Độ khó:</Text>
-                                <Tag color={DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.color}>{DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.label}</Tag>
-                            </div>
+
                         </div>
 
                         <Divider style={{ margin: '16px 0' }} />
@@ -2334,7 +2342,7 @@ const QuizManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
                         <Text style={{ color: '#0369a1', fontSize: 13 }}>
                             <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
-                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây), Độ khó
+                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (giây)
                         </Text>
                     </div>
                     <input

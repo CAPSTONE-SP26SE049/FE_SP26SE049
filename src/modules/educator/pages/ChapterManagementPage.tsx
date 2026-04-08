@@ -1027,32 +1027,13 @@ const ChapterManagementPage: React.FC = () => {
                     layout="vertical"
                     onFinish={handleCreateQuiz}
                 >
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Tên quiz"
-                                name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
-                            >
-                                <Input placeholder="Ví dụ: Thử thách Level 1" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Độ khó"
-                                name="difficulty"
-                            >
-                                <Select
-                                    placeholder="Chọn độ khó"
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item
+                        label="Tên quiz"
+                        name="title"
+                        rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
+                    >
+                        <Input placeholder="Ví dụ: Thử thách Level 1" />
+                    </Form.Item>
 
                     <Row gutter={24}>
                         <Col span={12}>

@@ -54,11 +54,8 @@ const SKILL_CONFIG: Record<string, { label: string; color: string; icon: React.R
     ENTRY_TEST: { label: 'Kiểm tra đầu vào', color: '#dc2626', icon: <QuestionCircleOutlined /> }
 };
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
-    BEGINNER: { label: 'Cơ bản', color: 'green' },
-    INTERMEDIATE: { label: 'Trung bình', color: 'gold' },
-    ADVANCED: { label: 'Nâng cao', color: 'red' },
-};
+
+
 
 const REGION_CONFIG: Record<string, { label: string; color: string }> = {
     BAC: { label: 'Miền Bắc', color: '#1890ff' },
@@ -964,10 +961,7 @@ const ChallengeBankPage: React.FC = () => {
                                     return <Tag color={cfg.color}>{cfg.label}</Tag>;
                                 })()}
                             </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Độ khó:</Text>
-                                <Tag color={DIFFICULTY_CONFIG[selectedChallenge.difficultyTag]?.color}>{DIFFICULTY_CONFIG[selectedChallenge.difficultyTag]?.label}</Tag>
-                            </div>
+
                         </div>
 
                         <Divider style={{ margin: '16px 0' }} />

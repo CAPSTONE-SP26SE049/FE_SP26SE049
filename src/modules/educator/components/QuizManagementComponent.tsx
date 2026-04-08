@@ -406,7 +406,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
                   </Button>
                 ]}
               >
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
                     <Text type="secondary" style={{ fontSize: '11px' }}>Loại kỹ năng</Text>
                     <Select
@@ -418,19 +418,6 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
                       <Select.Option value="PRONUNCIATION">Phát âm</Select.Option>
                       <Select.Option value="LISTENING">Nghe</Select.Option>
                       <Select.Option value="VOCABULARY">Giao tiếp</Select.Option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>Độ khó</Text>
-                    <Select
-                      className="w-full"
-                      size="small"
-                      value={q.difficulty}
-                      onChange={(v) => handleQuestionChange(index, 'difficulty', v)}
-                    >
-                      <Select.Option value="EASY">Dễ</Select.Option>
-                      <Select.Option value="MEDIUM">Trung bình</Select.Option>
-                      <Select.Option value="HARD">Khó</Select.Option>
                     </Select>
                   </div>
                   <div>
