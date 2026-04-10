@@ -1,65 +1,115 @@
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
+import { Button, Input, Divider, Space } from 'antd';
+import { 
+  UserOutlined, 
+  LockOutlined, 
+  GoogleOutlined, 
+  FacebookOutlined,
+  GlobalOutlined 
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 
 const Login = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-            {/* Container */}
-            <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border-2 border-gray-100">
-                <div className="p-8">
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-extrabold text-gray-800 mb-2">Đăng Nhập</h1>
-                        <p className="text-gray-500">Chào mừng trở lại với hành trình!</p>
+        <div className="min-h-screen bg-[#F8F9FA] font-inter flex items-center justify-center p-6 selection:bg-stitch-teal selection:text-white">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-[480px] w-full"
+            >
+                {/* Logo Section */}
+                <div className="flex flex-col items-center mb-10">
+                    <div className="w-16 h-16 rounded-[1.5rem] bg-stitch-teal flex items-center justify-center shadow-xl shadow-stitch-teal/20 mb-6">
+                        <GlobalOutlined className="text-white text-3xl" />
                     </div>
+                    <h1 className="text-3xl font-black text-stitch-dark tracking-tighter uppercase mb-2 italic">
+                        Speak<span className="text-stitch-teal">VN</span>
+                    </h1>
+                    <p className="text-stitch-grey font-medium">Bắt đầu hành trình chinh phục ngôn ngữ của bạn.</p>
+                </div>
 
-                    <div className="space-y-4">
-                        <div>
-                            <input
-                                type="email"
-                                autoComplete="username"
-                                placeholder="Email hoặc Tên đăng nhập"
-                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="password"
-                                autoComplete="current-password"
-                                placeholder="Mật khẩu"
-                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
-                            />
-                        </div>
+                {/* Login Card */}
+                <div className="bg-white rounded-[2.5rem] shadow-stitch p-10 md:p-12 border border-stitch-border relative overflow-hidden">
+                    {/* Decorative element */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-teal/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                    
+                    <div className="relative z-10">
+                        <h2 className="text-2xl font-extrabold text-stitch-dark mb-8 text-center">Đăng nhập</h2>
+                        
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-stitch-grey uppercase tracking-widest ml-1">Email / Tên đăng nhập</label>
+                                <Input 
+                                    size="large"
+                                    placeholder="yourname@email.com"
+                                    prefix={<UserOutlined className="text-stitch-teal mr-2" />}
+                                    className="h-14 rounded-2xl bg-[#F8F9FA] border-none font-bold text-stitch-dark focus:bg-white transition-all shadow-inner"
+                                />
+                            </div>
 
-                        <Button className="w-full" onClick={() => navigate('/learn')}>
-                            ĐĂNG NHẬP
-                        </Button>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center ml-1">
+                                    <label className="text-[10px] font-black text-stitch-grey uppercase tracking-widest">Mật khẩu</label>
+                                    <span className="text-[10px] font-black text-stitch-teal uppercase tracking-widest cursor-pointer hover:underline">Quên mật khẩu?</span>
+                                </div>
+                                <Input.Password 
+                                    size="large"
+                                    placeholder="••••••••"
+                                    prefix={<LockOutlined className="text-stitch-teal mr-2" />}
+                                    className="h-14 rounded-2xl bg-[#F8F9FA] border-none font-bold text-stitch-dark focus:bg-white transition-all shadow-inner"
+                                />
+                            </div>
 
-                        <div className="relative h-8 flex items-center justify-center">
-                            <div className="absolute w-full h-[1px] bg-gray-200"></div>
-                            <div className="relative bg-white px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">HOẶC</div>
-                        </div>
+                            <Button 
+                                type="primary" 
+                                size="large" 
+                                block
+                                onClick={() => navigate('/learner/dashboard')}
+                                className="h-14 bg-stitch-teal hover:bg-stitch-teal-dark border-none rounded-2xl font-black text-sm tracking-widest shadow-lg shadow-stitch-teal/20 mt-4"
+                            >
+                                TIẾP TỤC ĐẾN DASHBOARD
+                            </Button>
 
-                        <div className="flex gap-4 justify-center">
-                            <button className="flex-1 py-3 border-2 border-gray-200 rounded-2xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" alt="Facebook" className="w-6 h-6" />
-                                <span>Facebook</span>
-                            </button>
-                            <button className="flex-1 py-3 border-2 border-gray-200 rounded-2xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
-                                <span>Google</span>
-                            </button>
+                            <Divider className="border-stitch-border my-8">
+                                <span className="text-[10px] font-black text-stitch-grey uppercase tracking-[0.2em]">HOẶC ĐĂNG NHẬP VỚI</span>
+                            </Divider>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button 
+                                    size="large"
+                                    icon={<GoogleOutlined />}
+                                    className="h-14 rounded-2xl border-stitch-border font-bold text-stitch-grey hover:text-stitch-dark hover:border-gray-400 transition-all flex items-center justify-center"
+                                >
+                                    Google
+                                </Button>
+                                <Button 
+                                    size="large"
+                                    icon={<FacebookOutlined />}
+                                    className="h-14 rounded-2xl border-stitch-border font-bold text-stitch-grey hover:text-stitch-dark hover:border-gray-400 transition-all flex items-center justify-center"
+                                >
+                                    Facebook
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-gray-50 p-6 text-center border-t border-gray-100">
-                    <p className="text-gray-600 font-bold">
-                        Chưa có tài khoản? <span onClick={() => navigate('/register')} className="text-brand-blue cursor-pointer hover:underline uppercase">Đăng ký</span>
+                {/* Footer Link */}
+                <div className="text-center mt-10">
+                    <p className="text-stitch-grey font-bold">
+                        Chưa có tài khoản?{' '}
+                        <span 
+                            onClick={() => navigate('/register')} 
+                            className="text-stitch-teal cursor-pointer hover:underline uppercase tracking-widest text-xs font-black ml-1"
+                        >
+                            Tạo tài khoản mới
+                        </span>
                     </p>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 };

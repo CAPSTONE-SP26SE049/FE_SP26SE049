@@ -1,36 +1,31 @@
 import React, { useState } from "react";
-import { Layout, Menu, Typography, Dropdown, Avatar } from "antd";
+import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Input } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppstoreOutlined,
   CompassOutlined,
-  CalendarOutlined,
   UserOutlined,
   LogoutOutlined,
   TrophyOutlined,
-  FireFilled,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  TeamOutlined,
-  SoundOutlined,
+  BellOutlined,
   SearchOutlined,
+  SoundOutlined,
+  TeamOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
-import bgImage from "../../../../public/vietnam_bg.png";
 
-const { Sider, Content } = Layout;
+const { Content, Header } = Layout;
 const { Text } = Typography;
 
 export default function LearnerLayout() {
   const { session, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
 
-  // Fallbacks if session is missing
-  const user = session?.user || { fullName: "Learner", avatar: null };
+  const user = session?.user || { fullName: "Học viên", avatar: null };
 
   const handleLogout = () => {
     logout();
@@ -45,6 +40,11 @@ export default function LearnerLayout() {
         label: <Link to="/learner/profile">Hồ sơ cá nhân</Link>,
       },
       {
+        key: "settings",
+        icon: <SettingOutlined />,
+        label: "Cài đặt",
+      },
+      {
         type: "divider",
       },
       {
@@ -56,235 +56,111 @@ export default function LearnerLayout() {
     ],
   };
 
-  const menuItems = [
-    {
-      key: "/learner/dashboard",
-      icon: <AppstoreOutlined className="text-lg" />,
-      label: (
-        <Link to="/learner/dashboard" className="font-bold text-sm tracking-wide">
-          Bảng điều khiển
-        </Link>
-      ),
-    },
-    {
-      key: "/learner/roadmap",
-      icon: <CompassOutlined className="text-lg" />,
-      label: (
-        <Link to="/learner/roadmap" className="font-bold text-sm tracking-wide">
-          Bản đồ hành trình
-        </Link>
-      ),
-    },
-    {
-      key: "/learner/friends",
-      icon: <TeamOutlined className="text-lg" />,
-      label: (
-        <Link to="/learner/friends" className="font-bold text-sm tracking-wide">
-          Bạn bè
-        </Link>
-      ),
-    },
-    {
-      key: "/learner/pronunciation",
-      icon: <SoundOutlined className="text-lg" />,
-      label: (
-        <Link to="/learner/pronunciation" className="font-bold text-sm tracking-wide">
-          Mô hình phát âm
-        </Link>
-      ),
-    },
-    {
-      key: "/learner/leaderboard",
-      icon: <TrophyOutlined className="text-lg" />,
-      label: (
-        <Link to="/learner/leaderboard" className="font-bold text-sm tracking-wide">
-          Bảng xếp hạng
-        </Link>
-      ),
-    },
+  const navItems = [
+    { key: "/learner/dashboard", label: "Bảng điều khiển", icon: <AppstoreOutlined /> },
+    { key: "/learner/roadmap", label: "Hành trình", icon: <CompassOutlined /> },
+    { key: "/learner/friends", label: "Bạn bè", icon: <TeamOutlined /> },
+    { key: "/learner/pronunciation", label: "Phát âm", icon: <SoundOutlined /> },
+    { key: "/learner/leaderboard", label: "Bảng xếp hạng", icon: <TrophyOutlined /> },
   ];
 
-  const selectedKey = menuItems.find(
-    (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
-  )?.key || "/learner/dashboard";
-
   return (
-    <Layout className="min-h-screen bg-black overflow-hidden selection:bg-brand-green selection:text-white relative">
-      {/* Immersive Background */}
-      {location.pathname !== "/learner/roadmap" && (
-        <div className="fixed inset-0 z-0">
-          <img
-            src={bgImage}
-            alt="Vietnam Landscape"
-            className="w-full h-full object-cover opacity-60 brightness-[0.7] contrast-[1.1] animate-slow-zoom"
-            style={{ imageRendering: '-webkit-optimize-contrast' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-transparent to-black/80"></div>
+    <Layout className="min-h-screen bg-[#F8F9FA] font-sans selection:bg-[#00897B] selection:text-white">
+      {/* Top Professional Navbar */}
+      <Header className="sticky top-0 z-50 w-full !bg-white border-b border-[#E0E3E7] h-16 px-6 md:px-10 flex items-center justify-between shadow-sm">
+        {/* Logo Section */}
+        <div 
+          className="flex items-center gap-3 cursor-pointer shrink-0" 
+          onClick={() => navigate("/learner/dashboard")}
+        >
+          <div className="w-9 h-9 rounded-lg bg-[#00897B] flex items-center justify-center shadow-md">
+            <TrophyOutlined className="text-white text-lg" />
+          </div>
+          <span className="font-bold text-xl text-[#202124] tracking-tight">
+            MONA<span className="text-[#00897B]">.LMS</span>
+          </span>
         </div>
-      )}
 
-      {/* Sidebar Navigation */}
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={260}
-        theme="dark"
-        className="z-50 !bg-black/20 backdrop-blur-2xl border-r border-white/10"
-        style={{ position: "sticky", top: 0, height: "100vh" }}
-      >
-        <div className="flex flex-col h-full">
-          {/* Top Section: Logo */}
-          <div
-            className="h-20 flex items-center px-6 border-b border-white/5 shrink-0 cursor-pointer overflow-hidden"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <motion.div
-              layout
+        {/* Center Navigation Tabs */}
+        <div className="hidden lg:flex items-center gap-1 mx-4">
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              to={item.key}
               className={clsx(
-                "flex items-center gap-3 transition-all duration-300",
-                collapsed ? "w-10 justify-center" : "w-full justify-start"
+                "px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2",
+                location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
+                  ? "bg-[#E0F2F1] text-[#00897B]"
+                  : "text-[#5F6368] hover:bg-gray-100 hover:text-[#202124]"
               )}
             >
-              <div className="w-10 h-10 min-w-[40px] rounded-xl bg-brand-green flex items-center justify-center shadow-lg shadow-brand-green/20">
-                <TrophyOutlined className="text-white text-xl" />
-              </div>
-              {!collapsed && (
-                <span className="font-black text-2xl text-white italic tracking-tighter">
-                  Speak<span className="text-brand-green">VN</span>
-                </span>
-              )}
-            </motion.div>
-          </div>
+              {item.icon}
+              {item.label}
+            </Link>
+          ))}
+        </div>
 
-          {/* Middle Section: Menu */}
-          <div className="flex-1 overflow-y-auto py-6 custom-scrollbar-sidebar">
-            <Menu
-              mode="inline"
-              selectedKeys={[selectedKey]}
-              items={menuItems}
-              className="!bg-transparent border-none px-3 sidebar-menu"
+        {/* Right Section: Search, Notifications, Profile */}
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center bg-[#F1F3F4] px-3 py-1.5 rounded-full border border-transparent focus-within:bg-white focus-within:border-[#00897B] transition-all w-48 lg:w-64">
+            <SearchOutlined className="text-[#5F6368] mr-2" />
+            <input 
+              type="text" 
+              placeholder="Tìm kiếm..." 
+              className="bg-transparent border-none outline-none text-sm w-full placeholder:text-[#5F6368]"
             />
           </div>
 
-          {/* Bottom Section: Profile */}
-          <div className="shrink-0 border-t border-white/5 p-4 space-y-4 bg-black/40">
-            <div className={clsx("transition-opacity duration-300", collapsed ? "hidden" : "block")}>
-              <div className="flex items-center gap-3 bg-white/5 px-3 py-2.5 rounded-2xl border border-white/10">
-                <FireFilled className="text-orange-500 text-lg" />
-                <span className="font-black text-white text-xs uppercase tracking-widest">
-                  {user?.streak || "0"} NGÀY HỌC
+          <Badge dot color="#FB8C00" offset={[-2, 6]}>
+            <div className="p-2 cursor-pointer hover:bg-gray-100 rounded-full transition-colors">
+              <BellOutlined className="text-lg text-[#5F6368]" />
+            </div>
+          </Badge>
+
+          <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
+            <div className="flex items-center gap-3 cursor-pointer p-1.5 pr-4 pl-1.5 rounded-full border border-[#E0E3E7] hover:bg-gray-50 hover:border-[#00897B]/30 transition-all bg-white shadow-sm">
+              <Avatar
+                src={user.avatar}
+                size={34}
+                icon={!user.avatar && <UserOutlined />}
+                className="bg-[#00897B] border-none shadow-sm shrink-0"
+              />
+              <div className="hidden sm:flex flex-col items-start leading-none">
+                <span className="text-[11px] font-extrabold text-[#202124] mb-0.5 truncate max-w-[100px]">
+                  {user.fullName || "Học viên"}
                 </span>
+                <span className="text-[9px] text-[#5F6368] font-bold uppercase tracking-wider">Học viên</span>
               </div>
             </div>
-
-            {collapsed && (
-              <div className="flex flex-col items-center">
-                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-500 border border-orange-500/20">
-                  <FireFilled />
-                </div>
-              </div>
-            )}
-
-            <Dropdown menu={userMenu} placement="topRight" trigger={["click"]}>
-              <div
-                className={clsx(
-                  "flex items-center cursor-pointer p-2 rounded-2xl hover:bg-white/5 transition-all border border-transparent hover:border-white/10",
-                  collapsed ? "justify-center" : "gap-3"
-                )}
-              >
-                <Avatar
-                  src={user.avatar}
-                  icon={!user.avatar && <UserOutlined />}
-                  size={42}
-                  className="bg-brand-green/20 text-brand-green border border-brand-green/30 shrink-0"
-                />
-                {!collapsed && (
-                  <div className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <Text className="text-sm font-bold text-white truncate">
-                      {user.fullName || "Người dùng"}
-                    </Text>
-                    <Text className="text-[10px] text-white/40 uppercase tracking-widest font-black">
-                      Học viên
-                    </Text>
-                  </div>
-                )}
-              </div>
-            </Dropdown>
-          </div>
+          </Dropdown>
         </div>
-      </Sider>
+      </Header>
 
       {/* Main Content Area */}
-      <Layout className="!bg-transparent flex-1 relative z-10 transition-all duration-300">
-        {/* Header Decoration */}
-        <div className="absolute top-0 right-0 p-8 flex items-center gap-6 text-white/50 z-20">
-          <SearchOutlined className="text-lg cursor-pointer hover:text-white transition-colors" />
-          <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center cursor-pointer hover:bg-white/5 transition-colors">
-            <div className="w-1 h-1 bg-white rounded-full mx-0.5"></div>
-            <div className="w-1 h-1 bg-white rounded-full mx-0.5"></div>
-            <div className="w-1 h-1 bg-white rounded-full mx-0.5"></div>
-          </div>
-        </div>
-
-        <Content className="p-4 sm:px-12 sm:pt-8 sm:pb-12 w-full min-h-screen relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="h-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </Content>
-      </Layout>
+      <Content className="p-6 md:p-10 max-w-7xl mx-auto w-full">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      </Content>
 
       <style>{`
-        .sidebar-menu .ant-menu-item {
-          border-radius: 1rem !important;
-          margin-bottom: 8px !important;
-          color: rgba(255, 255, 255, 0.6) !important;
-          height: 48px !important;
-          display: flex !important;
-          align-items: center !important;
+        body {
+          margin: 0;
+          background-color: #F8F9FA;
         }
-        .sidebar-menu .ant-menu-item-selected {
-          background-color: rgba(88, 204, 2, 0.1) !important;
-          color: #58cc02 !important;
+        input::placeholder {
+          color: #5F6368;
         }
-        .sidebar-menu .ant-menu-item:hover {
-          color: white !important;
-          background-color: rgba(255, 255, 255, 0.05) !important;
-        }
-        .sidebar-menu .ant-menu-item-selected .ant-menu-item-icon {
-          color: #58cc02 !important;
-        }
-        .sidebar-menu .ant-menu-item .ant-menu-item-icon {
-          transition: transform 0.3s ease;
-        }
-        .sidebar-menu .ant-menu-item:hover .ant-menu-item-icon {
-          transform: scale(1.1);
-        }
-        .custom-scrollbar-sidebar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar-sidebar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar-sidebar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        @keyframes slow-zoom {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.05); }
-        }
-        .animate-slow-zoom {
-          animation: slow-zoom 60s infinite alternate ease-in-out;
+        .ant-layout {
+          background-color: #F8F9FA !important;
         }
       `}</style>
     </Layout>

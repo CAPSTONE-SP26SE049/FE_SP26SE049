@@ -1,46 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primary-teal: #00897B;
+  --primary-hover: #00796B;
+  --bg-light: #F8F9FA;
+  --border-color: #E0E3E7;
+  --text-dark: #202124;
+  --text-grey: #5F6368;
+}
+
 @layer base {
   body {
-    @apply font-nunito bg-gray-100 text-gray-700 antialiased;
+    @apply antialiased text-[#202124] bg-[#F8F9FA];
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-brand-green hover:bg-green-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-green-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
+  /* Stitch-style Buttons */
+  .btn-stitch-primary {
+    @apply bg-[#00897B] hover:bg-[#00796B] text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2;
   }
-  .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-brand-blue font-bold py-3 px-6 rounded-2xl border-2 border-gray-200 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all uppercase tracking-wide;
+  
+  .btn-stitch-secondary {
+    @apply bg-white hover:bg-gray-50 text-[#00897B] font-bold py-2.5 px-6 rounded-xl border border-[#E0E3E7] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2;
   }
-  .btn-danger {
-    @apply bg-brand-red hover:bg-red-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-red-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
+
+  /* Stitch-style Cards */
+  .card-stitch {
+    @apply bg-white rounded-2xl border border-[#E0E3E7] p-8 shadow-sm transition-all hover:shadow-md;
   }
-  .card {
-    @apply bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-sm;
-  }
-}*,
-*::before,
-*::after {
-  box-sizing: border-box;
 }
 
 html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-}
-
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #f5f5f5;
-}
-
+body,
 #root {
   height: 100%;
 }
@@ -50,17 +47,31 @@ a {
   text-decoration: none;
 }
 
-/* Custom Scrollbar for inner cards */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
+
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #e5e7eb;
+
+::-webkit-scrollbar-thumb {
+  background: #E0E3E7;
   border-radius: 10px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #d1d5db;
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* Animations from Design */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-stitch-fade {
+  animation: fadeIn 0.5s ease-out forwards;
 }
