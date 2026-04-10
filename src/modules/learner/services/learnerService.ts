@@ -56,6 +56,7 @@ export interface Quiz {
     difficulty?: string;
     skillType?: string;
     questionCount?: number;
+    orderIndex?: number;
     questions?: QuizQuestion[];
     status?: string;
     isCompleted?: boolean;

@@ -14,7 +14,7 @@ import { updateProfileAPI, changePasswordAPI } from '../../../services/userServi
 const { Title, Text } = Typography
 
 const SettingsPage: React.FC = () => {
-  const { session } = useAuth()
+  const { session, updateSessionItem } = useAuth()
   const user = session?.user as any || {}
 
   const [profileForm] = Form.useForm()
@@ -37,6 +37,7 @@ const SettingsPage: React.FC = () => {
       setSavingProfile(true)
       // Call API
       await updateProfileAPI(values)
+      updateSessionItem({ fullName: values.fullName, phone: values.phoneNumber, phoneNumber: values.phoneNumber })
       message.success('Cập nhật hồ sơ thành công')
     } catch (error: any) {
       message.error(error.message || 'Cập nhật hồ sơ thất bại')
@@ -201,10 +202,6 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Title level={2} style={{ margin: 0 }}>Cài đặt</Title>
-        <Text type="secondary">Cấu hình portal, quyền truy cập và tùy chọn hiển thị</Text>
-      </div>
 
       <Card className="shadow-sm border-gray-100 rounded-xl" bodyStyle={{ paddingTop: 0 }}>
         <Tabs defaultActiveKey="1" items={items} size="large" />

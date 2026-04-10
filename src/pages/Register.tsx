@@ -18,9 +18,9 @@ const Register = () => {
                     <div className="space-y-4">
                         {step === 1 && (
                             <>
-                                <input type="number" autoComplete="off" placeholder="Tuổi của bạn" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
-                                <input type="text" autoComplete="name" placeholder="Tên của bạn (Tùy chọn)" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
-                                <input type="email" autoComplete="email" placeholder="Email" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-green focus:bg-white transition-colors" />
+                                <input type="number" autoComplete="off" placeholder="Tuổi của bạn" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-purple-600 focus:bg-white transition-colors" />
+                                <input type="text" autoComplete="name" placeholder="Tên của bạn (Tùy chọn)" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-purple-600 focus:bg-white transition-colors" />
+                                <input type="email" autoComplete="email" placeholder="Email" className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-purple-600 focus:bg-white transition-colors" />
                                 <Button className="w-full" onClick={() => setStep(2)}>TIẾP TỤC</Button>
                             </>
                         )}
@@ -30,13 +30,13 @@ const Register = () => {
                                 <div className="space-y-2 mb-4">
                                     <label className="text-gray-700 font-bold">Mục tiêu của bạn là gì?</label>
                                     <div className="flex flex-col gap-2">
-                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-brand-green hover:bg-green-50 font-bold text-gray-600 hover:text-brand-green transition-all text-left">
+                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-600 hover:bg-purple-50 font-bold text-gray-600 hover:text-purple-600 transition-all text-left">
                                             🎯 Sửa giọng ngọng N/L
                                         </button>
-                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-brand-green hover:bg-green-50 font-bold text-gray-600 hover:text-brand-green transition-all text-left">
+                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-600 hover:bg-purple-50 font-bold text-gray-600 hover:text-purple-600 transition-all text-left">
                                             🗣️ Cải thiện giao tiếp
                                         </button>
-                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-brand-green hover:bg-green-50 font-bold text-gray-600 hover:text-brand-green transition-all text-left">
+                                        <button className="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-600 hover:bg-purple-50 font-bold text-gray-600 hover:text-purple-600 transition-all text-left">
                                             🌏 Chuẩn hóa giọng địa phương
                                         </button>
                                     </div>
@@ -65,7 +65,7 @@ const Register = () => {
 
                 <div className="bg-gray-50 p-6 text-center border-t border-gray-100">
                     <p className="text-gray-600 font-bold">
-                        Đã có tài khoản? <span onClick={() => navigate('/login')} className="text-brand-green cursor-pointer hover:underline uppercase">Đăng nhập</span>
+                        Đã có tài khoản? <span onClick={() => navigate('/login')} className="text-purple-600 cursor-pointer hover:underline uppercase">Đăng nhập</span>
                     </p>
                 </div>
             </div>

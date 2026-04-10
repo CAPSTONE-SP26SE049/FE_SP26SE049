@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons'
 import { adminService } from '../services/adminService'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 const AdminDashboardPage = () => {
   const [loading, setLoading] = React.useState(true)
@@ -48,16 +48,6 @@ const AdminDashboardPage = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <DashboardOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-        </div>
-        <div>
-          <Title level={2} style={{ margin: 0, fontSize: 24 }}>Tổng quan</Title>
-          <Text type="secondary">Theo dõi sức khỏe hệ thống và chỉ số vận hành</Text>
-        </div>
-      </div>
-
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} loading={loading}>
@@ -66,7 +56,7 @@ const AdminDashboardPage = () => {
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} loading={loading}>
-            <Statistic title="Lượt tập phát âm" value={overview.totalAttempts || 0} prefix={<BookOutlined />} styles={{ content: { color: '#1890ff' } }} />
+            <Statistic title="Lượt tập phát âm" value={overview.totalAttempts || 0} prefix={<BookOutlined />} styles={{ content: { color: '#9333ea' } }} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>

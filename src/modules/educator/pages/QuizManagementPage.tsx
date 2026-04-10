@@ -1233,7 +1233,7 @@ const QuizManagementPage: React.FC = () => {
                 }}
             >
                 <div>
-                    <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center' }}>
+                    <div style={{ margin: 0, fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', color: '#1e293b' }}>
                         {selectedLevelId && (
                             <Button
                                 icon={<ArrowLeftOutlined />}
@@ -1241,29 +1241,23 @@ const QuizManagementPage: React.FC = () => {
                                 style={{ marginRight: 16, borderRadius: 10, border: '1.5px solid #e2e8f0' }}
                             />
                         )}
-                        <FileTextOutlined style={{ marginRight: 10, color: '#2563eb' }} />
                         {selectedLevelId && selectedLevel ? (
-                            <>Quản Lý Quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
-                        ) : 'Quản Lý Quiz'}
-                    </Title>
-                    <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                        {selectedLevelId && selectedLevel
-                            ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
-                            : 'Xem danh sách quiz và câu hỏi theo từng chương học'}
-                    </Text>
+                            <><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
+                        ) : null}
+                    </div>
                 </div>
                 {selectedLevelId && !quiz && (
                     <Space size={8}>
                         <Button icon={<DownloadOutlined />} onClick={handleDownloadQuizTemplate}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0f9ff', color: '#0369a1', border: '1.5px solid #bae6fd' }}>
+                            style={{ borderRadius: 8, fontWeight: 600 }}>
                             Template
                         </Button>
                         <Button icon={<UploadOutlined />} onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}>
+                            style={{ borderRadius: 8, fontWeight: 600 }}>
                             Import
                         </Button>
                         <Button icon={<ExportOutlined />} onClick={handleExportQuizCSV}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#fefce8', color: '#a16207', border: '1.5px solid #fde047' }}>
+                            style={{ borderRadius: 8, fontWeight: 600 }}>
                             Export
                         </Button>
                     </Space>
@@ -1653,9 +1647,6 @@ const QuizManagementPage: React.FC = () => {
                                 style={{
                                     borderRadius: 8,
                                     fontWeight: 600,
-                                    background: '#fff',
-                                    color: '#0369a1',
-                                    border: '1.5px solid #7dd3fc',
                                     fontSize: 12,
                                 }}
                                 size="small"
@@ -1668,9 +1659,6 @@ const QuizManagementPage: React.FC = () => {
                                 style={{
                                     borderRadius: 8,
                                     fontWeight: 600,
-                                    background: '#15803d',
-                                    color: '#fff',
-                                    border: '1.5px solid #15803d',
                                     fontSize: 12,
                                 }}
                                 size="small"
@@ -2447,9 +2435,6 @@ const QuizManagementPage: React.FC = () => {
                             marginBottom: 16,
                             borderRadius: 8,
                             fontWeight: 600,
-                            background: '#f0f9ff',
-                            color: '#0369a1',
-                            border: '1.5px solid #bae6fd',
                             width: '100%',
                         }}
                         size="large"
@@ -2491,8 +2476,6 @@ const QuizManagementPage: React.FC = () => {
                             width: '100%',
                             borderRadius: 8,
                             fontWeight: 600,
-                            background: '#15803d',
-                            borderColor: '#15803d',
                             marginBottom: 16,
                             height: 48,
                             fontSize: 15,

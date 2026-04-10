@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Sparkles,
   ShieldCheck,
+  Home,
 } from 'lucide-react'
 
 const passwordRules = [
@@ -119,17 +120,17 @@ export default function Register() {
             ]}
           >
             <Input
-              prefix={<Mail className="text-brand-green/60 w-5 h-5 mr-1" />}
+              prefix={<Mail className="text-purple-600/60 w-5 h-5 mr-1" />}
               placeholder="Địa chỉ Email"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
             />
           </Form.Item>
 
           <Form.Item name="password" rules={passwordRules}>
             <Input.Password
-              prefix={<Lock className="text-brand-green/60 w-5 h-5 mr-1" />}
+              prefix={<Lock className="text-purple-600/60 w-5 h-5 mr-1" />}
               placeholder="Mật khẩu"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
             />
           </Form.Item>
 
@@ -149,9 +150,9 @@ export default function Register() {
             ]}
           >
             <Input.Password
-              prefix={<ShieldCheck className="text-brand-green/60 w-5 h-5 mr-1" />}
+              prefix={<ShieldCheck className="text-purple-600/60 w-5 h-5 mr-1" />}
               placeholder="Nhập lại mật khẩu"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
             />
           </Form.Item>
         </div>
@@ -170,9 +171,9 @@ export default function Register() {
             ]}
           >
             <Input
-              prefix={<User className="text-brand-green/60 w-5 h-5 mr-1" />}
+              prefix={<User className="text-purple-600/60 w-5 h-5 mr-1" />}
               placeholder="Họ và Tên"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
             />
           </Form.Item>
 
@@ -186,9 +187,9 @@ export default function Register() {
             ]}
           >
             <Input
-              prefix={<Phone className="text-brand-green/60 w-5 h-5 mr-1" />}
+              prefix={<Phone className="text-purple-600/60 w-5 h-5 mr-1" />}
               placeholder="Số điện thoại"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-brand-green focus:shadow-[0_0_0_4px_rgba(20,184,166,0.1)] transition-all text-base"
+              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
             />
           </Form.Item>
         </div>
@@ -197,27 +198,27 @@ export default function Register() {
 
     return (
       <div className="animate-fadeIn">
-        <div className="bg-gradient-to-br from-green-50 to-teal-50/30 p-5 rounded-[1.5rem] border border-green-100 mb-4 shadow-inner relative overflow-hidden">
-          <div className="absolute -top-6 -right-6 w-24 h-24 bg-brand-green/10 rounded-full blur-2xl"></div>
-          <h3 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-700 mb-4 flex items-center gap-2">
-            <CheckCircle className="text-brand-green" size={20} /> Xác nhận thông tin
+        <div className="bg-gradient-to-br from-purple-50 to-orange-50/30 p-5 rounded-[1.5rem] border border-purple-100 mb-4 shadow-inner relative overflow-hidden">
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-purple-600/10 rounded-full blur-2xl"></div>
+          <h3 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-600 mb-4 flex items-center gap-2">
+            <CheckCircle className="text-purple-600" size={20} /> Xác nhận thông tin
           </h3>
           <ul className="space-y-3 text-sm relative z-10">
             <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
               <span className="text-gray-500 font-medium flex items-center gap-2">
-                <Mail size={16} className="text-teal-500" /> Email
+                <Mail size={16} className="text-orange-500" /> Email
               </span>
               <span className="font-bold text-gray-800">{values.email}</span>
             </li>
             <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
               <span className="text-gray-500 font-medium flex items-center gap-2">
-                <User size={16} className="text-teal-500" /> Họ tên
+                <User size={16} className="text-orange-500" /> Họ tên
               </span>
               <span className="font-bold text-gray-800">{values.fullName}</span>
             </li>
             <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
               <span className="text-gray-500 font-medium flex items-center gap-2">
-                <Phone size={16} className="text-teal-500" /> SĐT
+                <Phone size={16} className="text-orange-500" /> SĐT
               </span>
               <span className="font-bold text-gray-800">{values.phone}</span>
             </li>
@@ -225,7 +226,7 @@ export default function Register() {
         </div>
         <div className="text-center text-xs text-gray-400 font-medium">
           Bằng việc nhấn "Đăng Ký", bạn đồng ý với{' '}
-          <a href="#" className="text-brand-green font-bold hover:underline">
+          <a href="#" className="text-purple-600 font-bold hover:underline">
             điều khoản sử dụng
           </a>{' '}
           của SpeakVN.
@@ -235,21 +236,30 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-green-50 via-teal-50/50 to-blue-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-purple-50 via-orange-50/50 to-pink-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+      {/* Back to Home Button */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-md border border-gray-200/50 rounded-full shadow-sm text-gray-500 hover:text-purple-600 hover:bg-white hover:shadow-md transition-all group font-bold text-sm"
+      >
+        <Home size={16} className="group-hover:-translate-x-1 transition-transform" />
+        Về Trang Chủ
+      </Link>
+
       {/* Decorative background blur elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[25rem] h-[25rem] bg-brand-green/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob"></div>
-      <div className="absolute top-[-10%] right-[-10%] w-[25rem] h-[25rem] bg-teal-400/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{animationDelay: '2s'}}></div>
-      <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-blue-300/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{animationDelay: '4s'}}></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[25rem] h-[25rem] bg-purple-600/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[25rem] h-[25rem] bg-orange-500/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-pink-300/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{ animationDelay: '4s' }}></div>
 
       {/* Main Card Container */}
       <div className="w-full max-w-xl bg-white/80 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 relative z-10 flex flex-col transition-all duration-500 max-h-[95dvh] overflow-y-auto custom-scrollbar">
-        
+
         {/* Header Section */}
         <div className="text-center pt-6 pb-2 px-6 md:px-10 shrink-0">
-          <div className="mx-auto inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-green to-teal-500 text-white shadow-lg shadow-teal-500/30 mb-2">
+          <div className="mx-auto inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-orange-500 text-white shadow-lg shadow-teal-500/30 mb-2">
             <Sparkles size={24} />
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-700 mb-1">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-600 mb-1">
             SpeakVN Journey
           </h1>
           <p className="text-gray-500 font-medium text-sm md:text-base">
@@ -270,14 +280,14 @@ export default function Register() {
 
           <style>{`
             .custom-steps .ant-steps-item-process .ant-steps-item-icon {
-              background: linear-gradient(to right, #14b8a6, #0f766e) !important;
+              background: linear-gradient(to right, #a855f7, #f97316) !important;
               border: none !important;
             }
             .custom-steps .ant-steps-item-finish .ant-steps-item-icon {
-              border-color: #14b8a6 !important;
+              border-color: #a855f7 !important;
             }
             .custom-steps .ant-steps-item-finish .ant-steps-icon {
-              color: #14b8a6 !important;
+              color: #a855f7 !important;
             }
             .custom-steps .ant-steps-item-title {
               font-weight: 600 !important;
@@ -321,7 +331,7 @@ export default function Register() {
                 <Button
                   type="primary"
                   onClick={next}
-                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-brand-green to-teal-500 hover:from-green-600 hover:to-teal-600 border-none shadow-[0_8px_15px_rgb(20,184,166,0.2)] hover:shadow-[0_12px_20px_rgb(20,184,166,0.3)] flex items-center gap-2 font-bold text-sm transition-all transform hover:-translate-y-0.5"
+                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 border-none shadow-[0_8px_15px_rgb(168,85,247,0.2)] hover:shadow-[0_12px_20px_rgb(168,85,247,0.3)] flex items-center gap-2 font-bold text-sm transition-all transform hover:-translate-y-0.5"
                 >
                   Tiếp tục <ArrowRight size={18} />
                 </Button>
@@ -330,7 +340,7 @@ export default function Register() {
                   type="primary"
                   onClick={onSubmit}
                   loading={submitting}
-                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-brand-green to-teal-600 hover:from-green-600 hover:to-teal-700 border-none shadow-[0_8px_15px_rgb(20,184,166,0.2)] hover:shadow-[0_12px_20px_rgb(20,184,166,0.3)] font-bold text-sm flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
+                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-700 hover:to-orange-600 border-none shadow-[0_8px_15px_rgb(168,85,247,0.2)] hover:shadow-[0_12px_20px_rgb(168,85,247,0.3)] font-bold text-sm flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
                 >
                   Khởi Tạo Tài Khoản <CheckCircle size={18} />
                 </Button>
@@ -344,7 +354,7 @@ export default function Register() {
               Đã có tài khoản?{' '}
               <Link
                 to="/login"
-                className="text-teal-600 font-extrabold hover:text-teal-800 transition-colors hover:underline ml-1"
+                className="text-purple-600 font-extrabold hover:text-purple-800 transition-colors hover:underline ml-1"
               >
                 Đăng nhập ngay
               </Link>

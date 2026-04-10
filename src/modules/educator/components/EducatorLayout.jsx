@@ -1,187 +1,163 @@
-import React from 'react'
-import { Layout, Menu, Avatar, Typography, Dropdown } from 'antd'
-import {
-  SettingOutlined,
-  UserOutlined,
-  LogoutOutlined,
-  DashboardOutlined,
-  TeamOutlined,
-  PartitionOutlined,
-  BarChartOutlined,
-} from '@ant-design/icons'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Avatar, Dropdown } from 'antd'
+import { SettingOutlined, UserOutlined, LogoutOutlined, DashboardOutlined, TeamOutlined, PartitionOutlined, BarChartOutlined } from '@ant-design/icons'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
+import { motion } from 'framer-motion'
+import { LayoutDashboard, Users, Network, BarChart2, Settings, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 
-const { Header, Sider, Content } = Layout
-const { Title } = Typography
-
-const menuItems = [
-  {
-    key: '/educator',
-    icon: <DashboardOutlined />,
-    label: <Link to="/educator">Tổng quan</Link>,
-  },
-  {
-    key: '/educator/classrooms',
-    icon: <TeamOutlined />,
-    label: <Link to="/educator/classrooms">Quản lý lớp học</Link>,
-  },
-  {
-    key: '/educator/students',
-    icon: <UserOutlined />,
-    label: <Link to="/educator/students">Danh sách học sinh</Link>,
-  },
-  {
-    key: '/educator/matrix',
-    icon: <PartitionOutlined />,
-    label: <Link to="/educator/matrix">Ma trận đánh giá</Link>,
-  },
-  {
-    key: '/educator/analytics',
-    icon: <BarChartOutlined />,
-    label: <Link to="/educator/analytics">Phân tích học sinh</Link>,
-  },
-  {
-    key: '/educator/settings',
-    icon: <SettingOutlined />,
-    label: <Link to="/educator/settings">Cài đặt</Link>,
-  },
+const NAV_ITEMS = [
+  { key: '/educator', icon: LayoutDashboard, label: 'Tổng quan' },
+  { key: '/educator/classrooms', icon: Users, label: 'Quản lý lớp học' },
+  { key: '/educator/students', icon: UserOutlined, label: 'Danh sách học sinh', isAntd: true },
+  { key: '/educator/matrix', icon: Network, label: 'Ma trận đánh giá' },
+  { key: '/educator/analytics', icon: BarChart2, label: 'Phân tích học sinh' },
+  { key: '/educator/settings', icon: Settings, label: 'Cài đặt' },
 ]
 
 const EducatorLayout = () => {
   const location = useLocation()
   const { session, logout } = useAuth()
+  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
 
-  const selectedKey =
-    [...menuItems]
-      .sort((a, b) => b.key.length - a.key.length)
-      .find((item) => location.pathname.startsWith(item.key))?.key ?? '/educator'
+  const user = session?.user
+  const userDisplayName = user?.fullName || 'Giáo vụ'
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = () => { logout(); navigate('/login') }
+
+  const userMenu = {
+    items: [
+      { key: 'settings', icon: <SettingOutlined />, label: <Link to="/educator/settings">Cài đặt</Link> },
+      { type: 'divider' },
+      { key: 'logout', icon: <LogoutOutlined className="text-red-500" />, label: <span className="text-red-500 font-semibold">Đăng xuất</span>, onClick: handleLogout },
+    ]
   }
 
-  const userDisplayName = session?.user?.fullName || 'Giáo vụ'
-  const userEmail = session?.user?.email || ''
+  const selectedKey = [...NAV_ITEMS]
+    .sort((a, b) => b.key.length - a.key.length)
+    .find(item => location.pathname === item.key || location.pathname.startsWith(item.key + '/'))?.key || '/educator'
 
-  const avatarMenuItems = [
-    {
-      key: 'user-info',
-      label: (
-        <div style={{ padding: '4px 0' }}>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a' }}>{userDisplayName}</div>
-          {userEmail && <div style={{ fontSize: 12, color: '#888' }}>{userEmail}</div>}
-        </div>
-      ),
-      disabled: true,
-      style: { cursor: 'default' },
-    },
-    { type: 'divider' },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: <Link to="/educator/settings">Cài đặt</Link>,
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined style={{ color: '#ff4d4f' }} />,
-      label: <span style={{ color: '#ff4d4f' }}>Đăng xuất</span>,
-      onClick: handleLogout,
-    },
-  ]
+  const currentLabel = NAV_ITEMS.find(i => i.key === selectedKey)?.label || 'Educator Portal'
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        width={260}
-        theme="dark"
-        style={{
-          background: 'linear-gradient(180deg, #001529 0%, #000c17 100%)',
-          boxShadow: '4px 0 10px rgba(0,0,0,0.1)',
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 20,
-        }}
-      >
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 700,
-            fontSize: 20,
-            letterSpacing: '0.5px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-            marginBottom: 8
-          }}
+    <div className="flex h-screen bg-[#f8f7ff] overflow-hidden font-sans">
+
+      {/* ── Sidebar Wrapper ── */}
+      <div className="relative flex-shrink-0" style={{ zIndex: 30 }}>
+        <motion.aside
+          animate={{ width: collapsed ? 80 : 260 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="flex flex-col h-full bg-white border-r border-purple-100 shadow-[4px_0_24px_rgba(147,51,234,0.06)] overflow-hidden"
         >
-          SpeakVN Educator
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          style={{ background: 'transparent', border: 'none' }}
-          className="educator-sidebar-menu"
-        />
-      </Sider>
-      <Layout style={{ marginLeft: 260 }}>
-        <Header style={{ padding: 0, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', zIndex: 10, position: 'sticky', top: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingInline: 24,
-              height: '100%',
-            }}
-          >
-            <Title level={4} style={{ margin: 0, color: '#1a1a1a', fontWeight: 600 }}>
-              Cổng Quản Trị Giáo Vụ
-            </Title>
-            <Dropdown
-              menu={{ items: avatarMenuItems }}
-              placement="bottomRight"
-              trigger={['click']}
-              overlayStyle={{ minWidth: 200 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{userDisplayName}</span>
-                  <span style={{ fontSize: 12, color: '#888' }}>Hệ thống SpeakVN</span>
+          {/* Logo */}
+          <div className="flex items-center h-[72px] px-5 border-b border-purple-50 flex-shrink-0 overflow-hidden gap-3">
+            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-gradient-to-br from-purple-600 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/30 flex-shrink-0">
+              <Sparkles size={18} className="text-white" />
+            </div>
+            {!collapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div className="font-black text-lg leading-none">
+                  Speak<span className="text-purple-600">VN</span>
                 </div>
-                <Avatar
-                  size="large"
-                  icon={<UserOutlined />}
-                  style={{ backgroundColor: '#1890ff', boxShadow: '0 2px 4px rgba(24,144,255,0.3)' }}
+                <div className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mt-0.5">Educator Portal</div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            {NAV_ITEMS.map(item => {
+              const isActive = selectedKey === item.key
+              const Icon = item.icon
+              return (
+                <Link key={item.key} to={item.key}>
+                  <div className={`relative flex items-center gap-3 px-3 h-12 rounded-2xl cursor-pointer transition-all duration-200 group
+                                        ${isActive
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/25'
+                      : 'text-gray-500 hover:bg-purple-50 hover:text-purple-700'
+                    }`}>
+                    {isActive && (
+                      <motion.div layoutId="educatorActiveNav"
+                        className="absolute inset-0 bg-gradient-to-r from-purple-600 to-purple-500 rounded-2xl"
+                        transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                      />
+                    )}
+                    {item.isAntd
+                      ? <UserOutlined className="relative z-10 flex-shrink-0 text-lg" />
+                      : <Icon size={20} className="relative z-10 flex-shrink-0" />
+                    }
+                    {!collapsed && (
+                      <span className="relative z-10 font-bold text-sm whitespace-nowrap">{item.label}</span>
+                    )}
+                    {collapsed && (
+                      <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
+                        {item.label}
+                        <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-900" />
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* User */}
+          <div className="flex-shrink-0 border-t border-purple-50 p-3">
+            <Dropdown menu={userMenu} placement="topRight" trigger={['click']}>
+              <div className={`flex items-center cursor-pointer p-2 rounded-2xl hover:bg-purple-50 transition-all ${collapsed ? 'justify-center' : 'gap-3'}`}>
+                <Avatar icon={<UserOutlined />} size={40}
+                  src={user?.avatar}
+                  className="bg-orange-100 text-orange-500 border-2 border-orange-200 flex-shrink-0"
                 />
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-gray-800 truncate">{userDisplayName}</div>
+                    <div className="text-[10px] text-orange-500 uppercase tracking-widest font-black">Giáo viên</div>
+                  </div>
+                )}
               </div>
             </Dropdown>
           </div>
-        </Header>
-        <Content style={{ margin: '16px' }}>
-          <div
-            style={{
-              padding: 24,
-              minHeight: 360,
-              background: '#fff',
-              borderRadius: 8,
-            }}
-          >
-            <Outlet />
+        </motion.aside>
+
+        {/* Toggle button */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute right-0 translate-x-1/2 top-[88px] w-7 h-7 bg-white border border-purple-200 rounded-full flex items-center justify-center shadow-md hover:bg-purple-50 hover:border-purple-400 transition-all z-40 text-purple-600"
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+      </div>
+
+      {/* ── Main ── */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <header className="h-[72px] bg-white border-b border-purple-100 flex items-center justify-between px-8 flex-shrink-0 shadow-sm">
+          <div>
+            <h1 className="text-lg font-black text-gray-800 leading-tight">{currentLabel}</h1>
+            <p className="text-xs text-gray-400 font-medium">
+              {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
           </div>
-        </Content>
-      </Layout>
-    </Layout>
+          <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
+            <div className="flex items-center gap-2.5 cursor-pointer px-3 py-1.5 rounded-xl hover:bg-purple-50 transition-all">
+              <div className="hidden md:block text-right">
+                <div className="text-sm font-bold text-gray-800 leading-tight">{userDisplayName}</div>
+                <div className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">Giáo viên</div>
+              </div>
+              <Avatar icon={<UserOutlined />} size={36}
+                src={user?.avatar}
+                className="bg-orange-100 text-orange-500 border-2 border-orange-200 flex-shrink-0"
+              />
+            </div>
+          </Dropdown>
+        </header>
+        <main className="flex-1 overflow-y-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   )
 }
 
 export default EducatorLayout
-

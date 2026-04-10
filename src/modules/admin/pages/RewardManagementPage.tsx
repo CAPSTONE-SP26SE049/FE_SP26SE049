@@ -188,7 +188,7 @@ const RewardManagementPage = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
                         width: 44, height: 44, borderRadius: 12, padding: 2,
-                        background: 'linear-gradient(135deg, #1890ff, #0076e4)',
+                        background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                         flexShrink: 0, boxShadow: '0 2px 8px rgba(24,144,255,0.3)'
                     }}>
                         <div style={{
@@ -205,7 +205,7 @@ const RewardManagementPage = () => {
                                     }}
                                 />
                             ) : (
-                                <TrophyOutlined style={{ color: '#1890ff', fontSize: 20 }} />
+                                <TrophyOutlined style={{ color: '#9333ea', fontSize: 20 }} />
                             )}
                         </div>
                     </div>
@@ -312,23 +312,15 @@ const RewardManagementPage = () => {
         <div style={{ padding: '24px' }}>
             {/* Header */}
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <TrophyOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Quản lý huy hiệu</Title>
-                        <Text type="secondary">Quản lý và cấu hình hệ thống huy hiệu thành tựu</Text>
-                    </div>
-                </div>
+
                 <Button
                     icon={<PlusOutlined />}
                     onClick={openCreate}
                     style={{
                         borderRadius: 10, height: 44, fontWeight: 600,
-                        boxShadow: '0 4px 12px rgba(24,144,255,0.35)',
+                        boxShadow: '0 4px 12px rgba(147,51,234,0.35)',
                         border: 'none',
-                        background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                        background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                         color: 'white', paddingInline: 20,
                     }}
                 >
@@ -456,9 +448,9 @@ const RewardManagementPage = () => {
                             style={{
                                 borderRadius: 8, height: 40, fontWeight: 600,
                                 border: 'none',
-                                background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                                 color: 'white',
-                                boxShadow: '0 4px 12px rgba(24,144,255,0.25)',
+                                boxShadow: '0 4px 12px rgba(147,51,234,0.25)',
                                 paddingInline: 24,
                             }}
                         >

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
+import { message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider, Spin, Empty, Pagination } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { adminExcelService } from '../services/adminExcelService';
@@ -33,6 +33,7 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
+    const [regionPages, setRegionPages] = useState<Record<string, number>>({ NORTH: 1, CENTRAL: 1, SOUTH: 1, OTHER: 1 });
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -99,6 +100,11 @@ const AdminChapterManagementPage: React.FC = () => {
             message.error('Không thể tải danh sách lỗi');
             setErrorTags([]);
         }
+    };
+
+    const sanitizeText = (val: string) => {
+        if (typeof val !== 'string') return '';
+        return val.replace(/[^a-zA-ZÀ-ỹà-ỹ0-9\s.,!?_'-]/g, '');
     };
 
     useEffect(() => {
@@ -472,12 +478,12 @@ const AdminChapterManagementPage: React.FC = () => {
                             borderRadius: '20px',
                             fontSize: '12px',
                             fontWeight: 600,
-                            color: info.color,
-                            background: info.bg,
-                            border: `1px solid ${info.color}30`,
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            color: '#475569'
                         }}
                     >
-                        {info.label}
+                        {info.label.replace(/[🔵🟠🟢]/g, '').trim()}
                     </span>
                 );
             },
@@ -532,17 +538,61 @@ const AdminChapterManagementPage: React.FC = () => {
     return (
         <div style={{ padding: '24px' }}>
             <div className="flex justify-between items-center" style={{ marginBottom: '24px', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <BookOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
-                        {fromClassroomName ? (
-                            <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                                Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
-                            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+                    {fromClassroomName && (
+                        <div style={{ color: '#64748b', fontSize: 14 }}>
+                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                        </div>
+                    )}
+                    <Input
+                        prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                        placeholder="Tìm kiếm theo tên chương học..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        allowClear
+                        style={{ borderRadius: 8, height: 40, width: 280 }}
+                    />
+                    <Select
+                        placeholder="Lọc theo vùng"
+                        value={filterRegion}
+                        onChange={(val) => setFilterRegion(val)}
+                        allowClear
+                        style={{ width: 160, borderRadius: 8, height: 40 }}
+                        suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
+                    >
+                        <Select.Option value="NORTH">Miền Bắc</Select.Option>
+                        <Select.Option value="CENTRAL">Miền Trung</Select.Option>
+                        <Select.Option value="SOUTH">Miền Nam</Select.Option>
+                    </Select>
+                    {activeFilterCount > 0 && (
+                        <Button
+                            icon={<ClearOutlined />}
+                            onClick={handleResetFilters}
+                            style={{ borderRadius: 8, height: 40, borderColor: '#e2e8f0' }}
+                        >
+                            Xóa bộ lọc
+                        </Button>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+                        {activeFilterCount > 0 ? (
+                            <Badge
+                                count={activeFilterCount}
+                                style={{
+                                    backgroundColor: '#2563eb',
+                                    fontSize: 11,
+                                    height: 20,
+                                    lineHeight: '20px',
+                                    borderRadius: 10,
+                                    padding: '0 7px',
+                                }}
+                            />
                         ) : null}
+                        <span style={{ color: '#94a3b8', fontSize: 13 }}>
+                            {filteredLevels.length}/{mergedLevels.length} chương
+                        </span>
+                        <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
+                            <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
+                        </Tooltip>
                     </div>
                 </div>
                 <Space>
@@ -554,9 +604,6 @@ const AdminChapterManagementPage: React.FC = () => {
                         style={{
                             height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #1890ff',
-                            color: '#1890ff',
-                            background: '#e6f7ff',
                             fontWeight: 600,
                             paddingInline: 16,
                         }}
@@ -569,9 +616,6 @@ const AdminChapterManagementPage: React.FC = () => {
                         style={{
                             height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #52c41a',
-                            color: '#52c41a',
-                            background: '#f6ffed',
                             fontWeight: 600,
                             paddingInline: 16,
                         }}
@@ -584,9 +628,6 @@ const AdminChapterManagementPage: React.FC = () => {
                         style={{
                             height: '44px',
                             borderRadius: '10px',
-                            border: '1.5px solid #fa8c16',
-                            color: '#fa8c16',
-                            background: '#fff7e6',
                             fontWeight: 600,
                             paddingInline: 16,
                         }}
@@ -616,7 +657,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         style={{
                             height: '44px',
                             borderRadius: '10px',
-                            background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                            background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                             border: 'none',
                             fontWeight: 600,
                             paddingInline: 20,
@@ -628,84 +669,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 </Space>
             </div>
 
-            {/* ====== FILTER & SORT TOOLBAR ====== */}
-            <Card
-                style={{
-                    borderRadius: 14,
-                    marginBottom: 0,
-                    boxShadow: '0 2px 12px rgba(37,99,235,0.06)',
-                    border: '1px solid #e2e8f0',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
-                }}
-                styles={{ body: { padding: '16px 20px' } }}
-            >
-                <Row gutter={[16, 12]} align="middle">
-                    <Col xs={24} sm={24} md={8} lg={7}>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="Tìm kiếm theo tên chương học..."
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
-                            style={{ borderRadius: 8, height: 38 }}
-                        />
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc theo vùng"
-                            value={filterRegion}
-                            onChange={(val) => setFilterRegion(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
-                        >
-                            <Select.Option value="NORTH">
-                                <span style={{ color: '#1d4ed8', fontWeight: 600 }}>🔵 Miền Bắc</span>
-                            </Select.Option>
-                            <Select.Option value="CENTRAL">
-                                <span style={{ color: '#b45309', fontWeight: 600 }}>🟠 Miền Trung</span>
-                            </Select.Option>
-                            <Select.Option value="SOUTH">
-                                <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={24} md={6} lg={7}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {activeFilterCount > 0 && (
-                                <Button
-                                    icon={<ClearOutlined />}
-                                    onClick={handleResetFilters}
-                                    style={{ borderRadius: 8, height: 38, borderColor: '#e2e8f0' }}
-                                >
-                                    Xóa bộ lọc
-                                </Button>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {activeFilterCount > 0 ? (
-                                    <Badge
-                                        count={activeFilterCount}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            fontSize: 11,
-                                            height: 20,
-                                            lineHeight: '20px',
-                                            borderRadius: 10,
-                                            padding: '0 7px',
-                                        }}
-                                    />
-                                ) : null}
-                                <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{mergedLevels.length} chương
-                                </span>
-                            </div>
-                            <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
-                                <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
-                            </Tooltip>
-                        </div>
-                    </Col>
-                </Row>
-            </Card>
+
 
             <Modal
                 title={<span style={{ fontWeight: 600 }}>Tạo chương học mới</span>}
@@ -718,7 +682,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={creating}
                 okText="Xác Nhận"
                 okButtonProps={{
-                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                    style: { background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
                 cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
@@ -736,7 +700,11 @@ const AdminChapterManagementPage: React.FC = () => {
                             name="name"
                             rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
                         >
-                            <Input placeholder="Ví dụ: Level 1" />
+                            <Input
+                                placeholder="Ví dụ: Level 1"
+                                maxLength={50}
+                                onChange={(e) => form.setFieldsValue({ name: sanitizeText(e.target.value) })}
+                            />
                         </Form.Item>
                         <Form.Item
                             label="Phương ngữ"
@@ -770,7 +738,12 @@ const AdminChapterManagementPage: React.FC = () => {
                         </Form.Item>
                     </div>
                     <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                        <Input.TextArea
+                            rows={3}
+                            placeholder="Mô tả chương học"
+                            maxLength={100}
+                            showCount
+                        />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -901,30 +874,159 @@ const AdminChapterManagementPage: React.FC = () => {
                 )}
             </Drawer>
 
-            <Card
-                variant="borderless"
-                style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
-            >
-                <Table
-                    dataSource={filteredLevels}
-                    columns={columns}
-                    rowKey="id"
-                    loading={loading}
-                    scroll={{ x: 'max-content', y: 400 }}
-                    pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Tổng ${total} chương học`, style: { padding: '16px 24px' } }}
-                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
-                    showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
-                    onRow={(record) => ({
-                        onClick: (e) => {
-                            // Không navigate nếu click vào button hành động
-                            const target = e.target as HTMLElement;
-                            if (target.closest('button') || target.closest('.ant-btn')) return;
-                            navigate(`/admin/quizzes/${record.id}`);
-                        },
-                        style: { cursor: 'pointer' }
-                    })}
-                />
-            </Card>
+            {/* ====== Chapter Cards Grid ====== */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                {/* Guided hint banner */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 18px', borderRadius: 12,
+                    background: 'linear-gradient(90deg, #eff6ff 0%, #f0fdf4 100%)',
+                    border: '1px solid #bfdbfe'
+                }}>
+                    <span style={{ fontSize: 22 }}>📚</span>
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af' }}>Chọn chương học để quản lý bài kiểm tra</div>
+                        <div style={{ fontSize: 13, color: '#475569', marginTop: 2 }}>Nhấn vào một chương học bên dưới để xem và quản lý danh sách bài kiểm tra của chương đó.</div>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: 80 }}>
+                        <Spin size="large" tip="Đang tải..." />
+                    </div>
+                ) : filteredLevels.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                        <Empty description={activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học'} />
+                    </div>
+                ) : (
+                    (() => {
+                        // Group by region
+                        const grouped: Record<string, any[]> = {};
+                        filteredLevels.forEach(level => {
+                            const key = getRegionKey(level.dialectId) || 'OTHER';
+                            if (!grouped[key]) grouped[key] = [];
+                            grouped[key].push(level);
+                        });
+                        const regionOrder = ['NORTH', 'CENTRAL', 'SOUTH', 'OTHER'];
+                        const existingRegions = regionOrder.filter(r => grouped[r]);
+                        return (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                                gap: 24,
+                                alignItems: 'start'
+                            }}>
+                                {existingRegions.map(regionKey => {
+                                    const info = REGION_LABEL[regionKey] || { label: 'Khác', color: '#475569', bg: '#f8fafc' };
+                                    const allCards = grouped[regionKey] || [];
+                                    const pageSize = 3;
+                                    const page = regionPages[regionKey] || 1;
+                                    const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
+
+                                    return (
+                                        <div key={regionKey} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                                                <div style={{ width: 4, height: 22, borderRadius: 2, background: info.color }} />
+                                                <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{info.label}</span>
+                                                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>({allCards.length} chương)</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                {pagedCards.map((level, idx) => {
+                                                    const globalIdx = (page - 1) * pageSize + idx + 1;
+                                                    return (
+                                                        <div
+                                                            key={level.id}
+                                                            onClick={() => navigate(`/admin/quizzes/${level.id}`)}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                background: '#fff',
+                                                                borderRadius: 14,
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderLeft: `4px solid ${info.color}`,
+                                                                padding: '14px 16px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 14,
+                                                                transition: 'all 0.18s ease',
+                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                                                position: 'relative',
+                                                                overflow: 'hidden',
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px rgba(0,0,0,0.10)`;
+                                                                (e.currentTarget as HTMLElement).style.borderColor = info.color;
+                                                                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                                                                (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
+                                                                (e.currentTarget as HTMLElement).style.borderLeftColor = info.color;
+                                                                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                                                            }}
+                                                        >
+                                                            {/* Number badge */}
+                                                            <div style={{
+                                                                minWidth: 36, height: 36, borderRadius: 10,
+                                                                background: info.bg || '#f1f5f9',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                fontWeight: 700, fontSize: 14, color: info.color, flexShrink: 0
+                                                            }}>
+                                                                {globalIdx}
+                                                            </div>
+                                                            {/* Chapter name */}
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {level.name}
+                                                                </div>
+                                                                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                                                                    {level.description ? level.description.substring(0, 50) + (level.description.length > 50 ? '...' : '') : 'Nhấn để xem bài kiểm tra →'}
+                                                                </div>
+                                                            </div>
+                                                            {/* CTA icons */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                                <Tooltip title="Chỉnh sửa chương học">
+                                                                    <Button
+                                                                        icon={<EditOutlined />}
+                                                                        size="small"
+                                                                        onClick={e => { e.stopPropagation(); handleEditLevel(level); }}
+                                                                        style={{ borderRadius: 8, border: '1px solid #e2e8f0', color: '#64748b', background: '#f8fafc' }}
+                                                                    />
+                                                                </Tooltip>
+                                                                <div style={{
+                                                                    width: 30, height: 30, borderRadius: 8,
+                                                                    background: info.color + '15',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    color: info.color, fontSize: 16, fontWeight: 700
+                                                                }}>
+                                                                    →
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {allCards.length > pageSize && (
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                                                    <Pagination
+                                                        size="small"
+                                                        current={page}
+                                                        total={allCards.length}
+                                                        pageSize={pageSize}
+                                                        onChange={(newPage) => setRegionPages(prev => ({ ...prev, [regionKey]: newPage }))}
+                                                        hideOnSinglePage
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()
+                )}
+            </div>
+
 
             <Modal
                 title={<span style={{ fontWeight: 600 }}>Cập nhật chương học</span>}
@@ -938,7 +1040,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={updating}
                 okText="Cập nhật"
                 okButtonProps={{
-                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                    style: { background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
                 cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
@@ -955,7 +1057,11 @@ const AdminChapterManagementPage: React.FC = () => {
                             name="name"
                             rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
                         >
-                            <Input placeholder="Ví dụ: Level 1" />
+                            <Input
+                                placeholder="Ví dụ: Level 1"
+                                maxLength={50}
+                                onChange={(e) => editForm.setFieldsValue({ name: sanitizeText(e.target.value) })}
+                            />
                         </Form.Item>
                         <Form.Item
                             label="Phương ngữ"
@@ -997,14 +1103,24 @@ const AdminChapterManagementPage: React.FC = () => {
                         </Form.Item>
                     </div>
                     <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
+                        <Input.TextArea
+                            rows={3}
+                            placeholder="Mô tả chương học"
+                            maxLength={100}
+                            showCount
+                        />
                     </Form.Item>
                     <Form.Item
                         label="Ghi chú thay đổi"
                         name="comment"
                         rules={[{ required: true, message: 'Vui lòng nhập ghi chú thay đổi' }]}
                     >
-                        <Input.TextArea rows={2} placeholder="Lý do hoặc nội dung cập nhật" />
+                        <Input.TextArea
+                            rows={2}
+                            placeholder="Lý do hoặc nội dung cập nhật"
+                            maxLength={100}
+                            showCount
+                        />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -1021,7 +1137,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 confirmLoading={creatingQuiz}
                 okText="Tạo quiz"
                 okButtonProps={{
-                    style: { background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                    style: { background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
                 cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
@@ -1040,7 +1156,11 @@ const AdminChapterManagementPage: React.FC = () => {
                                 name="title"
                                 rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
                             >
-                                <Input placeholder="Ví dụ: Thử thách Level 1" />
+                                <Input
+                                    placeholder="Ví dụ: Thử thách Level 1"
+                                    maxLength={50}
+                                    onChange={(e) => quizForm.setFieldsValue({ title: sanitizeText(e.target.value) })}
+                                />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -1048,12 +1168,22 @@ const AdminChapterManagementPage: React.FC = () => {
                     <Row gutter={24}>
                         <Col span={12}>
                             <Form.Item label="Mô tả" name="description">
-                                <Input.TextArea rows={2} placeholder="Mô tả bài quiz" />
+                                <Input.TextArea
+                                    rows={2}
+                                    placeholder="Mô tả bài quiz"
+                                    maxLength={100}
+                                    showCount
+                                />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item label="Hướng dẫn" name="instructions">
-                                <Input.TextArea rows={2} placeholder="Hướng dẫn làm bài" />
+                                <Input.TextArea
+                                    rows={2}
+                                    placeholder="Hướng dẫn làm bài"
+                                    maxLength={100}
+                                    showCount
+                                />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -1119,7 +1249,12 @@ const AdminChapterManagementPage: React.FC = () => {
                     </div>
 
                     <Form.Item label="Ghi chú" name="comment" style={{ marginBottom: 0 }}>
-                        <Input.TextArea rows={1} placeholder="Ghi chú khi tạo quiz" />
+                        <Input.TextArea
+                            rows={1}
+                            placeholder="Ghi chú khi tạo quiz"
+                            maxLength={100}
+                            showCount
+                        />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -1141,7 +1276,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             icon={<DownloadOutlined />}
                             loading={templateDownloading}
                             onClick={downloadLevelsTemplateExcel}
-                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
+                            style={{ borderRadius: 8 }}
                         >
                             Tải template chương học
                         </Button>
@@ -1171,7 +1306,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         disabled={!importFile}
                         block
                         size="large"
-                        style={{ borderRadius: 10, background: 'linear-gradient(90deg, #15803d, #16a34a)', border: 'none', fontWeight: 600, height: 44, boxShadow: '0 4px 12px rgba(21,128,61,0.25)' }}
+                        style={{ borderRadius: 10, fontWeight: 600, height: 44 }}
                     >
                         {importing ? 'Đang import...' : 'Bắt đầu Import'}
                     </Button>

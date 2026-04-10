@@ -1,21 +1,17 @@
 import React, { useState } from 'react'
-import { Card, Tabs, Form, Input, Button, Upload, message, Divider, Typography } from 'antd'
+import { Form, Input, Button, Upload, message } from 'antd'
 import {
-    UserOutlined,
-    LockOutlined,
-    UploadOutlined,
-    SaveOutlined,
-    MailOutlined,
-    PhoneOutlined,
-    SettingOutlined
+    UserOutlined, LockOutlined, SaveOutlined,
+    MailOutlined, PhoneOutlined, CameraOutlined, SafetyCertificateOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { updateProfileAPI, changePasswordAPI } from '../../../services/userService'
 
-const { Title, Text } = Typography
+const BRAND_PURPLE = 'linear-gradient(135deg, #9333ea, #7e22ce)'
+const BRAND_ORANGE = 'linear-gradient(135deg, #f97316, #ea580c)'
 
 const AdminSettingsPage: React.FC = () => {
-    const { session } = useAuth()
+    const { session, updateSessionItem } = useAuth()
     const user = session?.user as any || {}
 
     const [profileForm] = Form.useForm()
@@ -23,12 +19,13 @@ const AdminSettingsPage: React.FC = () => {
 
     const [savingProfile, setSavingProfile] = useState(false)
     const [savingPassword, setSavingPassword] = useState(false)
+    const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
 
     React.useEffect(() => {
         profileForm.setFieldsValue({
             fullName: user.fullName || user.name || '',
             email: user.email || '',
-            phoneNumber: user.phoneNumber || user.phone || ''
+            phone: user.phone || user.phoneNumber || ''
         })
     }, [user, profileForm])
 
@@ -36,12 +33,11 @@ const AdminSettingsPage: React.FC = () => {
         try {
             setSavingProfile(true)
             await updateProfileAPI(values)
+            updateSessionItem({ fullName: values.fullName, phone: values.phone })
             message.success('Cập nhật hồ sơ thành công')
         } catch (error: any) {
             message.error(error.message || 'Cập nhật hồ sơ thất bại')
-        } finally {
-            setSavingProfile(false)
-        }
+        } finally { setSavingProfile(false) }
     }
 
     const handleChangePassword = async (values: any) => {
@@ -52,138 +48,176 @@ const AdminSettingsPage: React.FC = () => {
             passwordForm.resetFields()
         } catch (error: any) {
             message.error(error.message || 'Đổi mật khẩu thất bại')
-        } finally {
-            setSavingPassword(false)
-        }
+        } finally { setSavingPassword(false) }
     }
 
-    const items = [
-        {
-            key: '1',
-            label: (
-                <span>
-                    <UserOutlined /> Hồ sơ cá nhân
-                </span>
-            ),
-            children: (
-                <div className="max-w-2xl py-6">
-                    <Title level={4} style={{ marginBottom: 24 }}>Thông tin chung</Title>
-                    <div className="flex gap-8 mb-8 flex-wrap">
-                        <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center mb-4 overflow-hidden">
-                                {user.avatar || user.avatarUrl ? (
-                                    <img src={user.avatar || user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                ) : (
-                                    <UserOutlined className="text-3xl text-gray-400" />
-                                )}
-                            </div>
-                            <Upload showUploadList={false}>
-                                <Button icon={<UploadOutlined />}>Đổi ảnh đại diện</Button>
-                            </Upload>
-                        </div>
-
-                        <div className="flex-1 min-w-[280px]">
-                            <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile} requiredMark={false}>
-                                <Form.Item name="fullName" label={<span className="font-medium">Họ và tên</span>} rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}>
-                                    <Input size="large" prefix={<UserOutlined className="text-gray-400" />} />
-                                </Form.Item>
-
-                                <Form.Item name="email" label={<span className="font-medium">Email</span>}>
-                                    <Input size="large" disabled prefix={<MailOutlined className="text-gray-400" />} />
-                                </Form.Item>
-
-                                <Form.Item name="phoneNumber" label={<span className="font-medium">Số điện thoại</span>}>
-                                    <Input size="large" prefix={<PhoneOutlined className="text-gray-400" />} />
-                                </Form.Item>
-
-                                <Divider />
-
-                                <Form.Item>
-                                    <Button type="primary" htmlType="submit" size="large" loading={savingProfile} icon={<SaveOutlined />} style={{ borderRadius: 10, height: 48, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 32 }}>
-                                        Lưu thay đổi
-                                    </Button>
-                                </Form.Item>
-                            </Form>
-                        </div>
-                    </div>
-                </div>
-            ),
-        },
-        {
-            key: '2',
-            label: (
-                <span>
-                    <LockOutlined /> Bảo mật
-                </span>
-            ),
-            children: (
-                <div className="max-w-md py-6">
-                    <Title level={4} style={{ marginBottom: 8 }}>Đổi mật khẩu</Title>
-                    <Text type="secondary" className="block mb-6">
-                        Sử dụng mật khẩu mạnh bao gồm chữ cái, số và ký tự đặc biệt để bảo vệ tài khoản của bạn.
-                    </Text>
-
-                    <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} requiredMark={false}>
-                        <Form.Item name="oldPassword" label={<span className="font-medium">Mật khẩu hiện tại</span>} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}>
-                            <Input.Password size="large" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="newPassword"
-                            label={<span className="font-medium">Mật khẩu mới</span>}
-                            rules={[
-                                { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                                { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự' }
-                            ]}
-                        >
-                            <Input.Password size="large" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="confirmPassword"
-                            label={<span className="font-medium">Xác nhận mật khẩu mới</span>}
-                            dependencies={['newPassword']}
-                            rules={[
-                                { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
-                                ({ getFieldValue }) => ({
-                                    validator(_, value) {
-                                        if (!value || getFieldValue('newPassword') === value) {
-                                            return Promise.resolve()
-                                        }
-                                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'))
-                                    },
-                                }),
-                            ]}
-                        >
-                            <Input.Password size="large" />
-                        </Form.Item>
-
-                        <Form.Item className="mt-8">
-                            <Button type="primary" htmlType="submit" size="large" loading={savingPassword} icon={<LockOutlined />} style={{ borderRadius: 10, height: 48, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 32 }}>
-                                Cập nhật mật khẩu
-                            </Button>
-                        </Form.Item>
-                    </Form>
-                </div>
-            ),
-        },
+    const tabs = [
+        { key: 'profile' as const, icon: <UserOutlined />, label: 'Hồ sơ cá nhân', color: '#9333ea', bg: '#faf5ff' },
+        { key: 'security' as const, icon: <LockOutlined />, label: 'Bảo mật', color: '#f97316', bg: '#fff7ed' },
     ]
 
+    const inputStyle = { borderRadius: 12, height: 44, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }
+
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SettingOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+        <div className="flex flex-col overflow-hidden rounded-2xl" style={{ height: 'calc(100vh - 110px)', background: '#f8f5ff' }}>
+
+            {/* ── Header Strip ── */}
+            <div className="flex-shrink-0 px-6 py-4 flex items-center gap-4 border-b border-gray-100 bg-white"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+                    style={{ background: BRAND_PURPLE }}>
+                    <UserOutlined style={{ fontSize: 18 }} />
                 </div>
                 <div>
-                    <Title level={2} style={{ margin: 0, fontSize: 24 }}>Cài đặt hệ thống</Title>
-                    <Text type="secondary">Quản lý tài khoản cá nhân và các tuỳ chọn bảo mật</Text>
+                    <h1 className="text-lg font-black text-gray-800 leading-tight">Cài đặt hệ thống</h1>
+                    <p className="text-xs text-gray-400 font-medium">Quản lý thông tin cá nhân và bảo mật</p>
                 </div>
             </div>
 
-            <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} bodyStyle={{ paddingTop: 0 }}>
-                <Tabs defaultActiveKey="1" items={items} size="large" />
-            </Card>
+            {/* ── Body ── */}
+            <div className="flex-1 flex min-h-0 p-4 gap-4">
+
+                {/* Sidebar */}
+                <div className="w-48 flex-shrink-0 flex flex-col gap-2">
+                    {tabs.map(tab => (
+                        <button key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-bold text-sm ${activeTab === tab.key
+                                ? 'shadow-sm border'
+                                : 'text-gray-500 hover:bg-white hover:shadow-sm border border-transparent'
+                                }`}
+                            style={activeTab === tab.key ? { color: tab.color, backgroundColor: tab.bg, borderColor: `${tab.color}30` } : {}}
+                        >
+                            <span style={{ color: activeTab === tab.key ? tab.color : '#9ca3af', fontSize: 16 }}>{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 bg-white rounded-2xl border border-gray-100 overflow-auto p-6"
+                    style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+
+                    {activeTab === 'profile' && (
+                        <div className="max-w-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-1 h-5 rounded-full" style={{ background: '#9333ea' }} />
+                                <h2 className="font-black text-gray-800">Thông tin chung</h2>
+                            </div>
+
+                            <div className="flex gap-8">
+                                {/* Avatar */}
+                                <div className="flex-shrink-0">
+                                    <div className="relative group">
+                                        <div className="w-24 h-24 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-purple-300 transition-all">
+                                            {user.avatar || user.avatarUrl ? (
+                                                <img src={user.avatar || user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <UserOutlined className="text-3xl text-gray-300" />
+                                            )}
+                                            <div className="absolute inset-0 bg-purple-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px] rounded-2xl">
+                                                <Upload showUploadList={false}>
+                                                    <div className="flex flex-col items-center text-white">
+                                                        <CameraOutlined className="text-xl" />
+                                                        <span className="text-[10px] font-bold mt-0.5">Thay ảnh</span>
+                                                    </div>
+                                                </Upload>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Form */}
+                                <div className="flex-1">
+                                    <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile} requiredMark={false}>
+                                        <Form.Item name="fullName"
+                                            label={<span className="font-bold text-gray-600 text-sm">Họ và tên</span>}
+                                            rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}>
+                                            <Input prefix={<UserOutlined className="text-gray-300" />} style={inputStyle} />
+                                        </Form.Item>
+
+                                        <Form.Item name="email"
+                                            label={<span className="font-bold text-gray-600 text-sm">Email</span>}
+                                            extra={<span className="text-gray-400 text-[11px]">Email dùng để đăng nhập và nhận thông báo</span>}>
+                                            <Input disabled prefix={<MailOutlined className="text-gray-300" />}
+                                                style={{ ...inputStyle, backgroundColor: '#f1f5f9', color: '#64748b' }} />
+                                        </Form.Item>
+
+                                        <Form.Item name="phone"
+                                            label={<span className="font-bold text-gray-600 text-sm">Số điện thoại</span>}>
+                                            <Input prefix={<PhoneOutlined className="text-gray-300" />} style={inputStyle} />
+                                        </Form.Item>
+
+                                        <div className="flex justify-end mt-2">
+                                            <Button type="primary" htmlType="submit" loading={savingProfile} icon={<SaveOutlined />}
+                                                className="h-11 px-7 rounded-xl font-bold border-none"
+                                                style={{ background: BRAND_PURPLE, boxShadow: '0 4px 14px rgba(147,51,234,0.3)' }}>
+                                                Lưu thay đổi
+                                            </Button>
+                                        </div>
+                                    </Form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'security' && (
+                        <div className="max-w-lg">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="w-1 h-5 rounded-full" style={{ background: '#f97316' }} />
+                                <h2 className="font-black text-gray-800">Bảo mật tài khoản</h2>
+                            </div>
+
+                            {/* Tip */}
+                            <div className="flex gap-3 p-3.5 rounded-2xl mb-5 border border-orange-100"
+                                style={{ background: '#fff7ed' }}>
+                                <SafetyCertificateOutlined className="text-orange-500 text-base mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-orange-800 mb-0.5">Mẹo bảo mật</p>
+                                    <p className="text-xs text-orange-600/80">Dùng mật khẩu ≥ 8 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.</p>
+                                </div>
+                            </div>
+
+                            <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} requiredMark={false}>
+                                <Form.Item name="oldPassword"
+                                    label={<span className="font-bold text-gray-600 text-sm">Mật khẩu hiện tại</span>}
+                                    rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}>
+                                    <Input.Password style={inputStyle} />
+                                </Form.Item>
+
+                                <Form.Item name="newPassword"
+                                    label={<span className="font-bold text-gray-600 text-sm">Mật khẩu mới</span>}
+                                    rules={[{ required: true }, { min: 8, message: 'Ít nhất 8 ký tự' }]}>
+                                    <Input.Password style={inputStyle} />
+                                </Form.Item>
+
+                                <Form.Item name="confirmPassword"
+                                    label={<span className="font-bold text-gray-600 text-sm">Xác nhận mật khẩu mới</span>}
+                                    dependencies={['newPassword']}
+                                    rules={[
+                                        { required: true, message: 'Xác nhận mật khẩu mới' },
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
+                                                return Promise.reject(new Error('Mật khẩu không khớp!'))
+                                            }
+                                        })
+                                    ]}>
+                                    <Input.Password style={inputStyle} />
+                                </Form.Item>
+
+                                <div className="flex justify-end mt-2">
+                                    <Button type="primary" htmlType="submit" loading={savingPassword} icon={<LockOutlined />}
+                                        className="h-11 px-7 rounded-xl font-bold border-none"
+                                        style={{ background: BRAND_ORANGE, boxShadow: '0 4px 14px rgba(249,115,22,0.3)' }}>
+                                        Cập nhật mật khẩu
+                                    </Button>
+                                </div>
+                            </Form>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     )
 }

@@ -158,7 +158,7 @@ const ErrorTagManagement: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={() => handleOpenModal()}
-                    style={{ background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 40, paddingInline: 20, borderRadius: 8, fontWeight: 600, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
+                    style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', height: 40, paddingInline: 20, borderRadius: 8, fontWeight: 600, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
                 >
                     Thêm lỗi mới
                 </Button>
@@ -228,7 +228,7 @@ const ErrorTagManagement: React.FC = () => {
                             type="primary"
                             htmlType="submit"
                             loading={loading}
-                            style={{ background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', height: 40, paddingInline: 32, borderRadius: 8, fontWeight: 700, boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
+                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', height: 40, paddingInline: 32, borderRadius: 8, fontWeight: 700, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
                         >
                             {editingTag ? 'Cập nhật' : 'Tạo mới'}
                         </Button>

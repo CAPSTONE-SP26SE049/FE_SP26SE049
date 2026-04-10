@@ -21,6 +21,7 @@ import {
     InputNumber,
     message,
     Upload,
+    Pagination
 } from 'antd';
 import {
     FileTextOutlined,
@@ -137,7 +138,8 @@ const AdminQuizManagementPage: React.FC = () => {
     const [selectedDetailChallenge, setSelectedDetailChallenge] = useState<any | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [bankSearchText, setBankSearchText] = useState('');
-
+    const [regionPages, setRegionPages] = useState<Record<string, number>>({ NORTH: 1, CENTRAL: 1, SOUTH: 1, OTHER: 1 });
+    const [quizPages, setQuizPages] = useState<Record<string, number>>({ READING: 1, LISTENING: 1, WRITING: 1, SPEAKING: 1, MIXED: 1 });
     // --- Import/Export State (Quiz CSV) ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
@@ -147,6 +149,13 @@ const AdminQuizManagementPage: React.FC = () => {
     const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
     const [uploadingSingle, setUploadingSingle] = useState(false);
     const [uploadingBatch, setUploadingBatch] = useState<Record<string, boolean>>({});
+
+    const sanitizeText = (val: string) => {
+        if (typeof val !== 'string') return '';
+        // Allow Vietnamese letters, spaces, and basic punctuation. Strip numbers and complex symbols.
+        return val.replace(/[^a-zA-ZÀ-ỹà-ỹ\s.,!?_'-]/g, '');
+    };
+
 
     // --- TTS Handlers ---
     const handleAutoGenerateAudioSingle = async () => {
@@ -1276,12 +1285,11 @@ const AdminQuizManagementPage: React.FC = () => {
                     <Tag
                         icon={cfg.icon}
                         style={{
-                            background: `${cfg.color}15`,
-                            border: `1px solid ${cfg.color}40`,
-                            color: cfg.color,
                             fontWeight: 600,
                             borderRadius: 20,
                             padding: '2px 10px',
+                            border: '1px solid #d9d9d9',
+                            color: '#475569'
                         }}
                     >
                         {cfg.label}
@@ -1292,7 +1300,6 @@ const AdminQuizManagementPage: React.FC = () => {
         {
             title: 'Nội dung',
             key: 'contentText',
-            width: 350,
             render: (_text: string, record: any, index: number) => {
                 let finalChallenge = null;
 
@@ -1343,7 +1350,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                             </span>
                                         ))}
                                         <div style={{ marginTop: 4, fontSize: 12, color: '#059669', borderTop: '1px solid #fee2e2', paddingTop: 2 }}>
-                                            <span style={{ fontStyle: 'italic' }}>Correct: {meta.correct_word || meta.correctWord}</span>
+                                            <span style={{ fontStyle: 'italic' }}>Đáp án đúng: {meta.correct_word || meta.correctWord}</span>
                                         </div>
                                     </div>
                                 )}
@@ -1447,13 +1454,6 @@ const AdminQuizManagementPage: React.FC = () => {
 
                 return (
                     <Space size="small">
-                        <Tooltip title="Xem chi tiết">
-                            <Button
-                                icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                                onClick={() => showDetail(record, index)}
-                                style={{ borderRadius: 6, border: '1.5px solid #dbeafe', background: '#eff6ff' }}
-                            />
-                        </Tooltip>
                         <Tooltip title="Chỉnh sửa">
                             <Button
                                 icon={<EditOutlined style={{ color: '#d97706' }} />}
@@ -1552,11 +1552,10 @@ const AdminQuizManagementPage: React.FC = () => {
                     <Tag
                         icon={cfg.icon}
                         style={{
-                            background: `${cfg.color}10`,
-                            border: `1px solid ${cfg.color}30`,
-                            color: cfg.color,
                             fontWeight: 600,
-                            borderRadius: 20
+                            borderRadius: 20,
+                            border: '1px solid #d9d9d9',
+                            color: '#475569'
                         }}
                     >
                         {cfg.label}
@@ -1579,7 +1578,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         e.stopPropagation();
                         setQuiz(record);
                     }}
-                    style={{ borderRadius: 8, fontWeight: 600, border: '1.5px solid #1890ff' }}
+                    style={{ borderRadius: 8, fontWeight: 600, border: '1.5px solid #9333ea' }}
                 >
                     Chi tiết
                 </Button>
@@ -1615,13 +1614,14 @@ const AdminQuizManagementPage: React.FC = () => {
         return result;
     }, [quizzes, quizSearchTerm, quizSkillFilter]);
 
+
     const regionInfo = selectedLevel ? getRegionInfo(selectedLevel.dialectId) : null;
 
     return (
         <div style={{ padding: '24px' }}>
-            {/* Header - đồng bộ với ChallengeBankPage */}
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Header */}
+            <div style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between', ...(quiz ? { display: 'none' } : {}) }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     {selectedLevelId && (
                         <Button
                             icon={<ArrowLeftOutlined />}
@@ -1633,54 +1633,69 @@ const AdminQuizManagementPage: React.FC = () => {
                                     handleBackToChapters();
                                 }
                             }}
-                            style={{ borderRadius: 10, border: '1.5px solid #e2e8f0', height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ borderRadius: 10, border: '1px solid #e2e8f0', height: 42, width: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         />
                     )}
-                    <div style={{ background: '#e6f7ff', padding: 8, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FileTextOutlined style={{ fontSize: 20, color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-800" style={{ margin: 0, lineHeight: 1.2 }}>
-                            {quiz
-                                ? <>
-                                    <span style={{ cursor: 'pointer', color: '#64748b', fontWeight: 400 }} onClick={handleBackToChapters}>Quản lý bài kiểm tra</span>
-                                    <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
-                                    <span style={{ cursor: 'pointer', color: '#64748b' }} onClick={() => { setQuiz(null); setQuizChallenges([]); }}>{selectedLevel?.name}</span>
-                                    <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
-                                    <span style={{ color: '#1890ff', fontSize: 19 }}>{quiz.name || quiz.title}</span>
-                                </>
-                                : selectedLevelId && selectedLevel
-                                    ? <>
-                                        <span style={{ cursor: 'pointer', color: '#64748b', fontWeight: 400 }} onClick={handleBackToChapters}>Quản lý bài kiểm tra</span>
-                                        <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span>
-                                        <span style={{ color: '#1890ff', fontSize: 19 }}>{selectedLevel.name}</span>
-                                    </>
-                                    : 'Quản lý bài kiểm tra'
-                            }
-                        </h2>
-                        <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
-                            {quiz
-                                ? `Chi tiết và câu hỏi của bài kiểm tra thuộc chương "${selectedLevel?.name}"`
-                                : selectedLevelId && selectedLevel
-                                    ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
-                                    : 'Chọn chương học để xem và quản lý bài kiểm tra'}
-                        </div>
-                    </div>
+
+                    <>
+                        {/* Thanh search & filter */}
+                        {!selectedLevelId ? (
+                            <>
+                                <Input
+                                    placeholder="Tìm tên chương..."
+                                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                                    style={{ width: 280, borderRadius: 10, height: 42 }}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    allowClear
+                                />
+                                <Select
+                                    placeholder="Lọc vùng miền"
+                                    style={{ minWidth: 160, height: 42 }}
+                                    allowClear
+                                    onChange={(val) => setRegionFilter(val)}
+                                    options={dialects.map((d: any) => {
+                                        const regionKey = (d.name || '').toUpperCase();
+                                        const info = REGION_LABEL[regionKey];
+                                        return {
+                                            value: d.id,
+                                            label: info?.label || d.description || d.name || d.id,
+                                        };
+                                    })}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <Input
+                                    placeholder="Tìm bài kiểm tra..."
+                                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                                    style={{ width: 280, borderRadius: 10, height: 42 }}
+                                    onChange={(e) => setQuizSearchTerm(e.target.value)}
+                                    allowClear
+                                />
+                                <Select
+                                    placeholder="Lọc theo kỹ năng"
+                                    allowClear
+                                    value={quizSkillFilter}
+                                    style={{ minWidth: 160, height: 42 }}
+                                    onChange={(val) => setQuizSkillFilter(val || null)}
+                                    options={[
+                                        { label: 'Tất cả kỹ năng', value: '' },
+                                        ...Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))
+                                    ]}
+                                />
+                            </>
+                        )}
+                    </>
                 </div>
-                <Space size={8}>
+
+                <Space size={10} style={{ flexWrap: 'wrap' }}>
                     {selectedLevelId && !quiz && (
                         <>
                             <Button
                                 icon={<DownloadOutlined />}
                                 size="middle"
                                 onClick={handleDownloadQuizTemplate}
-                                style={{
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #1890ff',
-                                    color: '#1890ff',
-                                    background: '#e6f7ff',
-                                    fontWeight: 600,
-                                }}
+                                style={{ borderRadius: '8px', border: '1.5px solid #d9d9d9', fontWeight: 600, height: 42 }}
                             >
                                 Template
                             </Button>
@@ -1688,13 +1703,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 icon={<UploadOutlined />}
                                 size="middle"
                                 onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
-                                style={{
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #52c41a',
-                                    color: '#52c41a',
-                                    background: '#f6ffed',
-                                    fontWeight: 600,
-                                }}
+                                style={{ borderRadius: '8px', border: '1.5px solid #d9d9d9', fontWeight: 600, height: 42 }}
                             >
                                 Import
                             </Button>
@@ -1702,13 +1711,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 icon={<ExportOutlined />}
                                 size="middle"
                                 onClick={handleExportQuizCSV}
-                                style={{
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #fa8c16',
-                                    color: '#fa8c16',
-                                    background: '#fff7e6',
-                                    fontWeight: 600,
-                                }}
+                                style={{ borderRadius: '8px', border: '1.5px solid #d9d9d9', fontWeight: 600, height: 42 }}
                             >
                                 Export
                             </Button>
@@ -1719,7 +1722,8 @@ const AdminQuizManagementPage: React.FC = () => {
                                 onClick={() => setIsCreateQuizModalOpen(true)}
                                 style={{
                                     borderRadius: '8px',
-                                    background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                    height: 42,
+                                    background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                                     border: 'none',
                                     fontWeight: 600,
                                     boxShadow: '0 2px 8px rgba(24, 144, 255, 0.2)',
@@ -1734,64 +1738,124 @@ const AdminQuizManagementPage: React.FC = () => {
 
 
 
-            {/* Content Area - Chọn chương học */}
+            {/* Guided empty state: no chapter selected */}
             {!selectedLevelId && !loadingQuiz && (
                 <div style={{ padding: '8px 0' }}>
-                    {/* Filter row - đồng bộ style với ChallengeBankPage */}
-                    <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <Input
-                            placeholder="Tìm tên chương..."
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            style={{ width: 320, borderRadius: 10, height: 42 }}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            allowClear
-                        />
-                        <Select
-                            placeholder="Lọc vùng miền"
-                            style={{ minWidth: 160, height: 42 }}
-                            allowClear
-                            onChange={(val) => setRegionFilter(val)}
-                            options={dialects.map((d: any) => {
-                                const regionKey = (d.name || '').toUpperCase();
-                                const info = REGION_LABEL[regionKey];
-                                return {
-                                    value: d.id,
-                                    label: info?.label || d.description || d.name || d.id,
-                                };
-                            })}
-                        />
-                        <div style={{
-                            background: '#e6f7ff',
-                            padding: '0 20px',
-                            borderRadius: 10,
-                            border: '1px solid #91d5ff',
-                            height: 42,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8
-                        }}>
-                            <Badge count={filteredLevels.length} color="#1890ff" />
-                            <Text strong style={{ color: '#1890ff', fontSize: 13 }}>Chương học</Text>
+                    {/* How-to banner */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 18px', borderRadius: 12, marginBottom: 20,
+                        background: 'linear-gradient(90deg, #eff6ff 0%, #f0fdf4 100%)',
+                        border: '1px solid #bfdbfe'
+                    }}>
+                        <span style={{ fontSize: 22 }}>📋</span>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af' }}>Chọn chương học để xem bài kiểm tra</div>
+                            <div style={{ fontSize: 13, color: '#475569', marginTop: 2 }}>Nhấn vào một hàng bên dưới để xem danh sách bài kiểm tra của chương đó.</div>
                         </div>
                     </div>
 
-                    <Card
-                        style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
-                        styles={{ body: { padding: 0 } }}
-                    >
-                        <Table
-                            columns={levelColumns}
-                            dataSource={filteredLevels}
-                            rowKey="id"
-                            scroll={{ x: 'max-content', y: 400 }}
-                            pagination={{ pageSize: 15, showSizeChanger: true, style: { padding: '16px 24px' } }}
-                            onRow={(record) => ({
-                                onClick: () => handleLevelChange(record.id),
-                                style: { cursor: 'pointer' }
-                            })}
-                            size="large"
-                        />
-                    </Card>
+                    {/* Chapter list cards */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                        gap: 24,
+                        alignItems: 'start'
+                    }}>
+                        {(() => {
+                            const grouped: Record<string, any[]> = {};
+                            filteredLevels.forEach(level => {
+                                const regionKey = (() => {
+                                    const d = dialects.find((x: any) => x.id === level.dialectId);
+                                    let nameStr = (d?.name || '').toUpperCase();
+                                    if (nameStr.includes('BẮC')) return 'NORTH';
+                                    if (nameStr.includes('NAM')) return 'SOUTH';
+                                    if (nameStr.includes('TRUNG')) return 'CENTRAL';
+                                    return nameStr;
+                                })();
+                                const finalKey = ['NORTH', 'CENTRAL', 'SOUTH'].includes(regionKey) ? regionKey : 'OTHER';
+                                if (!grouped[finalKey]) grouped[finalKey] = [];
+                                grouped[finalKey].push(level);
+                            });
+
+                            const regionOrder = ['NORTH', 'CENTRAL', 'SOUTH', 'OTHER'];
+                            const existingRegions = regionOrder.filter(r => grouped[r]);
+
+                            return existingRegions.map(regionKey => {
+                                const info = REGION_LABEL[regionKey] || { label: 'Khác', color: '#475569', bg: '#f8fafc' };
+                                const allCards = grouped[regionKey] || [];
+                                const pageSize = 3;
+                                const page = regionPages[regionKey] || 1;
+                                const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
+
+                                return (
+                                    <div key={regionKey} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                                            <div style={{ width: 4, height: 22, borderRadius: 2, background: info.color }} />
+                                            <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{info.label}</span>
+                                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>({allCards.length} chương)</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            {pagedCards.map((level, idx) => {
+                                                const globalIdx = (page - 1) * pageSize + idx + 1;
+                                                return (
+                                                    <div
+                                                        key={level.id}
+                                                        onClick={() => handleLevelChange(level.id)}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            background: '#fff',
+                                                            borderRadius: 14,
+                                                            border: '1.5px solid #e2e8f0',
+                                                            borderLeft: `4px solid ${info.color}`,
+                                                            padding: '14px 16px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 14,
+                                                            transition: 'all 0.18s ease',
+                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)';
+                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            minWidth: 34, height: 34, borderRadius: 8,
+                                                            background: info.bg || '#f1f5f9',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            fontWeight: 700, fontSize: 13, color: info.color, flexShrink: 0
+                                                        }}>{globalIdx}</div>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{level.name}</div>
+                                                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{info.label} · Nhấn để xem bài kiểm tra</div>
+                                                        </div>
+                                                        <div style={{ color: info.color, fontSize: 18, fontWeight: 700, flexShrink: 0 }}>→</div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {allCards.length > pageSize && (
+                                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                                                <Pagination
+                                                    size="small"
+                                                    current={page}
+                                                    total={allCards.length}
+                                                    pageSize={pageSize}
+                                                    onChange={(newPage) => setRegionPages(prev => ({ ...prev, [regionKey]: newPage }))}
+                                                    hideOnSinglePage
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            });
+                        })()}
+                    </div>
                 </div>
             )}
 
@@ -1801,324 +1865,398 @@ const AdminQuizManagementPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Empty state for a selected chapter with no quizzes */}
             {!loadingQuiz && selectedLevelId && !quiz && quizzes.length === 0 && (
-                <div style={{ padding: '60px 0', textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                    {/* Breadcrumb */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+                        <span style={{ cursor: 'pointer', color: '#2563eb' }} onClick={handleBackToChapters}>Quản lý chương học</span>
+                        <span>›</span>
+                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{selectedLevel?.name || 'Chương học'}</span>
+                    </div>
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description={<Text type="secondary">Chương học này chưa có bài kiểm tra nào</Text>}
                     />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: '#1890ff', borderColor: '#1890ff', color: '#fff', fontWeight: 600, borderRadius: 8 }}>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: '#9333ea', borderColor: '#9333ea', color: '#fff', fontWeight: 600, borderRadius: 8 }}>
                         Tạo bài kiểm tra đầu tiên
                     </Button>
                 </div>
             )}
 
+            {/* Quiz card grid for a selected chapter */}
             {!loadingQuiz && selectedLevelId && !quiz && quizzes.length > 0 && (
                 <div style={{ padding: '8px 0' }}>
-                    {/* Filter row cho quiz list */}
-                    <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <Input
-                            placeholder="Tìm bài kiểm tra..."
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            style={{ width: 320, borderRadius: 10, height: 42 }}
-                            onChange={(e) => setQuizSearchTerm(e.target.value)}
-                            allowClear
-                        />
-                        <Select
-                            placeholder="Lọc theo kỹ năng"
-                            allowClear
-                            style={{ minWidth: 180, height: 42 }}
-                            onChange={(val) => setQuizSkillFilter(val)}
-                            options={Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
-                        />
+                    {/* Breadcrumb */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, color: '#94a3b8', fontSize: 13 }}>
+                        <span style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600 }} onClick={handleBackToChapters}>← Quản lý chương học</span>
+                        <span>›</span>
+                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{selectedLevel?.name || 'Chương học'}</span>
                     </div>
 
-                    <Card
-                        style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}
-                        styles={{ body: { padding: 0 } }}
-                    >
-                        <Table
-                            columns={quizColumns}
-                            dataSource={filteredAndSortedQuizzes}
-                            rowKey="id"
-                            scroll={{ x: 'max-content', y: 400 }}
-                            pagination={{ pageSize: 15, showSizeChanger: true, style: { padding: '16px 24px' } }}
-                            onRow={(record) => ({
-                                onClick: () => setQuiz(record),
-                                style: { cursor: 'pointer' }
-                            })}
-                            size="large"
-                        />
-                    </Card>
+                    {/* How-to hint */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 16px', borderRadius: 10, marginBottom: 18,
+                        background: '#fffbeb', border: '1px solid #fde68a'
+                    }}>
+                        <span style={{ fontSize: 18 }}>📝</span>
+                        <span style={{ fontSize: 13, color: '#92400e', fontWeight: 500 }}>
+                            Nhấn vào một bài kiểm tra bên dưới để xem và quản lý danh sách câu hỏi của bài đó.
+                        </span>
+                    </div>
+
+                    {/* Quiz card list for a selected chapter */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                        gap: 24,
+                        alignItems: 'start'
+                    }}>
+                        {(() => {
+                            const grouped: Record<string, any[]> = {};
+                            filteredAndSortedQuizzes.forEach(quiz => {
+                                const st = quiz.skillType || 'MIXED';
+                                if (!grouped[st]) grouped[st] = [];
+                                grouped[st].push(quiz);
+                            });
+
+                            const skillOrder = ['READING', 'LISTENING', 'WRITING', 'SPEAKING', 'MIXED'];
+                            const existingSkills = skillOrder.filter(s => grouped[s]);
+
+                            return existingSkills.map(skillType => {
+                                const skillCfg = SKILL_CONFIG[skillType] || { label: 'Hỗn hợp', color: '#64748b', icon: <QuestionCircleOutlined /> };
+                                const allCards = grouped[skillType] || [];
+                                const pageSize = 4;
+                                const page = quizPages[skillType] || 1;
+                                const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
+
+                                return (
+                                    <div key={skillType} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                                            <div style={{ width: 4, height: 22, borderRadius: 2, background: skillCfg.color }} />
+                                            <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {skillCfg.icon} Kỹ năng {skillCfg.label}
+                                            </span>
+                                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>({allCards.length} bài)</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            {pagedCards.map((quiz, idx) => {
+                                                const globalIdx = filteredAndSortedQuizzes.findIndex(q => q.id === quiz.id) + 1;
+                                                const qCount = quiz.questionCount || quiz.questions?.length || 0;
+                                                const timeMin = Math.ceil((quiz.timeLimitSeconds || 0) / 60);
+
+                                                return (
+                                                    <div
+                                                        key={quiz.id}
+                                                        onClick={() => setQuiz(quiz)}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            background: '#fff',
+                                                            borderRadius: 14,
+                                                            border: '1.5px solid #e2e8f0',
+                                                            borderLeft: `4px solid ${skillCfg.color}`,
+                                                            padding: '14px 16px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 14,
+                                                            transition: 'all 0.18s ease',
+                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                                            position: 'relative',
+                                                            overflow: 'hidden',
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px rgba(0,0,0,0.10)`;
+                                                            (e.currentTarget as HTMLElement).style.borderColor = skillCfg.color;
+                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                                                            (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
+                                                            (e.currentTarget as HTMLElement).style.borderLeftColor = skillCfg.color;
+                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                                                        }}
+                                                    >
+                                                        {/* Number badge */}
+                                                        <div style={{
+                                                            minWidth: 36, height: 36, borderRadius: 10,
+                                                            background: skillCfg.color + '15',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            fontWeight: 700, fontSize: 14, color: skillCfg.color, flexShrink: 0
+                                                        }}>
+                                                            {globalIdx}
+                                                        </div>
+
+                                                        {/* Quiz Title & Stats */}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                                                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {quiz.title || quiz.name}
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12 }}>
+                                                                <span>{qCount} câu</span>
+                                                                <span>{timeMin} phút</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* CTA */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                            <div style={{
+                                                                width: 30, height: 30, borderRadius: 8,
+                                                                background: skillCfg.color + '15',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                color: skillCfg.color, fontSize: 16, fontWeight: 700
+                                                            }}>
+                                                                →
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {allCards.length > pageSize && (
+                                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                                                <Pagination
+                                                    size="small"
+                                                    current={page}
+                                                    total={allCards.length}
+                                                    pageSize={pageSize}
+                                                    onChange={(newPage) => setQuizPages(prev => ({ ...prev, [skillType]: newPage }))}
+                                                    hideOnSinglePage
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            });
+                        })()}
+                    </div>
                 </div>
             )}
 
             {!loadingQuiz && quiz && (
                 <>
-                    {/* Quiz Info Card (Compact) */}
-                    <Card
-                        style={{
-                            borderRadius: 16,
-                            marginBottom: 20,
-                            boxShadow: '0 2px 10px rgba(37,99,235,0.05)',
-                            border: '1px solid #e2e8f0',
-                            background: '#fff',
-                        }}
-                        styles={{ body: { padding: '16px 20px' } }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                            {/* Left Side: Quiz Identity & Stats */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: 12,
-                                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 10px rgba(37,99,235,0.2)'
-                                }}>
-                                    <FileTextOutlined style={{ fontSize: 22, color: '#fff' }} />
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                        <Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>
-                                            {quiz.name || quiz.title}
-                                        </Title>
-                                        <Tooltip title="Chỉnh sửa thông tin bài kiểm tra">
-                                            <Button
-                                                size="small"
-                                                type="text"
-                                                icon={<EditOutlined style={{ color: '#64748b' }} />}
-                                                onClick={handleOpenEditQuiz}
-                                                style={{ borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                            />
-                                        </Tooltip>
-                                        {regionInfo && (
-                                            <Tag color="blue" style={{ borderRadius: 20, border: 'none', margin: 0, paddingInline: 10, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8' }}>
-                                                {regionInfo.label}
-                                            </Tag>
-                                        )}
-                                    </div>
-                                    <Space split={<Divider type="vertical" style={{ borderColor: '#e2e8f0', height: 12 }} />} style={{ marginTop: 0 }}>
-                                        <span style={{ color: '#64748b', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <QuestionCircleOutlined style={{ fontSize: 13 }} />
-                                            <strong>{loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)}</strong> câu hỏi
-                                        </span>
-                                        <span style={{ color: '#64748b', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <ClockCircleOutlined style={{ fontSize: 13 }} />
-                                            <strong>{quiz.timeLimitSeconds || 900}</strong> s
-                                        </span>
+                    {/* Breadcrumb trail */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, color: '#94a3b8', fontSize: 13 }}>
+                        <span
+                            style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                            onClick={handleBackToChapters}
+                        >
+                            Quản lý chương học
+                        </span>
+                        <span>›</span>
+                        <span
+                            style={{ cursor: 'pointer', color: '#2563eb' }}
+                            onClick={() => { setQuiz(null); setQuizChallenges([]); }}
+                        >
+                            {selectedLevel?.name || 'Chương học'}
+                        </span>
+                        <span>›</span>
+                        <span style={{ fontWeight: 700, color: '#1e293b' }}>{quiz.name || quiz.title}</span>
+                    </div>
 
-                                    </Space>
-                                </div>
-                            </div>
+                    {/* Compact Quiz Header */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 16,
+                        flexWrap: 'wrap',
+                        marginBottom: 16,
+                        paddingBottom: 16,
+                        borderBottom: '1px solid #e2e8f0'
+                    }}>
+                        {/* Left Side: Back button + Identity */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <Button
+                                icon={<ArrowLeftOutlined />}
+                                onClick={() => {
+                                    setQuiz(null);
+                                    setQuizChallenges([]);
+                                }}
+                                style={{ borderRadius: 10, border: '1px solid #e2e8f0', height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            />
 
-                            {/* Right Side: Reward Section */}
-                            <div style={{
-                                padding: '8px 12px',
-                                background: quiz.rewardCatalogId ? '#fffbeb' : '#f8fafc',
-                                borderRadius: 12,
-                                border: quiz.rewardCatalogId ? '1px solid #fde68a' : '1px solid #e2e8f0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                minHeight: 60,
-                                transition: 'all 0.3s ease'
-                            }}>
-                                {quiz.rewardCatalogId ? (
-                                    <>
-                                        <div style={{
-                                            width: 40,
-                                            height: 40,
-                                            borderRadius: 8,
-                                            background: '#fff',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            overflow: 'hidden',
-                                            padding: 4,
-                                            boxShadow: '0 2px 5px rgba(217,119,6,0.1)'
-                                        }}>
-                                            <img
-                                                src={quiz.rewardIconUrl || 'https://via.placeholder.com/30'}
-                                                alt={quiz.rewardName}
-                                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.2, color: '#b45309' }}>Phần thưởng:</Text>
-                                            <Text strong style={{ fontSize: 13, color: '#92400e' }}>{quiz.rewardName}</Text>
-                                        </div>
-                                        <Divider type="vertical" style={{ height: 24, margin: '0 4px' }} />
-                                        <Tooltip title="Thay đổi phần thưởng">
-                                            <Button
-                                                type="text"
-                                                icon={<EditOutlined style={{ color: '#f59e0b' }} />}
-                                                onClick={openRewardModal}
-                                                style={{ borderRadius: 6 }}
-                                            />
-                                        </Tooltip>
-                                    </>
-                                ) : (
-                                    <Button
-                                        type="dashed"
-                                        icon={<TrophyOutlined />}
-                                        onClick={openRewardModal}
-                                        style={{
-                                            height: 40,
-                                            borderRadius: 8,
-                                            color: '#d97706',
-                                            borderColor: '#fcd34d',
-                                            background: '#fff',
-                                            fontWeight: 600,
-                                            fontSize: 13
-                                        }}
-                                    >
-                                        Thiết lập phần thưởng
-                                    </Button>
-                                )}
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Title level={4} style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1e293b' }}>
+                                        {quiz.name || quiz.title}
+                                    </Title>
+                                    <Tooltip title="Chỉnh sửa thông tin bài kiểm tra">
+                                        <Button
+                                            size="small"
+                                            type="text"
+                                            icon={<EditOutlined style={{ color: '#64748b' }} />}
+                                            onClick={handleOpenEditQuiz}
+                                            style={{ borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        />
+                                    </Tooltip>
+                                    {regionInfo && (
+                                        <Tag color="blue" style={{ borderRadius: 12, border: 'none', margin: 0, paddingInline: 8, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8' }}>
+                                            {regionInfo.label}
+                                        </Tag>
+                                    )}
+                                </div>
+                                <Space split={<Divider type="vertical" style={{ borderColor: '#cbd5e1', height: 10 }} />} style={{ marginTop: 4 }}>
+                                    <span style={{ color: '#64748b', fontSize: 12 }}>
+                                        <strong>{loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)}</strong> câu hỏi
+                                    </span>
+                                    <span style={{ color: '#64748b', fontSize: 12 }}>
+                                        <ClockCircleOutlined style={{ marginRight: 4 }} />
+                                        <strong>{quiz.timeLimitSeconds || 900}</strong> s
+                                    </span>
+                                    {(quiz.description || quiz.instructions) && (
+                                        <Text type="secondary" style={{ fontSize: 12, maxWidth: 400 }} ellipsis={{ tooltip: `${quiz.description || ''} ${quiz.instructions ? ' - ' + quiz.instructions : ''}` }}>
+                                            {quiz.description || quiz.instructions}
+                                        </Text>
+                                    )}
+                                </Space>
                             </div>
                         </div>
 
+                        {/* Right Side: Reward */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            {quiz.rewardCatalogId ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', padding: '6px 12px', borderRadius: 8, border: '1px solid #fde68a' }}>
+                                    <div style={{ width: 26, height: 26, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(217,119,6,0.1)' }}>
+                                        <img src={quiz.rewardIconUrl || 'https://via.placeholder.com/20'} alt="reward" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                                        <Text type="secondary" style={{ fontSize: 10, color: '#b45309' }}>Phần thưởng</Text>
+                                        <Text strong style={{ fontSize: 13, color: '#92400e' }}>{quiz.rewardName}</Text>
+                                    </div>
+                                    <Divider type="vertical" style={{ height: 20, margin: '0 4px', borderColor: '#fcd34d' }} />
+                                    <Tooltip title="Chỉnh sửa phần thưởng">
+                                        <Button type="text" size="small" icon={<EditOutlined style={{ color: '#d97706', fontSize: 13 }} />} onClick={openRewardModal} style={{ padding: 4 }} />
+                                    </Tooltip>
+                                </div>
+                            ) : (
+                                <Button
+                                    type="dashed"
+                                    icon={<TrophyOutlined />}
+                                    onClick={openRewardModal}
+                                    style={{
+                                        height: 38,
+                                        borderRadius: 8,
+                                        color: '#d97706',
+                                        borderColor: '#fcd34d',
+                                        background: '#fffbeb',
+                                        fontWeight: 600,
+                                        fontSize: 13,
+                                        padding: '0 16px'
+                                    }}
+                                >
+                                    Thiết lập phần thưởng
+                                </Button>
+                            )}
+                        </div>
+                    </div>
 
-
-                        {(quiz.description || quiz.instructions) && (
-                            <div style={{ marginTop: 12, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 12, color: '#475569', border: '1px solid #f1f5f9' }}>
-                                {quiz.description && <div>{quiz.description}</div>}
-                                {quiz.instructions && <div style={{ marginTop: 4, color: '#1e293b' }}>📝 <strong>Học viên lưu ý:</strong> {quiz.instructions}</div>}
+                    {/* Action Buttons & Header - Grouped into a single sleek toolbar */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 16,
+                        marginBottom: 16,
+                        background: '#f8fafc',
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        border: '1px solid #e2e8f0'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <QuestionCircleOutlined style={{ color: '#2563eb', fontSize: 16 }} />
                             </div>
-                        )}
-                    </Card>
+                            <span style={{ fontWeight: 700, fontSize: 16, color: '#1e293b' }}>
+                                Cấu trúc đề ({loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)} câu)
+                            </span>
+                        </div>
 
-                    {/* Action Buttons - Always visible */}
-                    <Card
-                        style={{
-                            borderRadius: 16,
-                            marginBottom: 24,
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            border: '1px solid #e2e8f0',
-                        }}
-                        headStyle={{ borderRadius: '16px 16px 0 0', borderBottom: '1px solid #f1f5f9' }}
-                        title={
-                            <Space>
-                                <QuestionCircleOutlined style={{ color: '#2563eb' }} />
-                                <span style={{ fontWeight: 600 }}>
-                                    Danh sách câu hỏi ({loadingQuizChallenges ? (quiz.questions?.length || 0) : (displayQuestions.length || quiz.questionCount || 0)} câu)
-                                </span>
-                            </Space>
-                        }
-                        extra={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Button
+                                size="middle"
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadChallengeTemplate}
+                                style={{ borderRadius: 8, fontWeight: 500, color: '#475569', borderColor: '#cbd5e1' }}
+                            >
+                                Template mẫu
+                            </Button>
+                            <Button
+                                size="middle"
+                                icon={<UploadOutlined />}
+                                onClick={openImportChallengesModal}
+                                style={{ borderRadius: 8, fontWeight: 500, color: '#475569', borderColor: '#cbd5e1' }}
+                            >
+                                Import Excel
+                            </Button>
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
                                 onClick={openBatchQuestionsModal}
                                 style={{
                                     borderRadius: 8,
-                                    height: 36,
-                                    fontWeight: 700,
-                                    background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                    fontWeight: 600,
+                                    background: '#2563eb',
                                     border: 'none',
-                                    boxShadow: '0 4px 12px rgba(24,144,255,0.25)'
+                                    boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
                                 }}
                             >
-                                Nhập trực tiếp nhiều câu
+                                Thêm thủ công
                             </Button>
-                        }
-                    >
-                        {/* Import Excel buttons - Inline Row */}
-                        <div style={{
-                            display: 'flex',
-                            gap: 12,
-                            padding: '10px 16px',
-                            background: '#f8fafc',
-                            borderRadius: 12,
-                            border: '1px solid #e2e8f0',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            marginBottom: 16
-                        }}>
-                            <UploadOutlined style={{ fontSize: 16, color: '#64748b' }} />
-                            <Text strong style={{ color: '#475569', fontSize: 12 }}>
-                                Excel:
-                            </Text>
-                            <Button
-                                size="small"
-                                icon={<DownloadOutlined />}
-                                onClick={handleDownloadChallengeTemplate}
-                                style={{
-                                    borderRadius: 6,
-                                    fontSize: 12,
-                                    border: '1px solid #1890ff',
-                                    color: '#1890ff',
-                                }}
-                            >
-                                Template mẫu
-                            </Button>
-                            <Button
-                                size="small"
-                                icon={<PlusOutlined />}
-                                onClick={openImportChallengesModal}
-                                style={{
-                                    borderRadius: 6,
-                                    fontSize: 12,
-                                    border: '1px solid #52c41a',
-                                    color: '#52c41a',
-                                }}
-                            >
-                                Import câu hỏi
-                            </Button>
-                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
-                                (Đọc, Nghe, Viết, Nói)
-                            </Text>
                         </div>
+                    </div>
 
-                        {/* Questions Table */}
-                        {displayQuestions && displayQuestions.length > 0 ? (
-                            <Table
-                                dataSource={displayQuestions}
-                                columns={questionColumns}
-                                rowKey={(r: any) => `${r.id}-${r.questionOrder}-${r.skillType}`}
-                                locale={{ emptyText: 'Không có câu hỏi nào' }}
-                                scroll={{ x: 'max-content', y: 600 }}
-                                rowClassName={(_, index) =>
-                                    index % 2 === 0 ? '' : 'quiz-row-alt'
-                                }
-                            />
-                        ) : (
-                            <div style={{
-                                padding: '48px 24px',
-                                textAlign: 'center',
-                                background: '#f8fafc',
-                                borderRadius: 16,
-                                border: '1.5px dashed #cbd5e1',
-                            }}>
-                                <QuestionCircleOutlined style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
-                                <div style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: 600, color: '#475569' }}>
-                                        Quiz này chưa có câu hỏi nào
-                                    </Text>
-                                </div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>
-                                    Thêm câu hỏi từ ngân hàng đề hoặc tạo câu hỏi mới bằng các nút bên trên
+                    {/* Questions Table */}
+                    {displayQuestions && displayQuestions.length > 0 ? (
+                        <Table
+                            dataSource={displayQuestions}
+                            columns={questionColumns}
+                            rowKey={(r: any) => `${r.id}-${r.questionOrder}-${r.skillType}`}
+                            locale={{ emptyText: 'Không có câu hỏi nào' }}
+                            scroll={{ x: 'max-content', y: 600 }}
+                            rowClassName={(_, index) =>
+                                index % 2 === 0 ? '' : 'quiz-row-alt'
+                            }
+                        />
+                    ) : (
+                        <div style={{
+                            padding: '48px 24px',
+                            textAlign: 'center',
+                            background: '#f8fafc',
+                            borderRadius: 16,
+                            border: '1.5px dashed #cbd5e1',
+                        }}>
+                            <QuestionCircleOutlined style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
+                            <div style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 16, fontWeight: 600, color: '#475569' }}>
+                                    Quiz này chưa có câu hỏi nào
                                 </Text>
-                                <Space size={12}>
-                                    <Button
-                                        type="primary"
-                                        icon={<BankOutlined />}
-                                        onClick={() => openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING')}
-                                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
-                                    >
-                                        Chọn từ Ngân hàng đề
-                                    </Button>
-                                    <Button
-                                        icon={<PlusOutlined />}
-                                        onClick={() => { openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING'); setIsCreatingNew(true); }}
-                                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}
-                                    >
-                                        Tạo câu hỏi mới
-                                    </Button>
-                                </Space>
                             </div>
-                        )}
-                    </Card>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>
+                                Thêm câu hỏi từ ngân hàng đề hoặc tạo câu hỏi mới bằng các nút bên trên
+                            </Text>
+                            <Space size={12}>
+                                <Button
+                                    type="primary"
+                                    icon={<BankOutlined />}
+                                    onClick={() => openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING')}
+                                    style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
+                                >
+                                    Chọn từ Ngân hàng đề
+                                </Button>
+                                <Button
+                                    icon={<PlusOutlined />}
+                                    onClick={() => { openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING'); setIsCreatingNew(true); }}
+                                    style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}
+                                >
+                                    Tạo câu hỏi mới
+                                </Button>
+                            </Space>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -2141,9 +2279,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                 height: 44,
                                 fontWeight: 700,
                                 paddingInline: 32,
-                                background: 'linear-gradient(90deg, #1890ff, #0076e4)',
+                                background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
                                 border: 'none',
-                                boxShadow: '0 4px 12px rgba(24,144,255,0.25)'
+                                boxShadow: '0 4px 12px rgba(147,51,234,0.25)'
                             }}
                         >
                             Lưu tất cả & thêm vào quiz
@@ -2169,7 +2307,7 @@ const AdminQuizManagementPage: React.FC = () => {
                             <Card
                                 key={q.tempId}
                                 size="small"
-                                style={{ marginBottom: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}
+                                style={{ marginBottom: 24, borderRadius: 12, border: '2px solid #e2e8f0', borderTop: '4px solid #3b82f6', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', background: '#f8fafc', overflow: 'hidden' }}
                                 title={<Text strong>Câu {idx + 1}</Text>}
                                 extra={
                                     <Button
@@ -2200,12 +2338,12 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                 <div style={{ marginTop: 12 }}>
                                     <Text strong>Tiêu đề bài tập / Yêu cầu</Text>
-                                    <Input.TextArea
-                                        rows={2}
+                                    <Input
                                         placeholder="Ví dụ: Chọn từ đúng chính tả để điền vào chỗ trống"
                                         value={q.contentText}
-                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'contentText', e.target.value)}
-                                        style={{ marginTop: 6, borderRadius: 8 }}
+                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'contentText', sanitizeText(e.target.value))}
+                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                        maxLength={50} showCount
                                     />
                                 </div>
 
@@ -2213,12 +2351,12 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <>
                                         <div style={{ marginTop: 12 }}>
                                             <Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>
-                                            <Input.TextArea
-                                                rows={2}
+                                            <Input
                                                 placeholder="Ví dụ: Em đi nàm nương rẫy."
                                                 value={q.fullSentence}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'fullSentence', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'fullSentence', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={50} showCount
                                             />
                                         </div>
                                         <Row gutter={12} style={{ marginTop: 12 }}>
@@ -2227,8 +2365,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 <Input
                                                     placeholder="Ví dụ: nàm"
                                                     value={q.wrongWord}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'wrongWord', e.target.value)}
-                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'wrongWord', sanitizeText(e.target.value))}
+                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                    maxLength={15} showCount
                                                 />
                                             </Col>
                                             <Col xs={24} md={12}>
@@ -2236,8 +2375,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 <Input
                                                     placeholder="Ví dụ: làm"
                                                     value={q.correctWord}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctWord', e.target.value)}
-                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctWord', sanitizeText(e.target.value))}
+                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                    maxLength={15} showCount
                                                 />
                                             </Col>
                                         </Row>
@@ -2246,8 +2386,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                             <Input
                                                 placeholder="Ví dụ: Động từ 'làm' phải bắt đầu bằng 'L'."
                                                 value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={30} showCount
                                             />
                                         </div>
                                     </>
@@ -2289,7 +2430,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     icon={<AudioOutlined />}
                                                     onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
                                                     loading={uploadingBatch[q.tempId]}
-                                                    style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
                                                 >
                                                     Tạo bằng AI (từ Transcript)
                                                 </Button>
@@ -2306,8 +2447,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 rows={2}
                                                 placeholder="Nội dung audio"
                                                 value={q.transcript}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={50} showCount
                                             />
                                         </div>
                                         <div style={{ marginTop: 12 }}>
@@ -2318,8 +2460,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                         <Input
                                                             placeholder={`Đáp án ${optIdx + 1}`}
                                                             value={opt}
-                                                            onChange={(e) => updateBatchOption(q.tempId, optIdx, e.target.value)}
-                                                            style={{ borderRadius: 8 }}
+                                                            onChange={(e) => updateBatchOption(q.tempId, optIdx, sanitizeText(e.target.value))}
+                                                            style={{ borderRadius: 8, background: '#fff' }}
+                                                            maxLength={50} showCount
                                                         />
                                                     </Col>
                                                 ))}
@@ -2342,12 +2485,12 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <>
                                         <div style={{ marginTop: 12 }}>
                                             <Text strong>Nội dung câu đố (với ký hiệu _ )</Text>
-                                            <Input.TextArea
-                                                rows={2}
+                                            <Input
                                                 placeholder="Ví dụ: Lúa _ là lúa nếp làng."
                                                 value={q.blankSentence}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'blankSentence', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'blankSentence', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={50} showCount
                                             />
                                         </div>
                                         <Row gutter={12} style={{ marginTop: 12 }}>
@@ -2356,8 +2499,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 <Input
                                                     placeholder="Ví dụ: nếp"
                                                     value={q.correctAnswer}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctAnswer', e.target.value)}
-                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctAnswer', sanitizeText(e.target.value))}
+                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                    maxLength={15} showCount
                                                 />
                                             </Col>
                                             <Col xs={24} md={12}>
@@ -2365,8 +2509,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 <Input
                                                     placeholder="Cách nhau bởi dấu phẩy"
                                                     value={q.alternatives}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'alternatives', e.target.value)}
-                                                    style={{ marginTop: 6, borderRadius: 8 }}
+                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'alternatives', sanitizeText(e.target.value))}
+                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                    maxLength={30} showCount
                                                 />
                                             </Col>
                                         </Row>
@@ -2375,8 +2520,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                             <Input
                                                 placeholder="Ví dụ: Ngược lại với nếp là tẻ."
                                                 value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={30} showCount
                                             />
                                         </div>
                                     </>
@@ -2418,7 +2564,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     icon={<AudioOutlined />}
                                                     onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
                                                     loading={uploadingBatch[q.tempId]}
-                                                    style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
                                                 >
                                                     Tạo bằng AI (từ Transcript)
                                                 </Button>
@@ -2434,8 +2580,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 rows={2}
                                                 placeholder="Nội dung cần nói"
                                                 value={q.transcript}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={50} showCount
                                             />
                                         </div>
                                         <div style={{ marginTop: 12 }}>
@@ -2443,8 +2590,9 @@ const AdminQuizManagementPage: React.FC = () => {
                                             <Input
                                                 placeholder="Gợi ý (không bắt buộc)"
                                                 value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', e.target.value)}
-                                                style={{ marginTop: 6, borderRadius: 8 }}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                maxLength={30} showCount
                                             />
                                         </div>
                                     </>
@@ -2598,7 +2746,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                             onClick={handleAssignFromBank}
                                             disabled={selectedBankIds.length === 0}
                                             loading={submittingAssign}
-                                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}
+                                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
                                         >
                                             Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
                                         </Button>
@@ -2624,9 +2772,10 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <Form.Item
                                         name="contentText"
                                         label={<Text strong>Nội dung câu hỏi / Yêu cầu</Text>}
-                                        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }]}
+                                        normalize={sanitizeText}
+                                        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }, { max: 50, message: 'Độ dài tối đa 50 ký tự' }]}
                                     >
-                                        <Input.TextArea rows={2} placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} />
+                                        <Input placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} maxLength={50} showCount />
                                     </Form.Item>
 
 
@@ -2634,19 +2783,19 @@ const AdminQuizManagementPage: React.FC = () => {
                                     <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
                                         {activeSkillType === 'READING' && (
                                             <>
-                                                <Form.Item name="fullSentence" label={<Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>} rules={[{ required: true }]}>
-                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Em đi nàm nương rẫy." />
+                                                <Form.Item name="fullSentence" label={<Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Độ dài tối đa 50 ký tự' }]}>
+                                                    <Input placeholder="Ví dụ: Em đi nàm nương rẫy." maxLength={50} showCount />
                                                 </Form.Item>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                                    <Form.Item name="wrongWord" label={<Text strong>Từ bị sai (Wrong Word)</Text>} rules={[{ required: true }]}>
-                                                        <Input placeholder="Ví dụ: nàm" />
+                                                    <Form.Item name="wrongWord" label={<Text strong>Từ bị sai (Wrong Word)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
+                                                        <Input placeholder="Ví dụ: nàm" maxLength={15} showCount />
                                                     </Form.Item>
-                                                    <Form.Item name="correctWord" label={<Text strong>Từ viết lại đúng</Text>} rules={[{ required: true }]}>
-                                                        <Input placeholder="Ví dụ: làm" />
+                                                    <Form.Item name="correctWord" label={<Text strong>Từ viết lại đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
+                                                        <Input placeholder="Ví dụ: làm" maxLength={15} showCount />
                                                     </Form.Item>
                                                 </div>
-                                                <Form.Item name="hint" label={<Text strong>Gợi ý / Giải thích (Hint)</Text>}>
-                                                    <Input placeholder="Giải thích cho người học..." />
+                                                <Form.Item name="hint" label={<Text strong>Gợi ý / Giải thích (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
+                                                    <Input placeholder="Giải thích cho người học..." maxLength={30} showCount />
                                                 </Form.Item>
                                             </>
                                         )}
@@ -2685,7 +2834,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                             icon={<AudioOutlined />}
                                                             onClick={handleAutoGenerateAudioSingle}
                                                             loading={uploadingSingle}
-                                                            style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
                                                         >
                                                             Tạo bằng AI (từ Transcript)
                                                         </Button>
@@ -2701,11 +2850,11 @@ const AdminQuizManagementPage: React.FC = () => {
                                                         </Form.Item>
                                                     </Space>
                                                 </Form.Item>
-                                                <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc">
-                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} />
+                                                <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc" normalize={sanitizeText} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} maxLength={50} showCount />
                                                 </Form.Item>
-                                                <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }]}>
-                                                    <Input.TextArea rows={3} />
+                                                <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                    <Input.TextArea rows={3} maxLength={50} showCount />
                                                 </Form.Item>
                                                 <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
                                                     {({ getFieldValue }) => {
@@ -2727,27 +2876,27 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                         {activeSkillType === 'WRITING' && (
                                             <>
-                                                <Form.Item name="blankSentence" label={<Text strong>Nội dung câu đố (với ký hiệu _ )</Text>} rules={[{ required: true }]}>
-                                                    <Input placeholder="Ví dụ: Lúa _ là lúa nếp làng." />
+                                                <Form.Item name="blankSentence" label={<Text strong>Nội dung câu đố (với ký hiệu _ )</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                    <Input placeholder="Ví dụ: Lúa _ là lúa nếp làng." maxLength={50} showCount />
                                                 </Form.Item>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                                    <Form.Item name="correctAnswer" label={<Text strong>Đáp án đúng</Text>} rules={[{ required: true }]}>
-                                                        <Input placeholder="Ví dụ: nếp" />
+                                                    <Form.Item name="correctAnswer" label={<Text strong>Đáp án đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
+                                                        <Input placeholder="Ví dụ: nếp" maxLength={15} showCount />
                                                     </Form.Item>
-                                                    <Form.Item name="alternatives" label={<Text strong>Đáp án chấp nhận khác</Text>}>
-                                                        <Input placeholder="Cách nhau bởi dấu phẩy" />
+                                                    <Form.Item name="alternatives" label={<Text strong>Đáp án chấp nhận khác</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
+                                                        <Input placeholder="Cách nhau bởi dấu phẩy" maxLength={30} showCount />
                                                     </Form.Item>
                                                 </div>
-                                                <Form.Item name="hint" label={<Text strong>Gợi ý (Hint)</Text>}>
-                                                    <Input placeholder="Gợi ý khi gặp khó khăn..." />
+                                                <Form.Item name="hint" label={<Text strong>Gợi ý (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
+                                                    <Input placeholder="Gợi ý khi gặp khó khăn..." maxLength={30} showCount />
                                                 </Form.Item>
                                             </>
                                         )}
 
                                         {activeSkillType === 'SPEAKING' && (
                                             <>
-                                                <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} rules={[{ required: true }]}>
-                                                    <Input.TextArea rows={2} style={{ borderRadius: 8 }} />
+                                                <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                    <Input.TextArea rows={2} style={{ borderRadius: 8 }} maxLength={50} showCount />
                                                 </Form.Item>
                                                 <Form.Item label={<Text strong>File âm thanh mẫu</Text>} required={!createForm.getFieldValue('audioUrl')}>
                                                     <Space direction="vertical" style={{ width: '100%' }}>
@@ -2781,7 +2930,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                                             icon={<AudioOutlined />}
                                                             onClick={handleAutoGenerateAudioSingle}
                                                             loading={uploadingSingle}
-                                                            style={{ borderRadius: 8, background: '#f0f7ff', color: '#1890ff', border: '1px solid #91d5ff' }}
+                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
                                                         >
                                                             Tạo bằng AI (từ Transcript)
                                                         </Button>
@@ -2805,7 +2954,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                         <Space>
                                             <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
                                             <Button type="primary" htmlType="submit" loading={submittingCreate}
-                                                style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
+                                                style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
                                                 {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
                                             </Button>
                                         </Space>
@@ -2830,7 +2979,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 footer={
                     [
                         <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
-                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>
+                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
                             Đóng
                         </Button>
                     ]}
@@ -2993,7 +3142,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 confirmLoading={updatingQuiz}
                 okText="Lưu thay đổi"
                 okButtonProps={{
-                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
                 cancelText="Hủy bỏ"
                 cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
@@ -3010,9 +3159,9 @@ const AdminQuizManagementPage: React.FC = () => {
                             <Form.Item
                                 label="Tên quiz"
                                 name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
+                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }, { max: 100, message: 'Tên quiz không được vượt quá 100 ký tự' }]}
                             >
-                                <Input />
+                                <Input maxLength={100} showCount />
                             </Form.Item>
                         </Col>
                         <Col span={10}>
@@ -3024,13 +3173,13 @@ const AdminQuizManagementPage: React.FC = () => {
 
                     <Row gutter={24}>
                         <Col span={12}>
-                            <Form.Item label="Mô tả" name="description">
-                                <Input.TextArea rows={2} />
+                            <Form.Item label="Mô tả" name="description" rules={[{ max: 255, message: 'Mô tả không được vượt quá 255 ký tự' }]}>
+                                <Input.TextArea rows={2} maxLength={255} showCount />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label="Hướng dẫn" name="instructions">
-                                <Input.TextArea rows={2} />
+                            <Form.Item label="Hướng dẫn" name="instructions" rules={[{ max: 500, message: 'Hướng dẫn không được vượt quá 500 ký tự' }]}>
+                                <Input.TextArea rows={2} maxLength={500} showCount />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -3070,8 +3219,8 @@ const AdminQuizManagementPage: React.FC = () => {
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label="Ghi chú cập nhật" name="comment">
-                                <Input placeholder="Lý do chỉnh sửa..." />
+                            <Form.Item label="Ghi chú cập nhật" name="comment" rules={[{ max: 200, message: 'Ghi chú không được vượt quá 200 ký tự' }]}>
+                                <Input placeholder="Lý do chỉnh sửa..." maxLength={200} showCount />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -3094,7 +3243,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 confirmLoading={creatingQuiz}
                 okText="Tạo mới"
                 okButtonProps={{
-                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(90deg, #1890ff, #0076e4)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }
+                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
                 cancelText="Hủy"
                 cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
@@ -3107,14 +3256,14 @@ const AdminQuizManagementPage: React.FC = () => {
                     onFinish={handleCreateQuiz}
                     style={{ marginTop: 20 }}
                 >
-                    <Form.Item name="title" label={<Text strong>Tên bài kiểm tra</Text>} rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra' }]}>
-                        <Input placeholder="Ví dụ: Kiểm tra cuối khóa phát âm" />
+                    <Form.Item name="title" label={<Text strong>Tên bài kiểm tra</Text>} rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra' }, { max: 100, message: 'Tên bài kiểm tra không được vượt quá 100 ký tự' }]}>
+                        <Input placeholder="Ví dụ: Kiểm tra cuối khóa phát âm" maxLength={100} showCount />
                     </Form.Item>
-                    <Form.Item name="description" label={<Text strong>Mô tả ngắn</Text>}>
-                        <Input.TextArea rows={2} placeholder="Mô tả nội dung bài kiểm tra" />
+                    <Form.Item name="description" label={<Text strong>Mô tả ngắn</Text>} rules={[{ max: 255, message: 'Mô tả không được vượt quá 255 ký tự' }]}>
+                        <Input.TextArea rows={2} placeholder="Mô tả nội dung bài kiểm tra" maxLength={255} showCount />
                     </Form.Item>
-                    <Form.Item name="instructions" label={<Text strong>Hướng dẫn cho học viên</Text>}>
-                        <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
+                    <Form.Item name="instructions" label={<Text strong>Hướng dẫn cho học viên</Text>} rules={[{ max: 500, message: 'Hướng dẫn không được vượt quá 500 ký tự' }]}>
+                        <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." maxLength={500} showCount />
                     </Form.Item>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

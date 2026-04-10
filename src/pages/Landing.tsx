@@ -30,22 +30,22 @@ const Landing = () => {
             {/* Background Decoration */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-30"></div>
-                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-brand-green/10 rounded-full blur-3xl opacity-50 animate-pulse"></div>
-                <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-brand-blue/10 rounded-full blur-3xl opacity-50 animate-pulse delay-700"></div>
+                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl opacity-50 animate-pulse"></div>
+                <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-3xl opacity-50 animate-pulse delay-700"></div>
             </div>
 
             {/* Header */}
             <header className="w-full border-b border-gray-100 py-4 px-6 fixed top-0 bg-white/80 backdrop-blur-md z-50">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center text-white">
+                        <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white">
                             <Sparkles size={18} fill="currentColor" />
                         </div>
-                        <div className="text-2xl font-extrabold text-brand-green tracking-wide">SpeakVN</div>
+                        <div className="text-2xl font-extrabold text-purple-600 tracking-wide">SpeakVN</div>
                     </div>
                     <div className="hidden sm:flex items-center gap-4">
                         <Button variant="ghost" onClick={() => navigate('/login')} className="hover:bg-gray-100/50 font-bold">Đăng nhập</Button>
-                        <Button variant="primary" onClick={() => navigate('/register')} className="shadow-lg shadow-green-200/50 hover:shadow-green-200 hover:-translate-y-0.5 transition-all font-bold">Bắt đầu</Button>
+                        <Button variant="primary" onClick={() => navigate('/register')} className="shadow-lg shadow-purple-300/50 hover:shadow-purple-300 hover:-translate-y-0.5 transition-all font-bold">Bắt đầu</Button>
                     </div>
                 </div>
             </header>
@@ -60,13 +60,13 @@ const Landing = () => {
                         variants={containerVariants}
                         className="space-y-8 mt-12 md:mt-0"
                     >
-                        <motion.div variants={itemVariants} className="inline-block px-4 py-1.5 rounded-full bg-green-50 text-brand-green font-bold text-sm tracking-wide border border-green-100">
+                        <motion.div variants={itemVariants} className="inline-block px-4 py-1.5 rounded-full bg-purple-50 text-purple-600 font-bold text-sm tracking-wide border border-purple-100">
                             ✨ CÁCH MỚI ĐỂ HỌC TIẾNG VIỆT
                         </motion.div>
 
                         <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-extrabold text-gray-800 leading-[1.15]">
                             Học phát âm <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-green to-teal-400">Chuẩn & Vui</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500">Chuẩn & Vui</span>
                         </motion.h1>
 
                         <motion.p variants={itemVariants} className="text-xl text-gray-500 font-medium leading-relaxed max-w-lg">
@@ -75,7 +75,7 @@ const Landing = () => {
 
                         <motion.div variants={itemVariants} className="flex flex-row gap-3 w-full sm:w-auto">
                             <Button
-                                className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 shadow-xl shadow-green-300/40 hover:shadow-green-300/60 transition-all hover:scale-105 active:scale-95 font-extrabold whitespace-nowrap"
+                                className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 shadow-xl shadow-purple-300/40 hover:shadow-purple-300/60 transition-all hover:scale-105 active:scale-95 font-extrabold whitespace-nowrap"
                                 onClick={() => navigate('/register')}
                             >
                                 Bắt đầu miễn phí
@@ -115,11 +115,11 @@ const Landing = () => {
                                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white rounded-[3rem] shadow-2xl border-4 border-gray-50 flex flex-col items-center justify-center z-20"
                             >
-                                <div className="w-24 h-24 bg-brand-green/10 rounded-full flex items-center justify-center text-brand-green mb-4">
+                                <div className="w-24 h-24 bg-purple-600/10 rounded-full flex items-center justify-center text-purple-600 mb-4">
                                     <Mic size={48} strokeWidth={2.5} />
                                 </div>
                                 <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden mb-2">
-                                    <div className="h-full bg-brand-green w-[85%] animate-pulse"></div>
+                                    <div className="h-full bg-purple-600 w-[85%] animate-pulse"></div>
                                 </div>
                                 <p className="font-bold text-gray-400 text-sm">Đang nghe...</p>
                             </motion.div>
@@ -131,7 +131,7 @@ const Landing = () => {
                                 className="absolute top-0 right-0 w-48 p-4 bg-white rounded-3xl shadow-xl border-2 border-gray-50 z-10 rotate-6 hover:rotate-0 transition-transform cursor-pointer"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-yellow-100 rounded-xl text-yellow-600">
+                                    <div className="p-2 bg-orange-100 rounded-xl text-orange-600">
                                         <Map size={24} />
                                     </div>
                                     <div>
@@ -171,26 +171,26 @@ const Landing = () => {
                 <div className="max-w-6xl mx-auto px-6 relative z-10">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-4">Tại sao chọn SpeakVN?</h2>
-                        <p className="text-gray-500 text-lg max-w-2xl mx-auto">Chúng tôi kết hợp công nghệ AI tiên tiến với phương pháp học tập thú vị để giúp bạn tự tin giao tiếp.</p>
+                        <p className="text-gray-500 text-lg max-w-2xl mx-auto">Chúng tôi kết hợp công nghệ AI tiên tiến với phương pháp học tập thú vị để giúp bạn tự tự tin giao tiếp.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
                             {
                                 icon: <Globe size={32} />,
-                                color: "bg-blue-50 text-brand-blue",
+                                color: "bg-blue-50 text-blue-500",
                                 title: "Chuẩn Hóa Vùng Miền",
                                 desc: "Sửa lỗi ngọng N/L, D/R đặc trưng của từng địa phương."
                             },
                             {
                                 icon: <Brain size={32} />,
-                                color: "bg-purple-50 text-brand-purple",
+                                color: "bg-purple-50 text-purple-600",
                                 title: "AI Phân Tích Giọng",
                                 desc: "Công nghệ nhận diện giọng nói chỉ ra lỗi sai chính xác từng âm tiết."
                             },
                             {
                                 icon: <Award size={32} />,
-                                color: "bg-red-50 text-brand-red",
+                                color: "bg-orange-50 text-orange-500",
                                 title: "Học Qua Trò Chơi",
                                 desc: "Hệ thống điểm thưởng, bảng xếp hạng giúp bạn luôn có động lực."
                             }
@@ -219,14 +219,14 @@ const Landing = () => {
             {/* Footer */}
             <footer className="bg-white pt-24 pb-12 border-t border-gray-100">
                 <div className="max-w-6xl mx-auto px-6">
-                    <div className="bg-gradient-to-r from-brand-green to-teal-500 rounded-[2.5rem] p-12 text-center text-white relative overflow-hidden shadow-2xl shadow-green-200">
+                    <div className="bg-gradient-to-r from-purple-600 to-orange-500 rounded-[2.5rem] p-12 text-center text-white relative overflow-hidden shadow-2xl shadow-purple-200">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                         <div className="relative z-10 space-y-8">
                             <h2 className="text-3xl md:text-5xl font-extrabold">Sẵn sàng hoàn thiện giọng nói?</h2>
-                            <p className="text-lg text-green-50 max-w-xl mx-auto font-medium">Tham gia cùng hàng ngàn người học khác và bắt đầu hành trình chinh phục Tiếng Việt ngay hôm nay.</p>
+                            <p className="text-lg text-purple-50 max-w-xl mx-auto font-medium">Tham gia cùng hàng ngàn người học khác và bắt đầu hành trình chinh phục Tiếng Việt ngay hôm nay.</p>
                             <Button
                                 size="lg"
-                                className="text-xl px-12 py-6 bg-white text-brand-green hover:bg-gray-50 border-none shadow-xl transform transition hover:scale-105"
+                                className="text-xl px-12 py-6 bg-white text-purple-600 hover:bg-gray-50 border-none shadow-xl transform transition hover:scale-105"
                                 onClick={() => navigate('/register')}
                             >
                                 BẮT ĐẦU NGAY

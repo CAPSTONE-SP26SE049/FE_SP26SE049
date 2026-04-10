@@ -552,19 +552,16 @@ const ChapterManagementPage: React.FC = () => {
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '3px 12px',
-                            borderRadius: 20,
-                            fontSize: 12,
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
                             fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            color: info.color,
-                            background: info.bg,
-                            border: `1.5px solid ${info.color}40`,
-                            letterSpacing: '0.03em',
-                            boxShadow: `0 1px 4px ${info.color}20`,
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            color: '#475569'
                         }}
                     >
-                        {info.label}
+                        {info.label.replace(/[🔵🟠🟢]/g, '').trim()}
                     </span>
                 );
             },
@@ -602,13 +599,62 @@ const ChapterManagementPage: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
-                    {fromClassroomName ? (
-                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+                    {fromClassroomName && (
+                        <div style={{ color: '#64748b', fontSize: 14 }}>
                             Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
                         </div>
-                    ) : null}
+                    )}
+                    <Input
+                        prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                        placeholder="Tìm kiếm theo tên chương học..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        allowClear
+                        style={{ borderRadius: 8, height: 40, width: 280 }}
+                    />
+                    <Select
+                        placeholder="Lọc theo vùng"
+                        value={filterRegion}
+                        onChange={(val) => setFilterRegion(val)}
+                        allowClear
+                        style={{ width: 160, borderRadius: 8, height: 40 }}
+                        suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
+                    >
+                        <Select.Option value="NORTH">Miền Bắc</Select.Option>
+                        <Select.Option value="CENTRAL">Miền Trung</Select.Option>
+                        <Select.Option value="SOUTH">Miền Nam</Select.Option>
+                    </Select>
+                    {activeFilterCount > 0 && (
+                        <Button
+                            icon={<ClearOutlined />}
+                            onClick={handleResetFilters}
+                            style={{ borderRadius: 8, height: 40, borderColor: '#e2e8f0' }}
+                        >
+                            Xóa bộ lọc
+                        </Button>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+                        {activeFilterCount > 0 ? (
+                            <Badge
+                                count={activeFilterCount}
+                                style={{
+                                    backgroundColor: '#2563eb',
+                                    fontSize: 11,
+                                    height: 20,
+                                    lineHeight: '20px',
+                                    borderRadius: 10,
+                                    padding: '0 7px',
+                                }}
+                            />
+                        ) : null}
+                        <span style={{ color: '#94a3b8', fontSize: 13 }}>
+                            {filteredLevels.length}/{mergedLevels.length} chương
+                        </span>
+                        <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
+                            <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
+                        </Tooltip>
+                    </div>
                 </div>
                 <Space>
                     <Button
@@ -686,84 +732,6 @@ const ChapterManagementPage: React.FC = () => {
                 </Space>
             </div>
 
-            {/* ====== FILTER & SORT TOOLBAR ====== */}
-            <Card
-                style={{
-                    borderRadius: 14,
-                    marginBottom: 0,
-                    boxShadow: '0 2px 12px rgba(37,99,235,0.06)',
-                    border: '1px solid #e2e8f0',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
-                }}
-                bodyStyle={{ padding: '16px 20px' }}
-            >
-                <Row gutter={[16, 12]} align="middle">
-                    <Col xs={24} sm={24} md={8} lg={7}>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="Tìm kiếm theo tên chương học..."
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
-                            style={{ borderRadius: 8, height: 38 }}
-                        />
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc theo vùng"
-                            value={filterRegion}
-                            onChange={(val) => setFilterRegion(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
-                        >
-                            <Select.Option value="NORTH">
-                                <span style={{ color: '#1d4ed8', fontWeight: 600 }}>🔵 Miền Bắc</span>
-                            </Select.Option>
-                            <Select.Option value="CENTRAL">
-                                <span style={{ color: '#b45309', fontWeight: 600 }}>🟠 Miền Trung</span>
-                            </Select.Option>
-                            <Select.Option value="SOUTH">
-                                <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={24} md={6} lg={7}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {activeFilterCount > 0 && (
-                                <Button
-                                    icon={<ClearOutlined />}
-                                    onClick={handleResetFilters}
-                                    style={{ borderRadius: 8, height: 38, borderColor: '#e2e8f0' }}
-                                >
-                                    Xóa bộ lọc
-                                </Button>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {activeFilterCount > 0 ? (
-                                    <Badge
-                                        count={activeFilterCount}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            fontSize: 11,
-                                            height: 20,
-                                            lineHeight: '20px',
-                                            borderRadius: 10,
-                                            padding: '0 7px',
-                                        }}
-                                    />
-                                ) : null}
-                                <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{mergedLevels.length} chương
-                                </span>
-                            </div>
-                            <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
-                                <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
-                            </Tooltip>
-                        </div>
-                    </Col>
-                </Row>
-            </Card>
 
             <Modal
                 title={<span style={{ fontWeight: 600 }}>Tạo Chương Học Mới</span>}

@@ -432,8 +432,8 @@ const ChallengeBankPage: React.FC = () => {
             key: 'region',
             width: 120,
             render: (region: string) => {
-                const cfg = REGION_CONFIG[region] || { label: region || 'Chưa xác định', color: '#999' };
-                return <Tag color={cfg.color}>{cfg.label}</Tag>;
+                const cfg = REGION_CONFIG[region] || { label: region || 'Chưa xác định' };
+                return <Tag style={{ border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', borderRadius: '20px', padding: '2px 10px', fontWeight: 600 }}>{cfg.label.replace(/[🔵🟠🟢]/g, '').trim()}</Tag>;
             },
         },
         {
@@ -471,23 +471,37 @@ const ChallengeBankPage: React.FC = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        background: '#e6f7ff',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <DatabaseOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Ngân hàng thử thách</Title>
-                        <Text type="secondary">Quản lý và tạo câu hỏi cho các bài kiểm tra</Text>
-                    </div>
+            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
+                    <Input
+                        placeholder="Tìm kiếm nội dung câu hỏi..."
+                        prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                        style={{ width: 320, borderRadius: 10, height: 42 }}
+                        allowClear
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                    <Select
+                        placeholder="Lọc theo kỹ năng"
+                        allowClear
+                        style={{ minWidth: 180, height: 42 }}
+                        onChange={val => setSkillFilter(val)}
+                    >
+                        {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
+                            <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
+                        ))}
+                    </Select>
+                    <Select
+                        placeholder="Lọc theo miền"
+                        allowClear
+                        style={{ minWidth: 160, height: 42 }}
+                        onChange={val => setRegionFilter(val)}
+                    >
+                        {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
+                            <Select.Option key={key} value={key}>{cfg.label.replace(/[🔵🟠🟢]/g, '').trim()}</Select.Option>
+                        ))}
+                    </Select>
                 </div>
+
                 <Space size={12}>
                     <Dropdown menu={{ items: templateMenuItems }} trigger={['click']} placement="bottomRight">
                         <Button
@@ -497,13 +511,10 @@ const ChallengeBankPage: React.FC = () => {
                                 borderRadius: 10,
                                 height: 44,
                                 fontWeight: 600,
-                                border: '1.5px solid #1890ff',
-                                color: '#1890ff',
                                 paddingInline: 16,
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                background: '#e6f7ff',
                             }}
                         >
                             Template
@@ -521,13 +532,10 @@ const ChallengeBankPage: React.FC = () => {
                             borderRadius: 10,
                             height: 44,
                             fontWeight: 600,
-                            border: '1.5px solid #52c41a',
-                            color: '#52c41a',
                             paddingInline: 16,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,
-                            background: '#f6ffed',
                         }}
                     >
                         Import
@@ -541,13 +549,10 @@ const ChallengeBankPage: React.FC = () => {
                                 borderRadius: 10,
                                 height: 44,
                                 fontWeight: 600,
-                                border: '1.5px solid #fa8c16',
-                                color: '#fa8c16',
                                 paddingInline: 16,
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                background: '#fff7e6',
                             }}
                         >
                             Export
@@ -574,38 +579,6 @@ const ChallengeBankPage: React.FC = () => {
                         Tạo câu hỏi mới
                     </Button>
                 </Space>
-            </div>
-
-            {/* Filter Row */}
-            <div style={{ marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <Input
-                    placeholder="Tìm kiếm nội dung câu hỏi..."
-                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                    style={{ width: 320, borderRadius: 10, height: 42 }}
-                    allowClear
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
-                <Select
-                    placeholder="Lọc theo kỹ năng"
-                    allowClear
-                    style={{ minWidth: 180, height: 42 }}
-                    onChange={val => setSkillFilter(val)}
-                >
-                    {Object.entries(SKILL_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
-
-                <Select
-                    placeholder="Lọc theo miền"
-                    allowClear
-                    style={{ minWidth: 160, height: 42 }}
-                    onChange={val => setRegionFilter(val)}
-                >
-                    {Object.entries(REGION_CONFIG).map(([key, cfg]) => (
-                        <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
-                    ))}
-                </Select>
             </div>
 
             <Card
