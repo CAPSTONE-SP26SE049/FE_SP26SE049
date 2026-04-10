@@ -1,335 +1,385 @@
-import { useEffect, useState } from 'react';
-
-import { Select, Avatar, Spin, Segmented } from 'antd';
-import { TrophyOutlined, FireFilled, StarFilled, GlobalOutlined, EnvironmentOutlined, CheckCircleFilled } from '@ant-design/icons';
-import { Shield, Zap, Target } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Avatar, Spin } from 'antd';
+import { FireFilled, CheckCircleFilled, GlobalOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '../../../services/apiClient';
 import { useAuth } from '../../../core/auth/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 
-const { Option } = Select;
-
+/* ─── Types ─────────────────────────────────────────── */
 interface LeaderboardEntry {
     rankPosition: number;
     accountId: string;
     fullName: string;
     avatarUrl: string;
-    totalExperience: number;
     totalStars: number;
     challengesCompleted: number;
     currentStreakDays: number;
-    region: string;
 }
-
 interface LeaderboardData {
-    scope: string;
-    periodType: string;
-    sortBy: string;
     entries: LeaderboardEntry[];
     myRank: LeaderboardEntry | null;
 }
 
+/* ─── Regions ─────────────────────────────────────────── */
+const REGIONS = [
+    { label: 'Miền Bắc', value: 'NORTH', emoji: '🏛️' },
+    { label: 'Miền Trung', value: 'CENTRAL', emoji: '🏯' },
+    { label: 'Miền Nam', value: 'SOUTH', emoji: '🌆' },
+];
+
+const PAGE_SIZE = 10;
+
+/* ─── Compact Podium ─────────────────────────────────── */
+const podConfig = (rank: number) => {
+    if (rank === 1) return {
+        badge: <Crown size={16} className="text-amber-400 drop-shadow" />,
+        ring: 'ring-2 ring-amber-300 ring-offset-1',
+        podBg: 'bg-gradient-to-b from-amber-400 to-yellow-500',
+        podH: 'h-20', size: 48, label: 'text-amber-600',
+    };
+    if (rank === 2) return {
+        badge: <Medal size={14} className="text-slate-400" />,
+        ring: 'ring-2 ring-slate-200 ring-offset-1',
+        podBg: 'bg-gradient-to-b from-slate-300 to-slate-400',
+        podH: 'h-14', size: 40, label: 'text-slate-500',
+    };
+    return {
+        badge: <Award size={14} className="text-orange-400" />,
+        ring: 'ring-2 ring-orange-200 ring-offset-1',
+        podBg: 'bg-gradient-to-b from-orange-300 to-amber-400',
+        podH: 'h-10', size: 40, label: 'text-orange-500',
+    };
+};
+
+const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: string }) => {
+    if (!entries.length) return null;
+    const top = entries.slice(0, Math.min(3, entries.length));
+    const ordered = top.length === 3 ? [top[1], top[0], top[2]] : top;
+
+    return (
+        <div className="flex items-end justify-center gap-3 pt-1 pb-0">
+            {ordered.map((e, i) => {
+                const cfg = podConfig(e.rankPosition);
+                const isMe = e.accountId === userId;
+                return (
+                    <motion.div key={e.accountId}
+                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.08, type: 'spring', bounce: 0.3 }}
+                        className="flex flex-col items-center flex-1 max-w-[110px]"
+                    >
+                        <div className="mb-0.5">{cfg.badge}</div>
+                        <div className={clsx("rounded-full mb-1 relative", cfg.ring)}>
+                            <Avatar src={e.avatarUrl} size={cfg.size} className="border-2 border-white" />
+                            {isMe && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <CheckCircleFilled className="text-white text-[7px]" />
+                                </div>
+                            )}
+                        </div>
+                        <p className="font-black text-gray-800 text-[10px] text-center truncate max-w-[100px] leading-tight">
+                            {e.fullName || 'Player'}
+                            {isMe && <span className="block text-purple-500 text-[8px]">(Bạn)</span>}
+                        </p>
+                        <p className={clsx("text-[10px] font-bold mt-0.5 mb-1", cfg.label)}>
+                            {e.totalStars} ⭐
+                        </p>
+                        <div className={clsx("w-full rounded-t-xl flex items-center justify-center font-black text-white text-sm shadow-md", cfg.podBg, cfg.podH)}>
+                            #{e.rankPosition}
+                        </div>
+                    </motion.div>
+                );
+            })}
+        </div>
+    );
+};
+
+/* ─── Compact Row ─────────────────────────────────────── */
+const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: string }) => {
+    const isMe = e.accountId === userId;
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: Math.min(idx * 0.025, 0.25) }}
+            className={clsx(
+                "flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all",
+                isMe
+                    ? "bg-purple-50 border-purple-200 ring-1 ring-purple-100"
+                    : "bg-white border-gray-100 hover:border-purple-100 hover:bg-purple-50/30"
+            )}
+        >
+            <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs flex-shrink-0">
+                {e.rankPosition}
+            </div>
+            <div className="relative flex-shrink-0">
+                <Avatar src={e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
+                {isMe && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-500 rounded-full border border-white flex items-center justify-center">
+                        <CheckCircleFilled className="text-white text-[7px]" />
+                    </div>
+                )}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-800 text-xs truncate">
+                    {e.fullName || 'Người học'}
+                    {isMe && <span className="ml-1.5 text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-black">BẠN</span>}
+                </p>
+                <p className="text-[9px] text-gray-400 font-semibold flex items-center gap-1 mt-0.5">
+                    <FireFilled className="text-orange-400" style={{ fontSize: 9 }} /> {e.currentStreakDays || 0} ngày học
+                </p>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-100 flex-shrink-0">
+                <Star size={10} className="text-yellow-500" />
+                <span className="font-black text-yellow-600 text-xs">{e.totalStars || 0}</span>
+            </div>
+        </motion.div>
+    );
+};
+
+/* ─── Main ────────────────────────────────────────────── */
 export default function LearnerLeaderboardPage() {
     const { session } = useAuth();
     const user = session?.user;
 
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<LeaderboardData | null>(null);
-
-    // Filters
+    const [error, setError] = useState(false);
     const [scope, setScope] = useState<'GLOBAL' | 'REGIONAL'>('REGIONAL');
-    const [region, setRegion] = useState<string>(user?.region || 'SOUTH'); // Default to user's region or SOUTH
-    const [period, setPeriod] = useState<string>('WEEKLY');
-    const [sortBy, setSortBy] = useState<string>('TOTAL_XP');
+    const [region, setRegion] = useState<string>(() => {
+        const r = (user?.region || 'SOUTH').toUpperCase();
+        if (r.includes('BAC') || r === 'NORTH') return 'NORTH';
+        if (r.includes('TRUNG') || r === 'CENTRAL') return 'CENTRAL';
+        return 'SOUTH';
+    });
+    const [page, setPage] = useState(1);
 
-    const fetchLeaderboard = async () => {
+    const abort = useRef<AbortController | null>(null);
+
+    const load = async () => {
+        abort.current?.abort();
+        abort.current = new AbortController();
         setLoading(true);
+        setError(false);
+        setPage(1);
         try {
-            let endpoint = '/leaderboards/global';
-            if (scope === 'REGIONAL') {
-                const searchRegion = region === 'Miền Bắc' ? 'NORTH' : region === 'Miền Trung' ? 'CENTRAL' : region === 'Miền Nam' ? 'SOUTH' : region;
-                // mapping vietnamese string to enum since region might be stored locally in vietnamese
-                let regionCode = 'SOUTH';
-                if (searchRegion.toLowerCase().includes('bắc') || searchRegion.toUpperCase() === 'NORTH') regionCode = 'NORTH';
-                else if (searchRegion.toLowerCase().includes('trung') || searchRegion.toUpperCase() === 'CENTRAL') regionCode = 'CENTRAL';
-                else if (searchRegion.toLowerCase().includes('nam') || searchRegion.toUpperCase() === 'SOUTH') regionCode = 'SOUTH';
-
-                endpoint = `/leaderboards/region/${regionCode}`;
-            }
-
-            const res: any = await apiClient.get(`${endpoint}?period=${period}&sortBy=${sortBy}`);
-            setData(res?.data?.data || res?.data || null);
-        } catch (error) {
-            console.error('Failed to fetch leaderboard', error);
+            const url = scope === 'GLOBAL'
+                ? '/leaderboards/global?period=ALL_TIME&sortBy=TOTAL_STARS'
+                : `/leaderboards/region/${region}?period=ALL_TIME&sortBy=TOTAL_STARS`;
+            const res: any = await apiClient.get(url);
+            setData(res?.data?.data ?? res?.data ?? null);
+        } catch (e: any) {
+            if (e?.name !== 'CanceledError' && e?.code !== 'ERR_CANCELED') setError(true);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchLeaderboard();
-    }, [scope, region, period, sortBy]);
+    useEffect(() => { load(); }, [scope, region]);
 
-    const getRankIcon = (rank: number) => {
-        switch (rank) {
-            case 1:
-                return '🏆';
-            case 2:
-                return '🥈';
-            case 3:
-                return '🥉';
-            default:
-                return rank;
-        }
-    };
-    const renderEntry = (entry: LeaderboardEntry, isCurrentUser = false) => {
-        const isTop3 = entry.rankPosition <= 3;
+    const entries = data?.entries ?? [];
+    const top3 = entries.slice(0, 3);
+    const rest = entries.slice(3);
 
-        return (
-            <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={entry.accountId}
-                className={clsx(
-                    "flex items-center justify-between p-5 mb-4 rounded-3xl border transition-all duration-500 group relative overflow-hidden",
-                    isCurrentUser
-                        ? 'border-brand-green/50 bg-brand-green/10 shadow-[0_0_30px_rgba(88,204,2,0.15)] ring-1 ring-brand-green/20'
-                        : isTop3
-                            ? 'border-white/20 bg-white/5 shadow-2xl backdrop-blur-md'
-                            : 'border-white/5 bg-white/2 hover:bg-white/10 hover:border-white/20'
-                )}
-            >
-                {/* Decoration for top 3 */}
-                {isTop3 && (
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-[50px] -mr-16 -mt-16 group-hover:bg-white/10 transition-all" />
-                )}
+    const totalPages = Math.ceil(rest.length / PAGE_SIZE);
+    const pagedRest = rest.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-                <div className="flex items-center gap-6 relative z-10">
-                    <div className={clsx(
-                        "w-12 h-12 flex items-center justify-center font-black text-xl rounded-2xl border transition-all shadow-lg",
-                        entry.rankPosition === 1 ? 'bg-yellow-400 border-yellow-200 text-white rotate-3 shadow-yellow-400/20' :
-                            entry.rankPosition === 2 ? 'bg-slate-300 border-slate-100 text-white rotate-2 shadow-slate-300/20' :
-                                entry.rankPosition === 3 ? 'bg-orange-500 border-orange-300 text-white -rotate-1 shadow-orange-500/20' :
-                                    'bg-white/5 border-white/10 text-white/40'
-                    )}>
-                        {entry.rankPosition <= 3 ? (
-                            <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">{getRankIcon(entry.rankPosition)}</span>
-                        ) : entry.rankPosition}
-                    </div>
-
-                    <div className="relative">
-                        <Avatar
-                            src={entry.avatarUrl}
-                            size={56}
-                            className={clsx(
-                                "border-2 shadow-2xl transition-transform group-hover:scale-105",
-                                isCurrentUser ? 'border-brand-green' : 'border-white/20'
-                            )}
-                        />
-                        {isCurrentUser && (
-                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-brand-green rounded-full border-2 border-black flex items-center justify-center">
-                                <CheckCircleFilled className="text-white text-[10px]" />
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <div className="font-black text-white text-lg tracking-tight flex items-center gap-2 italic uppercase">
-                            {entry.fullName || 'Người Học'}
-                            {isCurrentUser && <span className="bg-brand-green text-white text-[8px] px-2 py-0.5 rounded-full font-black tracking-widest leading-none shadow-[0_0_10px_#58cc02]">BẠN</span>}
-                        </div>
-                        <div className="text-[10px] text-white/60 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                            <EnvironmentOutlined className="text-xs" />
-                            {entry.region || 'SpeakVN Player'}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-8 relative z-10">
-                    <div className="flex flex-col items-end">
-                        {sortBy === 'TOTAL_XP' && (
-                            <div className="flex items-center gap-2 text-brand-green font-black text-2xl italic tracking-tighter drop-shadow-[0_0_15px_rgba(88,204,2,0.4)]">
-                                <Zap size={22} className="fill-brand-green" /> {entry.totalExperience || 0} <span className="text-[10px] uppercase tracking-widest ml-0.5 opacity-50 not-italic">XP</span>
-                            </div>
-                        )}
-                        {sortBy === 'TOTAL_STARS' && (
-                            <div className="flex items-center gap-2 text-yellow-400 font-black text-2xl italic tracking-tighter drop-shadow-[0_0_15px_rgba(250,204,21,0.4)]">
-                                <StarFilled /> {entry.totalStars || 0} <span className="text-[10px] uppercase tracking-widest ml-0.5 opacity-50 not-italic">SAO</span>
-                            </div>
-                        )}
-                        {sortBy === 'CHALLENGES_COMPLETED' && (
-                            <div className="flex items-center gap-2 text-blue-400 font-black text-2xl italic tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.4)]">
-                                <Target size={22} className="fill-blue-400" /> {entry.challengesCompleted || 0} <span className="text-[10px] uppercase tracking-widest ml-0.5 opacity-50 not-italic">BÀI</span>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-1.5 text-orange-400 text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">
-                            <FireFilled className="text-xs" /> {entry.currentStreakDays || 0} NGÀY HỌC
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-        );
-    };
+    const currentRegion = REGIONS.find(r => r.value === region);
+    const scopeLabel = scope === 'GLOBAL' ? 'Toàn quốc' : `${currentRegion?.emoji} ${currentRegion?.label}`;
 
     return (
-        <div className="max-w-4xl mx-auto pb-20 pt-8 font-nunito relative z-10">
-            <div className="text-center mb-12 relative">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                >
-                    <div className="inline-block relative mb-4">
-                        <TrophyOutlined className="text-7xl text-brand-green drop-shadow-[0_0_30px_rgba(88,204,2,0.5)]" />
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                            className="absolute -inset-4 border border-dashed border-brand-green/20 rounded-full"
-                        />
+        <div className="flex flex-col pb-12 w-full bg-[#f8f5ff]">
+
+            {/* ── Header Strip ── */}
+            <div className="flex-shrink-0 px-6 py-3 bg-white border-b border-gray-100"
+                style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.04)' }}>
+                <div className="max-w-6xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-400/20">
+                            <Trophy size={16} className="text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-black text-gray-800 leading-none">Bảng Xếp Hạng</h2>
+                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1">
+                                {scope === 'REGIONAL' && <MapPin size={9} className="text-purple-400" />}
+                                {scopeLabel}
+                            </p>
+                        </div>
                     </div>
-                    <h2 className="text-6xl font-black text-white italic tracking-tighter uppercase drop-shadow-2xl leading-none">
-                        Đại lộ <span className="text-brand-green">danh vọng</span>
-                    </h2>
-                    <p className="text-white/70 font-black text-[11px] uppercase tracking-[0.4em] mt-4">THI ĐUA CÙNG CỘNG ĐỒNG HỌC VIÊN SPEAKVN</p>
-                </motion.div>
-            </div>
 
-            <div className="bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-4 mb-8 shadow-2xl relative overflow-hidden group">
-                {/* Decorative background glow */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-brand-green/30 to-transparent" />
+                    {/* Controls row */}
+                    <div className="flex items-center gap-2">
+                        {/* Scope toggle */}
+                        <div className="bg-gray-50 rounded-xl border border-gray-100 p-0.5 flex gap-0.5">
+                            {([
+                                { label: 'Khu vực', value: 'REGIONAL', icon: EnvironmentOutlined },
+                                { label: 'Toàn quốc', value: 'GLOBAL', icon: GlobalOutlined },
+                            ] as const).map(({ label, value, icon: Icon }) => (
+                                <button key={value} onClick={() => setScope(value)}
+                                    className={clsx(
+                                        "h-7 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-all duration-200 whitespace-nowrap",
+                                        scope === value
+                                            ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-sm shadow-purple-500/20"
+                                            : "text-gray-400 hover:text-purple-500 hover:bg-white"
+                                    )}>
+                                    <Icon style={{ fontSize: 10 }} /> {label}
+                                </button>
+                            ))}
+                        </div>
 
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center px-4 py-2">
-                    <Segmented
-                        options={[
-                            { label: <div className="flex items-center gap-2 px-4 py-1.5 font-black uppercase text-[10px] tracking-widest"><EnvironmentOutlined /> Khu vực</div>, value: 'REGIONAL' },
-                            { label: <div className="flex items-center gap-2 px-4 py-1.5 font-black uppercase text-[10px] tracking-widest"><GlobalOutlined /> Toàn cầu</div>, value: 'GLOBAL' }
-                        ]}
-                        value={scope}
-                        onChange={(value) => setScope(value as any)}
-                        size="large"
-                        className="bg-white/5 p-1 leaderboard-segmented !rounded-2xl"
-                    />
+                        {/* Region chips */}
+                        <AnimatePresence>
+                            {scope === 'REGIONAL' && (
+                                <motion.div key="regions" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+                                    className="flex gap-0.5 bg-gray-50 rounded-xl border border-gray-100 p-0.5">
+                                    {REGIONS.map(r => (
+                                        <button key={r.value} onClick={() => setRegion(r.value)}
+                                            className={clsx(
+                                                "h-7 px-2.5 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all duration-200 whitespace-nowrap",
+                                                region === r.value
+                                                    ? "bg-purple-600 text-white shadow-sm"
+                                                    : "text-gray-400 hover:text-purple-500 hover:bg-white"
+                                            )}>
+                                            {r.emoji} {r.label}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                    <div className="flex gap-1 items-center">
-                        {scope === 'REGIONAL' && (
-                            <Select
-                                value={region}
-                                onChange={setRegion}
-                                className="leaderboard-select min-w-[140px]"
-                                size="large"
-                                variant="borderless"
-                                dropdownStyle={{ backgroundColor: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}
-                            >
-                                <Option value="NORTH"><span className="font-black text-white uppercase text-[10px] tracking-widest">Miền Bắc</span></Option>
-                                <Option value="CENTRAL"><span className="font-black text-white uppercase text-[10px] tracking-widest">Miền Trung</span></Option>
-                                <Option value="SOUTH"><span className="font-black text-white uppercase text-[10px] tracking-widest">Miền Nam</span></Option>
-                            </Select>
-                        )}
-                        <div className="w-px h-6 bg-white/10 mx-2 hidden md:block" />
-                        <Select
-                            value={period}
-                            onChange={setPeriod}
-                            className="leaderboard-select min-w-[140px]"
-                            size="large"
-                            variant="borderless"
-                            dropdownStyle={{ backgroundColor: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}
-                        >
-                            <Option value="DAILY"><span className="font-black text-white/80 uppercase text-[10px] tracking-widest">Hôm Nay</span></Option>
-                            <Option value="WEEKLY"><span className="font-black text-white/80 uppercase text-[10px] tracking-widest">Tuần Này</span></Option>
-                            <Option value="MONTHLY"><span className="font-black text-white/80 uppercase text-[10px] tracking-widest">Tháng Này</span></Option>
-                            <Option value="ALL_TIME"><span className="font-black text-white/80 uppercase text-[10px] tracking-widest">Tất cả</span></Option>
-                        </Select>
-                        <div className="w-px h-6 bg-white/10 mx-2 hidden md:block" />
-                        <Select
-                            value={sortBy}
-                            onChange={setSortBy}
-                            className="leaderboard-select min-w-[140px]"
-                            size="large"
-                            variant="borderless"
-                            dropdownStyle={{ backgroundColor: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}
-                        >
-                            <Option value="TOTAL_XP"><span className="font-black text-brand-green uppercase text-[10px] tracking-widest italic">Theo XP</span></Option>
-                            <Option value="TOTAL_STARS"><span className="font-black text-yellow-400 uppercase text-[10px] tracking-widest italic">Theo Sao</span></Option>
-                            <Option value="CHALLENGES_COMPLETED"><span className="font-black text-blue-400 uppercase text-[10px] tracking-widest italic">Theo Bài</span></Option>
-                        </Select>
+                        <button onClick={load} disabled={loading}
+                            className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-purple-50 hover:border-purple-200 transition-all disabled:opacity-40">
+                            <RefreshCw size={12} className={clsx("text-gray-400", loading && "animate-spin")} />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div className="min-h-[500px] relative">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center h-80 text-white/50">
-                        <Spin size="large" />
-                        <div className="mt-6 font-black tracking-[0.3em] uppercase text-xs">Đang đồng bộ dữ liệu...</div>
-                    </div>
-                ) : data?.entries && data.entries.length > 0 ? (
-                    <div>
-                        {/* Current User Rank Block */}
-                        {data.myRank && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.98 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="mb-12 relative"
-                            >
-                                <div className="text-[10px] uppercase font-black text-brand-green tracking-[0.3em] mb-4 flex items-center gap-3 px-2">
-                                    <div className="w-8 h-px bg-brand-green/30" />
-                                    Vị trí của bạn
-                                    <div className="flex-1 h-px bg-brand-green/10" />
-                                </div>
-                                {renderEntry(data.myRank, true)}
-                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                            </motion.div>
-                        )}
+            {/* ── Content ── */}
+            <div className="flex-1 min-h-0 overflow-hidden p-4">
+                <div className="max-w-6xl mx-auto h-full">
+                    {loading ? (
+                        <div className="flex justify-center items-center h-full bg-white rounded-2xl border border-gray-100">
+                            <Spin size="large" />
+                        </div>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center h-full bg-white rounded-2xl border border-red-100">
+                            <span className="text-3xl mb-2">⚠️</span>
+                            <p className="font-bold text-gray-500 text-sm">Không thể tải dữ liệu</p>
+                            <button onClick={load} className="mt-2 text-purple-600 font-bold text-sm hover:underline">Thử lại</button>
+                        </div>
+                    ) : entries.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full bg-white rounded-2xl border border-gray-100">
+                            <div className="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center mb-3 border border-yellow-100">
+                                <Trophy size={22} className="text-yellow-200" />
+                            </div>
+                            <p className="font-bold text-gray-400 text-sm">Chưa có dữ liệu xếp hạng</p>
+                            <p className="text-gray-300 text-xs mt-1">Hãy là người đầu tiên ghi tên lên bảng vàng!</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 h-full">
 
-                        <div className="text-[10px] uppercase font-black text-white/50 tracking-[0.3em] mb-6 flex items-center gap-3 px-2">
-                            <div className="w-8 h-px bg-white/10" />
-                            Bảng tổng sắp
-                            <div className="flex-1 h-px bg-white/5" />
+                            {/* Left: Podium — 2 cols */}
+                            <div className="lg:col-span-2 h-full overflow-hidden">
+                                {top3.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col"
+                                        style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
+                                        <div className="h-0.5 w-full bg-gradient-to-r from-purple-500 via-orange-400 to-amber-400" />
+                                        <div className="px-4 pt-3 pb-2 flex-shrink-0">
+                                            <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5">
+                                                <Crown size={10} className="text-amber-400" /> Top 3 dẫn đầu
+                                            </p>
+                                        </div>
+                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-end">
+                                            <Podium entries={top3} userId={user?.id} />
+                                        </div>
+
+                                        {data?.myRank && data.myRank.rankPosition <= 3 && (
+                                            <div className="px-3 pb-3">
+                                                <div className="bg-purple-50 rounded-xl px-3 py-1.5 text-center border border-purple-100">
+                                                    <p className="text-[9px] font-black text-purple-500">🎉 Bạn đang trong Top 3!</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right: Full ranking — 3 cols */}
+                            <div className="lg:col-span-3 flex flex-col h-full gap-2 overflow-hidden">
+
+                                {/* My rank if not top 3 */}
+                                {data?.myRank && data.myRank.rankPosition > 3 && (
+                                    <div className="bg-white rounded-xl border border-purple-100 shadow-sm p-2.5 flex-shrink-0"
+                                        style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.06)' }}>
+                                        <p className="text-[9px] uppercase font-black text-purple-500 tracking-widest mb-1.5">Vị trí của bạn</p>
+                                        <Row e={data.myRank} idx={0} userId={user?.id} />
+                                    </div>
+                                )}
+
+                                {/* Rankings #4+ with pagination */}
+                                {rest.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex-1 flex flex-col min-h-0 overflow-hidden"
+                                        style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
+                                        <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                                            <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest">
+                                                Bảng xếp hạng
+                                            </p>
+                                            <span className="text-[9px] text-gray-300 font-bold">{entries.length} người</span>
+                                        </div>
+
+                                        <style dangerouslySetInnerHTML={{
+                                            __html: `
+                                        .lb-scroll::-webkit-scrollbar { width: 3px; }
+                                        .lb-scroll::-webkit-scrollbar-track { background: transparent; }
+                                        .lb-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+                                        .lb-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                                    `}} />
+                                        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 lb-scroll">
+                                            {pagedRest.map((e, i) => <Row key={e.accountId} e={e} idx={i} userId={user?.id} />)}
+                                        </div>
+
+                                        {/* Pagination */}
+                                        {totalPages > 1 && (
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 flex-shrink-0">
+                                                <button
+                                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                    disabled={page === 1}
+                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-400 hover:bg-purple-50 hover:border-purple-100 hover:text-purple-600 transition-all disabled:opacity-30"
+                                                >
+                                                    <ChevronLeft size={11} /> Trước
+                                                </button>
+                                                <div className="flex items-center gap-0.5">
+                                                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                                        const p = totalPages <= 5 ? i + 1 : (page <= 3 ? i + 1 : page - 2 + i);
+                                                        if (p < 1 || p > totalPages) return null;
+                                                        return (
+                                                            <button key={p} onClick={() => setPage(p)}
+                                                                className={clsx(
+                                                                    "w-6 h-6 rounded-lg text-[10px] font-black transition-all",
+                                                                    page === p ? "bg-purple-600 text-white shadow-sm" : "bg-gray-50 text-gray-400 hover:bg-purple-50"
+                                                                )}>
+                                                                {p}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <button
+                                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                    disabled={page === totalPages}
+                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-400 hover:bg-purple-50 hover:border-purple-100 hover:text-purple-600 transition-all disabled:opacity-30"
+                                                >
+                                                    Tiếp <ChevronRight size={11} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            {data.entries.map((entry) => renderEntry(entry, entry.accountId === user?.id))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-80 bg-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/5 shadow-2xl">
-                        <div className="w-24 h-24 bg-white/5 rounded-[2rem] flex items-center justify-center mb-6 border border-white/10">
-                            <Shield size={40} className="text-white/10" />
-                        </div>
-                        <div className="font-black text-white/80 text-xl uppercase tracking-tighter italic">Chưa có dữ liệu xếp hạng</div>
-                        <div className="text-white/60 text-xs font-medium mt-2 uppercase tracking-widest">Hãy là người đầu tiên ghi tên lên bảng vàng!</div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
-
-            <style>{`
-                .leaderboard-segmented {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-                }
-                .leaderboard-segmented .ant-segmented-item-selected {
-                    background: #58cc02 !important;
-                    color: white !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 4px 15px rgba(88, 204, 2, 0.3) !important;
-                }
-                .leaderboard-segmented .ant-segmented-item {
-                    color: rgba(255, 255, 255, 0.7) !important;
-                    transition: all 0.3s ease !important;
-                }
-                .leaderboard-segmented .ant-segmented-item:hover {
-                    color: white !important;
-                }
-                .leaderboard-select .ant-select-selector {
-                    color: white !important;
-                    height: 48px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                }
-                .leaderboard-select .ant-select-arrow {
-                    color: rgba(255, 255, 255, 0.2) !important;
-                }
-            `}</style>
         </div>
     );
 }

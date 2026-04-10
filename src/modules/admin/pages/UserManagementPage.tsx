@@ -1,61 +1,62 @@
 import React, { useState, useRef } from 'react'
-import { Table, Card, Input, Tag, Space, Button, Tooltip, Avatar, Modal, Form, message, Select, Typography, Upload, Alert } from 'antd'
-import { SearchOutlined, UserOutlined, PlusOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, StopOutlined, EditOutlined, TeamOutlined } from '@ant-design/icons'
-import { Lock, Unlock } from 'lucide-react'
+import {
+    Table, Input, Tag, Space, Button, Tooltip, Avatar,
+    Modal, Form, message, Select, Upload, Alert, Badge
+} from 'antd'
+import {
+    SearchOutlined, UserOutlined, PlusOutlined,
+    UploadOutlined, DownloadOutlined, CheckCircleOutlined,
+    StopOutlined, EditOutlined, LockOutlined, UnlockOutlined,
+    UserAddOutlined, TeamOutlined
+} from '@ant-design/icons'
+import { motion } from 'framer-motion'
 import { adminService } from '../services/adminService'
 import { adminExcelService } from '../services/adminExcelService'
 import { downloadBlob } from '../../educator/services/excelService'
 
-const { Title, Text } = Typography
+const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    EDUCATOR: { label: 'Giáo viên', color: '#7c3aed', bg: '#f5f3ff' },
+    USER: { label: 'Học viên', color: '#0ea5e9', bg: '#f0f9ff' },
+    ADMIN: { label: 'Quản trị', color: '#dc2626', bg: '#fef2f2' },
+}
 
 const UserManagementPage = () => {
     const [searchText, setSearchText] = useState('')
+    const [roleFilter, setRoleFilter] = useState<string>('ALL')
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<any[]>([])
-    const [isModalVisible, setIsModalVisible] = useState(false)
-    const [submitting, setSubmitting] = useState(false)
-    const [form] = Form.useForm()
 
-    const [isEditModalVisible, setIsEditModalVisible] = useState(false)
+    // Create user modal
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+    const [createForm] = Form.useForm()
+
+    // Edit user modal
+    const [isEditOpen, setIsEditOpen] = useState(false)
     const [editingUser, setEditingUser] = useState<any>(null)
     const [editForm] = Form.useForm()
     const [dialects, setDialects] = useState<any[]>([])
 
-    // Import/Export Excel states
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+    // Excel import/export
+    const [isImportOpen, setIsImportOpen] = useState(false)
     const [importFile, setImportFile] = useState<File | null>(null)
     const [importing, setImporting] = useState(false)
     const [importResult, setImportResult] = useState<any>(null)
     const [templateDownloading, setTemplateDownloading] = useState(false)
-    const templateDownloadInFlight = useRef(false)
+    const templateInFlight = useRef(false)
 
     const fetchUsers = async () => {
         try {
             setLoading(true)
             const res: any = await adminService.getUsers().catch(() => null)
-
-            if (!res) {
-                setUsers([])
-                return
-            }
-
-            let fetchedUsers: any[] = []
-            if (Array.isArray(res)) {
-                fetchedUsers = res
-            } else if (res.data && Array.isArray(res.data)) {
-                fetchedUsers = res.data
-            } else if (res.data && res.data.content && Array.isArray(res.data.content)) {
-                fetchedUsers = res.data.content
-            } else if (res.content && Array.isArray(res.content)) {
-                fetchedUsers = res.content
-            }
-
-            setUsers(fetchedUsers)
-        } catch (error) {
-            console.error('Failed to fetch users:', error)
-        } finally {
-            setLoading(false)
-        }
+            if (!res) { setUsers([]); return }
+            let list: any[] = []
+            if (Array.isArray(res)) list = res
+            else if (Array.isArray(res.data)) list = res.data
+            else if (Array.isArray(res.data?.content)) list = res.data.content
+            else if (Array.isArray(res.content)) list = res.content
+            setUsers(list)
+        } catch { /* noop */ } finally { setLoading(false) }
     }
 
     const fetchDialects = async () => {
@@ -63,9 +64,7 @@ const UserManagementPage = () => {
             const res = await adminService.getDialects()
             const data = res?.data || (Array.isArray(res) ? res : [])
             setDialects(data)
-        } catch (error) {
-            console.error('Failed to fetch dialects:', error)
-        }
+        } catch { /* noop */ }
     }
 
     React.useEffect(() => {
@@ -73,197 +72,205 @@ const UserManagementPage = () => {
         fetchDialects()
     }, [])
 
-    /** GET /api/v1/admin/excel/users/template — dùng chung, không dùng link tĩnh */
-    const downloadTeacherTemplateExcel = async () => {
-        if (templateDownloadInFlight.current) return
-        templateDownloadInFlight.current = true
-        setTemplateDownloading(true)
-        try {
-            message.loading({ content: 'Đang tải template...', key: 'tpl' })
-            const blob = await adminExcelService.downloadTeacherTemplate()
-            downloadBlob(blob, 'template_teachers.xlsx')
-            message.success({ content: 'Tải template thành công!', key: 'tpl' })
-        } catch (e) {
-            message.error({ content: 'Không thể tải template', key: 'tpl' })
-        } finally {
-            templateDownloadInFlight.current = false
-            setTemplateDownloading(false)
-        }
-    }
-
-    const handleExportExcel = async () => {
-        try {
-            message.loading({ content: 'Đang export...', key: 'exp' })
-            const blob = await adminExcelService.exportTeachers()
-            downloadBlob(blob, `teachers_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
-            message.success({ content: 'Export thành công!', key: 'exp' })
-        } catch (e) {
-            message.error({ content: 'Không thể export', key: 'exp' })
-        }
-    }
-
-    const handleImportExcel = async () => {
-        if (!importFile) {
-            message.warning('Vui lòng chọn file Excel')
-            return
-        }
-        setImporting(true)
-        setImportResult(null)
-        try {
-            const res: any = await adminExcelService.importTeachers(importFile)
-            setImportResult(res?.data || res)
-            message.success('Import hoàn tất!')
-            fetchUsers()
-        } catch (e: any) {
-            message.error(e?.response?.data?.message || e?.message || 'Lỗi khi import')
-        } finally {
-            setImporting(false)
-        }
-    }
-
-    const handleCreateEducator = async (values: { email: string; fullName: string }) => {
+    /* ── Actions ── */
+    const handleCreateUser = async (values: any) => {
         try {
             setSubmitting(true)
-            const res: any = await adminService.createEducator(values)
-            if (res.status === 'success') {
-                message.success('Tạo tài khoản giáo viên thành công. Mật khẩu đã được gửi qua email.')
-                setIsModalVisible(false)
-                form.resetFields()
-                fetchUsers()
-            } else {
-                message.error('Có lỗi xảy ra khi tạo tài khoản.')
-            }
-        } catch (error: any) {
-            message.error(error.message || 'Tạo tài khoản thất bại.')
-        } finally {
-            setSubmitting(false)
-        }
+            const res: any = await adminService.createUser({
+                email: values.email,
+                fullName: values.fullName,
+                role: values.role,
+            })
+            const roleName = ROLE_CONFIG[values.role]?.label || values.role
+            message.success(`Tạo tài khoản ${roleName} thành công! Mật khẩu đã gửi qua email.`)
+            setIsCreateOpen(false)
+            createForm.resetFields()
+            fetchUsers()
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Không thể tạo tài khoản')
+        } finally { setSubmitting(false) }
     }
 
-    const handleOpenEditModal = (user: any) => {
+    const handleOpenEdit = (user: any) => {
         setEditingUser(user)
-        editForm.setFieldsValue({
-            fullName: user.fullName,
-            phone: user.phone || '',
-            region: user.region || ''
-        })
-        setIsEditModalVisible(true)
+        editForm.setFieldsValue({ fullName: user.fullName, phone: user.phone || '', region: user.region || '' })
+        setIsEditOpen(true)
     }
 
     const handleUpdateUser = async (values: any) => {
         if (!editingUser) return
         try {
             setSubmitting(true)
-            const res: any = await adminService.updateUser(editingUser.id, values)
-            if (res.status === 'success') {
-                message.success('Cập nhật thông tin thành công.')
-                setIsEditModalVisible(false)
-                fetchUsers()
-            } else {
-                message.error('Có lỗi xảy ra khi cập nhật.')
-            }
-        } catch (error: any) {
-            message.error(error.message || 'Cập nhật thất bại.')
-        } finally {
-            setSubmitting(false)
-        }
+            await adminService.updateUser(editingUser.id, values)
+            message.success('Cập nhật thông tin thành công')
+            setIsEditOpen(false)
+            fetchUsers()
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Cập nhật thất bại')
+        } finally { setSubmitting(false) }
     }
 
     const handleToggleStatus = async (record: any) => {
-        const newStatus = record.isActive ? false : true
+        const newStatus = !record.isActive
         try {
-            const res: any = await adminService.updateUserStatus(record.id, newStatus)
-            if (res.status === 'success') {
-                message.success(`Đã ${newStatus ? 'mở khóa' : 'khóa'} tài khoản thành công.`)
-                fetchUsers()
-            } else {
-                message.error('Có lỗi xảy ra.')
-            }
-        } catch (error: any) {
-            message.error(error.message || 'Cập nhật trạng thái thất bại.')
+            await adminService.updateUserStatus(record.id, newStatus)
+            message.success(`Đã ${newStatus ? 'mở khóa' : 'khóa'} tài khoản`)
+            fetchUsers()
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Thao tác thất bại')
         }
     }
 
+    const downloadTemplate = async () => {
+        if (templateInFlight.current) return
+        templateInFlight.current = true
+        setTemplateDownloading(true)
+        try {
+            message.loading({ content: 'Đang tải template...', key: 'tpl' })
+            const blob = await adminExcelService.downloadTeacherTemplate()
+            downloadBlob(blob, 'template_teachers.xlsx')
+            message.success({ content: 'Tải template thành công!', key: 'tpl' })
+        } catch { message.error({ content: 'Không thể tải template', key: 'tpl' }) }
+        finally { templateInFlight.current = false; setTemplateDownloading(false) }
+    }
+
+    const handleExport = async () => {
+        try {
+            message.loading({ content: 'Đang export...', key: 'exp' })
+            const blob = await adminExcelService.exportTeachers()
+            downloadBlob(blob, `users_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
+            message.success({ content: 'Export thành công!', key: 'exp' })
+        } catch { message.error({ content: 'Không thể export', key: 'exp' }) }
+    }
+
+    const handleImport = async () => {
+        if (!importFile) { message.warning('Vui lòng chọn file Excel'); return }
+        setImporting(true); setImportResult(null)
+        try {
+            const res: any = await adminExcelService.importTeachers(importFile)
+            setImportResult(res?.data || res)
+            message.success('Import hoàn tất!')
+            fetchUsers()
+        } catch (e: any) {
+            message.error(e?.response?.data?.message || 'Lỗi khi import')
+        } finally { setImporting(false) }
+    }
+
+    /* ── Stats ── */
+    const totalEducator = users.filter(u => (u.roleCode || '').toUpperCase() === 'EDUCATOR').length
+    const totalUser = users.filter(u => (u.roleCode || '').toUpperCase() === 'USER').length
+    const totalBanned = users.filter(u => !u.isActive).length
+
+    /* ── Filter ── */
+    const filtered = users.filter(u => {
+        const matchSearch = !searchText ||
+            u.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
+            u.email?.toLowerCase().includes(searchText.toLowerCase())
+        const matchRole = roleFilter === 'ALL' || (u.roleCode || '').toUpperCase() === roleFilter
+        return matchSearch && matchRole
+    })
+
+    /* ── Columns ── */
     const columns = [
         {
-            title: 'STT',
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">STT</span>,
             key: 'stt',
             width: 60,
             align: 'center' as const,
-            render: (_: any, __: any, index: number) => (
-                <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
+            render: (_: any, __: any, idx: number) => (
+                <span className="font-bold text-gray-400 text-sm">{idx + 1}</span>
             ),
         },
         {
-            title: 'Người dùng',
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Người dùng</span>,
             dataIndex: 'fullName',
             key: 'fullName',
-            render: (text: string, record: any) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Avatar icon={<UserOutlined />} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`} />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>{record.email}</span>
+            render: (name: string, record: any) => (
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Avatar
+                            src={record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
+                            icon={<UserOutlined />}
+                            className="w-10 h-10 rounded-xl"
+                            style={{ borderRadius: 10 }}
+                        />
+                        {record.isActive
+                            ? <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
+                            : <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-red-400 rounded-full border-2 border-white" />
+                        }
+                    </div>
+                    <div>
+                        <div className="font-bold text-gray-800 text-sm leading-tight">{name}</div>
+                        <div className="text-xs text-gray-400">{record.email}</div>
                     </div>
                 </div>
             ),
         },
         {
-            title: 'Vai trò',
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Vai trò</span>,
             dataIndex: 'roleCode',
             key: 'roleCode',
-            render: (role: any) => {
-                let color = 'blue'
-                if (role === 'admin') color = 'red'
-                if (role === 'educator') color = 'green'
-                return <Tag color={color}>{String(role || '').toUpperCase()}</Tag>
-            },
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'isActive',
-            key: 'isActive',
-            render: (status: string, record: any) => {
-                let color = 'default'
-                let icon = null
-                const isUserActive = record.isActive !== undefined ? record.isActive : (status === 'active')
-
-                if (isUserActive) {
-                    color = 'success'
-                    icon = <CheckCircleOutlined />
-                } else {
-                    color = 'error'
-                    icon = <StopOutlined />
-                }
+            render: (role: string) => {
+                const key = (role || '').toUpperCase()
+                const cfg = ROLE_CONFIG[key] || { label: key, color: '#64748b', bg: '#f1f5f9' }
                 return (
-                    <Tag icon={icon} color={color}>
-                        {record.isActive !== undefined ? (record.isActive ? 'ACTIVE' : 'BANNED') : (status ? String(status).toUpperCase() : 'UNKNOWN')}
-                    </Tag>
+                    <span
+                        className="text-xs font-black px-2.5 py-1 rounded-lg"
+                        style={{ color: cfg.color, backgroundColor: cfg.bg }}
+                    >
+                        {cfg.label}
+                    </span>
                 )
             },
         },
         {
-            title: 'Ngày tham gia',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A'
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Trạng thái</span>,
+            dataIndex: 'isActive',
+            key: 'isActive',
+            render: (_: any, record: any) => record.isActive ? (
+                <Tag icon={<CheckCircleOutlined />} color="success" className="font-bold rounded-lg">Hoạt động</Tag>
+            ) : (
+                <Tag icon={<StopOutlined />} color="error" className="font-bold rounded-lg">Đã khóa</Tag>
+            ),
         },
         {
-            title: 'Hành động',
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tham gia</span>,
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            render: (date: string) => (
+                <span className="text-sm text-gray-500 font-medium">
+                    {date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A'}
+                </span>
+            ),
+        },
+        {
+            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Thao tác</span>,
             key: 'action',
             align: 'center' as const,
             render: (_: any, record: any) => (
-                <Space size="middle">
+                <Space size={4}>
                     <Tooltip title="Chỉnh sửa">
-                        <Button type="text" icon={<EditOutlined style={{ color: '#f59e0b', fontSize: 17 }} />} onClick={() => handleOpenEditModal(record)} />
+                        <Button
+                            type="text" shape="circle"
+                            icon={<EditOutlined style={{ color: '#f59e0b' }} />}
+                            onClick={() => handleOpenEdit(record)}
+                        />
                     </Tooltip>
-                    {(record.isActive !== undefined ? record.isActive : record.status === 'active') ? (
+                    {record.isActive ? (
                         <Tooltip title="Khóa tài khoản">
-                            <Button type="text" danger icon={<Lock size={17} />} onClick={() => handleToggleStatus(record)} />
+                            <Button
+                                type="text" shape="circle" danger
+                                icon={<LockOutlined />}
+                                onClick={() => handleToggleStatus(record)}
+                            />
                         </Tooltip>
                     ) : (
-                        <Tooltip title="Mở khóa">
-                            <Button type="text" icon={<Unlock size={17} color="#16a34a" />} onClick={() => handleToggleStatus(record)} />
+                        <Tooltip title="Mở khóa tài khoản">
+                            <Button
+                                type="text" shape="circle"
+                                icon={<UnlockOutlined style={{ color: '#16a34a' }} />}
+                                onClick={() => handleToggleStatus(record)}
+                            />
                         </Tooltip>
                     )}
                 </Space>
@@ -271,117 +278,168 @@ const UserManagementPage = () => {
         },
     ]
 
-    const filteredData = users.filter(
-        (user) =>
-            user.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchText.toLowerCase())
-    )
-
     return (
-        <div style={{ padding: '24px' }}>
-            {/* Header */}
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <TeamOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                    </div>
-                    <div>
-                        <Title level={2} style={{ margin: 0, fontSize: 24 }}>Quản lý người dùng</Title>
-                        <Text type="secondary">Quản lý tài khoản admin và giáo viên trong hệ thống</Text>
-                    </div>
+        <div className="p-6 min-h-screen bg-gray-50">
+
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <div>
+                    <h1 className="text-2xl font-black text-gray-800">Tổng quan tài khoản</h1>
+                    <p className="text-sm text-gray-400 font-medium mt-0.5">Thống kê và quản lý tài khoản học viên, giáo viên</p>
                 </div>
-                <Space size={12}>
-                    <Button
-                        htmlType="button"
-                        icon={<DownloadOutlined />}
-                        loading={templateDownloading}
-                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #1890ff', color: '#1890ff', background: '#e6f7ff' }}
-                        onClick={downloadTeacherTemplateExcel}
-                    >
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Button icon={<DownloadOutlined />} loading={templateDownloading} onClick={downloadTemplate}
+                        className="rounded-xl h-10 font-semibold border-gray-200">
                         Template
                     </Button>
-                    <Button
-                        icon={<UploadOutlined />}
-                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #52c41a', color: '#52c41a', background: '#f6ffed' }}
-                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true) }}
-                    >
+                    <Button icon={<UploadOutlined />}
+                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportOpen(true) }}
+                        className="rounded-xl h-10 font-semibold border-gray-200">
                         Import
                     </Button>
-                    <Button
-                        icon={<DownloadOutlined />}
-                        style={{ borderRadius: 10, height: 44, fontWeight: 600, border: '1.5px solid #fa8c16', color: '#fa8c16', background: '#fff7e6' }}
-                        onClick={handleExportExcel}
-                    >
+                    <Button icon={<DownloadOutlined />} onClick={handleExport}
+                        className="rounded-xl h-10 font-semibold border-gray-200">
                         Export
                     </Button>
-                    <Button icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)} style={{ borderRadius: 10, height: 44, fontWeight: 600, boxShadow: '0 4px 12px rgba(24,144,255,0.35)', border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', paddingInline: 20 }}>
-                        Thêm giáo viên
+                    <Button
+                        type="primary" icon={<UserAddOutlined />}
+                        onClick={() => setIsCreateOpen(true)}
+                        className="rounded-xl h-10 font-bold border-none"
+                        style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', boxShadow: '0 4px 12px rgba(147,51,234,0.35)' }}
+                    >
+                        Thêm người dùng
                     </Button>
-                </Space>
+                </div>
             </div>
 
-            {/* Filter */}
-            <div style={{ marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {/* ── Stats ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[
+                    { label: 'Tổng người dùng', val: users.length, icon: <TeamOutlined />, color: '#9333ea', bg: '#faf5ff' },
+                    { label: 'Học viên', val: totalUser, icon: <UserOutlined />, color: '#0ea5e9', bg: '#f0f9ff' },
+                    { label: 'Giáo viên', val: totalEducator, icon: <UserAddOutlined />, color: '#10b981', bg: '#f0fdf4' },
+                    { label: 'Đã khóa', val: totalBanned, icon: <LockOutlined />, color: '#ef4444', bg: '#fef2f2' },
+                ].map(({ label, val, icon, color, bg }, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                            style={{ backgroundColor: bg, color }}>
+                            {icon}
+                        </div>
+                        <div>
+                            <div className="text-2xl font-black" style={{ color }}>{val}</div>
+                            <div className="text-xs text-gray-400 font-bold mt-0.5">{label}</div>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* ── Filters ── */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <Input
-                    placeholder="Tìm kiếm theo tên hoặc email..."
-                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                    size="large"
-                    style={{ width: 360, borderRadius: 10, height: 42 }}
-                    onChange={(e) => setSearchText(e.target.value)}
+                    prefix={<SearchOutlined className="text-gray-300" />}
+                    placeholder="Tìm theo tên hoặc email..."
+                    value={searchText}
+                    onChange={e => setSearchText(e.target.value)}
                     allowClear
+                    className="rounded-xl h-10 w-72 border-gray-200"
                 />
+                <Select
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                    className="h-10 w-44 rounded-xl"
+                    options={[
+                        { value: 'ALL', label: 'Tất cả vai trò' },
+                        { value: 'USER', label: 'Học viên' },
+                        { value: 'EDUCATOR', label: 'Giáo viên' },
+                    ]}
+                />
+                <span className="text-sm text-gray-400 font-medium ml-auto">
+                    {filtered.length} / {users.length} kết quả
+                </span>
             </div>
 
-            {/* Table - scroll dọc bên trong, không scroll toàn trang */}
-            <Card style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
+            {/* ── Table ── */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <Table
                     columns={columns}
-                    dataSource={filteredData}
+                    dataSource={filtered}
                     rowKey="id"
-                    scroll={{ x: 'max-content', y: 400 }}
-                    pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['5', '10', '20', '50'],
-                        showTotal: (total) => `Tổng ${total} người dùng`,
-                        style: { padding: '16px 24px' }
-                    }}
                     loading={loading}
-                    locale={{ emptyText: 'Chưa có dữ liệu' }}
-                    size="large"
+                    pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['5', '10', '20', '50'], showTotal: t => `Tổng ${t} người dùng`, style: { padding: '16px 24px' } }}
+                    locale={{ emptyText: 'Chưa có người dùng' }}
+                    rowClassName="hover:bg-purple-50/30 transition-colors"
+                    size="middle"
+                    scroll={{ x: 'max-content' }}
                 />
-            </Card>
+            </div>
 
-            {/* Modal: Tạo giáo viên */}
+            {/* ── Modal: Thêm người dùng ── */}
             <Modal
-                title="Tạo tài khoản giáo viên"
-                open={isModalVisible}
-                onCancel={() => {
-                    setIsModalVisible(false)
-                    form.resetFields()
-                }}
+                open={isCreateOpen}
+                onCancel={() => { setIsCreateOpen(false); createForm.resetFields() }}
                 footer={null}
+                centered
+                width={500}
+                title={
+                    <div className="flex items-center gap-3 pb-2">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                            <UserAddOutlined className="text-purple-600 text-lg" />
+                        </div>
+                        <div>
+                            <div className="font-extrabold text-gray-800 text-lg">Thêm người dùng</div>
+                            <div className="text-xs text-gray-400">Tạo tài khoản mới và gửi mật khẩu qua email</div>
+                        </div>
+                    </div>
+                }
             >
-                <Form layout="vertical" form={form} onFinish={handleCreateEducator}>
-                    <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }, { min: 3, message: 'Tên phải ít nhất 3 ký tự' }, { max: 50, message: 'Tên không quá 50 ký tự' }]}>
-                        <Input placeholder="Nguyễn Văn A" />
+                <Form form={createForm} layout="vertical" onFinish={handleCreateUser} className="mt-4">
+                    <Form.Item name="role" label={<span className="font-bold text-gray-600">Vai trò</span>}
+                        rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+                        initialValue="USER">
+                        <Select className="h-12 rounded-xl">
+                            <Select.Option value="USER">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
+                                    Học viên (USER)
+                                </div>
+                            </Select.Option>
+                            <Select.Option value="EDUCATOR">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+                                    Giáo viên (EDUCATOR)
+                                </div>
+                            </Select.Option>
+                        </Select>
                     </Form.Item>
-                    <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Vui lòng nhập đúng định dạng email' }, { max: 100, message: 'Email không quá 100 ký tự' }]}>
-                        <Input placeholder="teacher.nguyen@example.com" />
+
+                    <Form.Item name="fullName" label={<span className="font-bold text-gray-600">Họ và tên</span>}
+                        rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { min: 3 }, { max: 50 }]}>
+                        <Input prefix={<UserOutlined className="text-gray-300" />} placeholder="Nguyễn Văn A" className="h-12 rounded-xl" />
                     </Form.Item>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24 }}>
-                        <Button onClick={() => { setIsModalVisible(false); form.resetFields(); }} style={{ borderRadius: 8, height: 40, fontWeight: 500 }}>Hủy</Button>
-                        <Button type="primary" htmlType="submit" loading={submitting} style={{ borderRadius: 8, height: 40, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)' }}>Tạo tài khoản</Button>
+
+                    <Form.Item name="email" label={<span className="font-bold text-gray-600">Email</span>}
+                        rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 100 }]}>
+                        <Input placeholder="example@email.com" className="h-12 rounded-xl" />
+                    </Form.Item>
+
+                    <div className="flex gap-3 justify-end mt-6">
+                        <Button onClick={() => { setIsCreateOpen(false); createForm.resetFields() }} className="h-11 px-6 rounded-xl font-bold">Hủy</Button>
+                        <Button type="primary" htmlType="submit" loading={submitting}
+                            className="h-11 px-8 rounded-xl font-bold border-none"
+                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}>
+                            Tạo tài khoản
+                        </Button>
                     </div>
                 </Form>
             </Modal>
 
-            {/* Modal: Import Excel giáo viên */}
+            {/* ── Modal: Import Excel ── */}
             <Modal
-                title="Import giáo viên từ Excel"
-                open={isImportModalOpen}
-                onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null) }}
-                onOk={handleImportExcel}
+                title="Import người dùng từ Excel"
+                open={isImportOpen}
+                onCancel={() => { setIsImportOpen(false); setImportFile(null); setImportResult(null) }}
+                onOk={handleImport}
                 confirmLoading={importing}
                 okText="Import"
                 cancelText="Hủy"
@@ -389,86 +447,60 @@ const UserManagementPage = () => {
                 centered
                 width={560}
             >
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <div>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>1. Tải template mẫu (API)</Text>
-                        <Button
-                            htmlType="button"
-                            icon={<DownloadOutlined />}
-                            loading={templateDownloading}
-                            onClick={downloadTeacherTemplateExcel}
-                            style={{ borderRadius: 8, borderColor: '#1890ff', color: '#1890ff' }}
-                        >
-                            Tải template giáo viên
-                        </Button>
-                    </div>
-                    <Alert
-                        type="info"
-                        showIcon
+                <div className="mt-3 flex flex-col gap-4">
+                    <Button icon={<DownloadOutlined />} loading={templateDownloading} onClick={downloadTemplate} className="rounded-xl w-fit">
+                        Tải template mẫu
+                    </Button>
+                    <Alert type="info" showIcon
                         message="File Excel cần có 2 cột: Email, Họ và tên"
-                        description="Mỗi dòng sẽ map thành { email, fullName } và gọi API tạo giáo viên."
-                    />
-
-                    <Upload.Dragger
-                        accept=".xlsx,.xls"
-                        maxCount={1}
-                        beforeUpload={(file) => { setImportFile(file); return false }}
+                        description="Mỗi dòng sẽ tạo một tài khoản giáo viên." />
+                    <Upload.Dragger accept=".xlsx,.xls" maxCount={1}
+                        beforeUpload={f => { setImportFile(f); return false }}
                         onRemove={() => setImportFile(null)}
                         fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' } as any] : []}
-                        style={{ borderRadius: 12 }}
-                    >
-                        <p style={{ fontWeight: 600, marginBottom: 0 }}>Kéo thả file hoặc click để chọn</p>
-                        <p style={{ color: '#999', fontSize: 12, marginTop: 6 }}>Chỉ hỗ trợ .xlsx/.xls</p>
+                        className="rounded-xl">
+                        <p className="font-bold">Kéo thả file hoặc click để chọn</p>
+                        <p className="text-gray-400 text-xs mt-1">Chỉ hỗ trợ .xlsx/.xls</p>
                     </Upload.Dragger>
-
                     {importResult && (
                         <Alert
-                            type={importResult?.errorCount > 0 ? 'warning' : 'success'}
-                            showIcon
+                            type={importResult?.errorCount > 0 ? 'warning' : 'success'} showIcon
                             message={`Thành công: ${importResult.successCount} | Bỏ qua: ${importResult.skipCount} | Lỗi: ${importResult.errorCount}`}
-                            description={
-                                importResult?.messages?.length ? (
-                                    <ul style={{ margin: '8px 0 0', paddingLeft: 18, maxHeight: 180, overflow: 'auto' }}>
-                                        {importResult.messages.map((m: string, idx: number) => (
-                                            <li key={idx} style={{ fontSize: 12 }}>{m}</li>
-                                        ))}
-                                    </ul>
-                                ) : null
-                            }
-                            style={{ borderRadius: 10 }}
                         />
                     )}
                 </div>
             </Modal>
 
-            {/* Modal: Chỉnh sửa user */}
+            {/* ── Modal: Chỉnh sửa ── */}
             <Modal
                 title="Chỉnh sửa người dùng"
-                open={isEditModalVisible}
-                onCancel={() => {
-                    setIsEditModalVisible(false)
-                    setEditingUser(null)
-                    editForm.resetFields()
-                }}
+                open={isEditOpen}
+                onCancel={() => { setIsEditOpen(false); setEditingUser(null); editForm.resetFields() }}
                 footer={null}
+                centered
+                width={460}
             >
-                <Form layout="vertical" form={editForm} onFinish={handleUpdateUser}>
-                    <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }, { min: 3, message: 'Tên phải ít nhất 3 ký tự' }, { max: 50, message: 'Tên không quá 50 ký tự' }]}>
-                        <Input placeholder="Nguyễn Văn A" />
+                <Form form={editForm} layout="vertical" onFinish={handleUpdateUser} className="mt-4">
+                    <Form.Item name="fullName" label={<span className="font-bold text-gray-600">Họ và tên</span>}
+                        rules={[{ required: true }, { min: 3 }, { max: 50 }]}>
+                        <Input className="h-12 rounded-xl" />
                     </Form.Item>
-                    <Form.Item name="phone" label="Số điện thoại" rules={[{ pattern: /^(0[3|5|7|8|9])[0-9]{8}$/, message: 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)' }]}>
-                        <Input placeholder="0901234567" />
+                    <Form.Item name="phone" label={<span className="font-bold text-gray-600">Số điện thoại</span>}
+                        rules={[{ pattern: /^(0[3|5|7|8|9])[0-9]{8}$/, message: 'Số điện thoại không hợp lệ' }]}>
+                        <Input placeholder="0901234567" className="h-12 rounded-xl" />
                     </Form.Item>
-                    <Form.Item name="region" label="Vùng miền" rules={[{ required: true, message: 'Vui lòng chọn vùng miền' }]}>
-                        <Select placeholder="Chọn vùng miền">
+                    <Form.Item name="region" label={<span className="font-bold text-gray-600">Vùng miền</span>}>
+                        <Select placeholder="Chọn vùng miền" className="h-12">
                             {dialects.map(d => (
                                 <Select.Option key={d.id} value={d.name}>{d.description || d.name}</Select.Option>
                             ))}
                         </Select>
                     </Form.Item>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 32 }}>
-                        <Button onClick={() => { setIsEditModalVisible(false); editForm.resetFields(); }} style={{ borderRadius: 8, height: 40, paddingInline: 20 }}>Hủy</Button>
-                        <Button type="primary" htmlType="submit" loading={submitting} style={{ borderRadius: 8, height: 40, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #1890ff, #0076e4)', color: 'white', boxShadow: '0 4px 12px rgba(24,144,255,0.25)', paddingInline: 24 }}>
+                    <div className="flex gap-3 justify-end mt-4">
+                        <Button onClick={() => { setIsEditOpen(false); editForm.resetFields() }} className="h-11 px-6 rounded-xl font-bold">Hủy</Button>
+                        <Button type="primary" htmlType="submit" loading={submitting}
+                            className="h-11 px-8 rounded-xl font-bold border-none"
+                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}>
                             Lưu thay đổi
                         </Button>
                     </div>

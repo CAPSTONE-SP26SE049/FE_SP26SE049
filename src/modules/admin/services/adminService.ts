@@ -7,6 +7,12 @@ export interface CreateEducatorRequest {
     fullName: string;
 }
 
+export interface CreateUserRequest {
+    email: string;
+    fullName: string;
+    role: 'USER' | 'EDUCATOR';
+}
+
 export interface DialectRequest {
     name: string;
     description?: string;
@@ -56,6 +62,10 @@ export const adminService = {
     // --- Account Management ---
     createEducator: async (data: CreateEducatorRequest) => {
         return apiClient.post('/admin/educators', data);
+    },
+
+    createUser: async (data: CreateUserRequest) => {
+        return apiClient.post('/admin/users', data);
     },
 
     // --- Content Management (Dialects) ---

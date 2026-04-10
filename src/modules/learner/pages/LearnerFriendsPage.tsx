@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { List, Avatar, Button, Input, message, Spin, Popconfirm, Badge } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Avatar, Badge, Input, Spin, Popconfirm, message } from 'antd';
 import {
     UserOutlined,
     SearchOutlined,
@@ -8,69 +8,299 @@ import {
     CloseOutlined,
     DeleteOutlined,
     StopOutlined,
-    TeamOutlined
+    TeamOutlined,
+    SendOutlined,
 } from '@ant-design/icons';
 import apiClient from '../../../services/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+import { Users, UserPlus, Clock, UserSearch, RefreshCw } from 'lucide-react';
 
+/* ─── Types ─────────────────────────────────────────── */
+interface Friend {
+    friendshipId: string;
+    userId: string;
+    fullName: string;
+    avatarUrl: string;
+    status: string;
+    createdAt: string;
+}
+
+interface SearchUser {
+    userId: string;
+    fullName: string;
+    avatarUrl: string;
+    friendshipStatus: string | null;
+}
+
+type Tab = 'friends' | 'requests' | 'sent' | 'search';
+
+/* ─── Empty State ─────────────────────────────────────── */
+const EmptyState = ({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) => (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 border border-purple-100">
+            <Icon size={28} className="text-purple-300" />
+        </div>
+        <div className="font-bold text-gray-500 text-base">{title}</div>
+        <p className="text-gray-400 text-sm mt-1 max-w-xs">{desc}</p>
+    </div>
+);
+
+/* ─── Friend Card ─────────────────────────────────────── */
+const FriendCard = ({
+    item,
+    onUnfriend,
+    onBlock,
+}: {
+    item: Friend;
+    onUnfriend: (id: string) => void;
+    onBlock: (id: string) => void;
+}) => (
+    <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all group"
+    >
+        <div className="relative flex-shrink-0">
+            <Avatar
+                src={item.avatarUrl}
+                icon={!item.avatarUrl && <UserOutlined />}
+                size={48}
+                className="bg-purple-100 text-purple-600 border-2 border-purple-100"
+            />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
+            <div className="text-xs text-gray-400 font-medium mt-0.5">
+                Kết bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
+            </div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Popconfirm
+                title="Hủy kết bạn?"
+                description="Bạn có chắc muốn hủy kết bạn với người này?"
+                onConfirm={() => onUnfriend(item.friendshipId)}
+                okText="Hủy kết bạn"
+                cancelText="Đóng"
+                okButtonProps={{ danger: true }}
+            >
+                <button className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center hover:bg-red-100 transition-all">
+                    <DeleteOutlined className="text-red-400 text-xs" />
+                </button>
+            </Popconfirm>
+            <Popconfirm
+                title="Chặn người này?"
+                description="Họ sẽ không thể gửi lời mời kết bạn cho bạn nữa."
+                onConfirm={() => onBlock(item.friendshipId)}
+                okText="Chặn"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+            >
+                <button className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:border-red-100 transition-all">
+                    <StopOutlined className="text-gray-400 text-xs hover:text-red-400" />
+                </button>
+            </Popconfirm>
+        </div>
+    </motion.div>
+);
+
+/* ─── Request Card ────────────────────────────────────── */
+const RequestCard = ({
+    item,
+    onAccept,
+    onDecline,
+    type = 'received',
+    onCancel,
+}: {
+    item: Friend;
+    onAccept?: (id: string) => void;
+    onDecline?: (id: string) => void;
+    type?: 'received' | 'sent';
+    onCancel?: (id: string) => void;
+}) => (
+    <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={clsx(
+            "flex items-center gap-4 p-4 rounded-2xl border transition-all",
+            type === 'received'
+                ? "bg-purple-50 border-purple-100"
+                : "bg-white border-gray-100"
+        )}
+    >
+        <Avatar
+            src={item.avatarUrl}
+            icon={!item.avatarUrl && <UserOutlined />}
+            size={48}
+            className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
+            <div className="text-xs text-gray-400 font-medium mt-0.5">
+                {type === 'received' ? '✉️ Đã gửi lời mời kết bạn cho bạn' : '⏳ Đang chờ phản hồi'}
+            </div>
+        </div>
+        {type === 'received' && onAccept && onDecline ? (
+            <div className="flex gap-2 flex-shrink-0">
+                <Popconfirm
+                    title="Từ chối lời mời?"
+                    onConfirm={() => onDecline(item.friendshipId)}
+                    okText="Từ chối"
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: true }}
+                >
+                    <button className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-all">
+                        <CloseOutlined className="text-gray-400 text-sm" />
+                    </button>
+                </Popconfirm>
+                <button
+                    onClick={() => onAccept(item.friendshipId)}
+                    className="h-9 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white text-sm font-bold flex items-center gap-1.5 hover:shadow-md hover:shadow-purple-500/20 transition-all"
+                >
+                    <CheckOutlined className="text-xs" /> Đồng ý
+                </button>
+            </div>
+        ) : (
+            <Popconfirm
+                title="Hủy lời mời?"
+                onConfirm={() => onCancel?.(item.friendshipId)}
+                okText="Hủy"
+                cancelText="Đóng"
+                okButtonProps={{ danger: true }}
+            >
+                <button className="h-8 px-3 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-all">
+                    Hủy lời mời
+                </button>
+            </Popconfirm>
+        )}
+    </motion.div>
+);
+
+/* ─── Search Result Card ──────────────────────────────── */
+const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) => void }) => {
+    const status = item.friendshipStatus;
+
+    const renderAction = () => {
+        if (!status || status === 'DECLINED') {
+            return (
+                <button
+                    onClick={() => onSend(item.userId)}
+                    className="h-9 px-4 rounded-xl bg-purple-600 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-purple-700 transition-all shadow-sm shadow-purple-500/20"
+                >
+                    <UserAddOutlined className="text-xs" /> Kết bạn
+                </button>
+            );
+        }
+        if (status === 'PENDING') {
+            return <span className="px-3 py-1.5 bg-yellow-50 text-yellow-600 font-bold text-xs rounded-xl border border-yellow-100">Đã gửi lời mời</span>;
+        }
+        if (status === 'ACCEPTED') {
+            return <span className="px-3 py-1.5 bg-green-50 text-green-600 font-bold text-xs rounded-xl border border-green-100 flex items-center gap-1"><CheckOutlined /> Bạn bè</span>;
+        }
+        if (status === 'BLOCKED') {
+            return <span className="px-3 py-1.5 bg-red-50 text-red-500 font-bold text-xs rounded-xl border border-red-100">Đã chặn</span>;
+        }
+        return null;
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all"
+        >
+            <Avatar
+                src={item.avatarUrl}
+                icon={!item.avatarUrl && <UserOutlined />}
+                size={48}
+                className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
+                <div className="text-xs text-gray-400 font-medium mt-0.5">Học viên SpeakVN</div>
+            </div>
+            <div className="flex-shrink-0">{renderAction()}</div>
+        </motion.div>
+    );
+};
+
+/* ─── Main Page ───────────────────────────────────────── */
 export default function LearnerFriendsPage() {
-    const [activeTab, setActiveTab] = useState('friends');
+    const [activeTab, setActiveTab] = useState<Tab>('friends');
     const [loading, setLoading] = useState(false);
 
-    // Data states
-    const [friends, setFriends] = useState<any[]>([]);
-    const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [friends, setFriends] = useState<Friend[]>([]);
+    const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
+    const [sentRequests, setSentRequests] = useState<Friend[]>([]);
+    const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [hasSearched, setHasSearched] = useState(false);
 
-    useEffect(() => {
-        fetchPendingRequests();
-        if (activeTab === 'friends') {
-            fetchFriends();
-        }
-    }, [activeTab]);
+    // Normalize API response (handles data.data, data.data.data wrapping)
+    const unwrap = (res: any): any[] => {
+        const d = res?.data;
+        if (Array.isArray(d)) return d;
+        if (Array.isArray(d?.data)) return d.data;
+        if (Array.isArray(d?.data?.data)) return d.data.data;
+        return [];
+    };
 
-    const fetchFriends = async () => {
+    const fetchFriends = useCallback(async () => {
         setLoading(true);
         try {
             const res = await apiClient.get('/friends');
-            if (res?.data) {
-                setFriends(res.data);
-            }
+            setFriends(unwrap(res));
         } catch (err) {
             console.error(err);
-            message.error("Lỗi khi tải danh sách bạn bè.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchPendingRequests = async () => {
+    const fetchPending = useCallback(async () => {
         try {
             const res = await apiClient.get('/friends/requests/pending');
-            if (res?.data) {
-                setPendingRequests(res.data);
-            }
+            setPendingRequests(unwrap(res));
         } catch (err) {
             console.error(err);
         }
-    };
+    }, []);
 
-    const handleSearch = async (value: string) => {
-        if (!value || value.length < 2) {
-            message.warning("Vui lòng nhập ít nhất 2 ký tự.");
+    const fetchSent = useCallback(async () => {
+        try {
+            const res = await apiClient.get('/friends/requests/sent');
+            setSentRequests(unwrap(res));
+        } catch (err) {
+            console.error(err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchFriends();
+        fetchPending();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'sent') fetchSent();
+    }, [activeTab]);
+
+    const handleSearch = async (q: string) => {
+        const query = q || searchQuery;
+        if (!query || query.trim().length < 2) {
+            message.warning('Vui lòng nhập ít nhất 2 ký tự.');
             return;
         }
         setLoading(true);
+        setHasSearched(false);
         try {
-            const res = await apiClient.get(`/friends/search?query=${encodeURIComponent(value)}`);
-            if (res?.data) {
-                setSearchResults(res.data);
-            }
-        } catch (err) {
+            const res = await apiClient.get(`/friends/search?query=${encodeURIComponent(query.trim())}`);
+            setSearchResults(unwrap(res));
+            setHasSearched(true);
+        } catch (err: any) {
             console.error(err);
-            message.error("Lỗi khi tìm kiếm.");
+            message.error(err?.response?.data?.message || 'Lỗi khi tìm kiếm.');
         } finally {
             setLoading(false);
         }
@@ -79,266 +309,276 @@ export default function LearnerFriendsPage() {
     const handleSendRequest = async (userId: string) => {
         try {
             await apiClient.post('/friends/request', { addresseeId: userId });
-            message.success("Đã gửi lời mời kết bạn.");
-            setSearchResults(prev => prev.map(u => u.userId === userId ? { ...u, status: 'PENDING' } : u));
+            message.success('Đã gửi lời mời kết bạn!');
+            setSearchResults(prev => prev.map(u => u.userId === userId ? { ...u, friendshipStatus: 'PENDING' } : u));
+            fetchPending();
         } catch (err: any) {
-            console.error(err);
-            message.error(err.response?.data?.message || "Không thể gửi lời mời.");
+            message.error(err?.response?.data?.message || 'Không thể gửi lời mời.');
         }
     };
 
-    const handleAcceptRequest = async (friendshipId: string) => {
+    const handleAccept = async (id: string) => {
         try {
-            await apiClient.put(`/friends/${friendshipId}/accept`);
-            message.success("Đã đồng ý kết bạn.");
-            setPendingRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
-            if (activeTab === 'friends') fetchFriends();
-        } catch (err) {
-            console.error(err);
-            message.error("Lỗi khi xử lý.");
+            await apiClient.put(`/friends/${id}/accept`);
+            message.success('Đã đồng ý kết bạn!');
+            setPendingRequests(prev => prev.filter(r => r.friendshipId !== id));
+            fetchFriends();
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi xử lý.');
         }
     };
 
-    const handleDeclineRequest = async (friendshipId: string) => {
+    const handleDecline = async (id: string) => {
         try {
-            await apiClient.put(`/friends/${friendshipId}/decline`);
-            message.success("Đã từ chối lời mời.");
-            setPendingRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
-        } catch (err) {
-            console.error(err);
-            message.error("Lỗi khi xử lý.");
+            await apiClient.put(`/friends/${id}/decline`);
+            message.success('Đã từ chối lời mời.');
+            setPendingRequests(prev => prev.filter(r => r.friendshipId !== id));
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi xử lý.');
         }
     };
 
-    const handleUnfriend = async (friendshipId: string) => {
+    const handleUnfriend = async (id: string) => {
         try {
-            await apiClient.delete(`/friends/${friendshipId}`);
-            message.success("Đã hủy kết bạn.");
-            setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
-        } catch (err) {
-            console.error(err);
-            message.error("Lỗi khi xử lý.");
+            await apiClient.delete(`/friends/${id}`);
+            message.success('Đã hủy kết bạn.');
+            setFriends(prev => prev.filter(f => f.friendshipId !== id));
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi xử lý.');
         }
     };
 
-    const handleBlock = async (friendshipId: string) => {
+    const handleBlock = async (id: string) => {
         try {
-            await apiClient.put(`/friends/${friendshipId}/block`);
-            message.success("Đã chặn ngường dùng này.");
-            setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
-        } catch (err) {
-            console.error(err);
-            message.error("Lỗi khi chặn người dùng.");
+            await apiClient.put(`/friends/${id}/block`);
+            message.success('Đã chặn người dùng.');
+            setFriends(prev => prev.filter(f => f.friendshipId !== id));
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi chặn người dùng.');
         }
     };
 
-    const renderAvatar = (url: string, name: string) => (
-        <Avatar src={url} icon={!url && <UserOutlined />} size={54} className="bg-white/10 text-white/80 border border-white/20 shadow-lg" />
-    );
+    const handleCancelSent = async (id: string) => {
+        try {
+            await apiClient.delete(`/friends/${id}`);
+            message.success('Đã hủy lời mời.');
+            setSentRequests(prev => prev.filter(r => r.friendshipId !== id));
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Lỗi khi xử lý.');
+        }
+    };
 
-    const tabs = [
-        { id: 'friends', label: `Bạn bè ${friends.length > 0 ? `(${friends.length})` : ''}` },
-        { id: 'pending', label: 'Lời mời', count: pendingRequests.length },
-        { id: 'search', label: 'Tìm kiếm' }
+    const TABS = [
+        { id: 'friends' as Tab, label: 'Bạn bè', icon: Users, count: friends.length },
+        { id: 'requests' as Tab, label: 'Lời mời', icon: UserPlus, count: pendingRequests.length, badge: true },
+        { id: 'sent' as Tab, label: 'Đã gửi', icon: SendOutlined, count: 0 },
+        { id: 'search' as Tab, label: 'Tìm kiếm', icon: UserSearch, count: 0 },
     ];
 
+    const refreshCurrentTab = () => {
+        if (activeTab === 'friends') fetchFriends();
+        if (activeTab === 'requests') fetchPending();
+        if (activeTab === 'sent') fetchSent();
+    };
+
     return (
-        <div className="w-full max-w-5xl mx-auto py-10 px-4">
+        <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
 
-            {/* Header Section */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center text-center mb-12">
-                <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-indigo-500/40 to-purple-600/40 border border-white/20 flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.3)] backdrop-blur-xl mb-6 relative group overflow-hidden">
-                    <TeamOutlined className="text-white text-4xl relative z-10 group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-in-out" />
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-400 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                        <TeamOutlined className="text-white text-xl" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-800">Bạn Bè</h2>
+                        <p className="text-sm text-gray-400 font-medium">Kết nối và học cùng cộng đồng SpeakVN</p>
+                    </div>
                 </div>
-                <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 italic tracking-tighter uppercase drop-shadow-2xl mb-2">
-                    Cộng Đồng SpeakVN
-                </h1>
-                <p className="text-white/60 font-medium tracking-wide">Kết nối, giao lưu và cùng chinh phục tiếng Việt.</p>
-            </motion.div>
-
-            {/* Custom Tab Switcher */}
-            <div className="flex justify-center mb-10 w-full relative z-20">
-                <div className="flex gap-2 p-2 bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl relative">
-                    {tabs.map((tab) => {
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={clsx(
-                                    "relative px-8 py-3.5 rounded-[1.5rem] font-bold text-sm tracking-wide uppercase transition-all duration-300 overflow-hidden",
-                                    isActive ? "text-white" : "text-white/50 hover:text-white hover:bg-white/5"
-                                )}
-                            >
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="activeTabIndicator"
-                                        className="absolute inset-0 bg-gradient-to-r from-indigo-600/80 to-purple-600/80 shadow-lg -z-10"
-                                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                    />
-                                )}
-                                <span className="relative z-10 flex items-center gap-2">
-                                    {tab.label}
-                                    {tab.count !== undefined && tab.count > 0 && (
-                                        <Badge count={tab.count} style={{ backgroundColor: '#ef4444', color: 'white', fontWeight: 'bold' }} />
-                                    )}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                {activeTab !== 'search' && (
+                    <button
+                        onClick={refreshCurrentTab}
+                        disabled={loading}
+                        className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-purple-50 hover:border-purple-200 transition-all disabled:opacity-50"
+                    >
+                        <RefreshCw size={15} className={clsx("text-gray-500", loading && "animate-spin")} />
+                    </button>
+                )}
             </div>
 
-            {/* Content Area */}
-            <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4 }}
-                className="bg-white/[0.02] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 min-h-[500px] shadow-2xl shadow-black/50 relative overflow-hidden"
-            >
-                {/* Background Ambient Glow */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -z-10" />
+            {/* ── Tab Bar ── */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1 flex gap-1">
+                {TABS.map(({ id, label, icon: Icon, count, badge }) => (
+                    <button
+                        key={id}
+                        onClick={() => setActiveTab(id)}
+                        className={clsx(
+                            "flex-1 h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 relative",
+                            activeTab === id
+                                ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-md shadow-purple-500/20"
+                                : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
+                        )}
+                    >
+                        {typeof Icon === 'function' ? <Icon size={13} /> : <Icon className="text-xs" />}
+                        <span className="hidden sm:inline">{label}</span>
+                        {badge && count > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                                {count}
+                            </span>
+                        )}
+                        {!badge && count > 0 && activeTab === id && (
+                            <span className="text-white/70 text-[10px]">({count})</span>
+                        )}
+                    </button>
+                ))}
+            </div>
 
-                <Spin spinning={loading} size="large" className="custom-spin">
-                    {/* 1. Friends List */}
-                    {activeTab === 'friends' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {friends.length === 0 && !loading && (
-                                <div className="col-span-full py-20 text-center text-white/40 italic font-medium">Bạn chưa kết nối với ai. Hãy tìm kiếm bạn bè mới!</div>
-                            )}
-                            {friends.map((item, index) => (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }}
-                                    key={item.friendshipId}
-                                    className="bg-white/[0.04] border border-white/10 hover:border-indigo-500/50 hover:bg-white/[0.08] transition-all duration-300 rounded-[1.5rem] p-5 flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        {renderAvatar(item.avatarUrl, item.fullName)}
-                                        <div>
-                                            <h3 className="text-white font-bold text-lg m-0 group-hover:text-indigo-300 transition-colors">{item.fullName}</h3>
-                                            <p className="text-white/40 text-xs mt-1">Kết bạn: {new Date(item.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Popconfirm title="Chặn người này?" onConfirm={() => handleBlock(item.friendshipId)} okText="Chặn" cancelText="Hủy" overlayClassName="dark-popconfirm" okButtonProps={{ danger: true }}>
-                                            <Button type="text" danger icon={<StopOutlined />} className="text-red-400 hover:bg-red-500/20" />
-                                        </Popconfirm>
-                                        <Popconfirm title="Hủy kết bạn?" onConfirm={() => handleUnfriend(item.friendshipId)} okText="Hủy" cancelText="Đóng" overlayClassName="dark-popconfirm" okButtonProps={{ danger: true }}>
-                                            <Button type="text" danger icon={<DeleteOutlined />} className="text-red-400 hover:bg-red-500/20" />
-                                        </Popconfirm>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* 2. Pending Requests */}
-                    {activeTab === 'pending' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {pendingRequests.length === 0 && !loading && (
-                                <div className="col-span-full py-20 text-center text-white/40 italic font-medium">Không có lời mời kết bạn nào.</div>
-                            )}
-                            {pendingRequests.map((item, index) => (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }}
-                                    key={item.friendshipId}
-                                    className="bg-indigo-500/[0.05] border border-indigo-500/20 hover:border-indigo-500/50 hover:bg-indigo-500/[0.1] transition-all duration-300 rounded-[1.5rem] p-5 flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        {renderAvatar(item.avatarUrl, item.fullName)}
-                                        <div>
-                                            <h3 className="text-white font-bold text-lg m-0 group-hover:text-indigo-300 transition-colors">{item.fullName}</h3>
-                                            <p className="text-white/50 text-xs mt-1 italic">Đã gửi lời mời cho bạn</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button danger shape="circle" onClick={() => handleDeclineRequest(item.friendshipId)} icon={<CloseOutlined />} className="bg-red-500/10 border-none text-red-400 hover:bg-red-500/30 hover:text-white" />
-                                        <Button type="primary" shape="circle" className="bg-emerald-500 hover:bg-emerald-400 border-none text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]" onClick={() => handleAcceptRequest(item.friendshipId)} icon={<CheckOutlined />} />
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* 3. Search */}
-                    {activeTab === 'search' && (
-                        <div className="space-y-8">
-                            <div className="max-w-2xl mx-auto flex gap-3">
-                                <Input
-                                    placeholder="Tìm kiếm qua tên hoặc email..."
-                                    allowClear
-                                    size="large"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onPressEnter={() => handleSearch(searchQuery)}
-                                    className="bg-white/5 border-white/10 text-white placeholder-white/30 hover:border-indigo-500 focus:border-indigo-500 rounded-2xl h-14 px-6 text-lg"
-                                    prefix={<SearchOutlined className="text-white/40 mr-2" />}
+            {/* ── Content ── */}
+            <div className="min-h-80">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.25 }}
+                    >
+                        {/* Friends List */}
+                        {activeTab === 'friends' && (
+                            loading ? (
+                                <div className="flex justify-center py-12"><Spin size="large" /></div>
+                            ) : friends.length === 0 ? (
+                                <EmptyState
+                                    icon={Users}
+                                    title="Chưa có bạn bè nào"
+                                    desc="Hãy tìm kiếm và kết bạn với các học viên khác trong cộng đồng!"
                                 />
-                                <Button
-                                    type="primary"
-                                    onClick={() => handleSearch(searchQuery)}
-                                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 border-none rounded-2xl h-14 px-8 font-bold text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-                                >
-                                    Tìm theo tên
-                                </Button>
-                            </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {friends.map(item => (
+                                        <FriendCard key={item.friendshipId} item={item} onUnfriend={handleUnfriend} onBlock={handleBlock} />
+                                    ))}
+                                </div>
+                            )
+                        )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                                {searchResults.length === 0 && !loading && searchQuery !== "" && (
-                                    <div className="col-span-full py-20 text-center text-white/40 italic font-medium">Không tìm thấy kết quả phù hợp.</div>
-                                )}
-                                {searchResults.map((item, index) => (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-                                        key={item.userId}
-                                        className="bg-white/[0.04] border border-white/10 hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 rounded-[1.5rem] p-5 flex items-center justify-between"
+                        {/* Received Requests */}
+                        {activeTab === 'requests' && (
+                            loading ? (
+                                <div className="flex justify-center py-12"><Spin size="large" /></div>
+                            ) : pendingRequests.length === 0 ? (
+                                <EmptyState
+                                    icon={UserPlus}
+                                    title="Không có lời mời nào"
+                                    desc="Khi ai đó gửi lời mời kết bạn, bạn sẽ thấy ở đây."
+                                />
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
+                                        {pendingRequests.length} lời mời đang chờ
+                                    </div>
+                                    <AnimatePresence>
+                                        {pendingRequests.map(item => (
+                                            <RequestCard
+                                                key={item.friendshipId}
+                                                item={item}
+                                                type="received"
+                                                onAccept={handleAccept}
+                                                onDecline={handleDecline}
+                                            />
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            )
+                        )}
+
+                        {/* Sent Requests */}
+                        {activeTab === 'sent' && (
+                            loading ? (
+                                <div className="flex justify-center py-12"><Spin size="large" /></div>
+                            ) : sentRequests.length === 0 ? (
+                                <EmptyState
+                                    icon={Clock}
+                                    title="Chưa gửi lời mời nào"
+                                    desc="Các lời mời kết bạn bạn đã gửi sẽ xuất hiện tại đây."
+                                />
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
+                                        {sentRequests.length} lời mời đã gửi
+                                    </div>
+                                    {sentRequests.map(item => (
+                                        <RequestCard
+                                            key={item.friendshipId}
+                                            item={item}
+                                            type="sent"
+                                            onCancel={handleCancelSent}
+                                        />
+                                    ))}
+                                </div>
+                            )
+                        )}
+
+                        {/* Search */}
+                        {activeTab === 'search' && (
+                            <div className="space-y-5">
+                                {/* Search Input */}
+                                <div className="flex gap-3">
+                                    <Input
+                                        placeholder="Tìm kiếm theo tên hoặc email..."
+                                        size="large"
+                                        allowClear
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onPressEnter={() => handleSearch(searchQuery)}
+                                        prefix={<SearchOutlined className="text-gray-400" />}
+                                        className="rounded-2xl border-gray-200 hover:border-purple-300 focus-within:border-purple-400 h-12"
+                                    />
+                                    <button
+                                        onClick={() => handleSearch(searchQuery)}
+                                        disabled={loading}
+                                        className="h-12 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold text-sm flex items-center gap-2 hover:shadow-md hover:shadow-purple-500/20 transition-all disabled:opacity-60 flex-shrink-0"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            {renderAvatar(item.avatarUrl, item.fullName)}
-                                            <div>
-                                                <h3 className="text-white font-bold text-lg m-0">{item.fullName}</h3>
-                                                <p className="text-white/40 text-xs mt-1">Học viên SpeakVN</p>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            {(() => {
-                                                const status = item.status || item.friendshipStatus;
-                                                if (!status || status === 'null') {
-                                                    return (
-                                                        <Button type="primary" className="bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white border border-indigo-500/30 rounded-xl px-5 font-bold" onClick={() => handleSendRequest(item.userId)} icon={<UserAddOutlined />}>
-                                                            Kết bạn
-                                                        </Button>
-                                                    );
-                                                } else if (status === 'PENDING') {
-                                                    return <span className="px-4 py-2 bg-yellow-500/20 text-yellow-300 font-bold text-xs rounded-xl border border-yellow-500/20">ĐÃ GỬI LỜI MỜI</span>;
-                                                } else if (status === 'ACCEPTED') {
-                                                    return <span className="px-4 py-2 bg-emerald-500/20 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-500/20"><CheckOutlined className="mr-1" /> BẠN BÈ</span>;
-                                                } else if (status === 'BLOCKED') {
-                                                    return <span className="px-4 py-2 bg-red-500/20 text-red-300 font-bold text-xs rounded-xl border border-red-500/20">ĐÃ CHẶN</span>;
-                                                }
-                                                return null;
-                                            })()}
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </Spin>
-            </motion.div>
+                                        {loading ? <Spin size="small" /> : <><SearchOutlined /> Tìm</>}
+                                    </button>
+                                </div>
 
-            {/* Custom Styles for Spin and Input */}
-            <style>{`
-                .custom-spin .ant-spin-dot-item { background-color: #818cf8 !important; }
-                .ant-input-affix-wrapper, .ant-input { background: transparent !important; color: white !important; }
-                .ant-input::placeholder { color: rgba(255,255,255,0.3) !important; }
-                .dark-popconfirm .ant-popover-inner { background: #1f2937; border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; color: white; }
-                .dark-popconfirm .ant-popover-message-title { color: white; }
-            `}</style>
+                                {/* Results */}
+                                {loading && (
+                                    <div className="flex justify-center py-8"><Spin size="large" /></div>
+                                )}
+
+                                {!loading && hasSearched && searchResults.length === 0 && (
+                                    <EmptyState
+                                        icon={UserSearch}
+                                        title="Không tìm thấy kết quả"
+                                        desc={`Không có học viên nào phù hợp với "${searchQuery}".`}
+                                    />
+                                )}
+
+                                {!loading && !hasSearched && !searchQuery && (
+                                    <div className="flex flex-col items-center py-12 text-center">
+                                        <div className="text-5xl mb-4">🔍</div>
+                                        <div className="font-bold text-gray-500 text-sm">Tìm kiếm học viên SpeakVN</div>
+                                        <p className="text-gray-400 text-xs mt-1">Nhập tên hoặc email để tìm kiếm</p>
+                                    </div>
+                                )}
+
+                                {!loading && searchResults.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
+                                            {searchResults.length} kết quả
+                                        </div>
+                                        {searchResults.map(item => (
+                                            <SearchCard key={item.userId} item={item} onSend={handleSendRequest} />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
         </div>
     );
 }

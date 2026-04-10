@@ -20,7 +20,7 @@ const Login = () => {
                                 type="email"
                                 autoComplete="username"
                                 placeholder="Email hoặc Tên đăng nhập"
-                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
+                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-purple-600 focus:bg-white transition-colors"
                             />
                         </div>
                         <div>
@@ -28,7 +28,7 @@ const Login = () => {
                                 type="password"
                                 autoComplete="current-password"
                                 placeholder="Mật khẩu"
-                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-brand-blue focus:bg-white transition-colors"
+                                className="w-full bg-gray-100 border-2 border-gray-200 rounded-2xl px-4 py-3 font-bold text-gray-700 focus:outline-none focus:border-purple-600 focus:bg-white transition-colors"
                             />
                         </div>
 
@@ -56,7 +56,7 @@ const Login = () => {
 
                 <div className="bg-gray-50 p-6 text-center border-t border-gray-100">
                     <p className="text-gray-600 font-bold">
-                        Chưa có tài khoản? <span onClick={() => navigate('/register')} className="text-brand-blue cursor-pointer hover:underline uppercase">Đăng ký</span>
+                        Chưa có tài khoản? <span onClick={() => navigate('/register')} className="text-purple-600 cursor-pointer hover:underline uppercase">Đăng ký</span>
                     </p>
                 </div>
             </div>

@@ -12,6 +12,7 @@ import {
   ThunderboltFilled,
   LoadingOutlined,
   ReloadOutlined,
+  StarFilled,
 } from '@ant-design/icons'
 import { Spin, Button, Tag, Empty, Input } from 'antd'
 
@@ -187,8 +188,8 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
               'w-full text-left px-5 py-4 rounded-2xl border-2 font-semibold text-base transition-all duration-200',
               isRight ? 'border-green-500 bg-green-50 text-green-700'
                 : isWrong ? 'border-red-400 bg-red-50 text-red-600'
-                  : selected === opt && !answered ? 'border-blue-400 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50',
+                  : selected === opt && !answered ? 'border-purple-500 bg-purple-100 text-purple-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50',
             ].join(' ')}
           >
             <span className="inline-flex items-center gap-3">
@@ -498,12 +499,12 @@ YẾU TỐ QUAN TRỌNG:
   // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50"><Spin size="large" /></div>
+    <div className="flex justify-center items-center min-h-screen bg-[#f8f5ff]"><Spin size="large" /></div>
   )
   if (!quiz) return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-gray-50">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-[#f8f5ff]">
       <Empty description="Không tìm thấy bài kiểm tra" />
-      <Button onClick={() => navigate(-1)}>Quay lại</Button>
+      <Button onClick={() => navigate('/learner/roadmap')}>Quay lại</Button>
     </div>
   )
 
@@ -518,51 +519,63 @@ YẾU TỐ QUAN TRỌNG:
     const reward = result?.earnedReward
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6 bg-gray-50">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6 bg-[#f8f5ff]">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-md w-full text-center border border-gray-100"
+          className="bg-white rounded-[2.5rem] shadow-xl p-8 sm:p-10 max-w-md w-full text-center border border-purple-100 relative overflow-hidden"
+          style={{ boxShadow: '0 8px 40px rgba(147,51,234,0.1)' }}
         >
-          {/* Header Status */}
-          <div className="text-7xl mb-6 transform hover:scale-110 transition-transform cursor-default">
-            {passed ? '🏆' : '💪'}
+          {/* Decorative background blur */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-gradient-to-b from-purple-50 to-transparent pointer-events-none" />
+
+          {/* Header Status Phase */}
+          <div className="relative mb-6 mx-auto w-32 h-32 flex items-center justify-center">
+            <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 ${passed ? 'bg-yellow-400' : 'bg-orange-400'}`} />
+            <div className="text-7xl sm:text-8xl relative z-10 transform hover:scale-110 transition-transform cursor-default">
+              {passed ? '🏆' : '💪'}
+            </div>
           </div>
 
-          <h2 className="text-3xl font-black text-gray-800 mb-2">
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2 relative z-10 leading-tight">
             {passed ? 'Tuyệt vời!' : 'Hãy cố gắng thêm!'}
           </h2>
 
-          <p className="text-gray-400 font-medium mb-6">
-            Bạn đã hoàn thành {quiz.name}
+          <p className="text-gray-500 font-semibold mb-8 relative z-10 text-sm">
+            Bạn đã hoàn thành <span className="text-purple-600 font-bold">{quiz.name}</span>
           </p>
 
           {/* Stars Section */}
-          <div className="flex justify-center gap-2 mb-8">
+          <div className="flex justify-center gap-3 md:gap-4 mb-8 relative z-10">
             {[1, 2, 3].map(s => (
-              <motion.span
+              <motion.div
                 key={s}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2 + s * 0.1 }}
-                className={`text-4xl ${s <= stars ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-200'}`}
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.2 + s * 0.1, type: 'spring', bounce: 0.6 }}
               >
-                {s <= stars ? '★' : '★'}
-              </motion.span>
+                {s <= stars ? (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-yellow-400 blur-lg opacity-60 rounded-full scale-125" />
+                    <StarFilled className="text-5xl sm:text-6xl text-yellow-400 drop-shadow-md relative z-10" />
+                  </div>
+                ) : (
+                  <StarFilled className="text-5xl sm:text-6xl text-gray-100" />
+                )}
+              </motion.div>
             ))}
           </div>
 
-          {/* Stats Card */}
-          <div className="bg-gray-50 rounded-2xl p-6 mb-8 flex justify-around">
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Đúng</p>
-              <p className="text-xl font-black text-gray-800">{score}/{total}</p>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 gap-3 mb-8 relative z-10">
+            <div className={`rounded-3xl p-4 border ${passed ? 'bg-green-50/50 border-green-100' : 'bg-orange-50/50 border-orange-100'}`}>
+              <p className={`text-[9px] uppercase font-black tracking-widest mb-1 ${passed ? 'text-green-600' : 'text-orange-600'}`}>Chính xác</p>
+              <p className="text-2xl font-black text-gray-800">{score} <span className="text-sm font-bold text-gray-400">/ {total}</span></p>
             </div>
-            <div className="w-px bg-gray-200" />
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Tỷ lệ</p>
-              <p className="text-xl font-black text-gray-800">{pct}%</p>
+            <div className="rounded-3xl p-4 border bg-purple-50/50 border-purple-100">
+              <p className="text-[9px] uppercase font-black tracking-widest mb-1 text-purple-600">Tỷ lệ đúng</p>
+              <p className="text-2xl font-black text-gray-800">{pct}<span className="text-base text-purple-400 font-bold">%</span></p>
             </div>
           </div>
 
@@ -591,8 +604,8 @@ YẾU TỐ QUAN TRỌNG:
               block
               size="large"
               icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(-1)}
-              className="rounded-xl h-14 font-bold border-gray-200 text-gray-600 hover:text-blue-500"
+              onClick={() => navigate('/learner/roadmap')}
+              className="rounded-xl h-14 font-black border-purple-100 text-gray-600 hover:text-purple-500 hover:border-purple-300 transition-all"
             >
               Thoát
             </Button>
@@ -600,7 +613,7 @@ YẾU TỐ QUAN TRỌNG:
               type="primary"
               block
               size="large"
-              className="bg-green-500 border-none hover:bg-green-600 rounded-xl h-14 font-bold text-white shadow-lg shadow-green-200"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 border-none hover:from-green-600 hover:to-emerald-600 rounded-xl h-14 font-black text-white shadow-lg shadow-green-200"
               onClick={() => {
                 setIdx(0); setScore(0); setSelected(null); setAnswered(false);
                 setFinished(false); setWritingInput(''); setWordPicked(null);
@@ -655,8 +668,8 @@ YẾU TỐ QUAN TRỌNG:
         }
         return (
           <>
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mb-4">
-              <p className="text-sm text-orange-600 font-semibold mb-3">👆 Chạm vào từ viết SAI trong câu:</p>
+            <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-5 mb-4">
+              <p className="text-sm text-purple-600 font-semibold mb-3">👆 Chạm vào từ viết SAI trong câu:</p>
               <div className="flex flex-wrap gap-2">
                 {ch.words.map((w, i) => {
                   const isError = answered && i === ch.errorIndex
@@ -668,8 +681,8 @@ YẾU TỐ QUAN TRỌNG:
                         'px-3 py-2 rounded-xl text-base font-semibold cursor-pointer border-2 transition-all',
                         isError ? 'border-green-500 bg-green-100 text-green-800 line-through'
                           : isPickedWrong ? 'border-red-400 bg-red-100 text-red-600'
-                            : wordPicked === i && !answered ? 'border-blue-400 bg-blue-100 text-blue-700'
-                              : 'border-gray-200 bg-white text-gray-800 hover:border-orange-300',
+                            : wordPicked === i && !answered ? 'border-purple-400 bg-purple-100 text-purple-700'
+                              : 'border-gray-200 bg-white text-gray-800 hover:border-purple-300',
                       ].join(' ')}>
                       {w}
                     </motion.span>
@@ -702,15 +715,15 @@ YẾU TỐ QUAN TRỌNG:
         return (
           <>
             {(ch.blankSentence || ch.sentence) && (
-              <div className="bg-cyan-50 border border-cyan-200 rounded-3xl p-8 mb-6 text-center shadow-sm">
-                <p className="text-cyan-900 font-bold text-xl leading-relaxed">
+              <div className="bg-purple-50/50 border border-purple-100 rounded-3xl p-8 mb-6 text-center shadow-sm">
+                <p className="text-purple-950 font-bold text-xl leading-relaxed">
                   {ch.blankSentence ? ch.blankSentence.split('_').map((part, i, arr) => (
                     <React.Fragment key={i}>
                       {part}
                       {i < arr.length - 1 && (
                         <span className={`inline-block border-b-4 min-w-[80px] px-2 mx-1 transition-all ${answered
                           ? (isCorrect ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-400 text-red-500 bg-red-50')
-                          : 'border-cyan-400 text-cyan-600 bg-cyan-100/50'
+                          : 'border-purple-400 text-purple-600 bg-purple-100/50'
                           } rounded-t-xl`}>
                           {answered ? (isCorrect ? writingInput : ch.correctWords[0]) : (writingInput || '...')}
                         </span>
@@ -729,8 +742,8 @@ YẾU TỐ QUAN TRỌNG:
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setWritingInput(w)}
                     className={`px-5 py-2.5 rounded-2xl border-2 font-bold text-sm shadow-sm transition-all ${writingInput === w
-                      ? 'border-cyan-500 bg-cyan-500 text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-300 hover:bg-cyan-50'
+                      ? 'border-purple-500 bg-purple-500 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
                       }`}>
                     {w}
                   </motion.button>
@@ -745,7 +758,7 @@ YẾU TỐ QUAN TRỌNG:
                 value={writingInput}
                 onChange={e => setWritingInput(e.target.value)}
                 disabled={answered}
-                className="rounded-2xl text-lg h-16 px-6 border-2 focus:border-cyan-400 shadow-sm"
+                className="rounded-2xl text-lg h-16 px-6 border-2 focus:border-purple-400 shadow-sm"
                 onPressEnter={handleWritingSubmit}
                 autoFocus
               />
@@ -766,7 +779,7 @@ YẾU TỐ QUAN TRỌNG:
                 size="large"
                 block
                 disabled={!writingInput.trim()}
-                className="bg-cyan-500 border-cyan-500 hover:bg-cyan-600 rounded-2xl h-16 text-lg font-black shadow-md mb-6"
+                className="bg-purple-500 border-purple-500 hover:bg-purple-600 rounded-2xl h-16 text-lg font-black shadow-md mb-6"
                 onClick={handleWritingSubmit}
               >
                 Gửi đáp án
@@ -950,34 +963,36 @@ YẾU TỐ QUAN TRỌNG:
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
+    <div className="min-h-screen bg-[#f8f5ff] pb-16">
+      {/* Gradient accent strip */}
+      <div className="h-1 w-full bg-gradient-to-r from-purple-600 via-orange-400 to-amber-400" />
+
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
+      <div className="bg-white/95 backdrop-blur-xl border-b border-purple-100/50 px-6 py-3 flex items-center gap-4 sticky top-0 z-10"
+        style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.06)' }}>
         <button onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all">
-          <ArrowLeftOutlined className="text-gray-600" />
+          className="w-9 h-9 rounded-xl border border-purple-100 flex items-center justify-center hover:bg-purple-50 active:scale-95 transition-all">
+          <ArrowLeftOutlined className="text-purple-500" />
         </button>
         <div className="flex-1">
-          <h2 className="font-bold text-gray-800 truncate">{quiz.name}</h2>
-          <p className="text-xs text-gray-400">Câu {idx + 1} / {total}</p>
+          <h2 className="font-black text-gray-800 text-sm truncate">{quiz.name}</h2>
+          <p className="text-[10px] text-gray-400 font-bold">Câu {idx + 1} / {total}</p>
         </div>
         <div className="flex items-center gap-2">
           {timeLeft !== null && (
-            <Tag
-              color={timeLeft < 10 ? 'red' : 'blue'}
-              className="font-bold rounded-lg px-3 py-1 flex items-center gap-1 animate-pulse"
-            >
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black border ${timeLeft < 10 ? 'bg-red-50 text-red-500 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-500 border-blue-200'}`}>
               <ThunderboltFilled /> {timeLeft}s
-            </Tag>
+            </div>
           )}
-          <Tag color="green" className="rounded-lg px-3 py-1">Đạt: {quiz.passingScore}%</Tag>
+          <div className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-green-50 text-green-600 border border-green-200">
+            Đạt: {quiz.passingScore}%
+          </div>
         </div>
-
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-gray-100">
-        <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${(idx / total) * 100}%` }} />
+      <div className="h-1 bg-gray-100">
+        <motion.div className="h-full bg-gradient-to-r from-purple-500 to-orange-400 transition-all duration-500" style={{ width: `${(idx / total) * 100}%` }} />
       </div>
 
       {/* Question area */}
@@ -988,7 +1003,7 @@ YẾU TỐ QUAN TRỌNG:
             exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 22 }}>
 
             {/* Question card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-purple-50 p-6 mb-6" style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
               <div className="flex items-center gap-2 mb-4">
                 <Tag color={skillMeta.color} icon={skillMeta.icon}>{skillMeta.label}</Tag>
                 <Tag>{ch.mode === 'FIND_WRONG_WORD' ? 'Tìm từ sai' : ch.mode === 'WRITING_FILL' ? 'Điền từ' : ch.mode === 'SPEAKING_READ' ? 'Đọc to' : 'Trắc nghiệm'}</Tag>
@@ -1045,7 +1060,7 @@ YẾU TỐ QUAN TRỌNG:
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Button type="primary" size="large" block
                   loading={saving}
-                  className="bg-green-500 border-green-500 hover:bg-green-600 rounded-2xl h-14 text-base font-bold"
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 border-none hover:from-green-600 hover:to-emerald-600 rounded-xl h-12 text-base font-black shadow-md shadow-green-200"
                   onClick={goNext}>
                   {idx + 1 >= total ? 'Hoàn thành 🎉' : 'Tiếp theo →'}
                 </Button>
