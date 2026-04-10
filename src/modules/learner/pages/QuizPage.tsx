@@ -18,6 +18,8 @@ import { Spin, Button, Tag, Empty, Input } from 'antd'
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
+import { uploadToCloudinary } from '../../../services/cloudinaryService'
+
 
 
 
@@ -85,7 +87,9 @@ interface ParsedChallenge {
   imageUrl: string | null
   hint: string | null
   timeLimit: number | null     // time for THIS question
+  region?: string              // dialect/region of the challenge
 }
+
 
 interface QuizDetail {
   id: string
@@ -93,7 +97,9 @@ interface QuizDetail {
   passingScore: number
   timeLimitSeconds: number     // TOTAL time for quiz
   challenges: ParsedChallenge[]
+  dialect?: string             // region/dialect of the quiz (optional)
 }
+
 
 
 // ─── metadataJson → ParsedChallenge normalizer ──────────────────────────────
@@ -226,7 +232,7 @@ const QuizPage: React.FC = () => {
   const [showHint, setShowHint] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // ── Speaking Quiz (Gemma 4) State ──────────────────────────────────────────
+  // ── Speaking Quiz State ─────────────────────────────────────────────────────
   const recorder = useAudioRecorder()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [ollamaResult, setOllamaResult] = useState<{
@@ -236,7 +242,8 @@ const QuizPage: React.FC = () => {
     suggestion: string
     transcription?: string
   } | null>(null)
-
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null) // null = not decided yet
+  const [showFullSuggestion, setShowFullSuggestion] = useState(false)
 
 
   // ── Handle Finish ─────────────────────────────────────────────────────────
@@ -244,6 +251,7 @@ const QuizPage: React.FC = () => {
     if (!quiz || saving) return
     setSaving(true)
 
+    const total = quiz.challenges.length
     const pct = total > 0 ? Math.round((score / total) * 100) : 0
     const payload = {
       score: pct, // Backend now expects percentage
@@ -251,6 +259,8 @@ const QuizPage: React.FC = () => {
       totalQuestions: total,
       timeTakenSeconds: 0 // Could track this if needed
     }
+
+
 
     try {
       const res = await apiClient.post(`/users/quizzes/${quiz.id}/complete`, payload)
@@ -347,6 +357,7 @@ const QuizPage: React.FC = () => {
     setTimeLeft(null)
     setShowHint(false)
     setOllamaResult(null)
+    setShowFullSuggestion(false)
     recorder.resetRecording()
 
     if (idx + 1 >= (quiz?.challenges?.length ?? 0)) {
@@ -417,65 +428,114 @@ const QuizPage: React.FC = () => {
     setIsAnalyzing(true)
 
     try {
-      // Chuyển đổi sang chuẩn WAV ở trình duyệt để Backend không cần cài ffmpeg
-      const wavBlob = await convertWebmToWav(blob)
+      // 1. Chuẩn hoá audio: ưu tiên WAV, nếu convert lỗi thì fallback blob gốc
+      let audioForAsr = blob
+      let uploadFileName = 'recording.webm'
 
-      // BƯỚC 1: Gửi Audio sang NVIDIA Parakeet (Local ASR Server)
-      const formData = new FormData()
-      formData.append('file', wavBlob, 'recording.wav')
+      try {
+        const mime = (blob.type || '').toLowerCase()
+        if (mime.includes('wav')) {
+          audioForAsr = blob
+          uploadFileName = 'recording.wav'
+        } else {
+          audioForAsr = await convertWebmToWav(blob)
+          uploadFileName = 'recording.wav'
+        }
+      } catch (convertErr) {
+        console.warn('[Speaking Quiz] Convert audio failed, fallback original blob:', convertErr)
+        audioForAsr = blob
+        uploadFileName = 'recording.webm'
+      }
+
+      // 2. Call Local ASR Server
+      const asrFormData = new FormData()
+      asrFormData.append('file', audioForAsr, uploadFileName)
 
       const asrResponse = await fetch('http://localhost:8000/asr', {
         method: 'POST',
-        body: formData,
+        body: asrFormData,
       })
 
       const asrData = await asrResponse.json()
-      if (!asrResponse.ok || asrData.error) {
-        throw new Error(`Lỗi ASR Server: ${asrData.error || 'Connection failed'}`)
-      }
-
       const rawText = asrData.text || ""
       const transcribedText = typeof rawText === 'object' ? (rawText.text || "") : rawText
 
+      // 3. Call Backend Gemini Feedback (kèm metadata cho dataset)
+      // Upload audio thẳng lên Cloudinary từ Frontend nếu được phép
+      let audioUrl = null
+      if (consentGiven && audioForAsr) {
+        try {
+          const fileType = (audioForAsr.type || '').includes('wav') ? 'audio/wav' : (audioForAsr.type || 'audio/webm')
+          const fileExt = fileType.includes('wav') ? 'wav' : 'webm'
+          const file = new File([audioForAsr], `attempt_${Date.now()}.${fileExt}`, { type: fileType })
+          audioUrl = await uploadToCloudinary(file, 'video')
+        } catch (error) {
+          console.error("Lỗi upload Cloudinary từ frontend:", error)
+        }
+      }
 
-      console.log('[ASR Result]:', transcribedText)
-
-      // BƯỚC 2: Gửi Text nhận diện được sang Gemma 4 (Ollama) để lấy Feedback
-      const gemmaResponse = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemma4:e4b',
-          system: `Bạn là chuyên gia ngữ âm học Việt Nam. 
-NHIỆM VỤ: So sánh văn bản nhận diện được từ audio (ASR) với đáp án mẫu. 
-Mẫu: "${targetText}"
-Văn bản ASR nhận diện được: "${transcribedText}"
-
-YẾU TỐ QUAN TRỌNG: 
-1. Kiểm tra sự khác biệt, đặc biệt là các cặp âm TR/CH, N/L, S/X, D/GI/R.
-2. Nếu văn bản ASR khác mẫu ở các phụ âm đầu này (ví dụ ASR: "Núa", mẫu: "Lúa"), báo lỗi phát âm sai.
-3. CHẤM ĐIỂM (0-100) và TRẢ VỀ JSON: { "score": number, "isCorrect": boolean, "errorDetail": "mô tả lỗi dựa trên sự khác biệt", "suggestion": "cách sửa lỗi" }`,
-          prompt: `Dựa trên văn bản nhận diện được là "${transcribedText}", hãy đánh giá xem người nói có phát âm đúng mẫu "${targetText}" không?`,
-          stream: false,
-          format: 'json',
-          options: { temperature: 0 }
-        })
+      const currentChallenge = quiz?.challenges[idx]
+      const feedbackResponse = await apiClient.post('/ai/feedback', {
+        transcribedText,
+        targetText,
+        challengeId: currentChallenge?.id || null,
+        dialect: currentChallenge?.region || '',
+        audioUrl: audioUrl,
+        consentGiven: !!consentGiven
       })
 
-      if (!gemmaResponse.ok) {
-        const errorText = await gemmaResponse.text()
-        throw new Error(`Ollama API error: ${errorText}`)
-      }
-      const gemmaData = await gemmaResponse.json()
-      const result = JSON.parse(gemmaData.response)
 
-      // Cập nhật kết quả hiển thị
+      const result = feedbackResponse.data || feedbackResponse
+      const replyText = typeof result?.reply === 'string' ? result.reply : ''
+
+      const extractScoreFromText = (text: string): number | null => {
+        if (!text) return null
+        const patterns = [
+          /(?:tổng\s*điểm|chấm\s*điểm|điểm\s*tổng)\s*[:：]?\s*(\d{1,3})\s*\/?\s*100/i,
+          /"score"\s*[:：]\s*(\d{1,3})/i,
+          /\b(\d{1,3})\s*\/?\s*100\b/
+        ]
+        for (const p of patterns) {
+          const m = text.match(p)
+          if (m?.[1]) {
+            const v = Number(m[1])
+            if (!Number.isNaN(v)) return Math.max(0, Math.min(100, v))
+          }
+        }
+        return null
+      }
+
+      // Normalize nhiều format response khác nhau từ backend AI
+      const scoreFromText = extractScoreFromText(replyText)
+      const normalizedScore = Number(result?.score ?? result?.overallScore ?? scoreFromText ?? 0)
+      const normalizedIsCorrect = typeof result?.isCorrect === 'boolean'
+        ? result.isCorrect
+        : normalizedScore >= 80
+
+      const normalizedErrorDetail =
+        result?.errorDetail ??
+        result?.error ??
+        result?.analysis ??
+        ''
+
+      const normalizedSuggestion =
+        result?.suggestion ??
+        result?.advice ??
+        result?.feedback ??
+        result?.reply ??
+        ''
+
+      // 4. Update UI
       setOllamaResult({
-        ...result,
+        score: normalizedScore,
+        isCorrect: normalizedIsCorrect,
+        errorDetail: normalizedErrorDetail,
+        suggestion: normalizedSuggestion,
         transcription: transcribedText || "(Không nhận diện được giọng nói)"
       })
+
       setAnswered(true)
-      if (result.isCorrect) setScore(s => s + 1)
+      if (normalizedIsCorrect) setScore(s => s + 1)
 
     } catch (err: any) {
       console.error('[Speaking Quiz Support] Failed:', err)
@@ -483,14 +543,18 @@ YẾU TỐ QUAN TRỌNG:
         score: 0,
         isCorrect: false,
         transcription: "Lỗi hệ thống",
-        errorDetail: err.message || 'Lỗi hệ thống',
-        suggestion: 'Mô hình Ollama có thể hết dung lượng RAM. Vui lòng tắt các app nặng hoặc đổi model nhỏ hơn.'
+        errorDetail: err?.response?.data?.message || err.message || 'Lỗi hệ thống',
+        suggestion: 'Kiểm tra ASR Server (8000) và Gemini API Key ở Backend.'
       })
       setAnswered(true)
     } finally {
       setIsAnalyzing(false)
     }
   }
+
+
+
+
 
   // Tiện ích: Đổi tên hàm cũ sang hàm mới trong render
   const evaluateWithOllama = evaluateSpeaking
@@ -816,7 +880,37 @@ YẾU TỐ QUAN TRỌNG:
 
             {/* ── Interaction Area ── */}
             <div className="flex flex-col items-center gap-6">
-              {!answered && !isAnalyzing && (
+
+              {/* ── Consent Banner (shown once per session) ── */}
+              {consentGiven === null && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="w-full bg-indigo-50 border border-indigo-200 rounded-2xl p-5 text-sm text-indigo-800"
+                >
+                  <p className="font-bold text-base mb-1">🎙️ Thu thập dữ liệu giọng nói</p>
+                  <p className="mb-3 text-indigo-700">
+                    Để cải thiện hệ thống AI nhận diện giọng nói tiếng Việt, chúng tôi muốn lưu lại các đoạn âm thanh luyện tập của bạn. Dữ liệu này <strong>chỉ được dùng để huấn luyện mô hình AI</strong> và không được chia sẻ với bên thứ ba.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConsentGiven(true)}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl transition-all"
+                    >
+                      ✅ Đồng ý và tiếp tục
+                    </button>
+                    <button
+                      onClick={() => setConsentGiven(false)}
+                      className="flex-1 bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-300 font-semibold py-2 rounded-xl transition-all"
+                    >
+                      Không đồng ý
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {consentGiven !== null && !answered && !isAnalyzing && (
+
                 <div className="flex flex-col items-center gap-4 w-full">
                   <p className="text-gray-400 font-medium animate-pulse">
                     {isRecording ? '🔴 Đang nghe...' : 'Nhấn và giữ nút bên dưới để nói'}
@@ -913,9 +1007,30 @@ YẾU TỐ QUAN TRỌNG:
 
                     <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
                       <span className="text-xl">💡</span>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs text-blue-400 font-bold uppercase mb-1">Lời khuyên từ AI:</p>
-                        <p className="text-blue-800 text-sm font-bold leading-relaxed">{ollamaResult.suggestion}</p>
+                        {(() => {
+                          const suggestionText = ollamaResult.suggestion || ''
+                          const shouldCollapse = suggestionText.length > 260
+                          const displayText = shouldCollapse && !showFullSuggestion
+                            ? `${suggestionText.slice(0, 260)}...`
+                            : suggestionText
+
+                          return (
+                            <>
+                              <p className="text-blue-800 text-sm font-bold leading-relaxed whitespace-pre-wrap break-words">{displayText}</p>
+                              {shouldCollapse && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowFullSuggestion(v => !v)}
+                                  className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                                >
+                                  {showFullSuggestion ? 'Thu gọn' : 'Xem thêm'}
+                                </button>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
 
@@ -923,7 +1038,7 @@ YẾU TỐ QUAN TRỌNG:
                       <Button
                         block
                         icon={<ReloadOutlined />}
-                        onClick={() => { setAnswered(false); setOllamaResult(null); }}
+                        onClick={() => { setAnswered(false); setOllamaResult(null); setShowFullSuggestion(false); }}
                         className="h-12 rounded-xl border-orange-200 text-orange-600 font-bold hover:border-orange-500"
                       >
                         Thử lại ngay
@@ -960,6 +1075,7 @@ YẾU TỐ QUAN TRỌNG:
         <div className="flex-1">
           <h2 className="font-bold text-gray-800 truncate">{quiz.name}</h2>
           <p className="text-xs text-gray-400">Câu {idx + 1} / {total}</p>
+
         </div>
         <div className="flex items-center gap-2">
           {timeLeft !== null && (
@@ -979,6 +1095,7 @@ YẾU TỐ QUAN TRỌNG:
       <div className="h-1.5 bg-gray-100">
         <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${(idx / total) * 100}%` }} />
       </div>
+
 
       {/* Question area */}
       <div className="max-w-2xl mx-auto px-6 pt-10">
@@ -1049,6 +1166,7 @@ YẾU TỐ QUAN TRỌNG:
                   onClick={goNext}>
                   {idx + 1 >= total ? 'Hoàn thành 🎉' : 'Tiếp theo →'}
                 </Button>
+
               </motion.div>
             )}
           </motion.div>
@@ -1059,3 +1177,4 @@ YẾU TỐ QUAN TRỌNG:
 }
 
 export default QuizPage
+
