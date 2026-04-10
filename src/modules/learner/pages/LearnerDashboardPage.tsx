@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react'
 import { Spin, Button, Progress, Avatar } from 'antd'
 import { motion } from 'framer-motion'
 import {
+    HeartFilled,
+    FireFilled,
+    ThunderboltFilled,
     PlayCircleFilled,
-    RightOutlined,
-    LockOutlined,
-    TrophyOutlined,
-    FireOutlined,
-    ReadOutlined,
-    RiseOutlined,
     CheckCircleFilled,
-    ClockCircleOutlined
+    ArrowRightOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -31,22 +28,20 @@ export default function Dashboard() {
     const user = session?.user
 
     const [statsData, setStatsData] = useState<any>({});
-    const [currentLesson, setCurrentLesson] = useState<any>({
-        title: 'Đang tải...',
-        description: 'Vui lòng chờ giây lát.',
-        progress: 0,
-        id: null,
-        locked: false
-    });
-    const [recentBadges, setRecentBadges] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentLesson, setCurrentLesson] = useState<any>({
+        title: 'Chương 2: Phát âm chuẩn',
+        description: 'Luyện giọng Miền Bắc',
+        progress: 65,
+        id: 'mock'
+    });
 
     const skillData = [
-        { subject: 'Nghe', A: 85, fullMark: 100 },
-        { subject: 'Nói', A: 70, fullMark: 100 },
-        { subject: 'Phát âm', A: 90, fullMark: 100 },
-        { subject: 'Ngữ pháp', A: 65, fullMark: 100 },
-        { subject: 'Từ vựng', A: 80, fullMark: 100 },
+        { subject: 'Nghe', val: 8.5, fullMark: 10 },
+        { subject: 'Nói', val: 6.0, fullMark: 10 },
+        { subject: 'Phát âm', val: 9.0, fullMark: 10 },
+        { subject: 'Ngữ pháp', val: 5.5, fullMark: 10 },
+        { subject: 'Đọc', val: 7.0, fullMark: 10 },
     ];
 
     useEffect(() => {
@@ -60,8 +55,8 @@ export default function Dashboard() {
                 ]);
 
                 if (meRes?.data) setStatsData(meRes.data);
-                if (badgesRes?.data?.data) setRecentBadges(badgesRes.data.data.slice(0, 4));
-
+                
+                // Get real stats if available
                 const userRegion = (meRes?.data?.region || user?.region || '').toUpperCase();
                 const matchedDialect = dialectsRes.find((d: any) =>
                     d.name?.toUpperCase() === userRegion ||
@@ -72,17 +67,20 @@ export default function Dashboard() {
 
                 if (matchedDialect) {
                     const levelData = await learnerService.getLevels(matchedDialect.id).catch(() => []);
-                    const completedCount = levelData.filter((l: any) => l.isCompleted).length;
-                    setStatsData((prev: any) => ({ ...prev, completedLessons: completedCount }));
-
                     const activeLevel = levelData.find((lvl: any) => !lvl.isCompleted && !lvl.isLocked);
                     if (activeLevel) {
                         setCurrentLesson({
                             title: activeLevel.name,
                             description: `${matchedDialect.name} • Màn ${activeLevel.levelOrder || 1}`,
                             progress: activeLevel.starsEarned ? Math.round((activeLevel.starsEarned / 3) * 100) : 0,
-                            id: activeLevel.id,
-                            locked: false
+                            id: activeLevel.id
+                        });
+                    } else if (levelData.length > 0) {
+                        setCurrentLesson({
+                            title: 'Hoàn thành chương',
+                            description: `${matchedDialect.name}`,
+                            progress: 100,
+                            id: levelData[0].id
                         });
                     }
                 }
@@ -102,170 +100,188 @@ export default function Dashboard() {
     );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header Title */}
-            <div>
-                <h1 className="text-3xl font-extrabold text-[#202124] tracking-tight mb-2">
-                    Chào mừng trở lại, {user?.fullName?.split(' ')[0] || 'Member'}! 👋
-                </h1>
-                <p className="text-[#5F6368] font-medium italic">Tiếp tục hành trình chinh phục tiếng Việt ngay hôm nay nào.</p>
-            </div>
+        <div className="w-full h-full text-[#202124] animate-in fade-in duration-500 pb-12">
+            
+            {/* Dashboard Grid Container: 40% Left, 60% Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* ---------------- LEFT COLUMN (40%) ---------------- */}
+                <div className="lg:col-span-5 flex flex-col gap-8">
+                    
+                    {/* Hero Resume Card */}
+                    <motion.div 
+                        whileHover={{ y: -4 }}
+                        className="bg-gradient-to-br from-[#00897B] to-[#00695C] rounded-3xl p-8 text-white shadow-xl shadow-[#00897B]/20 overflow-hidden relative"
+                    >
+                        {/* Decorative Background Elements */}
+                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl mix-blend-overlay"></div>
+                        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl mix-blend-overlay"></div>
+                        
+                        <div className="relative z-10">
+                            <h2 className="text-white/80 font-bold uppercase tracking-widest text-xs mb-8 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#A7FFEB] animate-pulse"></span>
+                                Học tiếp ngay
+                            </h2>
+                            
+                            <h3 className="text-3xl font-black italic tracking-tight mb-2 leading-tight">
+                                {currentLesson.title}
+                            </h3>
+                            <p className="text-white/80 font-medium mb-10 text-sm">
+                                Hành trình • {currentLesson.description}
+                            </p>
+                            
+                            <div className="flex items-end justify-between mb-2">
+                                <span className="font-bold text-sm">Tiến độ chặng</span>
+                                <span className="font-black text-xl italic">{currentLesson.progress}%</span>
+                            </div>
+                            <Progress 
+                                percent={currentLesson.progress} 
+                                showInfo={false} 
+                                strokeColor="#A7FFEB" 
+                                trailColor="rgba(255,255,255,0.2)" 
+                                className="!m-0 mb-8"
+                            />
+                            
+                            <Button 
+                                type="primary" 
+                                size="large"
+                                onClick={() => navigate('/learner/roadmap')}
+                                className="w-full bg-white text-[#00695C] hover:bg-[#F0F2F5] hover:text-[#004D40] !h-14 rounded-2xl font-black text-base shadow-lg border-none flex items-center justify-center gap-2"
+                            >
+                                <PlayCircleFilled className="text-xl" /> Tiếp tục bài học
+                            </Button>
+                        </div>
+                    </motion.div>
 
-            {/* Top Grid: Skills & Current Lesson */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Skill Profile Card */}
-                <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-[#E0E3E7] p-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-lg font-bold text-[#202124]">Hồ sơ kỹ năng</h2>
-                        <RiseOutlined className="text-[#00897B]" />
-                    </div>
-                    <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={skillData}>
-                                <PolarGrid stroke="#E0E3E7" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#5F6368', fontSize: 12, fontWeight: 600 }} />
-                                <Radar
-                                    name="Năng lực"
-                                    dataKey="A"
-                                    stroke="#00897B"
-                                    fill="#00897B"
-                                    fillOpacity={0.5}
-                                />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <p className="text-center text-xs text-[#5F6368] mt-4 font-medium italic">
-                        Bạn đang tiến bộ nhanh nhất ở kỹ năng **Phát âm**.
-                    </p>
-                </div>
-
-                {/* Continue Learning Hero Card */}
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-[#E0E3E7] overflow-hidden flex flex-col">
-                    <div className="p-8 flex flex-col md:flex-row gap-8 flex-1">
-                        <div className="w-24 h-24 md:w-32 md:h-32 bg-[#E0F2F1] rounded-2xl flex items-center justify-center shrink-0">
-                            <PlayCircleFilled className="text-5xl md:text-6xl text-[#00897B]" />
+                    {/* Quick Profile / Level Card */}
+                    <div className="bg-white rounded-3xl p-6 border border-[#E0E3E7] shadow-sm flex items-center gap-5">
+                        <div className="relative">
+                            <Avatar src={user?.avatar} size={64} className="border-4 border-[#E0F2F1] shadow-sm" />
+                            <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-[#FB8C00] to-[#E65100] text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm">
+                                LV.12
+                            </div>
                         </div>
                         <div className="flex-1">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F0FE] text-[#1967D2] text-[10px] font-bold uppercase tracking-wider mb-3">
-                                <ClockCircleOutlined /> Đang trong quá trình
-                            </div>
-                            <h2 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">{currentLesson.description}</h2>
-                            <h3 className="text-2xl font-extrabold text-[#202124] mb-4">{currentLesson.title}</h3>
-                            <p className="text-[#5F6368] text-sm mb-6 leading-relaxed">Tiếp tục thực hành các câu giao tiếp cơ bản với giọng Miền để mở khóa bài học tiếp theo.</p>
-                            
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-xs font-bold text-[#202124]">Tiến trình bài học</span>
-                                    <span className="text-sm font-black text-[#00897B] italic">{currentLesson.progress}%</span>
-                                </div>
-                                <Progress 
-                                    percent={currentLesson.progress} 
-                                    showInfo={false} 
-                                    strokeColor="#00897B" 
-                                    trailColor="#F1F3F4"
-                                    className="!m-0"
-                                />
-                            </div>
+                            <h4 className="font-black text-lg text-[#202124] leading-tight truncate">{user?.fullName || 'Học viên'}</h4>
+                            <p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mt-1">Học giả thanh lịch</p>
                         </div>
                     </div>
-                    <div className="px-8 py-5 bg-[#F8F9FA] border-t border-[#E0E3E7] flex justify-end">
-                        <Button 
-                            type="primary" 
-                            size="large"
-                            onClick={() => navigate('/learner/roadmap')}
-                            className="bg-[#00897B] hover:bg-[#00796B] !h-12 border-none rounded-xl font-bold px-8 shadow-md"
-                        >
-                            Học tiếp ngay <RightOutlined className="ml-2 text-xs" />
-                        </Button>
-                    </div>
+
                 </div>
-            </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                    { label: 'Streak hiện tại', value: statsData.currentStreakDays || '0', unit: 'Ngày', icon: <FireOutlined />, color: 'text-orange-600', bg: 'bg-orange-50' },
-                    { label: 'Bài đã hoàn thành', value: statsData.completedLessons || '0', unit: 'Bài học', icon: <CheckCircleFilled />, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Huy hiệu sở hữu', value: recentBadges.length || '0', unit: 'Huy hiệu', icon: <TrophyOutlined />, color: 'text-yellow-600', bg: 'bg-yellow-50' }
-                ].map((stat, i) => (
-                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-[#E0E3E7] flex items-center gap-5">
-                        <div className={clsx("w-14 h-14 rounded-xl flex items-center justify-center text-2xl shadow-inner", stat.bg, stat.color)}>
-                            {stat.icon}
-                        </div>
-                        <div>
-                            <div className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{stat.label}</div>
-                            <div className="text-2xl font-black text-[#202124] italic tracking-tight">
-                                {stat.value} <span className="text-sm font-bold opacity-30 not-italic">{stat.unit}</span>
+                {/* ---------------- RIGHT COLUMN (60%) ---------------- */}
+                <div className="lg:col-span-7 flex flex-col gap-8">
+                    
+                    {/* Quick Gamification Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-white rounded-2xl p-5 border border-[#E0E3E7] shadow-sm flex flex-col items-center justify-center gap-2 hover:-translate-y-1 transition-transform cursor-default">
+                            <div className="w-10 h-10 rounded-full bg-[#FFF3E0] flex items-center justify-center">
+                                <FireFilled className="text-[#E65100] text-xl" />
                             </div>
+                            <div className="text-xl font-black italic text-[#202124]">12</div>
+                            <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Streak Ngày</div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-5 border border-[#E0E3E7] shadow-sm flex flex-col items-center justify-center gap-2 hover:-translate-y-1 transition-transform cursor-default">
+                            <div className="w-10 h-10 rounded-full bg-[#E0F2F1] flex items-center justify-center">
+                                <ThunderboltFilled className="text-[#00897B] text-xl" />
+                            </div>
+                            <div className="text-xl font-black italic text-[#202124]">1.2K</div>
+                            <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Kinh nghiệm</div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-5 border border-[#E0E3E7] shadow-sm flex flex-col items-center justify-center gap-2 hover:-translate-y-1 transition-transform cursor-default">
+                            <div className="w-10 h-10 rounded-full bg-[#FCE4EC] flex items-center justify-center">
+                                <HeartFilled className="text-[#D81B60] text-xl" />
+                            </div>
+                            <div className="text-xl font-black italic text-[#202124]">5</div>
+                            <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Mạng (Lives)</div>
                         </div>
                     </div>
-                ))}
-            </div>
 
-            {/* Lower Grid: Journey & Progress Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-               {/* My Journey Timeline */}
-               <div className="bg-white rounded-2xl shadow-sm border border-[#E0E3E7] p-8">
-                   <h2 className="text-lg font-bold text-[#202124] mb-8">Lộ trình của tôi</h2>
-                   <div className="space-y-8 relative">
-                       <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-100" />
-                       {[
-                           { title: 'Ngữ điệu cơ bản', status: 'done', desc: 'Đã hoàn thành lúc 10/03/2026' },
-                           { title: 'Từ vựng thông dụng', status: 'current', desc: 'Đang diễn ra • 85%' },
-                           { title: 'Giao tiếp hằng ngày', status: 'locked', desc: 'Cần đạt trình độ sơ cấp' }
-                       ].map((item, i) => (
-                           <div key={i} className="flex gap-6 relative z-10">
-                               <div className={clsx(
-                                   "w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-sm shrink-0",
-                                   item.status === 'done' ? 'bg-[#E8F5E9] text-[#2E7D32]' : 
-                                   item.status === 'current' ? 'bg-[#E3F2FD] text-[#1976D2]' : 'bg-gray-100 text-gray-400'
-                               )}>
-                                   {item.status === 'done' ? <CheckCircleFilled /> : i + 1}
-                               </div>
-                               <div>
-                                   <div className={clsx("font-bold text-sm mb-0.5", item.status === 'locked' ? 'text-gray-300' : 'text-[#202124]')}>{item.title}</div>
-                                   <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">{item.desc}</div>
-                               </div>
-                           </div>
-                       ))}
-                   </div>
-               </div>
+                    {/* Daily Quests (Gamified) */}
+                    <div className="bg-white rounded-3xl p-8 border border-[#E0E3E7] shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-[#202124]">
+                                NHIỆM VỤ HÔM NAY
+                            </h2>
+                            <span className="text-xs font-bold text-[#00897B] px-3 py-1 bg-[#E0F2F1] rounded-full">
+                                Hoàn thành 1/3
+                            </span>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4">
+                            {[
+                                { title: 'Hoàn thành 1 bài luyện nói', xp: '+50 XP', done: true },
+                                { title: 'Duy trì Streak 3 ngày liên tiếp', xp: '+100 XP', done: false, progress: 66 },
+                                { title: 'Làm bài thi thử vùng miền Bắc', xp: '+150 XP', done: false, progress: 0 }
+                            ].map((quest, idx) => (
+                                <div key={idx} className={clsx(
+                                    "p-4 rounded-2xl border-2 flex items-center gap-4 transition-all",
+                                    quest.done ? "bg-[#F8F9FA] border-transparent opacity-60" : "bg-white border-[#E0E3E7] hover:border-[#00897B] cursor-pointer"
+                                )}>
+                                    <div className={clsx(
+                                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2",
+                                        quest.done ? "bg-[#00897B] border-[#00897B] text-white" : "bg-[#F8F9FA] border-[#E0E3E7] text-[#E0E3E7]"
+                                    )}>
+                                        <CheckCircleFilled className={quest.done ? "text-sm" : "hidden"} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className={clsx("font-bold text-sm mb-1", quest.done ? "line-through text-[#5F6368]" : "text-[#202124]")}>
+                                            {quest.title}
+                                        </h4>
+                                        {!quest.done && quest.progress !== undefined && (
+                                            <Progress percent={quest.progress} showInfo={false} size="small" strokeColor="#00897B" trailColor="#E0E3E7" className="!m-0 w-1/2" />
+                                        )}
+                                    </div>
+                                    <div className="font-black text-[#FB8C00] text-sm italic bg-[#FFF3E0] px-3 py-1 rounded-full">
+                                        {quest.xp}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-               {/* Detailed Progress Overiew */}
-               <div className="bg-white rounded-2xl shadow-sm border border-[#E0E3E7] p-8">
-                   <h2 className="text-lg font-bold text-[#202124] mb-8">Tổng quan tiến độ</h2>
-                   <div className="space-y-6">
-                       {[
-                           { label: 'Đọc hiểu', value: 82, color: '#1967D2' },
-                           { label: 'Viết', value: 45, color: '#FB8C00' },
-                           { label: 'Nghe', value: 95, color: '#00897B' },
-                       ].map((item, i) => (
-                           <div key={i}>
-                               <div className="flex justify-between items-center mb-2">
-                                   <span className="text-xs font-bold text-[#202124] uppercase tracking-wider">{item.label}</span>
-                                   <span className="text-xs font-black text-[#5F6368]">{item.value}%</span>
-                               </div>
-                               <Progress 
-                                   percent={item.value} 
-                                   strokeColor={item.color} 
-                                   showInfo={false} 
-                                   size="small"
-                                   trailColor="#F8F9FA"
-                               />
-                           </div>
-                       ))}
-                   </div>
-                   <div className="mt-8 pt-8 border-t border-gray-50 flex items-center gap-4">
-                        <Avatar.Group maxCount={3}>
-                            <Avatar src="https://i.pravatar.cc/150?u=1" />
-                            <Avatar src="https://i.pravatar.cc/150?u=2" />
-                            <Avatar src="https://i.pravatar.cc/150?u=3" />
-                        </Avatar.Group>
-                        <span className="text-xs font-medium text-[#5F6368]">
-                            Bạn và 12 người khác đang học cùng cấp độ!
-                        </span>
-                   </div>
-               </div>
+                    {/* Personal Skill Radar Chart */}
+                    <div className="bg-white rounded-3xl p-8 border border-[#E0E3E7] shadow-sm flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex-1 w-full text-center md:text-left">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-[#202124] mb-3">
+                                PHÂN TÍCH NĂNG LỰC
+                            </h2>
+                            <p className="text-sm text-[#5F6368] font-medium leading-relaxed mb-6">
+                                Biểu đồ đa chiều thể hiện sự tiến bộ của bạn qua quá trình rèn luyện trên nền tảng. Kỹ năng Phát âm đang là điểm mạnh nhất!
+                            </p>
+                            <Button type="link" className="text-[#00897B] font-bold p-0 uppercase tracking-widest text-xs flex items-center gap-1">
+                                Xem chi tiết <ArrowRightOutlined />
+                            </Button>
+                        </div>
+                        <div className="w-[240px] h-[220px] shrink-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={skillData}>
+                                    <PolarGrid stroke="#E0E3E7" />
+                                    <PolarAngleAxis 
+                                        dataKey="subject" 
+                                        tick={{ fill: '#5F6368', fontSize: 11, fontWeight: 700 }} 
+                                    />
+                                    <Radar 
+                                        name="Level" 
+                                        dataKey="val" 
+                                        stroke="#00897B" 
+                                        strokeWidth={3}
+                                        fill="#00897B" 
+                                        fillOpacity={0.2} 
+                                    />
+                                    <Radar 
+                                        name="Mục tiêu" 
+                                        dataKey="fullMark" 
+                                        stroke="transparent" 
+                                        fill="transparent" 
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
         </div>
     );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Input } from "antd";
+import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Input, Tooltip } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppstoreOutlined,
@@ -9,21 +9,23 @@ import {
   TrophyOutlined,
   BellOutlined,
   SearchOutlined,
-  SoundOutlined,
-  TeamOutlined,
-  SettingOutlined,
+  GlobalOutlined,
+  FireOutlined,
+  ThunderboltFilled,
+  HomeOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
-const { Content, Header } = Layout;
+const { Content, Header, Sider } = Layout;
 const { Text } = Typography;
 
 export default function LearnerLayout() {
   const { session, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
   const user = session?.user || { fullName: "Học viên", avatar: null };
 
@@ -31,6 +33,36 @@ export default function LearnerLayout() {
     logout();
     navigate("/login");
   };
+
+  const menuItems = [
+    {
+      key: "personal",
+      label: "LUYỆN TẬP CÁ NHÂN",
+      type: "group",
+      children: [
+        { key: "/learner/dashboard", label: "Bảng điều khiển", icon: <HomeOutlined /> },
+        { key: "/learner/roadmap", label: "Lộ trình học tập", icon: <CompassOutlined /> },
+      ]
+    },
+    {
+      key: "regions",
+      label: "CHƯƠNG TRÌNH VÙNG MIỀN",
+      type: "group",
+      children: [
+        { key: "/learner/roadmap?region=north", label: "Luyện giọng miền Bắc", icon: <GlobalOutlined /> },
+        { key: "/learner/roadmap?region=central", label: "Luyện giọng miền Trung", icon: <GlobalOutlined /> },
+        { key: "/learner/roadmap?region=south", label: "Luyện giọng miền Nam", icon: <GlobalOutlined /> },
+      ]
+    },
+    {
+      key: "community",
+      label: "CỘNG ĐỒNG",
+      type: "group",
+      children: [
+        { key: "/learner/leaderboard", label: "Bảng xếp hạng", icon: <TrophyOutlined /> },
+      ]
+    }
+  ];
 
   const userMenu = {
     items: [
@@ -40,127 +72,134 @@ export default function LearnerLayout() {
         label: <Link to="/learner/profile">Hồ sơ cá nhân</Link>,
       },
       {
-        key: "settings",
-        icon: <SettingOutlined />,
-        label: "Cài đặt",
-      },
-      {
-        type: "divider",
-      },
-      {
         key: "logout",
         icon: <LogoutOutlined className="text-red-500" />,
-        label: <span className="text-red-500 font-medium">Đăng xuất</span>,
+        label: <span className="text-red-500">Đăng xuất</span>,
         onClick: handleLogout,
       },
     ],
   };
 
-  const navItems = [
-    { key: "/learner/dashboard", label: "Bảng điều khiển", icon: <AppstoreOutlined /> },
-    { key: "/learner/roadmap", label: "Hành trình", icon: <CompassOutlined /> },
-    { key: "/learner/friends", label: "Bạn bè", icon: <TeamOutlined /> },
-    { key: "/learner/pronunciation", label: "Phát âm", icon: <SoundOutlined /> },
-    { key: "/learner/leaderboard", label: "Bảng xếp hạng", icon: <TrophyOutlined /> },
-  ];
-
   return (
-    <Layout className="min-h-screen bg-[#F8F9FA] font-sans selection:bg-[#00897B] selection:text-white">
-      {/* Top Professional Navbar */}
-      <Header className="sticky top-0 z-50 w-full !bg-white border-b border-[#E0E3E7] h-16 px-6 md:px-10 flex items-center justify-between shadow-sm">
-        {/* Logo Section */}
-        <div 
-          className="flex items-center gap-3 cursor-pointer shrink-0" 
-          onClick={() => navigate("/learner/dashboard")}
-        >
-          <div className="w-9 h-9 rounded-lg bg-[#00897B] flex items-center justify-center shadow-md">
-            <TrophyOutlined className="text-white text-lg" />
+    <Layout className="min-h-screen bg-[#F7F9FC]">
+      {/* LEFT SIDEBAR */}
+      <Sider
+        width={280}
+        theme="light"
+        className="hidden lg:block border-r border-[#E0E3E7] fixed h-screen left-0 z-50 overflow-y-auto"
+        style={{ background: "#fff" }}
+      >
+        <div className="p-8 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#00897B] flex items-center justify-center shadow-lg shadow-[#00897B]/20">
+            <ThunderboltFilled className="text-white text-xl" />
           </div>
-          <span className="font-bold text-xl text-[#202124] tracking-tight">
-            MONA<span className="text-[#00897B]">.LMS</span>
+          <span className="font-black text-xl text-[#202124] tracking-tighter uppercase italic">
+            Accent<span className="text-[#00897B]">VN</span>
           </span>
         </div>
 
-        {/* Center Navigation Tabs */}
-        <div className="hidden lg:flex items-center gap-1 mx-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.key}
-              to={item.key}
-              className={clsx(
-                "px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2",
-                location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
-                  ? "bg-[#E0F2F1] text-[#00897B]"
-                  : "text-[#5F6368] hover:bg-gray-100 hover:text-[#202124]"
-              )}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          className="px-4 border-none !bg-transparent"
+          onClick={({ key }) => navigate(key)}
+          style={{ fontFamily: "Inter, sans-serif" }}
+        />
 
-        {/* Right Section: Search, Notifications, Profile */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center bg-[#F1F3F4] px-3 py-1.5 rounded-full border border-transparent focus-within:bg-white focus-within:border-[#00897B] transition-all w-48 lg:w-64">
-            <SearchOutlined className="text-[#5F6368] mr-2" />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm..." 
-              className="bg-transparent border-none outline-none text-sm w-full placeholder:text-[#5F6368]"
-            />
+        <div className="absolute bottom-6 left-0 w-full px-6">
+           <Dropdown menu={userMenu} placement="top" trigger={["click"]}>
+             <div className="flex items-center gap-3 cursor-pointer p-3 rounded-2xl hover:bg-gray-50 border border-transparent hover:border-[#E0E3E7] transition-all">
+               <Avatar src={user.avatar} size={40} icon={<UserOutlined />} className="bg-[#00897B]" />
+               <div className="flex flex-col overflow-hidden">
+                 <span className="text-sm font-bold text-[#202124] truncate">{user.fullName}</span>
+                 <span className="text-[10px] text-[#5F6368] font-bold uppercase tracking-wider">Học tập trung</span>
+               </div>
+             </div>
+           </Dropdown>
+        </div>
+      </Sider>
+
+      <Layout className="lg:ml-[280px]">
+        {/* HEADER */}
+        <Header className="h-20 bg-transparent px-8 flex items-center justify-between">
+          <div className="flex flex-col">
+            <h2 className="text-2xl font-black text-[#202124] leading-tight">
+              Xin chào, <span className="text-[#00897B]">{user.fullName.split(' ')[0]}!</span>
+            </h2>
+            <p className="text-xs text-[#5F6368] font-bold uppercase tracking-widest">Hôm nay bạn muốn luyện tập gì?</p>
           </div>
 
-          <Badge dot color="#FB8C00" offset={[-2, 6]}>
-            <div className="p-2 cursor-pointer hover:bg-gray-100 rounded-full transition-colors">
-              <BellOutlined className="text-lg text-[#5F6368]" />
+          <div className="flex items-center gap-6">
+            {/* Search */}
+            <div className="hidden md:flex items-center bg-white px-4 py-2 rounded-2xl border border-[#E0E3E7] shadow-sm w-64 focus-within:border-[#00897B] transition-all">
+              <SearchOutlined className="text-[#5F6368] mr-2" />
+              <input type="text" placeholder="Tìm kiếm bài học..." className="bg-transparent border-none outline-none text-sm w-full font-medium" />
             </div>
-          </Badge>
 
-          <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
-            <div className="flex items-center gap-3 cursor-pointer p-1.5 pr-4 pl-1.5 rounded-full border border-[#E0E3E7] hover:bg-gray-50 hover:border-[#00897B]/30 transition-all bg-white shadow-sm">
-              <Avatar
-                src={user.avatar}
-                size={34}
-                icon={!user.avatar && <UserOutlined />}
-                className="bg-[#00897B] border-none shadow-sm shrink-0"
-              />
-              <div className="hidden sm:flex flex-col items-start leading-none">
-                <span className="text-[11px] font-extrabold text-[#202124] mb-0.5 truncate max-w-[100px]">
-                  {user.fullName || "Học viên"}
-                </span>
-                <span className="text-[9px] text-[#5F6368] font-bold uppercase tracking-wider">Học viên</span>
-              </div>
+            {/* Stats */}
+            <div className="flex items-center gap-4">
+              <Tooltip title="Số điểm kinh nghiệm">
+                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-[#E0E3E7] shadow-sm">
+                  <ThunderboltFilled className="text-[#FB8C00]" />
+                  <span className="text-sm font-black text-[#202124]">350 <span className="text-[10px] text-[#5F6368]">XP</span></span>
+                </div>
+              </Tooltip>
+
+              <Tooltip title="Chuỗi ngày học liên tiếp">
+                <div className="flex items-center gap-2 bg-[#FFF3E0] px-4 py-2 rounded-2xl border border-[#FFE0B2]">
+                  <FireOutlined className="text-[#E65100]" />
+                  <span className="text-sm font-black text-[#E65100]">12 <span className="text-[10px] opacity-70">NGÀY</span></span>
+                </div>
+              </Tooltip>
+
+              <Badge dot color="#00897B">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#E0E3E7] flex items-center justify-center cursor-pointer hover:bg-gray-50 shadow-sm transition-all">
+                   <BellOutlined className="text-lg text-[#5F6368]" />
+                </div>
+              </Badge>
             </div>
-          </Dropdown>
-        </div>
-      </Header>
+          </div>
+        </Header>
 
-      {/* Main Content Area */}
-      <Content className="p-6 md:p-10 max-w-7xl mx-auto w-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </Content>
+        {/* CONTENT */}
+        <Content className="px-8 pb-12">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </Content>
+      </Layout>
 
       <style>{`
-        body {
-          margin: 0;
-          background-color: #F8F9FA;
+        .ant-menu-item-selected {
+          background-color: #E0F2F1 !important;
+          color: #00897B !important;
+          border-radius: 12px !important;
         }
-        input::placeholder {
-          color: #5F6368;
+        .ant-menu-item {
+          height: 48px !important;
+          line-height: 48px !important;
+          border-radius: 12px !important;
+          margin-bottom: 4px !important;
+          font-weight: 600 !important;
         }
-        .ant-layout {
-          background-color: #F8F9FA !important;
+        .ant-menu-item:hover {
+          color: #00897B !important;
+        }
+        .ant-menu-item-group-title {
+          font-weight: 800 !important;
+          font-size: 10px !important;
+          color: #9AA0A6 !important;
+          letter-spacing: 0.1em !important;
+          padding-top: 24px !important;
         }
       `}</style>
     </Layout>
