@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "components": [
+    "asset",
+    "extensionsUsed",
+    "scene",
+    "scenes",
+    "nodes",
+    "materials",
+    "meshes",
+    "textures",
+    "images",
+    "skins",
+    "accessors",
+    "bufferViews",
+    "samplers",
+    "buffers"
+  ],
+  "nodes": [
+    "[0]: model_2",
+    "[1]: model_1",
+    "[2]: model_0.001",
+    "[3]: Bone.007",
+    "[4]: Bone.006",
+    "[5]: Bone.005",
+    "[6]: Bone.011",
+    "[7]: Bone.010",
+    "[8]: Bone.009",
+    "[9]: Bone.008",
+    "[10]: Bone.002",
+    "[11]: Bone.001",
+    "[12]: Bone.004",
+    "[13]: Bone.003",
+    "[14]: Bone",
+    "[15]: model_0",
+    "[16]: model_1.001",
+    "[17]: Armature"
+  ],
+  "meshes": [
+    "[0]: model_2",
+    "[1]: model_1",
+    "[2]: model_0.001",
+    "[3]: model_0",
+    "[4]: model_1.001"
+  ],
+  "animations": [],
+  "materials": [
+    "[0]: Zirconium Dioxide (Zirconia Tooth)",
+    "[1]: 材质.001"
+  ]
+}

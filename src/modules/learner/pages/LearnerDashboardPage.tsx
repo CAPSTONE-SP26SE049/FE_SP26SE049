@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
     PlayCircleFilled,
@@ -6,12 +6,287 @@ import {
     LockOutlined,
     TrophyOutlined,
 } from '@ant-design/icons'
+import { Spin } from 'antd'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Flame, Star, ArrowRight, BookOpen, Map, Trophy, Sparkles, Zap, Target } from 'lucide-react'
+import { Flame, Star, ArrowRight, BookOpen, Map, Trophy, Sparkles, Zap, Target, Volume2, Play, Pause, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import apiClient from '../../../services/apiClient'
 import { learnerService } from '../services/learnerService'
+import '@google/model-viewer'
 
+/* ─── model-viewer JSX type ───────────────────────────── */
+declare global {
+    namespace JSX {
+        interface IntrinsicElements {
+            'model-viewer': React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLElement> & {
+                    src?: string
+                    alt?: string
+                    'camera-controls'?: boolean | string
+                    'auto-rotate'?: boolean | string
+                    'shadow-intensity'?: string
+                    exposure?: string
+                    'camera-orbit'?: string
+                    'field-of-view'?: string
+                    'interaction-prompt'?: string
+                    'animation-name'?: string
+                    autoplay?: boolean | string
+                    'animation-crossfade-duration'?: string
+                    loading?: string
+                    style?: React.CSSProperties
+                },
+                HTMLElement
+            >
+        }
+    }
+}
+
+/* ─── Pronunciation 3D Card component ─────────────────── */
+function Pronunciation3DCard() {
+    const mvRef = useRef<any>(null)
+    const [animations, setAnimations] = useState<string[]>([])
+    const [activeAnim, setActiveAnim] = useState<string | null>(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [modelLoaded, setModelLoaded] = useState(false)
+    const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const handleLoad = useCallback(() => {
+        const mv = mvRef.current
+        if (!mv) return
+        setTimeout(() => {
+            const avail: string[] = mv.availableAnimations ?? []
+            setAnimations(avail)
+            if (avail.length > 0) {
+                setActiveAnim(avail[0])
+            }
+            setModelLoaded(true)
+        }, 300)
+    }, [])
+
+    const playAnimation = useCallback((name: string) => {
+        const mv = mvRef.current
+        if (!mv) return
+        mv.setAttribute('animation-name', name)
+        mv.setAttribute('autoplay', '')
+        mv.play?.()
+        setActiveAnim(name)
+        setIsPlaying(true)
+    }, [])
+
+    const pauseAnimation = useCallback(() => {
+        const mv = mvRef.current
+        if (!mv) return
+        mv.pause?.()
+        setIsPlaying(false)
+    }, [])
+
+    const resumeAnimation = useCallback(() => {
+        const mv = mvRef.current
+        if (!mv || !activeAnim) return
+        mv.play?.()
+        setIsPlaying(true)
+    }, [activeAnim])
+
+    const handleSelectAnim = useCallback((name: string) => {
+        if (autoPlayRef.current) clearTimeout(autoPlayRef.current)
+        playAnimation(name)
+    }, [playAnimation])
+
+    const handlePrev = useCallback(() => {
+        if (!animations.length || !activeAnim) return
+        const idx = animations.indexOf(activeAnim)
+        const prev = animations[(idx - 1 + animations.length) % animations.length]
+        handleSelectAnim(prev)
+    }, [animations, activeAnim, handleSelectAnim])
+
+    const handleNext = useCallback(() => {
+        if (!animations.length || !activeAnim) return
+        const idx = animations.indexOf(activeAnim)
+        const next = animations[(idx + 1) % animations.length]
+        handleSelectAnim(next)
+    }, [animations, activeAnim, handleSelectAnim])
+
+    const handleReset = useCallback(() => {
+        const mv = mvRef.current
+        if (!mv) return
+        mv.pause?.()
+        mv.currentTime = 0
+        setIsPlaying(false)
+    }, [])
+
+    // Auto-play first animation once loaded
+    useEffect(() => {
+        if (modelLoaded && animations.length > 0 && activeAnim) {
+            autoPlayRef.current = setTimeout(() => playAnimation(activeAnim), 500)
+        }
+        return () => { if (autoPlayRef.current) clearTimeout(autoPlayRef.current) }
+    }, [modelLoaded])
+
+    const animLabel = (raw: string) => {
+        // Clean up animation name for display
+        return raw.replace(/_/g, ' ').replace(/\bAnim\b/gi, '').trim() || raw
+    }
+
+    const activeIdx = activeAnim ? animations.indexOf(activeAnim) : -1
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="bg-white rounded-3xl border border-gray-100 overflow-hidden"
+            style={{ boxShadow: '0 8px 32px rgba(147,51,234,0.10)' }}
+        >
+            {/* Top accent */}
+            <div className="h-1 w-full bg-gradient-to-r from-purple-500 via-fuchsia-400 to-orange-400" />
+
+            {/* Header */}
+            <div className="px-5 py-3.5 border-b border-gray-50 flex items-center justify-between">
+                <h3 className="font-black text-gray-800 text-sm flex items-center gap-2">
+                    <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-fuchsia-400 rounded-full" />
+                    <Volume2 size={14} className="text-purple-500" />
+                    Mô hình phát âm 3D
+                </h3>
+                <div className="flex items-center gap-2">
+                    {modelLoaded && animations.length > 0 && (
+                        <span className="text-[10px] bg-purple-50 text-purple-500 px-2 py-0.5 rounded-full font-black border border-purple-100">
+                            {animations.length} âm
+                        </span>
+                    )}
+                    {modelLoaded && activeAnim && (
+                        <span className="text-[10px] bg-orange-50 text-orange-500 px-2 py-0.5 rounded-full font-black border border-orange-100 max-w-[120px] truncate">
+                            {animLabel(activeAnim)}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-0">
+                {/* 3D Viewer */}
+                <div className="relative bg-gray-950 overflow-hidden flex-1" style={{ minHeight: 280, maxHeight: 340 }}>
+                    {/* Ambient glow */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-purple-600/15 rounded-full blur-[80px] pointer-events-none" />
+
+                    <model-viewer
+                        ref={(el: any) => {
+                            if (el && el !== mvRef.current) {
+                                mvRef.current = el
+                                el.addEventListener('load', handleLoad)
+                                el.addEventListener('finished', () => setIsPlaying(false))
+                            }
+                        }}
+                        src="/3D/Pronunciation.glb"
+                        alt="Mô hình 3D phát âm tiếng Việt"
+                        camera-controls
+                        shadow-intensity="1"
+                        exposure="1.5"
+                        camera-orbit="0deg 80deg auto"
+                        field-of-view="35deg"
+                        interaction-prompt="none"
+                        animation-crossfade-duration="0.3"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            minHeight: '280px',
+                            outline: 'none',
+                            '--poster-color': 'transparent',
+                        } as React.CSSProperties}
+                    />
+
+                    {/* Loading overlay */}
+                    {!modelLoaded && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/95 backdrop-blur-sm z-20">
+                            <Spin size="large" />
+                            <p className="mt-3 text-gray-500 text-[10px] font-black uppercase tracking-widest">Đang tải mô hình 3D...</p>
+                        </div>
+                    )}
+
+                    {/* Playback controls overlay */}
+                    {modelLoaded && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10">
+                            <button onClick={handlePrev} className="w-6 h-6 flex items-center justify-center text-white/60 hover:text-white transition-colors">
+                                <ChevronLeft size={13} />
+                            </button>
+                            <button
+                                onClick={isPlaying ? pauseAnimation : resumeAnimation}
+                                disabled={!activeAnim}
+                                className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all"
+                            >
+                                {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+                            </button>
+                            <button onClick={handleReset} className="w-6 h-6 flex items-center justify-center text-white/60 hover:text-white transition-colors">
+                                <RotateCcw size={11} />
+                            </button>
+                            <button onClick={handleNext} className="w-6 h-6 flex items-center justify-center text-white/60 hover:text-white transition-colors">
+                                <ChevronRight size={13} />
+                            </button>
+                            <span className="text-white/40 text-[9px] font-bold ml-1 uppercase tracking-wider">Kéo để xoay</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Animation selector panel */}
+                {modelLoaded && animations.length > 0 && (
+                    <div className="lg:w-52 xl:w-60 border-t lg:border-t-0 lg:border-l border-gray-100 p-3 flex flex-col gap-2 bg-gray-50/50">
+                        <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest px-1 mb-1">Chọn cặp âm</p>
+                        <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto lg:max-h-[260px] pb-1 scrollbar-thin">
+                            {animations.map((anim, i) => (
+                                <motion.button
+                                    key={anim}
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.04 }}
+                                    onClick={() => handleSelectAnim(anim)}
+                                    className={`flex-shrink-0 lg:flex-shrink text-left px-3 py-2 rounded-xl text-xs font-black transition-all border flex items-center gap-2 min-w-[90px] lg:min-w-0 ${activeAnim === anim
+                                        ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/20'
+                                        : 'bg-white text-gray-600 border-gray-100 hover:border-purple-200 hover:bg-purple-50 hover:text-purple-600'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] flex-shrink-0 ${activeAnim === anim ? 'bg-white/20' : 'bg-purple-50'}`}>
+                                        <span className={activeAnim === anim ? 'text-white' : 'text-purple-500'}>
+                                            {i + 1}
+                                        </span>
+                                    </div>
+                                    <span className="truncate">{animLabel(anim)}</span>
+                                    {activeAnim === anim && isPlaying && (
+                                        <span className="ml-auto flex-shrink-0">
+                                            <span className="inline-flex gap-0.5">
+                                                {[0, 1, 2].map(j => (
+                                                    <span key={j} className="block w-0.5 bg-white/80 rounded-full animate-pulse"
+                                                        style={{ height: 8 + (j % 2) * 4, animationDelay: `${j * 0.15}s` }} />
+                                                ))}
+                                            </span>
+                                        </span>
+                                    )}
+                                </motion.button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer hint */}
+            {modelLoaded && (
+                <div className="px-5 py-2.5 border-t border-gray-50 flex items-center justify-between">
+                    <p className="text-[10px] text-gray-400 font-medium">
+                        {activeAnim
+                            ? <>Đang xem: <strong className="text-purple-500">{animLabel(activeAnim)}</strong> — {activeIdx + 1}/{animations.length}</>
+                            : 'Chọn một cặp âm để xem mô phỏng'
+                        }
+                    </p>
+                    <button
+                        onClick={() => { }}
+                        className="text-[10px] text-purple-500 font-black hover:text-purple-700 transition-colors flex items-center gap-1"
+                    >
+                        Chi tiết <RightOutlined style={{ fontSize: 8 }} />
+                    </button>
+                </div>
+            )}
+        </motion.div>
+    )
+}
+
+/* ─── Main Dashboard ───────────────────────────────────── */
 export default function Dashboard() {
     const { session, updateSessionItem } = useAuth()
     const navigate = useNavigate()
@@ -182,7 +457,7 @@ export default function Dashboard() {
 
             {/* ══════ BODY ══════ */}
             <div className="flex-1 bg-[#f8f5ff]">
-                <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
 
                     {/* Main Layout Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

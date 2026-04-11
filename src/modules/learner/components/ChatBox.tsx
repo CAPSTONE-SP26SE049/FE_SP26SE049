@@ -19,9 +19,11 @@ export interface Friend {
 export default function ChatBox({
   friend,
   onClose,
+  integrated = false,
 }: {
   friend: Friend;
   onClose: () => void;
+  integrated?: boolean;
 }) {
   const { session } = useAuth();
   const friendId = friend?.userId || friend?.id;
@@ -57,35 +59,59 @@ export default function ChatBox({
   };
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white shadow-lg rounded-lg border border-gray-100 flex flex-col overflow-hidden z-50">
-      <div className="h-12 bg-gradient-to-r from-purple-600 to-purple-500 text-white flex items-center justify-between px-3">
-        <div className="flex items-center gap-2 min-w-0">
+    <div className={clsx(
+      "bg-white flex flex-col overflow-hidden",
+      integrated
+        ? "w-full h-full"
+        : "fixed bottom-4 right-4 w-80 h-[450px] shadow-2xl rounded-2xl border border-purple-100 z-50 transition-all hover:shadow-purple-500/10"
+    )}>
+      <div className={clsx(
+        "flex items-center justify-between px-4 z-10 transition-colors",
+        integrated
+          ? "h-16 bg-white border-b border-gray-100 text-gray-800"
+          : "h-14 bg-gradient-to-r from-purple-600 to-purple-500 text-white"
+      )}>
+        <div className="flex items-center gap-3 min-w-0">
           <Avatar
             src={friendAvatar}
             icon={!friendAvatar && <UserOutlined />}
-            size={28}
-            className="bg-white/15 text-white border border-white/20"
+            size={integrated ? 42 : 32}
+            className={integrated ? "bg-purple-100 text-purple-600 border-2 border-purple-100" : "bg-white/15 text-white border border-white/20 shadow-sm"}
           />
-          <div className="font-extrabold text-sm truncate">{friendName}</div>
+          <div className="flex flex-col min-w-0">
+            <div className={clsx("font-extrabold truncate", integrated ? "text-base" : "text-sm")}>{friendName}</div>
+            <div className={clsx("text-[11px] font-medium flex items-center gap-1", integrated ? "text-green-500" : "text-purple-100")}>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Đang hoạt động
+            </div>
+          </div>
         </div>
         <Tooltip title="Đóng">
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-md hover:bg-white/15 flex items-center justify-center transition-colors"
+            className={clsx(
+              "w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95",
+              integrated
+                ? "text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                : "hover:bg-white/15 text-white"
+            )}
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </Tooltip>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-white">
+      <div className={clsx("flex-1 overflow-y-auto px-4 py-4 space-y-3", integrated ? "bg-gray-50/50" : "bg-white")}>
         {isLoadingHistory ? (
-          <div className="text-center text-xs text-gray-400 mt-8">
+          <div className="text-center text-xs text-gray-400 mt-8 font-medium">
             Đang tải tin nhắn cũ...
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-xs text-gray-400 mt-8">
-            Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện.
+          <div className="flex flex-col items-center justify-center h-full text-center mt-[-20px] opacity-70">
+            <div className={clsx("w-16 h-16 rounded-3xl flex items-center justify-center mb-3", integrated ? "bg-white border border-gray-100" : "bg-purple-50")}>
+              <Send size={24} className="text-purple-400" />
+            </div>
+            <div className="text-sm font-bold text-gray-500">Bắt đầu trò chuyện</div>
+            <div className="text-xs text-gray-400 mt-1 max-w-[200px]">Hãy gửi lời chào đến {friendName}</div>
           </div>
         ) : (
           messages.map((m, idx) => {
@@ -109,22 +135,22 @@ export default function ChatBox({
                 >
                   <div
                     className={clsx(
-                      "px-3 py-2 text-sm leading-snug break-words",
+                      "px-3.5 py-2.5 text-sm leading-relaxed break-words shadow-sm",
                       isMine
-                        ? "bg-purple-600 text-white rounded-tr-lg rounded-tl-lg rounded-bl-lg"
-                        : "bg-gray-200 text-gray-800 rounded-tr-lg rounded-tl-lg rounded-br-lg",
+                        ? "bg-purple-600 text-white rounded-2xl rounded-tr-sm"
+                        : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100",
                     )}
                   >
                     {m.content}
                   </div>
                   {timeLabel && (
-                    <div className="mt-0.5 text-xs text-gray-500">
+                    <div className="mt-1 text-[11px] text-gray-400 font-medium">
                       {timeLabel}
                     </div>
                   )}
                   {showRead && (
-                    <div className="text-[10px] text-gray-500 text-right mt-1">
-                      Đã xem
+                    <div className="text-[10px] text-purple-600 font-bold text-right mt-0.5 flex items-center gap-1">
+                      <span className="w-3 h-3 rounded-full bg-purple-100 flex items-center justify-center">✓</span> Đã xem
                     </div>
                   )}
                 </div>
@@ -135,7 +161,7 @@ export default function ChatBox({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-2 border-t border-gray-100 bg-white">
+      <div className="p-3 lg:p-4 border-t border-gray-100 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
         <div className="flex gap-2 items-center">
           <input
             value={inputValue}
@@ -154,22 +180,22 @@ export default function ChatBox({
                   ? "Kết nối thất bại"
                   : "Đang kết nối..."
             }
-            className="flex-1 h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300 disabled:bg-gray-50 disabled:text-gray-400"
+            className="flex-1 h-12 px-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 disabled:bg-gray-50 disabled:text-gray-400 transition-all font-medium text-sm"
           />
           <button
             onClick={handleSend}
             disabled={!isConnected || inputValue.trim().length === 0}
-            className="h-10 w-10 rounded-lg bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 disabled:opacity-50 disabled:hover:bg-purple-600 transition-colors"
+            className="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white flex items-center justify-center hover:opacity-90 disabled:opacity-50 disabled:grayscale shadow-md shadow-purple-500/20 active:scale-95 transition-all"
           >
-            <Send size={16} />
+            <Send size={18} className={clsx(inputValue.trim().length > 0 && "translate-x-0.5 -translate-y-0.5 transition-transform")} />
           </button>
         </div>
         {!isConnected && (
-          <div className="mt-1 text-[11px] text-gray-400 flex items-center gap-2">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300" />
+          <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 font-medium px-1">
+            <span className={clsx("inline-block w-1.5 h-1.5 rounded-full animate-pulse", connectionState === "error" ? "bg-red-400" : "bg-purple-400")} />
             {connectionState === "error"
-              ? "Kết nối thất bại. Vui lòng thử lại."
-              : "Đang kết nối real-time..."}
+              ? "Kết nối thất bại. Đang thử lại..."
+              : "Đang kết nối theo thời gian thực..."}
           </div>
         )}
       </div>
