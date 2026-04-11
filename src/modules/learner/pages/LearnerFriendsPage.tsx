@@ -67,48 +67,50 @@ const FriendCard = ({
     <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all group"
+        className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 hover:border-purple-200 hover:shadow-md shadow-sm transition-all group"
     >
-        <div className="relative flex-shrink-0">
-            <Avatar
-                src={item.avatarUrl}
-                icon={!item.avatarUrl && <UserOutlined />}
-                size={48}
-                className="bg-purple-100 text-purple-600 border-2 border-purple-100"
-            />
-            {unreadCount != null && unreadCount > 0 && (
-                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold min-w-[1.25rem] h-5 px-0.5 flex items-center justify-center rounded-full border-2 border-white z-10">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
+                <Avatar
+                    src={item.avatarUrl}
+                    icon={!item.avatarUrl && <UserOutlined />}
+                    size={56}
+                    className="bg-purple-100 text-purple-600 border-2 border-purple-100"
+                />
+                {unreadCount != null && unreadCount > 0 && (
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[11px] font-black min-w-[1.5rem] h-6 px-1 flex items-center justify-center rounded-full border-2 border-white z-10 shadow-sm animate-bounce">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                    </div>
+                )}
+                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-sm" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="font-black text-gray-800 text-base truncate">{item.fullName || 'Người dùng'}</div>
+                <div className="text-xs text-gray-400 font-medium mt-1 bg-gray-50 flex max-w-max items-center px-2 py-0.5 rounded-lg border border-gray-100">
+                    Kết bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
                 </div>
-            )}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-            <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
-            <div className="text-xs text-gray-400 font-medium mt-0.5">
-                Kết bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
             </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Tooltip title="Nhắn tin">
-                <button
-                    onClick={() => onOpenChat(item)}
-                    className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center hover:bg-purple-100 transition-all"
-                >
-                    <MessageCircle size={14} className="text-purple-600" />
-                </button>
-            </Tooltip>
+        <div className="flex items-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-50 flex-shrink-0 w-full sm:w-auto justify-end">
+            <button
+                onClick={() => onOpenChat(item)}
+                className="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 text-sm font-black flex items-center justify-center gap-2 hover:bg-purple-600 hover:text-white hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all"
+            >
+                <MessageCircle size={16} /> Nhắn tin
+            </button>
             <Popconfirm
                 title="Hủy kết bạn?"
                 description="Bạn có chắc muốn hủy kết bạn với người này?"
                 onConfirm={() => onUnfriend(item.friendshipId)}
-                okText="Hủy kết bạn"
+                okText="Hủy"
                 cancelText="Đóng"
                 okButtonProps={{ danger: true }}
             >
-                <button className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center hover:bg-red-100 transition-all">
-                    <DeleteOutlined className="text-red-400 text-xs" />
-                </button>
+                <Tooltip title="Hủy kết bạn">
+                    <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
+                        <DeleteOutlined className="text-sm" />
+                    </button>
+                </Tooltip>
             </Popconfirm>
             <Popconfirm
                 title="Chặn người này?"
@@ -118,9 +120,11 @@ const FriendCard = ({
                 cancelText="Hủy"
                 okButtonProps={{ danger: true }}
             >
-                <button className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:border-red-100 transition-all">
-                    <StopOutlined className="text-gray-400 text-xs hover:text-red-400" />
-                </button>
+                <Tooltip title="Chặn">
+                    <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
+                        <StopOutlined className="text-sm" />
+                    </button>
+                </Tooltip>
             </Popconfirm>
         </div>
     </motion.div>
@@ -510,7 +514,7 @@ export default function LearnerFriendsPage() {
     };
 
     return (
-        <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
+        <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
 
             {/* ── Header ── */}
             <div className="flex items-center justify-between">
@@ -582,7 +586,7 @@ export default function LearnerFriendsPage() {
                                     desc="Hãy tìm kiếm và kết bạn với các học viên khác trong cộng đồng!"
                                 />
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-4">
                                     {friends.map(item => (
                                         <FriendCard
                                             key={item.friendshipId}
