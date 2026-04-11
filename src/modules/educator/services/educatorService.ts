@@ -197,6 +197,35 @@ export const educatorService = {
         return apiClient.get('/educator/dashboard/activities');
     },
 
+    // --- Dialect & Error Tags ---
+    getDialects: async () => {
+        return apiClient.get('/dialects');
+    },
+    getErrorTags: async (dialectId?: string) => {
+        return apiClient.get('/educator/curriculum/error-tags', { params: dialectId ? { dialectId } : {} });
+    },
+
+    // --- Curriculum Level Management ---
+    createLevel: async (data: LevelFormPayload) => {
+        return apiClient.post('/educator/curriculum/levels', data);
+    },
+    updateLevel: async (id: string, data: LevelFormPayload) => {
+        return apiClient.patch(`/educator/curriculum/levels/${id}`, data);
+    },
+
+    // --- Assignment Management ---
+    createAssignment: async (data: CreateAssignmentRequest) => {
+        return apiClient.post('/educator/assignments', data);
+    },
+    deleteAssignment: async (id: string) => {
+        return apiClient.delete(`/educator/assignments/${id}`);
+    },
+
+    // --- Student Analytics ---
+    getStudentAnalytics: async (studentId: string) => {
+        return apiClient.get(`/educator/students/${studentId}/analytics`);
+    },
+
     // --- Classroom Management ---
     getClassrooms: async () => {
         return apiClient.get('/educator/classrooms');

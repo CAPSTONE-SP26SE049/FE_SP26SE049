@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Tag, Button, Space, Card, Typography, message, Switch, Input } from 'antd';
+import { useEffect, useState } from 'react';
+import { Table, Button, Card, Typography, message, Switch, Input } from 'antd';
 import { EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { educatorService } from '../services/educatorService';
@@ -7,7 +7,7 @@ import { educatorService } from '../services/educatorService';
 const { Title } = Typography;
 
 const StudentManagementPage = () => {
-    const [students, setStudents] = useState([]);
+    const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const navigate = useNavigate();

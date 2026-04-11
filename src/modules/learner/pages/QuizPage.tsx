@@ -574,8 +574,49 @@ const QuizPage: React.FC = () => {
   const challenges = quiz.challenges
   const total = challenges.length
 
+  // ── Empty Quiz (no challenges assigned yet) ───────────────────────────────
+  if (total === 0 && !finished) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6 bg-gray-50">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-md w-full text-center border border-gray-100"
+        >
+          <div className="text-7xl mb-6">📭</div>
+          <h2 className="text-2xl font-black text-gray-800 mb-3">Chưa có câu hỏi</h2>
+          <p className="text-gray-400 font-medium mb-8">
+            Bài quiz <span className="font-bold text-gray-600">"{quiz.name}"</span> chưa được thiết lập câu hỏi.
+            Vui lòng liên hệ giáo viên hoặc chọn bài học khác.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              block
+              size="large"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate(-1)}
+              className="rounded-xl h-14 font-bold border-gray-200 text-gray-600 hover:text-blue-500"
+            >
+              Quay lại
+            </Button>
+            <Button
+              type="primary"
+              block
+              size="large"
+              className="bg-teal-500 border-none hover:bg-teal-600 rounded-xl h-14 font-bold text-white shadow-lg shadow-teal-200"
+              onClick={() => navigate('/learner/roadmap')}
+            >
+              Xem lộ trình
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
   // ── Finished ──────────────────────────────────────────────────────────────
-  if (finished || total === 0) {
+  if (finished) {
     const pct = result?.score ?? (total > 0 ? Math.round((score / total) * 100) : 0)
     const passed = result?.passed ?? (pct >= quiz.passingScore)
     const stars = result?.starsEarned ?? 0
