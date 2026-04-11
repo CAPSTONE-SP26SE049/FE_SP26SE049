@@ -101,7 +101,7 @@ export default function Dashboard() {
                                 {currentLesson?.title || 'Đang tải...'}
                             </h3>
                             <p className="text-white/80 font-medium mb-10 text-sm">
-                                Hành trình • {currentLesson?.description || '...'}
+                                {currentLesson?.levelName ? `Chặng: ${currentLesson.levelName}` : 'Hành trình'} • {currentLesson?.description || '...'}
                             </p>
                             
                             <div className="flex items-end justify-between mb-2">
@@ -116,20 +116,39 @@ export default function Dashboard() {
                                 className="!m-0 mb-8"
                             />
                             
-                            <Button 
-                                type="primary" 
-                                size="large"
-                                onClick={() => {
-                                    if (currentLesson?.id && currentLesson.id !== "1") {
-                                        navigate(`/learner/quiz/${currentLesson.id}`);
-                                    } else {
-                                        navigate('/learner/roadmap');
-                                    }
-                                }}
-                                className="w-full bg-white text-[#00695C] hover:bg-[#F0F2F5] hover:text-[#004D40] !h-14 rounded-2xl font-black text-base shadow-lg border-none flex items-center justify-center gap-2"
-                            >
-                                <PlayCircleFilled className="text-xl" /> Tiếp tục bài học
-                            </Button>
+                            {currentLesson?.isLocked ? (
+                                <div className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl px-5 py-4 text-center">
+                                    <div className="text-2xl mb-1">🔒</div>
+                                    <p className="font-bold text-white text-sm mb-1">Chặng này đang bị khóa</p>
+                                    <p className="text-white/80 text-xs">
+                                        Cần <span className="font-black text-[#A7FFEB]">{currentLesson.starsNeeded} ⭐</span> từ chặng trước
+                                        &nbsp;(hiện có: <span className="font-black text-[#A7FFEB]">{currentLesson.currentStars ?? 0} ⭐</span>)
+                                    </p>
+                                    <Button 
+                                        type="default"
+                                        size="large"
+                                        onClick={() => navigate('/learner/roadmap')}
+                                        className="w-full mt-3 bg-white text-[#00695C] hover:bg-[#F0F2F5] !h-12 rounded-2xl font-black text-sm border-none"
+                                    >
+                                        Xem lộ trình →
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button 
+                                    type="primary" 
+                                    size="large"
+                                    onClick={() => {
+                                        if (currentLesson?.id && currentLesson.id !== "1") {
+                                            navigate(`/learner/quiz/${currentLesson.id}`);
+                                        } else {
+                                            navigate('/learner/roadmap');
+                                        }
+                                    }}
+                                    className="w-full bg-white text-[#00695C] hover:bg-[#F0F2F5] hover:text-[#004D40] !h-14 rounded-2xl font-black text-base shadow-lg border-none flex items-center justify-center gap-2"
+                                >
+                                    <PlayCircleFilled className="text-xl" /> Tiếp tục bài học
+                                </Button>
+                            )}
                         </div>
                     </motion.div>
 
