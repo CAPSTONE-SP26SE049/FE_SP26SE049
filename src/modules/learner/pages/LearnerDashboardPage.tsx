@@ -27,62 +27,17 @@ export default function Dashboard() {
     const navigate = useNavigate()
     const user = session?.user
 
-    const [statsData, setStatsData] = useState<any>({});
+    const [dashboardData, setDashboardData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [currentLesson, setCurrentLesson] = useState<any>({
-        title: 'Chương 2: Phát âm chuẩn',
-        description: 'Luyện giọng Miền Bắc',
-        progress: 65,
-        id: 'mock'
-    });
-
-    const skillData = [
-        { subject: 'Nghe', val: 8.5, fullMark: 10 },
-        { subject: 'Nói', val: 6.0, fullMark: 10 },
-        { subject: 'Phát âm', val: 9.0, fullMark: 10 },
-        { subject: 'Ngữ pháp', val: 5.5, fullMark: 10 },
-        { subject: 'Đọc', val: 7.0, fullMark: 10 },
-    ];
 
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
                 setLoading(true);
-                const [meRes, badgesRes, dialectsRes] = await Promise.all([
-                    apiClient.get('/users/me').catch(() => null),
-                    apiClient.get('/learner/my-badges').catch(() => null),
-                    learnerService.getDialects().catch(() => [])
-                ]);
-
-                if (meRes?.data) setStatsData(meRes.data);
-                
-                // Get real stats if available
-                const userRegion = (meRes?.data?.region || user?.region || '').toUpperCase();
-                const matchedDialect = dialectsRes.find((d: any) =>
-                    d.name?.toUpperCase() === userRegion ||
-                    d.name?.toLowerCase().includes(userRegion.toLowerCase()) ||
-                    (userRegion === 'NORTH' && d.name?.includes('Bắc')) ||
-                    (userRegion === 'SOUTH' && d.name?.includes('Nam'))
-                ) ?? dialectsRes[0];
-
-                if (matchedDialect) {
-                    const levelData = await learnerService.getLevels(matchedDialect.id).catch(() => []);
-                    const activeLevel = levelData.find((lvl: any) => !lvl.isCompleted && !lvl.isLocked);
-                    if (activeLevel) {
-                        setCurrentLesson({
-                            title: activeLevel.name,
-                            description: `${matchedDialect.name} • Màn ${activeLevel.levelOrder || 1}`,
-                            progress: activeLevel.starsEarned ? Math.round((activeLevel.starsEarned / 3) * 100) : 0,
-                            id: activeLevel.id
-                        });
-                    } else if (levelData.length > 0) {
-                        setCurrentLesson({
-                            title: 'Hoàn thành chương',
-                            description: `${matchedDialect.name}`,
-                            progress: 100,
-                            id: levelData[0].id
-                        });
-                    }
+                // Call the new O(1) Dashboard Summary API
+                const res = await apiClient.get('/learner/dashboard');
+                if (res?.data) {
+                    setDashboardData(res.data);
                 }
             } catch (err) {
                 console.error("Dashboard error", err);
@@ -90,14 +45,19 @@ export default function Dashboard() {
                 setLoading(false);
             }
         };
-        loadDashboardData();
+        
+        if (user) {
+            loadDashboardData();
+        }
     }, [user]);
 
-    if (loading) return (
+    if (loading || !dashboardData) return (
         <div className="flex justify-center items-center h-[70vh]">
             <Spin size="large" />
         </div>
     );
+
+    const { currentLesson, stats, dailyQuests, skillData } = dashboardData;
 
     return (
         <div className="w-full h-full text-[#202124] animate-in fade-in duration-500 pb-12">
@@ -124,18 +84,18 @@ export default function Dashboard() {
                             </h2>
                             
                             <h3 className="text-3xl font-black italic tracking-tight mb-2 leading-tight">
-                                {currentLesson.title}
+                                {currentLesson?.title || 'Đang tải...'}
                             </h3>
                             <p className="text-white/80 font-medium mb-10 text-sm">
-                                Hành trình • {currentLesson.description}
+                                Hành trình • {currentLesson?.description || '...'}
                             </p>
                             
                             <div className="flex items-end justify-between mb-2">
                                 <span className="font-bold text-sm">Tiến độ chặng</span>
-                                <span className="font-black text-xl italic">{currentLesson.progress}%</span>
+                                <span className="font-black text-xl italic">{currentLesson?.progress || 0}%</span>
                             </div>
                             <Progress 
-                                percent={currentLesson.progress} 
+                                percent={currentLesson?.progress || 0} 
                                 showInfo={false} 
                                 strokeColor="#A7FFEB" 
                                 trailColor="rgba(255,255,255,0.2)" 
@@ -178,21 +138,21 @@ export default function Dashboard() {
                             <div className="w-10 h-10 rounded-full bg-[#FFF3E0] flex items-center justify-center">
                                 <FireFilled className="text-[#E65100] text-xl" />
                             </div>
-                            <div className="text-xl font-black italic text-[#202124]">12</div>
+                            <div className="text-xl font-black italic text-[#202124]">{stats?.streakDays || 0}</div>
                             <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Streak Ngày</div>
                         </div>
                         <div className="bg-white rounded-2xl p-5 border border-[#E0E3E7] shadow-sm flex flex-col items-center justify-center gap-2 hover:-translate-y-1 transition-transform cursor-default">
                             <div className="w-10 h-10 rounded-full bg-[#E0F2F1] flex items-center justify-center">
                                 <ThunderboltFilled className="text-[#00897B] text-xl" />
                             </div>
-                            <div className="text-xl font-black italic text-[#202124]">1.2K</div>
+                            <div className="text-xl font-black italic text-[#202124]">{stats?.xp || 0}</div>
                             <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Kinh nghiệm</div>
                         </div>
                         <div className="bg-white rounded-2xl p-5 border border-[#E0E3E7] shadow-sm flex flex-col items-center justify-center gap-2 hover:-translate-y-1 transition-transform cursor-default">
                             <div className="w-10 h-10 rounded-full bg-[#FCE4EC] flex items-center justify-center">
                                 <HeartFilled className="text-[#D81B60] text-xl" />
                             </div>
-                            <div className="text-xl font-black italic text-[#202124]">5</div>
+                            <div className="text-xl font-black italic text-[#202124]">{stats?.lives || 0}</div>
                             <div className="text-[10px] uppercase font-bold text-[#5F6368] tracking-widest">Mạng (Lives)</div>
                         </div>
                     </div>
@@ -204,16 +164,12 @@ export default function Dashboard() {
                                 NHIỆM VỤ HÔM NAY
                             </h2>
                             <span className="text-xs font-bold text-[#00897B] px-3 py-1 bg-[#E0F2F1] rounded-full">
-                                Hoàn thành 1/3
+                                Hoàn thành {(dailyQuests || []).filter((q: any) => q.done).length}/{(dailyQuests || []).length}
                             </span>
                         </div>
                         
                         <div className="flex flex-col gap-4">
-                            {[
-                                { title: 'Hoàn thành 1 bài luyện nói', xp: '+50 XP', done: true },
-                                { title: 'Duy trì Streak 3 ngày liên tiếp', xp: '+100 XP', done: false, progress: 66 },
-                                { title: 'Làm bài thi thử vùng miền Bắc', xp: '+150 XP', done: false, progress: 0 }
-                            ].map((quest, idx) => (
+                            {(dailyQuests || []).map((quest: any, idx: number) => (
                                 <div key={idx} className={clsx(
                                     "p-4 rounded-2xl border-2 flex items-center gap-4 transition-all",
                                     quest.done ? "bg-[#F8F9FA] border-transparent opacity-60" : "bg-white border-[#E0E3E7] hover:border-[#00897B] cursor-pointer"
