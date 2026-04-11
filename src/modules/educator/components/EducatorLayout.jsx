@@ -7,7 +7,9 @@ import {
   DashboardOutlined,
   TeamOutlined,
   PartitionOutlined,
-  BarChartOutlined,
+  DatabaseOutlined,
+  ReadOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -17,34 +19,56 @@ const { Title } = Typography
 
 const menuItems = [
   {
-    key: '/educator',
-    icon: <DashboardOutlined />,
-    label: <Link to="/educator">Tổng quan</Link>,
+    key: 'grp-learning',
+    label: 'QUẢN LÝ HỌC TẬP',
+    type: 'group',
+    children: [
+      {
+        key: '/educator',
+        icon: <DashboardOutlined />,
+        label: <Link to="/educator">Tổng quan</Link>,
+      },
+      {
+        key: '/educator/students',
+        icon: <TeamOutlined />,
+        label: <Link to="/educator/students">Danh sách học viên</Link>,
+      },
+      {
+        key: '/educator/lesson-plans',
+        icon: <PartitionOutlined />,
+        label: <Link to="/educator/lesson-plans">Lộ trình bài giảng</Link>,
+      },
+    ]
   },
   {
-    key: '/educator/classrooms',
-    icon: <TeamOutlined />,
-    label: <Link to="/educator/classrooms">Quản lý lớp học</Link>,
+    key: 'grp-content',
+    label: 'HỌC LIỆU & NỘI DUNG',
+    type: 'group',
+    children: [
+      {
+        key: '/educator/challenges',
+        icon: <DatabaseOutlined />,
+        label: <Link to="/educator/challenges">Ngân hàng câu hỏi</Link>,
+      },
+      {
+        key: '/educator/chapters',
+        icon: <ReadOutlined />,
+        label: <Link to="/educator/chapters">Cấu trúc chương học</Link>,
+      },
+      {
+        key: '/educator/quizzes',
+        icon: <FileTextOutlined />,
+        label: <Link to="/educator/quizzes">Bài tập & Quiz</Link>,
+      },
+    ]
   },
   {
-    key: '/educator/students',
-    icon: <UserOutlined />,
-    label: <Link to="/educator/students">Danh sách học sinh</Link>,
-  },
-  {
-    key: '/educator/matrix',
-    icon: <PartitionOutlined />,
-    label: <Link to="/educator/matrix">Ma trận đánh giá</Link>,
-  },
-  {
-    key: '/educator/analytics',
-    icon: <BarChartOutlined />,
-    label: <Link to="/educator/analytics">Phân tích học sinh</Link>,
+    type: 'divider',
   },
   {
     key: '/educator/settings',
     icon: <SettingOutlined />,
-    label: <Link to="/educator/settings">Cài đặt</Link>,
+    label: <Link to="/educator/settings">Cài đặt hệ thống</Link>,
   },
 ]
 
@@ -52,9 +76,21 @@ const EducatorLayout = () => {
   const location = useLocation()
   const { session, logout } = useAuth()
 
+  const flattenMenuItems = (items) => {
+    let flat = []
+    items.forEach(item => {
+      if (item.children) {
+        flat = [...flat, ...flattenMenuItems(item.children)]
+      } else if (item.key) {
+        flat.push(item)
+      }
+    })
+    return flat
+  }
+
   const selectedKey =
-    [...menuItems]
-      .sort((a, b) => b.key.length - a.key.length)
+    flattenMenuItems(menuItems)
+      .sort((a, b) => (b.key?.length || 0) - (a.key?.length || 0))
       .find((item) => location.pathname.startsWith(item.key))?.key ?? '/educator'
 
   const handleLogout = () => {
@@ -150,7 +186,6 @@ const EducatorLayout = () => {
               menu={{ items: avatarMenuItems }}
               placement="bottomRight"
               trigger={['click']}
-              overlayStyle={{ minWidth: 200 }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>

@@ -193,6 +193,9 @@ export const educatorService = {
     getDashboardSummary: async () => {
         return apiClient.get('/educator/dashboard/summary');
     },
+    getRecentActivities: async () => {
+        return apiClient.get('/educator/dashboard/activities');
+    },
 
     // --- Classroom Management ---
     getClassrooms: async () => {
@@ -211,93 +214,43 @@ export const educatorService = {
         return apiClient.delete(`/educator/classrooms/${id}`);
     },
 
-    // --- Student Management ---
+    // --- Student Management (Refined) ---
+    getAssignedStudents: async () => {
+        return apiClient.get('/educator/students');
+    },
+    getStudentProfile: async (studentId: string) => {
+        return apiClient.get(`/educator/students/${studentId}`);
+    },
+    updateStudentStatus: async (studentId: string, isActive: boolean) => {
+        return apiClient.patch(`/educator/students/${studentId}/status`, null, { params: { isActive } });
+    },
+
+    // --- Analytics & Quests ---
+    getStudentQuests: async (studentId: string) => {
+        return apiClient.get(`/educator/students/${studentId}/quests`);
+    },
+    assignQuestToStudent: async (studentId: string, data: any) => {
+        return apiClient.post(`/educator/students/${studentId}/quests`, data);
+    },
+    getStudentFeedbackHistory: async (studentId: string) => {
+        return apiClient.get(`/educator/students/${studentId}/feedback`);
+    },
+
+    // --- Lesson Plan Management ---
+    getLessonPlans: async () => {
+        return apiClient.get('/educator/lesson-plans');
+    },
+    createLessonPlan: async (title: string, description: string, unitIds: string[]) => {
+        return apiClient.post('/educator/lesson-plans', unitIds, { params: { title, description } });
+    },
+    assignLessonPlan: async (studentId: string, planId: string, deadline: string) => {
+        return apiClient.post(`/educator/lesson-plans/assign/${studentId}`, null, { params: { planId, deadline } });
+    },
+
+    // --- Legacy / Others ---
     getClassroomStudents: async (classId: string) => {
         return apiClient.get(`/educator/classrooms/${classId}/students`);
     },
-    addStudentToClassroom: async (classId: string, data: AddStudentRequest) => {
-        return apiClient.post(`/educator/classrooms/${classId}/students`, data);
-    },
-    removeStudentFromClassroom: async (classId: string, studentId: string) => {
-        return apiClient.delete(`/educator/classrooms/${classId}/students/${studentId}`);
-    },
-
-    // --- Analytics & Performance ---
-    getStudentAnalytics: async (studentId: string) => {
-        return apiClient.get(`/educator/students/${studentId}/analytics`);
-    },
-    getClassroomPerformance: async (classId: string) => {
-        return apiClient.get(`/educator/classrooms/${classId}/performance`);
-    },
-    getAssignmentsByEducator: async (educatorId: string) => {
-        return apiClient.get(`/assignments/educator/${educatorId}`);
-    },
-    createAssignment: async (data: CreateAssignmentRequest) => {
-        return apiClient.post('/educator/assignments', data);
-    },
-    deleteAssignment: async (assignmentId: string) => {
-        return apiClient.delete(`/educator/assignments/${assignmentId}`);
-    },
-
-    // --- Curriculum Management ---
-    getCurriculumByRegion: async (region: string) => {
-        return apiClient.get(`/educator/curriculum/${region.toUpperCase()}`);
-    },
-    createLevel: async (data: LevelFormPayload) => {
-        const payload: CreateLevelRequest = {
-            name: data.name,
-            type: 'LEVEL',
-            parent_id: data.dialectId,
-            metadata_json: {
-                status: data.status || 'APPROVED',
-                audio_url: data.audioUrl ?? null,
-                level_order: data.levelOrder,
-                ai_threshold: data.aiThreshold ?? null,
-                error_tag_id: data.errorTagId ?? null,
-                rejection_reason: data.rejectionReason ?? null,
-                min_stars_required: data.minStarsRequired,
-                description: data.description || '',
-            },
-        };
-        return apiClient.post(`/educator/curriculum/levels`, payload);
-    },
-    updateLevel: async (levelId: string, data: LevelFormPayload) => {
-        const payload: UpdateLevelRequest = {
-            name: data.name,
-            type: 'LEVEL',
-            parent_id: data.dialectId,
-            metadata_json: {
-                status: data.status || 'APPROVED',
-                audio_url: data.audioUrl ?? null,
-                level_order: data.levelOrder,
-                ai_threshold: data.aiThreshold ?? null,
-                error_tag_id: data.errorTagId ?? null,
-                rejection_reason: data.rejectionReason ?? null,
-                min_stars_required: data.minStarsRequired,
-                description: data.description || '',
-            },
-            comment: data.comment,
-        };
-        return apiClient.patch(`/educator/curriculum/levels/${levelId}`, payload);
-    },
-    deleteLevel: async (levelId: string) => {
-        return apiClient.delete(`/educator/curriculum/levels/${levelId}`);
-    },
-    getDialects: async () => {
-        return apiClient.get('/dialects');
-    },
-    getErrorTags: async (dialectId?: string) => {
-        const params: any = {};
-        if (dialectId) params.dialectId = dialectId;
-        return apiClient.get('/educator/curriculum/error-tags', { params });
-    },
-    uploadReferenceAudio: async (levelId: string, audioUrl: string) => {
-        return apiClient.post(`/educator/curriculum/levels/${levelId}/audio`, null, {
-            params: { audioUrl }
-        });
-    },
-
-    // --- Feedback System ---
     submitFeedback: async (studentId: string, data: FeedbackRequest) => {
         return apiClient.post(`/educator/students/${studentId}/feedback`, data);
     },

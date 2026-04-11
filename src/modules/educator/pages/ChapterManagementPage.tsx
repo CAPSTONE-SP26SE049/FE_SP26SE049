@@ -298,7 +298,7 @@ const ChapterManagementPage: React.FC = () => {
         }
         try {
             await educatorService.deleteAssignment(assignmentId);
-            message.success('Đã gỡ chương học khỏi lớp');
+            message.success('Đã gỡ chương học thành công');
             setRemovedAssignmentIds(prev => [...prev, assignmentId]);
         } catch (error: any) {
             console.error('Error deleting assignment:', error);
@@ -582,14 +582,14 @@ const ChapterManagementPage: React.FC = () => {
                     </Tooltip>
                     {fromClassroomId && record._fromAssignment && (
                         <Popconfirm
-                            title="Gỡ chương học khỏi lớp?"
-                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
+                            title="Gỡ chương học?"
+                            description="Chương học sẽ bị gỡ bỏ. Bạn chắc chắn chứ?"
                             onConfirm={() => handleRemoveAssignment(record._assignmentId)}
                             okText="Gỡ"
                             cancelText="Hủy"
                             okButtonProps={{ danger: true, style: { background: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
                         >
-                            <Tooltip title="Gỡ khỏi lớp">
+                            <Tooltip title="Gỡ bỏ">
                                 <Button icon={<DeleteOutlined />} danger />
                             </Tooltip>
                         </Popconfirm>
@@ -606,7 +606,7 @@ const ChapterManagementPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản Lý Chương Học</h2>
                     {fromClassroomName ? (
                         <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+                            Đang xem chương đã gán cho học viên: <strong>{fromClassroomName}</strong>
                         </div>
                     ) : null}
                 </div>
@@ -666,7 +666,7 @@ const ChapterManagementPage: React.FC = () => {
                                 boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
                             }}
                         >
-                            Gán chương vào lớp
+                            Gán chương học cho học viên
                         </Button>
                     ) : null}
                     <Button

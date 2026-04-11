@@ -12,8 +12,12 @@ import EducatorLayout from '../modules/educator/components/EducatorLayout'
 import SettingsPage from '../modules/educator/pages/SettingsPage'
 
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
+import EducatorDashboardPage from '../modules/educator/pages/EducatorDashboardPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
+import StudentManagementPage from '../modules/educator/pages/StudentManagementPage'
+import StudentDetailPage from '../modules/educator/pages/StudentDetailPage'
+import LessonPlanManagementPage from '../modules/educator/pages/LessonPlanManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
@@ -62,11 +66,14 @@ export const AppRoutes: React.FC = () => {
       {/* Educator protected area */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
-          <Route index element={<Navigate to="challenges" replace />} />
+          <Route index element={<EducatorDashboardPage />} />
 
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
+          <Route path="students" element={<StudentManagementPage />} />
+          <Route path="students/:id" element={<StudentDetailPage />} />
+          <Route path="lesson-plans" element={<LessonPlanManagementPage />} />
 
           <Route path="settings" element={<SettingsPage />} />
         </Route>

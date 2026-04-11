@@ -29,18 +29,25 @@ export default function Dashboard() {
 
     const [dashboardData, setDashboardData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
                 setLoading(true);
+                setErrorMsg(null);
                 // Call the new O(1) Dashboard Summary API
                 const res = await apiClient.get('/learner/dashboard');
+                console.log("Dashboard API Response:", res);
                 if (res?.data) {
                     setDashboardData(res.data);
+                } else {
+                    console.warn("Dashboard API returned empty data field:", res);
+                    setErrorMsg("Không có dữ liệu trả về từ máy chủ.");
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Dashboard error", err);
+                setErrorMsg(err?.message || "Đã xảy ra lỗi khi tải dữ liệu.");
             } finally {
                 setLoading(false);
             }
@@ -51,9 +58,16 @@ export default function Dashboard() {
         }
     }, [user]);
 
-    if (loading || !dashboardData) return (
+    if (loading) return (
         <div className="flex justify-center items-center h-[70vh]">
             <Spin size="large" />
+        </div>
+    );
+
+    if (errorMsg || !dashboardData) return (
+        <div className="flex justify-center items-center h-[70vh] flex-col gap-4">
+            <h3 className="text-red-500 font-bold">{errorMsg || "Dữ liệu không khả dụng"}</h3>
+            <Button onClick={() => window.location.reload()}>Tải lại trang</Button>
         </div>
     );
 
@@ -105,7 +119,13 @@ export default function Dashboard() {
                             <Button 
                                 type="primary" 
                                 size="large"
-                                onClick={() => navigate('/learner/roadmap')}
+                                onClick={() => {
+                                    if (currentLesson?.id && currentLesson.id !== "1") {
+                                        navigate(`/learner/quiz/${currentLesson.id}`);
+                                    } else {
+                                        navigate('/learner/roadmap');
+                                    }
+                                }}
                                 className="w-full bg-white text-[#00695C] hover:bg-[#F0F2F5] hover:text-[#004D40] !h-14 rounded-2xl font-black text-base shadow-lg border-none flex items-center justify-center gap-2"
                             >
                                 <PlayCircleFilled className="text-xl" /> Tiếp tục bài học
