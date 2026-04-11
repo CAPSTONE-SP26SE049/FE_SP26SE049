@@ -7,6 +7,13 @@ export const apiClient = axios.create({
   timeout: 30000,
 })
 
+export const getChatHistory = async (friendId) => {
+  return apiClient.get(`/chat/history/${friendId}`)
+}
+
+/** Map senderId (UUID string) → số tin chưa đọc (interceptor đã unwrap response.data). */
+export const getUnreadCounts = async () => apiClient.get('/chat/unread')
+
 // REQUEST INTERCEPTOR
 apiClient.interceptors.request.use(
   (config) => {
