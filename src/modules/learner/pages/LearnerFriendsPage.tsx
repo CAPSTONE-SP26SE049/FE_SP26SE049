@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Avatar, Badge, Input, Spin, Popconfirm, message } from 'antd';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Avatar, Input, Spin, Popconfirm, Tooltip, message } from 'antd';
 import {
     UserOutlined,
     SearchOutlined,
@@ -11,10 +11,14 @@ import {
     TeamOutlined,
     SendOutlined,
 } from '@ant-design/icons';
-import apiClient from '../../../services/apiClient';
+import apiClient, { getUnreadCounts } from '../../../services/apiClient';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { Users, UserPlus, Clock, UserSearch, RefreshCw } from 'lucide-react';
+import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle } from 'lucide-react';
+import ChatBox from '../components/ChatBox';
 
 /* ─── Types ─────────────────────────────────────────── */
 interface Friend {
@@ -49,12 +53,16 @@ const EmptyState = ({ icon: Icon, title, desc }: { icon: any; title: string; des
 /* ─── Friend Card ─────────────────────────────────────── */
 const FriendCard = ({
     item,
+    onOpenChat,
     onUnfriend,
     onBlock,
+    unreadCount,
 }: {
     item: Friend;
+    onOpenChat: (friend: Friend) => void;
     onUnfriend: (id: string) => void;
     onBlock: (id: string) => void;
+    unreadCount?: number;
 }) => (
     <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -68,6 +76,11 @@ const FriendCard = ({
                 size={48}
                 className="bg-purple-100 text-purple-600 border-2 border-purple-100"
             />
+            {unreadCount != null && unreadCount > 0 && (
+                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold min-w-[1.25rem] h-5 px-0.5 flex items-center justify-center rounded-full border-2 border-white z-10">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                </div>
+            )}
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -77,6 +90,14 @@ const FriendCard = ({
             </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Tooltip title="Nhắn tin">
+                <button
+                    onClick={() => onOpenChat(item)}
+                    className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center hover:bg-purple-100 transition-all"
+                >
+                    <MessageCircle size={14} className="text-purple-600" />
+                </button>
+            </Tooltip>
             <Popconfirm
                 title="Hủy kết bạn?"
                 description="Bạn có chắc muốn hủy kết bạn với người này?"
@@ -228,8 +249,37 @@ const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) =
 
 /* ─── Main Page ───────────────────────────────────────── */
 export default function LearnerFriendsPage() {
+    const { session } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('friends');
     const [loading, setLoading] = useState(false);
+
+    const [activeChatFriend, setActiveChatFriend] = useState<Friend | null>(null);
+    const activeChatFriendRef = useRef<Friend | null>(null);
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+    const currentUserId = session?.user?.id;
+    const token = useMemo(() => {
+        if (typeof window === 'undefined') return null;
+        return (
+            window.sessionStorage.getItem('ACCESS_TOKEN') ||
+            window.localStorage.getItem('ACCESS_TOKEN') ||
+            session?.accessToken ||
+            null
+        );
+    }, [session?.accessToken]);
+
+    const sockJsUrl = useMemo(() => {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        if (apiUrl) {
+            const resolved = new URL(apiUrl, window.location.origin);
+            return `${resolved.protocol}//${resolved.host}${resolved.pathname}`.replace('/api/v1', '/ws');
+        }
+        return 'http://localhost:8082/ws';
+    }, []);
+
+    useEffect(() => {
+        activeChatFriendRef.current = activeChatFriend;
+    }, [activeChatFriend]);
 
     const [friends, setFriends] = useState<Friend[]>([]);
     const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
@@ -246,6 +296,11 @@ export default function LearnerFriendsPage() {
         if (Array.isArray(d?.data?.data)) return d.data.data;
         return [];
     };
+
+    const handleOpenChat = useCallback((friend: Friend) => {
+        setUnreadCounts((prev) => ({ ...prev, [friend.userId]: 0 }));
+        setActiveChatFriend(friend);
+    }, []);
 
     const fetchFriends = useCallback(async () => {
         setLoading(true);
@@ -281,6 +336,79 @@ export default function LearnerFriendsPage() {
         fetchFriends();
         fetchPending();
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadUnread = async () => {
+            try {
+                const data = await getUnreadCounts();
+                if (cancelled || data == null || typeof data !== 'object') return;
+                const next: Record<string, number> = {};
+                Object.entries(data as Record<string, unknown>).forEach(([k, v]) => {
+                    const n = typeof v === 'number' ? v : Number(v);
+                    if (!Number.isNaN(n)) next[k] = n;
+                });
+                setUnreadCounts(next);
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        loadUnread();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!token || !currentUserId) return;
+
+        const client = new Client({
+            webSocketFactory: () => new SockJS(sockJsUrl),
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
+            },
+            connectionTimeout: 10000,
+            reconnectDelay: 5000,
+            heartbeatIncoming: 10000,
+            heartbeatOutgoing: 10000,
+            onConnect: () => {
+                client.subscribe(`/topic/chat/${currentUserId}`, (frame) => {
+                    try {
+                        const newMessage = JSON.parse(frame.body) as {
+                            type?: string;
+                            senderId?: string;
+                            recipientId?: string;
+                            content?: string;
+                        };
+                        if (String(newMessage.type ?? '') === 'READ_RECEIPT') return;
+                        const senderId = String(newMessage.senderId ?? '');
+                        if (!senderId) return;
+                        if (String(newMessage.recipientId ?? '') !== String(currentUserId)) return;
+                        if (!String(newMessage.content ?? '').trim()) return;
+
+                        const open = activeChatFriendRef.current;
+                        if (open && String(open.userId) === senderId) return;
+
+                        setUnreadCounts((prev) => ({
+                            ...prev,
+                            [senderId]: (prev[senderId] || 0) + 1,
+                        }));
+                    } catch {
+                        // ignore malformed frame
+                    }
+                });
+            },
+        });
+
+        client.activate();
+        return () => {
+            try {
+                client.deactivate();
+            } catch {
+                // ignore
+            }
+        };
+    }, [token, currentUserId, sockJsUrl]);
 
     useEffect(() => {
         if (activeTab === 'sent') fetchSent();
@@ -456,7 +584,14 @@ export default function LearnerFriendsPage() {
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {friends.map(item => (
-                                        <FriendCard key={item.friendshipId} item={item} onUnfriend={handleUnfriend} onBlock={handleBlock} />
+                                        <FriendCard
+                                            key={item.friendshipId}
+                                            item={item}
+                                            onOpenChat={handleOpenChat}
+                                            onUnfriend={handleUnfriend}
+                                            onBlock={handleBlock}
+                                            unreadCount={unreadCounts[item.userId]}
+                                        />
                                     ))}
                                 </div>
                             )
@@ -579,6 +714,13 @@ export default function LearnerFriendsPage() {
                     </motion.div>
                 </AnimatePresence>
             </div>
+
+            {activeChatFriend && (
+                <ChatBox
+                    friend={activeChatFriend}
+                    onClose={() => setActiveChatFriend(null)}
+                />
+            )}
         </div>
     );
 }
