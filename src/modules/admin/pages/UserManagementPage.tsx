@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import {
     Table, Input, Tag, Space, Button, Tooltip, Avatar,
-    Modal, Form, message, Select, Upload, Alert, Badge
+    Modal, Form, message, Select, Upload, Alert, Badge, Segmented
 } from 'antd'
 import {
     SearchOutlined, UserOutlined, PlusOutlined,
@@ -23,6 +23,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 const UserManagementPage = () => {
     const [searchText, setSearchText] = useState('')
     const [roleFilter, setRoleFilter] = useState<string>('ALL')
+    const [statusFilter, setStatusFilter] = useState<string>('ALL')
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<any[]>([])
 
@@ -159,16 +160,21 @@ const UserManagementPage = () => {
     /* ── Stats ── */
     const totalEducator = users.filter(u => (u.roleCode || '').toUpperCase() === 'EDUCATOR').length
     const totalUser = users.filter(u => (u.roleCode || '').toUpperCase() === 'USER').length
+    const totalActive = users.filter(u => u.isActive).length
     const totalBanned = users.filter(u => !u.isActive).length
+    const totalUsers = users.length
 
     /* ── Filter ── */
-    const filtered = users.filter(u => {
+    const filtered = useMemo(() => users.filter(u => {
         const matchSearch = !searchText ||
             u.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
             u.email?.toLowerCase().includes(searchText.toLowerCase())
         const matchRole = roleFilter === 'ALL' || (u.roleCode || '').toUpperCase() === roleFilter
-        return matchSearch && matchRole
-    })
+        const matchStatus = statusFilter === 'ALL'
+            || (statusFilter === 'ACTIVE' && u.isActive)
+            || (statusFilter === 'LOCKED' && !u.isActive)
+        return matchSearch && matchRole && matchStatus
+    }), [users, searchText, roleFilter, statusFilter])
 
     /* ── Columns ── */
     const columns = [
@@ -284,7 +290,6 @@ const UserManagementPage = () => {
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-800">Tổng quan tài khoản</h1>
                     <p className="text-sm text-gray-400 font-medium mt-0.5">Thống kê và quản lý tài khoản học viên, giáo viên</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -315,8 +320,8 @@ const UserManagementPage = () => {
             {/* ── Stats ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'Tổng người dùng', val: users.length, icon: <TeamOutlined />, color: '#9333ea', bg: '#faf5ff' },
-                    { label: 'Học viên', val: totalUser, icon: <UserOutlined />, color: '#0ea5e9', bg: '#f0f9ff' },
+                    { label: 'Tổng người dùng', val: totalUsers, icon: <TeamOutlined />, color: '#9333ea', bg: '#faf5ff' },
+                    { label: 'Đang hoạt động', val: totalActive, icon: <CheckCircleOutlined />, color: '#0ea5e9', bg: '#f0f9ff' },
                     { label: 'Giáo viên', val: totalEducator, icon: <UserAddOutlined />, color: '#10b981', bg: '#f0fdf4' },
                     { label: 'Đã khóa', val: totalBanned, icon: <LockOutlined />, color: '#ef4444', bg: '#fef2f2' },
                 ].map(({ label, val, icon, color, bg }, i) => (

@@ -203,6 +203,12 @@ export const adminService = {
     getAnalyticsErrorHeatmaps: async () => {
         return apiClient.get('/admin/analytics/errors/heatmaps');
     },
+    getAnalyticsUsersProgress: async () => {
+        return apiClient.get('/admin/analytics/users-progress');
+    },
+    getAiMonitorLogs: async (limit = 50) => {
+        return apiClient.get(`/admin/ai-monitor/logs?limit=${limit}`);
+    },
 
     // --- System Monitoring ---
     getSystemHealth: async () => {

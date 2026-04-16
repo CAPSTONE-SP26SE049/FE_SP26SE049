@@ -10,6 +10,8 @@ import FacebookCallback from '../apps/auth/FacebookCallback'
 import EducatorLayout from '../modules/educator/components/EducatorLayout'
 
 import SettingsPage from '../modules/educator/pages/SettingsPage'
+import EducatorOverviewPage from '../modules/educator/pages/EducatorOverviewPage'
+import StudentsPage from '../modules/educator/pages/StudentsPage'
 
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
@@ -22,6 +24,7 @@ import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
 import AchievementManagementPage from '../modules/admin/pages/AchievementManagementPage'
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
+import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -36,7 +39,6 @@ import { ProtectedRoute } from '../core/auth/ProtectedRoute'
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -45,7 +47,6 @@ export const AppRoutes: React.FC = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
 
-      {/* Admin protected area */}
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
@@ -56,28 +57,28 @@ export const AppRoutes: React.FC = () => {
           <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="achievements" element={<AchievementManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="ai-monitor" element={<AiMonitorPage />} />
         </Route>
       </Route>
 
-      {/* Educator protected area */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
-          <Route index element={<Navigate to="challenges" replace />} />
-
+          <Route index element={<Navigate to="students" replace />} />
+          <Route path="students" element={<StudentsPage />} />
+          <Route path="progress" element={<ChapterManagementPage />} />
+          <Route path="lessons" element={<ChallengeBankPage />} />
+          <Route path="messages" element={<QuizManagementPage />} />
+          <Route path="analytics" element={<EducatorOverviewPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
-
-          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
 
-      {/* User/Learner protected area */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
-        {/* Standalone quiz page without LearnerLayout */}
         <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
         <Route path="/learner" element={<LearnerLayout />}>
-          {/* Default redirect to dashboard or first child */}
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<LearnerDashboardPage />} />
           <Route path="roadmap" element={<RoadmapPage />} />
@@ -86,12 +87,9 @@ export const AppRoutes: React.FC = () => {
           <Route path="pronunciation" element={<PronunciationModelPage />} />
           <Route path="leaderboard" element={<LearnerLeaderboardPage />} />
         </Route>
-
       </Route>
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
-

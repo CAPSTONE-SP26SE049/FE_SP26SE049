@@ -162,6 +162,7 @@ function parseChallenge(raw: any): ParsedChallenge {
     imageUrl: meta.imageUrl ?? null,
     hint: meta.hint || null,
     timeLimit: meta.timeLimit ?? meta.time_limit ?? meta.timeLimitSeconds ?? null,
+    region: ch.region ?? meta.region ?? null,
   }
 }
 
@@ -336,6 +337,7 @@ const QuizPage: React.FC = () => {
         passingScore: typeof qData.passingScore === 'number' ? qData.passingScore : 70,
         timeLimitSeconds: typeof qData.timeLimitSeconds === 'number' ? qData.timeLimitSeconds : 0,
         challenges: parsed,
+        dialect: qData.dialect,
       })
 
 
@@ -452,10 +454,13 @@ const QuizPage: React.FC = () => {
       const asrFormData = new FormData()
       asrFormData.append('file', audioForAsr, uploadFileName)
 
+      const asrStartTime = performance.now()
       const asrResponse = await fetch('http://localhost:8000/asr', {
         method: 'POST',
         body: asrFormData,
       })
+      const asrEndTime = performance.now()
+      const asrProcessingTimeMs = Math.round(asrEndTime - asrStartTime)
 
       const asrData = await asrResponse.json()
       const rawText = asrData.text || ""
@@ -480,9 +485,10 @@ const QuizPage: React.FC = () => {
         transcribedText,
         targetText,
         challengeId: currentChallenge?.id || null,
-        dialect: currentChallenge?.region || '',
+        dialect: quiz?.dialect || currentChallenge?.region || '',
         audioUrl: audioUrl,
-        consentGiven: !!consentGiven
+        consentGiven: !!consentGiven,
+        asrProcessingTimeMs
       })
 
 
@@ -527,12 +533,16 @@ const QuizPage: React.FC = () => {
         ''
 
       // 4. Update UI
+      const safeTranscription = typeof transcribedText === 'string' ? transcribedText : ''
+      const safeErrorDetail = typeof normalizedErrorDetail === 'string' ? normalizedErrorDetail : String(normalizedErrorDetail ?? '')
+      const safeSuggestion = typeof normalizedSuggestion === 'string' ? normalizedSuggestion : String(normalizedSuggestion ?? '')
+
       setOllamaResult({
         score: normalizedScore,
         isCorrect: normalizedIsCorrect,
-        errorDetail: normalizedErrorDetail,
-        suggestion: normalizedSuggestion,
-        transcription: transcribedText || "(Không nhận diện được giọng nói)"
+        errorDetail: safeErrorDetail,
+        suggestion: safeSuggestion,
+        transcription: safeTranscription || "(Không nhận diện được giọng nói)"
       })
 
       setAnswered(true)
@@ -544,7 +554,7 @@ const QuizPage: React.FC = () => {
         score: 0,
         isCorrect: false,
         transcription: "Lỗi hệ thống",
-        errorDetail: err?.response?.data?.message || err.message || 'Lỗi hệ thống',
+        errorDetail: String(err?.response?.data?.message || err?.message || 'Lỗi hệ thống'),
         suggestion: 'Kiểm tra ASR Server (8000) và Gemini API Key ở Backend.'
       })
       setAnswered(true)
@@ -1009,13 +1019,13 @@ const QuizPage: React.FC = () => {
                     {ollamaResult.transcription && (
                       <div className="bg-gray-100 rounded-2xl p-4 border-l-4 border-gray-400">
                         <p className="text-xs text-gray-400 font-bold uppercase mb-1">Văn bản nhận diện (ASR):</p>
-                        <p className="text-gray-800 font-black text-lg italic">"{ollamaResult.transcription}"</p>
+                        <p className="text-gray-800 font-black text-lg italic">{String(ollamaResult.transcription ?? '').replace(/^['"“”]+|['"“”]+$/g, '').replace(/[.。！？!?.]+$/g, '')}</p>
                       </div>
                     )}
 
                     <div className="bg-gray-50 rounded-2xl p-4">
                       <p className="text-xs text-gray-400 font-bold uppercase mb-1">Chi tiết lỗi:</p>
-                      <p className="text-gray-700 font-semibold italic">"{ollamaResult.errorDetail}"</p>
+                      <p className="text-gray-700 font-semibold italic">{String(ollamaResult.errorDetail ?? '').replace(/^['"“”]+|['"“”]+$/g, '').replace(/[.。！？!?.]+$/g, '')}</p>
                     </div>
 
                     <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
@@ -1023,7 +1033,7 @@ const QuizPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-blue-400 font-bold uppercase mb-1">Lời khuyên từ AI:</p>
                         {(() => {
-                          const suggestionText = ollamaResult.suggestion || ''
+                          const suggestionText = String(ollamaResult.suggestion ?? '').replace(/^['"“”]+|['"“”]+$/g, '').replace(/[.。！？!?.]+$/g, '')
                           const shouldCollapse = suggestionText.length > 260
                           const displayText = shouldCollapse && !showFullSuggestion
                             ? `${suggestionText.slice(0, 260)}...`
