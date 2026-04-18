@@ -13,6 +13,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Medal,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { key: '/admin/chapters', icon: BookOpen, label: 'Quản lý bài tập (Content)' },
   { key: '/admin/ai-monitor', icon: Bot, label: 'Giám sát AI (AI Monitor)' },
   { key: '/admin/users', icon: Users, label: 'Quản lý người dùng' },
+  { key: '/admin/achievements', icon: Medal, label: 'Hệ thống Thành tựu' },
   { key: '/admin/settings', icon: Settings, label: 'Cài đặt hệ thống' },
 ]
 
@@ -86,11 +88,10 @@ const AdminLayout = () => {
               return (
                 <Link key={item.key} to={item.key}>
                   <div
-                    className={`group relative flex h-12 cursor-pointer items-center gap-3 rounded-2xl px-3 transition-all duration-200 ${
-                      isActive
-                        ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/25'
-                        : 'text-gray-500 hover:bg-purple-50 hover:text-purple-700'
-                    }`}
+                    className={`group relative flex h-12 cursor-pointer items-center gap-3 rounded-2xl px-3 transition-all duration-200 ${isActive
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/25'
+                      : 'text-gray-500 hover:bg-purple-50 hover:text-purple-700'
+                      }`}
                   >
                     {isActive && (
                       <motion.div

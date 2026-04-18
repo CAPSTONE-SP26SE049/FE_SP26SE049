@@ -188,7 +188,7 @@ export default function LearnerLeaderboardPage() {
     const scopeLabel = scope === 'GLOBAL' ? 'Toàn quốc' : `${currentRegion?.emoji} ${currentRegion?.label}`;
 
     return (
-        <div className="flex flex-col pb-12 w-full bg-[#f8f5ff]">
+        <div className="flex flex-col h-[calc(100vh-80px)] min-h-[600px] w-full bg-[#f8f5ff] overflow-hidden">
 
             {/* ── Header Strip ── */}
             <div className="flex-shrink-0 px-6 py-3 bg-white border-b border-gray-100"
@@ -290,7 +290,7 @@ export default function LearnerLeaderboardPage() {
                                                 <Crown size={10} className="text-amber-400" /> Top 3 dẫn đầu
                                             </p>
                                         </div>
-                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-end">
+                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-center">
                                             <Podium entries={top3} userId={user?.id} />
                                         </div>
 

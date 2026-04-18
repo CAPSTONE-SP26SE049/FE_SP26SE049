@@ -28,7 +28,6 @@ def load_model():
         print("Đang kiểm tra và tải file mô hình từ HuggingFace (nếu chưa có)...")
         os.makedirs("models", exist_ok=True)
         
-        # Tải trực tiếp file .nemo bằng huggingface-hub (tránh lỗi cache của NeMo trên Windows)
         nemo_file_path = hf_hub_download(
             repo_id="nvidia/parakeet-ctc-0.6b-vietnamese",
             filename="parakeet-ctc-0.6b-vi.nemo",
@@ -38,8 +37,30 @@ def load_model():
         print(f"File mô hình đã có tại: {nemo_file_path}")
         print("Đang giải nén và khởi tạo mô hình... Quá trình này có thể mất vài phút.")
         
-        # Khôi phục mô hình trực tiếp từ file .nemo
-        return nemo_asr.models.EncDecCTCModelBPE.restore_from(nemo_file_path)
+        model = nemo_asr.models.EncDecCTCModelBPE.restore_from(nemo_file_path)
+        
+        # ── Tăng tốc với GPU CUDA (GTX 1650 hỗ trợ CUDA) ──────────────────
+        if torch.cuda.is_available():
+            model = model.cuda()
+            print(f"🚀 Đang dùng GPU: {torch.cuda.get_device_name(0)} (CUDA {torch.version.cuda})")
+            print("   → Tốc độ dự kiến: 3-8 giây/câu thay vì 30-60s")
+        else:
+            print("⚠️  Không tìm thấy CUDA - chạy CPU (chậm hơn)")
+        
+        model.eval()  # Chế độ inference (tắt dropout, nhanh hơn)
+        
+        # Warm-up: chạy 1 lần để CUDA JIT compile kernel (lần after sẽ nhanh)
+        print("🔥 Khởi động model (warm-up)...")
+        dummy_audio = os.path.join(TEMP_DIR, "warmup.wav")
+        sf.write(dummy_audio, [0.0] * 16000, 16000)  # 1 giây im lặng
+        try:
+            model.transcribe([dummy_audio])
+            os.remove(dummy_audio)
+            print("✅ Warm-up hoàn tất - model sẵn sàng!")
+        except Exception:
+            pass
+        
+        return model
     except Exception as e:
         print(f"Lỗi hệ thống khi khởi tạo mô hình: {e}")
         return None

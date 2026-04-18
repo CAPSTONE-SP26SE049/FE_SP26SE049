@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons'
 import { Spin, Empty, Pagination } from 'antd'
 import clsx from 'clsx'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { learnerService, type Level, type Dialect, type Quiz } from '../services/learnerService'
 import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe } from 'lucide-react'
 
@@ -516,12 +516,14 @@ const QuizRoadmapStep = ({
   chapter,
   quizzes,
   loading,
-  dialectMeta
+  dialectMeta,
+  dialectId,
 }: {
   chapter: Level
   quizzes: Quiz[]
   loading: boolean
   dialectMeta: any
+  dialectId: string
 }) => {
   const navigate = useNavigate()
 
@@ -644,7 +646,13 @@ const QuizRoadmapStep = ({
               key={node.id}
               node={node}
               index={i}
-              onClick={() => navigate(`/learner/quiz/${node.id}`)}
+              onClick={() => navigate(`/learner/quiz/${node.id}`, {
+                state: {
+                  fromRoadmap: true,
+                  dialectId,
+                  chapterId: chapter.id,
+                }
+              })}
             />
           ))}
         </div>
@@ -660,6 +668,7 @@ type Step = 'dialect' | 'chapters' | 'quizzes'
 
 const RoadmapPage: React.FC = () => {
   const { session } = useAuth()
+  const location = useLocation()
   const userRegion = (session?.user as any)?.region?.toUpperCase?.() || ''
   // Map user's region string → NORTH / CENTRAL / SOUTH
   const userRegionKey = useMemo(() => {
@@ -667,14 +676,17 @@ const RoadmapPage: React.FC = () => {
     if (userRegion.includes('NORTH') || userRegion.includes('BẮC')) return 'NORTH'
     if (userRegion.includes('CENTRAL') || userRegion.includes('TRUNG')) return 'CENTRAL'
     if (userRegion.includes('SOUTH') || userRegion.includes('NAM')) return 'SOUTH'
-    // also handle single-word values like 'north', 'south', 'central'
     if (userRegion === 'NORTH') return 'NORTH'
     if (userRegion === 'CENTRAL') return 'CENTRAL'
     if (userRegion === 'SOUTH') return 'SOUTH'
     return ''
   }, [userRegion])
 
-  const [step, setStep] = useState<Step>('dialect')
+  // ─── Detect if returning from quiz (read state BEFORE first render) ───────
+  const navState = (location.state as any) || {}
+  const isReturning = !!(navState.fromRoadmap && navState.dialectId && navState.chapterId)
+
+  const [step, setStep] = useState<Step>(isReturning ? 'quizzes' : 'dialect')
   const [dialects, setDialects] = useState<Dialect[]>([])
   const [selectedDialect, setSelectedDialect] = useState<Dialect | null>(null)
   const [chapters, setChapters] = useState<Level[]>([])
@@ -682,11 +694,44 @@ const RoadmapPage: React.FC = () => {
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
 
   const [dialectsLoading, setDialectsLoading] = useState(true)
-  const [chaptersLoading, setChaptersLoading] = useState(false)
-  const [quizzesLoading, setQuizzesLoading] = useState(false)
+  const [chaptersLoading, setChaptersLoading] = useState(isReturning)
+  const [quizzesLoading, setQuizzesLoading] = useState(isReturning)
 
+  // ─── Single unified data-fetch effect ────────────────────────────────────
   useEffect(() => {
-    learnerService.getDialects().then(setDialects).finally(() => setDialectsLoading(false))
+    if (isReturning) {
+      // Returning from quiz: load everything and restore state without flash
+      learnerService.getDialects().then(async (allDialects) => {
+        setDialects(allDialects)
+        setDialectsLoading(false)
+
+        const dialect = allDialects.find(d => d.id === navState.dialectId)
+        if (!dialect) { setStep('dialect'); return }
+        setSelectedDialect(dialect)
+
+        try {
+          const levels = await learnerService.getLevels(dialect.id)
+          const sorted = [...levels].sort((a, b) => (a.levelOrder ?? 0) - (b.levelOrder ?? 0))
+          setChapters(sorted)
+
+          const chapter = sorted.find(ch => ch.id === navState.chapterId)
+          if (!chapter) { setStep('chapters'); setChaptersLoading(false); return }
+          setSelectedChapter(chapter)
+          setChaptersLoading(false)
+
+          try {
+            const qData = await learnerService.getQuizzesByLevel(chapter.id)
+            setQuizzes(qData)
+            setStep('quizzes')
+          } catch { setStep('chapters') }
+          finally { setQuizzesLoading(false) }
+        } catch { setStep('dialect'); setChaptersLoading(false) }
+      }).catch(() => { setDialectsLoading(false); setStep('dialect') })
+    } else {
+      // Normal entry: just load dialects
+      learnerService.getDialects().then(setDialects).finally(() => setDialectsLoading(false))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSelectDialect = async (dialect: Dialect) => {
@@ -832,6 +877,7 @@ const RoadmapPage: React.FC = () => {
               quizzes={quizzes}
               loading={quizzesLoading}
               dialectMeta={dialectMeta}
+              dialectId={selectedDialect?.id ?? ''}
             />
           </motion.div>
         )}

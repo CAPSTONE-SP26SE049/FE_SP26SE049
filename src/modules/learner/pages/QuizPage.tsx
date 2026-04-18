@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeftOutlined,
@@ -216,8 +216,18 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
 const QuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { updateSessionItem } = useAuth()
 
+  // ── Context from RoadmapPage (via navigation state) ──────────────────────
+  const navState = (location.state as any) || {}
+  const fromState = {
+    fromRoadmap: navState.fromRoadmap ?? false,
+    dialectId: navState.dialectId ?? null,
+    chapterId: navState.chapterId ?? null,
+  }
+
+  const [nextQuizId, setNextQuizId] = useState<string | null>(null)
 
   const [quiz, setQuiz] = useState<QuizDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -279,10 +289,21 @@ const QuizPage: React.FC = () => {
           totalExperience: data.newTotalXP
         })
       }
-    } catch (err) {
 
+      // ── Find next quiz in the same chapter ──────────────────────────────
+      if (fromState.chapterId) {
+        try {
+          const qRes = await apiClient.get(`/users/levels/${fromState.chapterId}/quizzes`)
+          const allQuizzes: any[] = qRes?.data?.data ?? qRes?.data ?? qRes ?? []
+          const sorted = [...allQuizzes].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+          const currentIdx = sorted.findIndex(q => q.id === quiz.id)
+          if (currentIdx !== -1 && currentIdx + 1 < sorted.length) {
+            setNextQuizId(sorted[currentIdx + 1].id)
+          }
+        } catch { /* no next quiz — silently ignore */ }
+      }
+    } catch (err) {
       console.error('[QuizPage] Failed to save result:', err)
-      // Fallback show local result
       setFinished(true)
     } finally {
       setSaving(false)
@@ -309,6 +330,25 @@ const QuizPage: React.FC = () => {
     }
   }, [idx, timeLeft, answered, finished, loading, quiz])
 
+
+  // ── Reset all game state when navigating to a new quiz ───────────────────
+  useEffect(() => {
+    setIdx(0)
+    setScore(0)
+    setSelected(null)
+    setAnswered(false)
+    setFinished(false)
+    setResult(null)
+    setWritingInput('')
+    setWordPicked(null)
+    setTimeLeft(null)
+    setShowHint(false)
+    setOllamaResult(null)
+    setShowFullSuggestion(false)
+    setNextQuizId(null)
+    setSaving(false)
+    setConsentGiven(null)
+  }, [quizId])
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -373,6 +413,20 @@ const QuizPage: React.FC = () => {
       setSelected(null)
       setAnswered(false)
       setIdx(i => i + 1)
+    }
+  }
+
+  const handleExitQuiz = () => {
+    if (fromState.fromRoadmap && fromState.dialectId && fromState.chapterId) {
+      navigate('/learner/roadmap', {
+        state: {
+          fromRoadmap: true,
+          dialectId: fromState.dialectId,
+          chapterId: fromState.chapterId,
+        }
+      })
+    } else {
+      navigate(-1)
     }
   }
 
@@ -578,15 +632,36 @@ const QuizPage: React.FC = () => {
   if (!quiz) return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-[#f8f5ff]">
       <Empty description="Không tìm thấy bài kiểm tra" />
-      <Button onClick={() => navigate('/learner/roadmap')}>Quay lại</Button>
+      <Button onClick={() => navigate(-1)}>Quay lại</Button>
     </div>
   )
 
   const challenges = quiz.challenges
   const total = challenges.length
 
+  // ── Empty State ───────────────────────────────────────────────────────────
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 bg-[#f8f5ff] px-4 text-center">
+        <Empty description={
+          <span className="text-gray-500 font-medium text-lg">
+            Bài kiểm tra này chưa có câu hỏi nào.
+          </span>
+        } />
+        <Button
+          size="large"
+          onClick={handleExitQuiz}
+          icon={<ArrowLeftOutlined />}
+          className="rounded-xl border-purple-200 text-purple-700 hover:text-purple-600 hover:border-purple-300"
+        >
+          Quay lại
+        </Button>
+      </div>
+    )
+  }
+
   // ── Finished ──────────────────────────────────────────────────────────────
-  if (finished || total === 0) {
+  if (finished) {
     const pct = result?.score ?? (total > 0 ? Math.round((score / total) * 100) : 0)
     const passed = result?.passed ?? (pct >= quiz.passingScore)
     const stars = result?.starsEarned ?? 0
@@ -653,49 +728,114 @@ const QuizPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Achievement Alert */}
-          {reward && (
+          {/* Achievement Alert — mới nhận hoặc đã có */}
+          {(reward || result?.rewardAlreadyEarned) && (
             <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mb-8 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-200 flex items-center gap-4 text-left"
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, type: 'spring', bounce: 0.5 }}
+              className="mb-6 relative overflow-hidden"
             >
+              {/* Confetti dots — chỉ khi nhận mới */}
+              {reward && !result?.rewardAlreadyEarned && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                  {[...Array(16)].map((_, i) => (
+                    <motion.div key={i}
+                      className="absolute w-2 h-2 rounded-full"
+                      style={{
+                        left: `${(i * 6.25) % 100}%`,
+                        top: `${20 + (i % 3) * 30}%`,
+                        background: ['#f59e0b', '#8b5cf6', '#ec4899', '#10b981', '#3b82f6', '#f97316'][i % 6],
+                      }}
+                      initial={{ y: 0, scale: 0, opacity: 0 }}
+                      animate={{ y: [-20, 20, -10, 0], scale: [0, 1.2, 0.8, 1], opacity: [0, 1, 1, 0] }}
+                      transition={{ delay: 0.6 + i * 0.08, duration: 1.2, ease: 'easeOut' }}
+                    />
+                  ))}
+                </div>
+              )}
 
-              <div className="w-16 h-16 bg-white rounded-xl shadow-inner flex items-center justify-center p-2 flex-shrink-0">
-                <img src={reward.iconUrl} alt={reward.name} className="w-full h-full object-contain" />
-              </div>
-              <div>
-                <p className="text-[10px] text-yellow-600 font-black uppercase tracking-tighter">Thành tựu mới!</p>
-                <p className="text-sm font-bold text-gray-800 leading-tight">{reward.name}</p>
-              </div>
+              {reward && !result?.rewardAlreadyEarned ? (
+                // 🎉 Nhận thành tựu MỚI
+                <div className="p-5 rounded-2xl border-2 border-yellow-300 text-left relative"
+                  style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%)' }}>
+                  <div className="absolute top-3 right-3 text-yellow-400 text-lg">✨</div>
+                  <p className="text-[10px] text-yellow-600 font-black uppercase tracking-[0.15em] mb-3">
+                    🏆 Thành tựu mới mở khóa!
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center p-2 flex-shrink-0 border-2 border-yellow-200">
+                      {reward.iconUrl
+                        ? <img src={reward.iconUrl} alt={reward.name} className="w-full h-full object-contain" />
+                        : <span className="text-3xl">🏅</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-gray-800 text-base leading-tight">{reward.name}</p>
+                      {reward.description && (
+                        <p className="text-yellow-700 text-xs mt-1 font-medium leading-relaxed line-clamp-2">{reward.description}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // ℹ️ Đã có huy hiệu này trước đó
+                <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50 text-left flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center p-1.5 flex-shrink-0 border border-gray-200">
+                    {reward?.iconUrl
+                      ? <img src={reward.iconUrl} alt={reward?.name} className="w-full h-full object-contain" />
+                      : <span className="text-xl">🏅</span>}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider">Đã có huy hiệu này</p>
+                    <p className="text-sm font-bold text-gray-600 leading-tight">{reward?.name || 'Thành tựu'}</p>
+                  </div>
+                  <span className="ml-auto text-gray-300 text-lg">✅</span>
+                </div>
+              )}
             </motion.div>
           )}
 
+
           {/* Actions */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid gap-3 ${nextQuizId ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <Button
               block
               size="large"
               icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/learner/roadmap')}
+              onClick={handleExitQuiz}
               className="rounded-xl h-14 font-black border-purple-100 text-gray-600 hover:text-purple-500 hover:border-purple-300 transition-all"
             >
               Thoát
             </Button>
             <Button
-              type="primary"
               block
               size="large"
-              className="bg-gradient-to-r from-green-500 to-emerald-500 border-none hover:from-green-600 hover:to-emerald-600 rounded-xl h-14 font-black text-white shadow-lg shadow-green-200"
+              className="bg-gradient-to-r from-gray-100 to-gray-200 border-none rounded-xl h-14 font-black text-gray-600 hover:from-gray-200 hover:to-gray-300"
               onClick={() => {
                 setIdx(0); setScore(0); setSelected(null); setAnswered(false);
                 setFinished(false); setWritingInput(''); setWordPicked(null);
-                setResult(null); setTimeLeft(null);
+                setResult(null); setTimeLeft(null); setNextQuizId(null);
               }}
             >
               Chơi lại
             </Button>
+            {nextQuizId && (
+              <Button
+                type="primary"
+                block
+                size="large"
+                className="bg-gradient-to-r from-purple-600 to-orange-500 border-none rounded-xl h-14 font-black text-white shadow-lg shadow-purple-200 flex items-center justify-center gap-1"
+                onClick={() => navigate(`/learner/quiz/${nextQuizId}`, {
+                  state: {
+                    fromRoadmap: fromState.fromRoadmap,
+                    dialectId: fromState.dialectId,
+                    chapterId: fromState.chapterId,
+                  }
+                })}
+              >
+                Tiếp theo ›
+              </Button>
+            )}
           </div>
         </motion.div>
       </div>
@@ -1092,37 +1232,62 @@ const QuizPage: React.FC = () => {
       {/* Gradient accent strip */}
       <div className="h-1 w-full bg-gradient-to-r from-purple-600 via-orange-400 to-amber-400" />
 
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-xl border-b border-purple-100/50 px-6 py-3 flex items-center gap-4 sticky top-0 z-10"
-        style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.06)' }}>
-        <button onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-xl border border-purple-100 flex items-center justify-center hover:bg-purple-50 active:scale-95 transition-all">
-          <ArrowLeftOutlined className="text-purple-500" />
-        </button>
-        <div className="flex-1">
-          <h2 className="font-black text-gray-800 text-sm truncate">{quiz.name}</h2>
-          <p className="text-[10px] text-gray-400 font-bold">Câu {idx + 1} / {total}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {timeLeft !== null && (
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black border ${timeLeft < 10 ? 'bg-red-50 text-red-500 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-500 border-blue-200'}`}>
-              <ThunderboltFilled /> {timeLeft}s
+      {/* ─── Header ─── */}
+      <div className="bg-white/95 backdrop-blur-xl border-b border-purple-100/50 px-4 py-3 sticky top-0 z-10"
+        style={{ boxShadow: '0 2px 16px rgba(147,51,234,0.08)' }}>
+
+        {/* Row 1: nav + title + stats */}
+        <div className="max-w-5xl mx-auto flex items-center gap-3">
+          <button onClick={handleExitQuiz}
+            className="w-10 h-10 rounded-xl border border-purple-100 flex items-center justify-center hover:bg-purple-50 active:scale-95 transition-all flex-shrink-0">
+            <ArrowLeftOutlined className="text-purple-500 text-base" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="font-black text-gray-800 text-base truncate leading-tight">{quiz.name}</h2>
+            <p className="text-xs text-gray-400 font-semibold">Câu {idx + 1} / {total}</p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Timer */}
+            {timeLeft !== null && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-black border-2 min-w-[70px] justify-center ${timeLeft < 10
+                ? 'bg-red-50 text-red-500 border-red-300 animate-pulse'
+                : timeLeft < 30
+                  ? 'bg-orange-50 text-orange-500 border-orange-200'
+                  : 'bg-blue-50 text-blue-600 border-blue-200'
+                }`}>
+                <ThunderboltFilled className="text-sm" />
+                <span>{timeLeft}s</span>
+              </div>
+            )}
+            {/* Passing score */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-black bg-emerald-50 text-emerald-600 border-2 border-emerald-200">
+              <span>🎯</span>
+              <span>Đạt: {quiz.passingScore}%</span>
             </div>
-          )}
-          <div className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-green-50 text-green-600 border border-green-200">
-            Đạt: {quiz.passingScore}%
+          </div>
+        </div>
+
+        {/* Row 2: Progress bar */}
+        <div className="max-w-5xl mx-auto mt-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-orange-400 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(4, (idx / total) * 100)}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-xs font-black text-purple-500 w-8 text-right">{Math.round((idx / total) * 100)}%</span>
           </div>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-100">
-        <motion.div className="h-full bg-gradient-to-r from-purple-500 to-orange-400 transition-all duration-500" style={{ width: `${(idx / total) * 100}%` }} />
-      </div>
-
 
       {/* Question area */}
-      <div className="max-w-2xl mx-auto px-6 pt-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
         <AnimatePresence mode="wait">
           <motion.div key={idx}
             initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}

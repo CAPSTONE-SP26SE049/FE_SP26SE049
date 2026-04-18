@@ -11,11 +11,8 @@ export interface BadgeCatalogItem {
 }
 
 export interface MyBadge {
-    id: string
-    badgeCode: string
-    badgeName: string
-    badgeDescription: string
-    badgeIconUrl: string
+    accountId: string
+    badge: BadgeCatalogItem
     earnedAt: string
 }
 
