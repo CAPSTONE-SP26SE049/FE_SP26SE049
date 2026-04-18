@@ -83,14 +83,12 @@ apiClient.interceptors.response.use(
 
           if (!refreshToken) {
             console.error("No refresh token available, forcing logout.");
-            // No refresh token available, force logout
             window.sessionStorage.clear()
             window.localStorage.removeItem('ACCESS_TOKEN')
             window.localStorage.removeItem('REFRESH_TOKEN')
             window.localStorage.removeItem('USER_INFO')
             window.localStorage.removeItem('speakvn_session')
-            alert("No refresh token available, check console. Usually redirecting to /login here.");
-            // window.location.href = '/login'
+            window.location.href = '/login'
             return Promise.reject(error);
           }
 
@@ -145,11 +143,7 @@ apiClient.interceptors.response.use(
             window.localStorage.removeItem('USER_INFO')
             window.localStorage.removeItem('speakvn_session')
 
-            // Wait a moment so user can read the console before redirecting
-            alert("Refresh token failed, check console. Usually redirecting to /login here.");
-            // setTimeout(() => {
-            //     window.location.href = '/login'
-            // }, 1000);
+            window.location.href = '/login'
             return Promise.reject(refreshError);
           } finally {
             isRefreshing = false;

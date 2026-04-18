@@ -21,6 +21,7 @@ import {
   Loader2,
   Menu,
   X,
+  Award,
 } from "lucide-react";
 
 const REGION_CHOICES = [
@@ -212,6 +213,7 @@ export default function LearnerLayout() {
     { key: "/learner/friends", icon: Users, label: "Bạn bè" },
     { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
     { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
+    { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
     { key: "/learner/profile", icon: UserCircle2, label: "Hồ sơ" },
   ];
 

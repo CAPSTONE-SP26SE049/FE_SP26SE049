@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider, Spin, Empty, Pagination } from 'antd';
-import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { adminExcelService } from '../services/adminExcelService';
 import { downloadBlob } from '../../educator/services/excelService';
@@ -182,19 +182,15 @@ const AdminChapterManagementPage: React.FC = () => {
         }
     };
 
-    const handleOpenCreateQuiz = (record: any) => {
-        setSelectedLevelForQuiz(record);
-        quizForm.setFieldsValue({
-            title: record?.name ? `Quiz ${record.name}` : '',
-            passingScore: 80,
-            timeLimitSeconds: 900,
-            pointsPerQuestion: 10,
-            readingCount: 0,
-            listeningCount: 0,
-            speakingCount: 0,
-            writingCount: 0,
-        });
-        setIsCreateQuizModalOpen(true);
+    const handleDeleteLevel = async (levelId: string) => {
+        try {
+            await adminService.deleteLevel(levelId);
+            message.success('Xóa chương học (tạm) thành công');
+            fetchLevels();
+        } catch (error: any) {
+            console.error('Error deleting level:', error);
+            message.error(error?.response?.data?.message || 'Không thể xóa chương học');
+        }
     };
 
     const handleCreateQuiz = async (values: any) => {
@@ -446,94 +442,6 @@ const AdminChapterManagementPage: React.FC = () => {
             message.error({ content: 'Không thể export', key: 'exp' });
         }
     };
-
-    const columns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 70,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => index + 1,
-        },
-        {
-            title: 'Vùng',
-            dataIndex: 'dialectId',
-            key: 'dialectId',
-            width: 140,
-            sorter: (a: any, b: any) => {
-                const aRegion = getRegionKey(a.dialectId);
-                const bRegion = getRegionKey(b.dialectId);
-                return aRegion.localeCompare(bRegion);
-            },
-            render: (dialectId: string) => {
-                const regionKey = getRegionKey(dialectId);
-                const info = REGION_LABEL[regionKey];
-                if (!info) return <Tag>Không có</Tag>;
-                return (
-                    <span
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            border: '1px solid #e2e8f0',
-                            background: '#f8fafc',
-                            color: '#475569'
-                        }}
-                    >
-                        {info.label.replace(/[🔵🟠🟢]/g, '').trim()}
-                    </span>
-                );
-            },
-        },
-        {
-            title: 'Tên chương học',
-            dataIndex: 'name',
-            key: 'name',
-            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
-            render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
-        },
-        {
-            title: 'Hành Động',
-            key: 'actions',
-            width: 180,
-            fixed: 'right' as const,
-            align: 'center' as const,
-            render: (_: any, record: any) => (
-                <Space size="small">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            icon={<EyeOutlined />}
-                            onClick={() => {
-                                setSelectedLevelForDetail(record);
-                                setIsDetailDrawerOpen(true);
-                            }}
-                            style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff' }}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Chỉnh sửa">
-                        <Button icon={<EditOutlined />} onClick={() => handleEditLevel(record)} />
-                    </Tooltip>
-                    {fromClassroomId && record._fromAssignment && (
-                        <Popconfirm
-                            title="Gỡ chương học khỏi lớp?"
-                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
-                            onConfirm={() => handleRemoveAssignment(record._assignmentId)}
-                            okText="Gỡ"
-                            cancelText="Hủy"
-                            okButtonProps={{ danger: true, style: { background: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
-                        >
-                            <Tooltip title="Gỡ khỏi lớp">
-                                <Button icon={<DeleteOutlined />} danger />
-                            </Tooltip>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
-        }
-    ];
 
     return (
         <div style={{ padding: '24px' }}>
@@ -993,6 +901,43 @@ const AdminChapterManagementPage: React.FC = () => {
                                                                         style={{ borderRadius: 8, border: '1px solid #e2e8f0', color: '#64748b', background: '#f8fafc' }}
                                                                     />
                                                                 </Tooltip>
+                                                                {fromClassroomId && level._fromAssignment ? (
+                                                                    <Popconfirm
+                                                                        title="Gỡ chương học khỏi lớp?"
+                                                                        description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
+                                                                        onConfirm={(e) => { e?.stopPropagation(); handleRemoveAssignment(level._assignmentId); }}
+                                                                        onCancel={(e) => e?.stopPropagation()}
+                                                                        okText="Gỡ"
+                                                                        cancelText="Hủy"
+                                                                        okButtonProps={{ danger: true, type: 'primary', style: { backgroundColor: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
+                                                                    >
+                                                                        <Button
+                                                                            icon={<DeleteOutlined />}
+                                                                            size="small"
+                                                                            danger
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            style={{ borderRadius: 8 }}
+                                                                        />
+                                                                    </Popconfirm>
+                                                                ) : (
+                                                                    <Popconfirm
+                                                                        title="Xóa chương học?"
+                                                                        description="Chương học sẽ bị ẩn khỏi hệ thống. Bạn chắc chắn chứ?"
+                                                                        onConfirm={(e) => { e?.stopPropagation(); handleDeleteLevel(level.id); }}
+                                                                        onCancel={(e) => e?.stopPropagation()}
+                                                                        okText="Xóa"
+                                                                        cancelText="Hủy"
+                                                                        okButtonProps={{ danger: true, type: 'primary', style: { backgroundColor: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
+                                                                    >
+                                                                        <Button
+                                                                            icon={<DeleteOutlined />}
+                                                                            size="small"
+                                                                            danger
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            style={{ borderRadius: 8 }}
+                                                                        />
+                                                                    </Popconfirm>
+                                                                )}
                                                                 <div style={{
                                                                     width: 30, height: 30, borderRadius: 8,
                                                                     background: info.color + '15',

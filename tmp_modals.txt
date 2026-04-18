@@ -1,0 +1,121 @@
+﻿
+                    <Modal
+                        title={
+                            <Space>
+                                <PlusOutlined style={{ color: '#2563eb' }} />
+                                <span style={{ fontSize: 18, fontWeight: 700 }}>Táº¡o bÃ i kiá»ƒm tra má»›i</span>
+                            </Space>
+                        }
+                        open={isCreateQuizModalOpen}
+                        onCancel={() => {
+                            setIsCreateQuizModalOpen(false);
+                            newQuizForm.resetFields();
+                        }}
+                        onOk={() => newQuizForm.submit()}
+                        confirmLoading={creatingQuiz}
+                        okText="Táº¡o má»›i"
+                        okButtonProps={{
+                            style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
+                        }}
+                        cancelText="Há»§y"
+                        cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
+                        width={700}
+                        centered
+                    >
+                        <Form
+                            form={newQuizForm}
+                            layout="vertical"
+                            onFinish={handleCreateQuiz}
+                            style={{ marginTop: 20 }}
+                        >
+                            <Form.Item name="title" label={<Text strong>TÃªn bÃ i kiá»ƒm tra</Text>} rules={[{ required: true, message: 'Vui lÃ²ng nháº­p tÃªn bÃ i kiá»ƒm tra' }, { max: 100, message: 'TÃªn bÃ i kiá»ƒm tra khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 100 kÃ½ tá»±' }]}>
+                                <Input placeholder="VÃ­ dá»¥: Kiá»ƒm tra cuá»‘i khÃ³a phÃ¡t Ã¢m" maxLength={100} showCount />
+                            </Form.Item>
+                            <Form.Item name="description" label={<Text strong>MÃ´ táº£ ngáº¯n</Text>} rules={[{ max: 255, message: 'MÃ´ táº£ khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 255 kÃ½ tá»±' }]}>
+                                <Input.TextArea rows={2} placeholder="MÃ´ táº£ ná»™i dung bÃ i kiá»ƒm tra" maxLength={255} showCount />
+                            </Form.Item>
+                            <Form.Item name="instructions" label={<Text strong>HÆ°á»›ng dáº«n cho há»c viÃªn</Text>} rules={[{ max: 500, message: 'HÆ°á»›ng dáº«n khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 500 kÃ½ tá»±' }]}>
+                                <Input.TextArea rows={2} placeholder="Ná»™i quy, thá»i gian, hÆ°á»›ng dáº«n chi tiáº¿t..." maxLength={500} showCount />
+                            </Form.Item>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                <Form.Item name="skillType" label={<Text strong>Loáº¡i ká»¹ nÄƒng</Text>} rules={[{ required: true, message: 'Chá»n loáº¡i ká»¹ nÄƒng' }]}>
+                                    <Select placeholder="Chá»n loáº¡i" options={[
+                                        { value: 'READING', label: 'ðŸ“– Reading' },
+                                        { value: 'LISTENING', label: 'ðŸŽ§ Listening' },
+                                        { value: 'SPEAKING', label: 'ðŸŽ™ï¸ Speaking' },
+                                        { value: 'WRITING', label: 'âœï¸ Writing' },
+                                        { value: 'MIXED', label: 'ðŸŽ¯ Tá»•ng há»£p' },
+                                    ]} />
+                                </Form.Item>
+                                <Form.Item
+                                    name="secondsPerQuestion"
+                                    label={<Text strong>Sá»‘ giÃ¢y má»—i cÃ¢u há»i</Text>}
+                                    initialValue={90}
+                                    rules={[{ required: true, message: 'Nháº­p sá»‘ giÃ¢y má»—i cÃ¢u' }]}
+                                >
+                                    <InputNumber min={1} style={{ width: '100%' }} />
+                                </Form.Item>
+                            </div>
+                        </Form>
+                    </Modal>
+
+                    {/* Import Quiz Modal */}
+                    <Modal
+                        title={
+                            <Space>
+                                <UploadOutlined style={{ color: '#15803d' }} />
+                                <span style={{ fontSize: 18, fontWeight: 700 }}>Import quiz tá»« CSV</span>
+                            </Space>
+                        }
+                        open={isImportModalOpen}
+                        onCancel={() => setIsImportModalOpen(false)}
+                        footer={null}
+                        width={560}
+                        centered
+                    >
+                        <div style={{ marginTop: 20 }}>
+                            <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
+                                <Text style={{ color: '#0369a1', fontSize: 13 }}>
+                                    <strong>HÆ°á»›ng dáº«n:</strong> Táº£i template máº«u, Ä‘iá»n dá»¯ liá»‡u rá»“i upload file CSV.<br />
+                                    CÃ¡c cá»™t: TÃªn quiz, MÃ´ táº£, HÆ°á»›ng dáº«n, Äiá»ƒm Ä‘áº¡t (%), Thá»i gian (giÃ¢y)
+                                </Text>
+                            </div>
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                                style={{ marginBottom: 16, display: 'block' }}
+                            />
+                            <Button
+                                type="primary"
+                                icon={<UploadOutlined />}
+                                onClick={handleImportQuizCSV}
+                                loading={importing}
+                                disabled={!importFile}
+                                size="large"
+                                style={{ width: '100%', borderRadius: 10, fontWeight: 700, background: 'linear-gradient(90deg, #15803d, #16a34a)', border: 'none', color: '#fff', marginBottom: 16, height: 44, boxShadow: '0 4px 12px rgba(21,128,61,0.25)' }}
+                            >
+                                {importing ? 'Äang import...' : 'Báº¯t Ä‘áº§u Import'}
+                            </Button>
+                            {importResult && (
+                                <div style={{ marginTop: 8 }}>
+                                    {importResult.success > 0 && (
+                                        <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, marginBottom: 8 }}>
+                                            <Text style={{ color: '#15803d', fontWeight: 600 }}>
+                                                âœ… Import thÃ nh cÃ´ng {importResult.success} quiz
+                                            </Text>
+                                        </div>
+                                    )}
+                                    {importResult.errors.length > 0 && (
+                                        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, maxHeight: 150, overflowY: 'auto' }}>
+                                            {importResult.errors.map((err, i) => (
+                                                <div key={i} style={{ color: '#dc2626', fontSize: 12, marginBottom: 2 }}>âŒ {err}</div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </Modal>
+

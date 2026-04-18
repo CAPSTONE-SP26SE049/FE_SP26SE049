@@ -100,7 +100,9 @@ export default function Register() {
         }
         return
       }
-      message.error(err?.message ?? 'Đăng ký thất bại')
+      // Check for backend errors (e.g., email/phone already exists)
+      const backendMsg = err?.response?.data?.message
+      message.error(backendMsg ?? err?.message ?? 'Đăng ký thất bại. Vui lòng thử lại.')
     } finally {
       setSubmitting(false)
     }
@@ -181,9 +183,7 @@ export default function Register() {
             name="phone"
             rules={[
               { required: true, message: 'Vui lòng nhập số điện thoại' },
-              { pattern: /^\d+$/, message: 'Số điện thoại chỉ được chứa chữ số' },
-              { min: 10, message: 'Số điện thoại từ 10 đến 15 số' },
-              { max: 15, message: 'Số điện thoại từ 10 đến 15 số' }
+              { pattern: /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])\d{7}$/, message: 'Số điện thoại Việt Nam không hợp lệ (VD: 0912345678)' },
             ]}
           >
             <Input

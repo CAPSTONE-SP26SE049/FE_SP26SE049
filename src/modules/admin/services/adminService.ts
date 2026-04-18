@@ -177,6 +177,9 @@ export const adminService = {
     updateQuiz: async (id: string, data: any) => {
         return apiClient.put(`/admin/content/quizzes/${id}`, data);
     },
+    deleteQuiz: async (id: string) => {
+        return apiClient.delete(`/admin/content/quizzes/${id}`);
+    },
     getQuizChallenges: async (quizId: string) => {
         return apiClient.get(`/admin/content/quizzes/${quizId}/challenges`);
     },
