@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeftOutlined,
@@ -215,6 +215,8 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
 
 const QuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>()
+  const [searchParams] = useSearchParams()
+  const customPathId = searchParams.get('customPathId')
   const navigate = useNavigate()
   const location = useLocation()
   const { updateSessionItem } = useAuth()
@@ -275,21 +277,25 @@ const QuizPage: React.FC = () => {
 
 
     try {
-      const res = await apiClient.post(`/users/quizzes/${quiz.id}/complete`, payload)
-      // Extract from ApiResponse
-      const data = res?.data || res
-      setResult(data)
-      setFinished(true)
+      if (customPathId) {
+        // Submit to custom path progress endpoint
+        await apiClient.post(`/learner/custom-path/quizzes/${quiz.id}/complete`, { score: pct })
+        setResult({ score: pct, passed: pct >= quiz.passingScore, starsEarned: pct >= 100 ? 3 : (pct >= 90 ? 2 : (pct >= 80 ? 1 : 0)) })
+        setFinished(true)
+      } else {
+        const res = await apiClient.post(`/users/quizzes/${quiz.id}/complete`, payload)
+        const data = res?.data || res
+        setResult(data)
+        setFinished(true)
 
-      // UPDATE GLOBAL STAR & XP COUNT
-      if (typeof updateSessionItem === 'function') {
-        updateSessionItem({
-          totalStars: data.newTotalStars,
-          totalXp: data.newTotalXP,
-          totalExperience: data.newTotalXP
-        })
+        if (typeof updateSessionItem === 'function') {
+          updateSessionItem({
+            totalStars: data.newTotalStars,
+            totalXp: data.newTotalXP,
+            totalExperience: data.newTotalXP
+          })
+        }
       }
-
       // ── Find next quiz in the same chapter ──────────────────────────────
       if (fromState.chapterId) {
         try {

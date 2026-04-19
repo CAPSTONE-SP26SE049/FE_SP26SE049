@@ -17,11 +17,11 @@ export interface StudentAccount {
   avatar?: string;
   avatar_url?: string;
   level: string;
-  learningPath: StudentLearningPath;
-  lastActiveAt: string;
-  progressPercent: number;
-  pronunciationScore: number;
-  weakPhonemes: string[];
+  lastMessage?: string;
+  lastMessageAt?: string;
+  unreadCount?: number;
+  isActive?: boolean;
+  hasCustomPath?: boolean;
 }
 
 export interface PronunciationMetric {
@@ -95,16 +95,17 @@ export interface FeedbackPayload {
 
 export const educatorService = {
   getDashboardSummary: async () => apiClient.get('/educator/dashboard/summary'),
-  getStudentAccounts: async () => apiClient.get('/admin/users'),
-  getStudentAccountById: async (id: string) => apiClient.get(`/admin/users/${id}`),
+  getStudentAccounts: async () => apiClient.get('/educator/students'),
+  getStudentAccountById: async (id: string) => apiClient.get(`/educator/students/${id}`),
   createCustomLearningPath: async (data: CustomLearningPathPayload) => apiClient.post('/educator/students/learning-paths', data),
   getProgressOverview: async () => apiClient.get('/educator/progress/overview'),
   getPronunciationAnalytics: async (studentId?: string) => apiClient.get('/educator/progress/pronunciation-analytics', { params: studentId ? { studentId } : undefined }),
   getLessonPlans: async () => apiClient.get('/educator/lessons'),
   createLessonPlan: async (data: LessonPlanPayload) => apiClient.post('/educator/lessons', data),
   updateLessonPlan: async (id: string, data: Partial<LessonPlanPayload>) => apiClient.patch(`/educator/lessons/${id}`, data),
-  getMessages: async () => apiClient.get('/educator/messages'),
+  getConversationMessages: async (studentId: string) => apiClient.get(`/educator/messages/${studentId}`),
   sendMessage: async (data: MessagePayload) => apiClient.post('/educator/messages', data),
+  markAsRead: async (studentId: string) => apiClient.post(`/educator/messages/read/${studentId}`),
   getFeedbackItems: async () => apiClient.get('/educator/feedback'),
   sendFeedback: async (data: FeedbackPayload) => apiClient.post('/educator/feedback', data),
   getAnalyticsReports: async () => apiClient.get('/educator/analytics/reports'),

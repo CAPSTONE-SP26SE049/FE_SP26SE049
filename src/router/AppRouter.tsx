@@ -12,6 +12,8 @@ import EducatorLayout from '../modules/educator/components/EducatorLayout'
 import SettingsPage from '../modules/educator/pages/SettingsPage'
 import EducatorOverviewPage from '../modules/educator/pages/EducatorOverviewPage'
 import StudentsPage from '../modules/educator/pages/StudentsPage'
+import CustomPathSelectionPage from '../modules/educator/pages/CustomPathSelectionPage'
+import InteractionsPage from '../modules/educator/pages/InteractionsPage'
 
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
@@ -35,6 +37,10 @@ import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardP
 import AchievementsPage from '../modules/learner/pages/AchievementsPage'
 
 import { ProtectedRoute, GuestRoute } from '../core/auth/ProtectedRoute'
+
+import CustomPathDesignerPage from '../modules/educator/pages/CustomPathDesignerPage'
+import CustomJourneyPage from '../modules/learner/pages/CustomJourneyPage'
+import MailboxPage from '../modules/learner/pages/MailboxPage'
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -71,9 +77,11 @@ export const AppRoutes: React.FC = () => {
         <Route path="/educator" element={<EducatorLayout />}>
           <Route index element={<Navigate to="students" replace />} />
           <Route path="students" element={<StudentsPage />} />
+          <Route path="design-path" element={<CustomPathSelectionPage />} />
+          <Route path="students/:studentId/custom-path" element={<CustomPathDesignerPage />} />
           <Route path="progress" element={<ChapterManagementPage />} />
           <Route path="lessons" element={<ChallengeBankPage />} />
-          <Route path="messages" element={<QuizManagementPage />} />
+          <Route path="messages" element={<InteractionsPage />} />
           <Route path="analytics" element={<EducatorOverviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="challenges" element={<ChallengeBankPage />} />
@@ -88,6 +96,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/learner" element={<LearnerLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<LearnerDashboardPage />} />
+          <Route path="custom-journey" element={<CustomJourneyPage />} />
+          <Route path="mailbox" element={<MailboxPage />} />
           <Route path="roadmap" element={<RoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="friends" element={<LearnerFriendsPage />} />

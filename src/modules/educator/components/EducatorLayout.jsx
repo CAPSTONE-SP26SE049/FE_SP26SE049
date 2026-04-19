@@ -9,10 +9,9 @@ import { BookOpen, ChartNoAxesCombined, MessageSquareMore, NotebookPen, Sparkles
 const NAV_ITEMS = [
   { key: '/educator', icon: BookOpen, label: 'Tổng quan' },
   { key: '/educator/students', icon: Users, label: 'Quản lý học viên' },
+  { key: '/educator/design-path', icon: Sparkles, label: 'Thiết kế lộ trình' },
   { key: '/educator/progress', icon: ChartNoAxesCombined, label: 'Theo dõi tiến độ' },
-  { key: '/educator/lessons', icon: NotebookPen, label: 'Giáo án & mục tiêu' },
   { key: '/educator/messages', icon: MessageSquareMore, label: 'Tương tác & phản hồi' },
-  { key: '/educator/analytics', icon: BrainCircuit, label: 'Phân tích dữ liệu' },
   { key: '/educator/settings', icon: SettingOutlined, label: 'Cài đặt' },
 ]
 

@@ -14,16 +14,21 @@
   .btn-primary {
     @apply bg-brand-green hover:bg-green-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-green-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
   }
+
   .btn-secondary {
     @apply bg-white hover:bg-gray-50 text-brand-blue font-bold py-3 px-6 rounded-2xl border-2 border-gray-200 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all uppercase tracking-wide;
   }
+
   .btn-danger {
     @apply bg-brand-red hover:bg-red-500 text-white font-bold py-3 px-6 rounded-2xl border-b-4 border-red-600 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wide;
   }
+
   .card {
     @apply bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-sm;
   }
-}*,
+}
+
+*,
 *::before,
 *::after {
   box-sizing: border-box;
@@ -54,13 +59,114 @@ a {
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #e5e7eb;
   border-radius: 10px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #d1d5db;
+}
+
+.premium-tabs-v2 .ant-tabs-nav::before {
+  border-bottom: 2px solid #f1f5f9 !important;
+}
+
+.premium-tabs-v2 .ant-tabs-tab {
+  padding: 16px 24px !important;
+  margin: 0 12px 0 0 !important;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  border-radius: 24px !important;
+  opacity: 0.6;
+}
+
+.premium-tabs-v2 .ant-tabs-tab-active {
+  background: #fdfaff !important;
+  transform: translateY(-2px);
+  opacity: 1;
+}
+
+.premium-tabs-v2 .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #7c3aed !important;
+}
+
+.premium-tabs-v2 .ant-tabs-ink-bar {
+  height: 6px !important;
+  border-radius: 6px 6px 0 0 !important;
+  background: linear-gradient(to right, #6366f1, #a855f7) !important;
+}
+
+.premium-search .ant-input-affix-wrapper {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  height: 52px !important;
+  border-radius: 20px !important;
+  padding: 0 16px !important;
+}
+
+.custom-audio-player {
+  width: 100%;
+  height: 32px !important;
+  filter: grayscale(1) invert(0.1) sepia(0.2) hue-rotate(220deg) brightness(1.1);
+  border-radius: 12px;
+}
+
+.custom-audio-player::-webkit-media-controls-enclosure {
+  background-color: transparent !important;
+}
+
+.custom-audio-player::-webkit-media-controls-panel {
+  background-color: transparent !important;
+}
+
+.premium-modal .ant-modal-content {
+  padding: 0 !important;
+  border-radius: 40px !important;
+  overflow: hidden !important;
+}
+
+/* Premium UI Enhancements */
+.premium-tabs .ant-tabs-nav::before {
+  border-bottom: 2px solid #f8fafc !important;
+}
+
+.premium-tabs .ant-tabs-tab {
+  padding: 12px 16px !important;
+  margin: 0 8px 0 0 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 16px !important;
+}
+
+.premium-tabs .ant-tabs-tab-active {
+  background: #f1f5f9 !important;
+}
+
+.premium-tabs .ant-tabs-tab:hover {
+  color: #4f46e5 !important;
+  background: #f8fafc !important;
+}
+
+.premium-tabs .ant-tabs-ink-bar {
+  height: 4px !important;
+  border-radius: 4px 4px 0 0 !important;
+  background: #4f46e5 !important;
+}
+
+.messenger-search .ant-input {
+  background: #f8fafc !important;
+  border: 1px solid #f1f5f9 !important;
+  height: 48px !important;
+  border-radius: 16px !important;
+  padding-left: 12px !important;
+}
+
+.messenger-search .ant-input:focus,
+.messenger-search .ant-input-focused {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1) !important;
 }

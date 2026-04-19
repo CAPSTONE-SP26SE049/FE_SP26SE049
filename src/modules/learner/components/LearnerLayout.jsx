@@ -21,6 +21,7 @@ import {
   Loader2,
   Menu,
   X,
+  Mail,
   Award,
 } from "lucide-react";
 
@@ -174,7 +175,7 @@ export default function LearnerLayout() {
   const { session, logout, updateSessionItem } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [avatarErr, setAvatarErr] = useState(false);
 
   const user = session?.user || { fullName: "Learner", avatar: null };
@@ -215,6 +216,8 @@ export default function LearnerLayout() {
 
   const menuItems = [
     { key: "/learner/dashboard", icon: LayoutDashboard, label: "Trang chủ" },
+    { key: "/learner/mailbox", icon: Mail, label: "Hộp thư" },
+    { key: "/learner/custom-journey", icon: Sparkles, label: "Lộ trình riêng" },
     { key: "/learner/roadmap", icon: Map, label: "Hành trình" },
     { key: "/learner/friends", icon: Users, label: "Bạn bè" },
     { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
