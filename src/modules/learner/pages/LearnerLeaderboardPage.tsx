@@ -13,6 +13,7 @@ interface LeaderboardEntry {
     accountId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     totalStars: number;
     challengesCompleted: number;
     currentStreakDays: number;
@@ -71,7 +72,7 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                     >
                         <div className="mb-0.5">{cfg.badge}</div>
                         <div className={clsx("rounded-full mb-1 relative", cfg.ring)}>
-                            <Avatar src={e.avatarUrl} size={cfg.size} className="border-2 border-white" />
+                            <Avatar src={e.avatar_url || e.avatarUrl} size={cfg.size} className="border-2 border-white" />
                             {isMe && (
                                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
                                     <CheckCircleFilled className="text-white text-[7px]" />
@@ -113,7 +114,7 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                 {e.rankPosition}
             </div>
             <div className="relative flex-shrink-0">
-                <Avatar src={e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
+                <Avatar src={e.avatar_url || e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
                 {isMe && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-500 rounded-full border border-white flex items-center justify-center">
                         <CheckCircleFilled className="text-white text-[7px]" />

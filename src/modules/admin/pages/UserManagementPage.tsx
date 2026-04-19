@@ -195,7 +195,7 @@ const UserManagementPage = () => {
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Avatar
-                            src={record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
+                            src={record.avatar_url || record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
                             icon={<UserOutlined />}
                             className="w-10 h-10 rounded-xl"
                             style={{ borderRadius: 10 }}

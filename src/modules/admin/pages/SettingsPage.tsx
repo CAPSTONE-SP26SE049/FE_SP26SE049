@@ -103,7 +103,8 @@ const AdminSettingsPage: React.FC = () => {
 
     const inputStyle = { borderRadius: 12, height: 44, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }
 
-    const avatarUrl = liveProfile?.avatarUrl || liveProfile?.avatar
+    const avatarUrl = liveProfile?.avatar_url || liveProfile?.avatarUrl || liveProfile?.avatar
+        || (session?.user as any)?.avatar_url
         || (session?.user as any)?.avatarUrl
         || (session?.user as any)?.avatar
 

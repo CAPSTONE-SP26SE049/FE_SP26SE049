@@ -21,6 +21,7 @@ const EducatorLayout = () => {
   const { session, logout } = useAuth()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [avatarErr, setAvatarErr] = useState(false)
 
   const user = session?.user
   const userDisplayName = user?.fullName || 'Educator'
@@ -65,14 +66,40 @@ const EducatorLayout = () => {
           </nav>
           <div className="flex-shrink-0 border-t border-indigo-50 p-3">
             <Dropdown menu={userMenu} placement="topRight" trigger={['click']}>
-              <div className={`flex items-center cursor-pointer p-2 rounded-2xl hover:bg-indigo-50 transition-all ${collapsed ? 'justify-center' : 'gap-3'}`}><Avatar icon={<UserOutlined />} size={40} src={user?.avatar} className="bg-indigo-100 text-indigo-500 border-2 border-indigo-200 flex-shrink-0" />{!collapsed && <div className="flex-1 min-w-0"><div className="text-sm font-bold text-slate-800 truncate">{userDisplayName}</div><div className="text-[10px] text-indigo-500 uppercase tracking-widest font-black">Giáo viên</div></div>}</div>
+              <div className={`flex items-center cursor-pointer p-2 rounded-2xl hover:bg-indigo-50 transition-all ${collapsed ? 'justify-center' : 'gap-3'}`}>
+                <Avatar 
+                  icon={<UserOutlined />} 
+                  size={40} 
+                  src={avatarErr ? null : (user?.avatar_url || user?.avatar)} 
+                  onError={() => { setAvatarErr(true); return true; }}
+                  className="bg-indigo-100 text-indigo-500 border-2 border-indigo-200 flex-shrink-0" 
+                />
+                {!collapsed && <div className="flex-1 min-w-0"><div className="text-sm font-bold text-slate-800 truncate">{userDisplayName}</div><div className="text-[10px] text-indigo-500 uppercase tracking-widest font-black">Giáo viên</div></div>}
+              </div>
             </Dropdown>
           </div>
         </motion.aside>
         <button onClick={() => setCollapsed(!collapsed)} className="absolute right-0 translate-x-1/2 top-[88px] w-7 h-7 bg-white border border-indigo-200 rounded-full flex items-center justify-center shadow-md hover:bg-indigo-50 transition-all z-40 text-indigo-600">{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
       </div>
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="h-[72px] bg-white/90 backdrop-blur border-b border-indigo-100 flex items-center justify-between px-8 flex-shrink-0 shadow-sm"><div><h1 className="text-lg font-black text-slate-800 leading-tight">{currentLabel}</h1><p className="text-xs text-slate-400 font-medium">SpeakVN Journey educator workspace</p></div><Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}><div className="flex items-center gap-2.5 cursor-pointer px-3 py-1.5 rounded-xl hover:bg-indigo-50 transition-all"><div className="hidden md:block text-right"><div className="text-sm font-bold text-slate-800 leading-tight">{userDisplayName}</div><div className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Giáo viên</div></div><Avatar icon={<UserOutlined />} size={36} src={user?.avatar} className="bg-indigo-100 text-indigo-500 border-2 border-indigo-200 flex-shrink-0" /></div></Dropdown></header>
+        <header className="h-[72px] bg-white/90 backdrop-blur border-b border-indigo-100 flex items-center justify-between px-8 flex-shrink-0 shadow-sm">
+          <div><h1 className="text-lg font-black text-slate-800 leading-tight">{currentLabel}</h1><p className="text-xs text-slate-400 font-medium">SpeakVN Journey educator workspace</p></div>
+          <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
+            <div className="flex items-center gap-2.5 cursor-pointer px-3 py-1.5 rounded-xl hover:bg-indigo-50 transition-all">
+              <div className="hidden md:block text-right">
+                <div className="text-sm font-bold text-slate-800 leading-tight">{userDisplayName}</div>
+                <div className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Giáo viên</div>
+              </div>
+              <Avatar 
+                icon={<UserOutlined />} 
+                size={36} 
+                src={avatarErr ? null : (user?.avatar_url || user?.avatar)} 
+                onError={() => { setAvatarErr(true); return true; }}
+                className="bg-indigo-100 text-indigo-500 border-2 border-indigo-200 flex-shrink-0" 
+              />
+            </div>
+          </Dropdown>
+        </header>
         <main className="flex-1 overflow-y-auto p-6"><Outlet /></main>
       </div>
     </div>
