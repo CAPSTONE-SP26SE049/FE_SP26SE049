@@ -80,9 +80,6 @@ export default function ChatBox({
           />
           <div className="flex flex-col min-w-0">
             <div className={clsx("font-extrabold truncate", integrated ? "text-base" : "text-sm")}>{friendName}</div>
-            <div className={clsx("text-[11px] font-medium flex items-center gap-1", integrated ? "text-green-500" : "text-purple-100")}>
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Đang hoạt động
-            </div>
           </div>
         </div>
         <Tooltip title="Đóng">
