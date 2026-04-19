@@ -27,6 +27,7 @@ interface Friend {
     userId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     status: string;
     createdAt: string;
 }
@@ -35,6 +36,7 @@ interface SearchUser {
     userId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     friendshipStatus: string | null;
 }
 
@@ -42,6 +44,7 @@ interface FriendPublicProfile {
     id: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     region: string | null;
     totalStars: number;
     currentStreakDays: number;
@@ -113,8 +116,8 @@ const FriendProfileModal = ({
                     </div>
                     <div className="flex flex-col items-center -mt-12 px-6 pb-6">
                         <Avatar
-                            src={profile.avatarUrl}
-                            icon={!profile.avatarUrl && <UserOutlined />}
+                            src={profile.avatar_url || profile.avatarUrl}
+                            icon={!(profile.avatar_url || profile.avatarUrl) && <UserOutlined />}
                             size={80}
                             className="border-4 border-white shadow-xl bg-purple-100 text-purple-600"
                         />
@@ -184,8 +187,8 @@ const FriendCard = ({
         <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
                 <Avatar
-                    src={item.avatarUrl}
-                    icon={!item.avatarUrl && <UserOutlined />}
+                    src={item.avatar_url || item.avatarUrl}
+                    icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
                     size={56}
                     className="bg-purple-100 text-purple-600 border-2 border-purple-100"
                 />
@@ -276,8 +279,8 @@ const RequestCard = ({
         )}
     >
         <Avatar
-            src={item.avatarUrl}
-            icon={!item.avatarUrl && <UserOutlined />}
+            src={item.avatar_url || item.avatarUrl}
+            icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
             size={48}
             className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
         />
@@ -357,8 +360,8 @@ const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) =
             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all"
         >
             <Avatar
-                src={item.avatarUrl}
-                icon={!item.avatarUrl && <UserOutlined />}
+                src={item.avatar_url || item.avatarUrl}
+                icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
                 size={48}
                 className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
             />

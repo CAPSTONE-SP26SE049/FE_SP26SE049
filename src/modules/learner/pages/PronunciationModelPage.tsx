@@ -106,7 +106,9 @@ export default function PronunciationModelPage() {
             } catch { }
         }
         nudgeRef.current = !nudgeRef.current;
-        mv.setAttribute('exposure', nudgeRef.current ? '1.5001' : '1.5');
+        requestAnimationFrame(() => {
+            mv.setAttribute('exposure', nudgeRef.current ? '1.5001' : '1.5');
+        });
     }, []);
 
     const updateMorphTarget = useCallback((value: number, overrideSound?: string) => {

@@ -46,9 +46,14 @@ export default function ProfilePage() {
     const [progressLoading, setProgressLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [avatarErr, setAvatarErr] = useState(false)
     const [form] = Form.useForm()
     const fetchedBadges = useRef(false)
     const fetchedProgress = useRef(false)
+
+    useEffect(() => {
+        setAvatarErr(false)
+    }, [user?.avatar])
 
     useEffect(() => {
         if (fetchedBadges.current) return
@@ -84,7 +89,7 @@ export default function ProfilePage() {
             fullName: user?.fullName,
             phone: user?.phone || user?.phoneNumber,
             region: (user?.region || '').toLowerCase(),
-            avatarUrl: user?.avatar,
+            avatarUrl: user?.avatar_url || user?.avatar,
         })
         setIsModalOpen(true)
     }
@@ -93,8 +98,8 @@ export default function ProfilePage() {
         try {
             const v = await form.validateFields()
             setSaving(true)
-            await apiClient.put('/users/me', { fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl })
-            updateSessionItem?.({ fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl })
+            await apiClient.put('/users/me', { fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl })
+            updateSessionItem?.({ fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl })
             message.success('Cập nhật hồ sơ thành công!')
             setIsModalOpen(false)
         } catch (e: any) {
@@ -158,8 +163,8 @@ export default function ProfilePage() {
                                         className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center border-2 border-white shadow-md"
                                         style={{ background: region?.bg || '#f5f3ff' }}
                                     >
-                                        {user?.avatar
-                                            ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                                        {user?.avatar && !avatarErr
+                                            ? <img src={user.avatar} alt="" className="w-full h-full object-cover" onError={() => setAvatarErr(true)} />
                                             : <span className="text-xl font-black" style={{ color: region?.color || '#9333ea' }}>
                                                 {user?.fullName?.[0] || 'U'}
                                             </span>
@@ -361,7 +366,7 @@ export default function ProfilePage() {
                 }
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
-                footer={null} centered width={480} destroyOnClose
+                footer={null} centered width={480} destroyOnHidden
             >
                 <Form form={form} layout="vertical" className="mt-3" requiredMark={false}>
                     <Form.Item name="fullName" label={<span className="font-bold text-gray-600 text-sm">Họ và tên</span>}
