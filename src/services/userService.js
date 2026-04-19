@@ -1,8 +1,16 @@
 import apiClient from './apiClient'
 
 /**
+ * Fetch the authenticated user's latest profile from the server.
+ * @returns {Promise<Object>} API Response with user profile data
+ */
+export const fetchProfileAPI = async () => {
+    return apiClient.get('/users/me')
+}
+
+/**
  * Update the user's profile information.
- * @param {Object} profileData - User profile details (fullName, phoneNumber, avatarUrl)
+ * @param {Object} profileData - User profile details (fullName, phone, avatarUrl)
  * @returns {Promise<Object>} API Response
  */
 export const updateProfileAPI = async (profileData) => {

@@ -22,7 +22,6 @@ import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
-import RewardManagementPage from '../modules/admin/pages/RewardManagementPage'
 import AchievementManagementPage from '../modules/admin/pages/AchievementManagementPage'
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
@@ -35,8 +34,9 @@ import LearnerFriendsPage from '../modules/learner/pages/LearnerFriendsPage'
 import PronunciationModelPage from '../modules/learner/pages/PronunciationModelPage'
 import QuizPage from '../modules/learner/pages/QuizPage'
 import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardPage'
+import AchievementsPage from '../modules/learner/pages/AchievementsPage'
 
-import { ProtectedRoute } from '../core/auth/ProtectedRoute'
+import { ProtectedRoute, GuestRoute } from '../core/auth/ProtectedRoute'
 
 import CustomPathDesignerPage from '../modules/educator/pages/CustomPathDesignerPage'
 import CustomJourneyPage from '../modules/learner/pages/CustomJourneyPage'
@@ -45,14 +45,20 @@ import MailboxPage from '../modules/learner/pages/MailboxPage'
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      {/* Trang công khai - ai cũng vào được */}
       <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
 
+      {/* Guest-only routes: đã đăng nhập → redirect về home của role */}
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Route>
+
+      {/* Admin routes - chỉ ADMIN */}
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
@@ -60,13 +66,13 @@ export const AppRoutes: React.FC = () => {
           <Route path="chapters" element={<AdminChapterManagementPage />} />
           <Route path="quizzes" element={<AdminQuizManagementPage />} />
           <Route path="quizzes/:levelId" element={<AdminQuizManagementPage />} />
-          <Route path="rewards" element={<RewardManagementPage />} />
           <Route path="achievements" element={<AchievementManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="ai-monitor" element={<AiMonitorPage />} />
         </Route>
       </Route>
 
+      {/* Educator routes - chỉ EDUCATOR */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
           <Route index element={<Navigate to="students" replace />} />
@@ -84,6 +90,7 @@ export const AppRoutes: React.FC = () => {
         </Route>
       </Route>
 
+      {/* Learner routes - chỉ USER */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
         <Route path="/learner" element={<LearnerLayout />}>
@@ -96,9 +103,11 @@ export const AppRoutes: React.FC = () => {
           <Route path="friends" element={<LearnerFriendsPage />} />
           <Route path="pronunciation" element={<PronunciationModelPage />} />
           <Route path="leaderboard" element={<LearnerLeaderboardPage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
         </Route>
       </Route>
 
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

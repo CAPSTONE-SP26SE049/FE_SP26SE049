@@ -128,6 +128,10 @@ const AiMonitorPage = () => {
         SOUTH: 'bg-emerald-100 text-emerald-700',
     }
 
+    const dialectLabel: Record<string, string> = {
+        NORTH: 'Bắc', CENTRAL: 'Trung', SOUTH: 'Nam',
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -278,8 +282,8 @@ const AiMonitorPage = () => {
                                             </td>
                                             <td className="py-3 px-4">
                                                 {log.dialect ? (
-                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${dialectColor[log.dialect] || 'bg-slate-100 text-slate-600'}`}>
-                                                        {log.dialect}
+                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${dialectColor[log.dialect.toUpperCase()] || 'bg-slate-100 text-slate-600'}`}>
+                                                        {dialectLabel[log.dialect.toUpperCase()] || log.dialect}
                                                     </span>
                                                 ) : '—'}
                                             </td>

@@ -8,7 +8,6 @@ import {
     Empty,
     Typography,
     Space,
-    Badge,
     Tooltip,
     Row,
     Col,
@@ -21,10 +20,10 @@ import {
     InputNumber,
     message,
     Upload,
-    Pagination
+    Pagination,
+    Popconfirm
 } from 'antd';
 import {
-    FileTextOutlined,
     ClockCircleOutlined,
     TrophyOutlined,
     QuestionCircleOutlined,
@@ -124,7 +123,9 @@ const AdminQuizManagementPage: React.FC = () => {
     const [updatingQuiz, setUpdatingQuiz] = useState(false);
     const [isEditQuizModalOpen, setIsEditQuizModalOpen] = useState(false);
     const [editQuizForm] = Form.useForm();
+    const [viewMode, setViewMode] = useState<'grid' | 'roadmap'>('grid');
     const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
+
     const [creatingQuiz, setCreatingQuiz] = useState(false);
     const [newQuizForm] = Form.useForm();
 
@@ -338,6 +339,17 @@ const AdminQuizManagementPage: React.FC = () => {
             setQuizzes([]);
         } finally {
             setLoadingQuiz(false);
+        }
+    };
+
+    const handleDeleteQuiz = async (quizId: string) => {
+        try {
+            await adminService.deleteQuiz(quizId);
+            message.success('Xóa bài kiểm tra thành công');
+            if (selectedLevelId) handleLevelChange(selectedLevelId);
+        } catch (error: any) {
+            console.error('Error deleting quiz:', error);
+            message.error(error?.response?.data?.message || 'Không thể xóa bài kiểm tra');
         }
     };
 
@@ -1474,117 +1486,10 @@ const AdminQuizManagementPage: React.FC = () => {
         },
     ];
 
-    const levelColumns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 60,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => (
-                <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
-            ),
-        },
-        {
-            title: 'Tên chương',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string) => (
-                <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
-            )
-        },
-        {
-            title: 'Miền',
-            key: 'region',
-            width: 130,
-            render: (_: any, record: any) => {
-                const rInfo = getRegionInfo(record.dialectId);
-                if (!rInfo) return <Text type="secondary">—</Text>;
-                return (
-                    <Tag style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        borderRadius: 20,
-                        padding: '2px 10px',
-                        background: `${rInfo.color}15`,
-                        border: `1px solid ${rInfo.color}40`,
-                        color: rInfo.color,
-                    }}>
-                        {rInfo.label}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: 'Mô tả',
-            dataIndex: 'description',
-            key: 'description',
-            ellipsis: true,
-            render: (text: string) => <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
-        },
-
-    ];
 
 
-    const quizColumns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 70,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
-        },
-        {
-            title: 'Tên bài kiểm tra',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: any) => (
-                <Text strong style={{ color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
-            )
-        },
-        {
-            title: 'Kỹ năng',
-            dataIndex: 'skillType',
-            key: 'skillType',
-            width: 150,
-            render: (skill: string) => {
-                const cfg = SKILL_CONFIG[skill] || { label: skill, color: '#888', icon: <QuestionCircleOutlined /> };
-                return (
-                    <Tag
-                        icon={cfg.icon}
-                        style={{
-                            fontWeight: 600,
-                            borderRadius: 20,
-                            border: '1px solid #d9d9d9',
-                            color: '#475569'
-                        }}
-                    >
-                        {cfg.label}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            align: 'center' as const,
-            width: 120,
-            render: (_: any, record: any) => (
-                <Button
-                    type="primary"
-                    ghost
-                    size="middle"
-                    icon={<EyeOutlined />}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setQuiz(record);
-                    }}
-                    style={{ borderRadius: 8, fontWeight: 600, border: '1.5px solid #9333ea' }}
-                >
-                    Chi tiết
-                </Button>
-            )
-        }
-    ];
+
+
 
     const filteredAndSortedQuizzes = useMemo(() => {
         let result = quizzes;
@@ -1894,144 +1799,354 @@ const AdminQuizManagementPage: React.FC = () => {
                         <span style={{ fontWeight: 600, color: '#1e293b' }}>{selectedLevel?.name || 'Chương học'}</span>
                     </div>
 
-                    {/* How-to hint */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '10px 16px', borderRadius: 10, marginBottom: 18,
-                        background: '#fffbeb', border: '1px solid #fde68a'
-                    }}>
-                        <span style={{ fontSize: 18 }}>📝</span>
-                        <span style={{ fontSize: 13, color: '#92400e', fontWeight: 500 }}>
-                            Nhấn vào một bài kiểm tra bên dưới để xem và quản lý danh sách câu hỏi của bài đó.
-                        </span>
+                    {/* Header controls for Quiz list */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 16 }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 16px', borderRadius: 10,
+                            background: '#fffbeb', border: '1px solid #fde68a', flex: 1
+                        }}>
+                            <span style={{ fontSize: 18 }}>📝</span>
+                            <span style={{ fontSize: 13, color: '#92400e', fontWeight: 500 }}>
+                                Nhấn vào một bài kiểm tra bên dưới để xem và quản lý danh sách câu hỏi của bài đó.
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', background: '#f1f5f9', padding: 6, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                            <Button
+                                type={viewMode === 'grid' ? 'primary' : 'text'}
+                                onClick={() => setViewMode('grid')}
+                                style={{
+                                    borderRadius: 10,
+                                    boxShadow: viewMode === 'grid' ? '0 4px 12px rgba(147, 51, 234, 0.3)' : 'none',
+                                    color: viewMode === 'grid' ? '#fff' : '#475569',
+                                    background: viewMode === 'grid' ? 'linear-gradient(135deg, #9333ea, #7e22ce)' : 'transparent',
+                                    border: 'none',
+                                    fontWeight: 600,
+                                    height: 36,
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                Kỹ năng
+                            </Button>
+                            <Button
+                                type={viewMode === 'roadmap' ? 'primary' : 'text'}
+                                onClick={() => setViewMode('roadmap')}
+                                style={{
+                                    borderRadius: 10,
+                                    boxShadow: viewMode === 'roadmap' ? '0 4px 12px rgba(147, 51, 234, 0.3)' : 'none',
+                                    color: viewMode === 'roadmap' ? '#fff' : '#475569',
+                                    background: viewMode === 'roadmap' ? 'linear-gradient(135deg, #9333ea, #7e22ce)' : 'transparent',
+                                    border: 'none',
+                                    fontWeight: 600,
+                                    height: 36,
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                Roadmap
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Quiz card list for a selected chapter */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                        gap: 24,
-                        alignItems: 'start'
-                    }}>
-                        {(() => {
-                            const grouped: Record<string, any[]> = {};
-                            filteredAndSortedQuizzes.forEach(quiz => {
-                                const st = quiz.skillType || 'MIXED';
-                                if (!grouped[st]) grouped[st] = [];
-                                grouped[st].push(quiz);
-                            });
+                    {viewMode === 'grid' ? (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                            gap: 24,
+                            alignItems: 'start'
+                        }}>
+                            {(() => {
+                                const grouped: Record<string, any[]> = {};
+                                filteredAndSortedQuizzes.forEach(quiz => {
+                                    const st = quiz.skillType || 'MIXED';
+                                    if (!grouped[st]) grouped[st] = [];
+                                    grouped[st].push(quiz);
+                                });
 
-                            const skillOrder = ['READING', 'LISTENING', 'WRITING', 'SPEAKING', 'MIXED'];
-                            const existingSkills = skillOrder.filter(s => grouped[s]);
+                                const skillOrder = ['READING', 'LISTENING', 'WRITING', 'SPEAKING', 'MIXED'];
+                                const existingSkills = skillOrder.filter(s => grouped[s]);
 
-                            return existingSkills.map(skillType => {
-                                const skillCfg = SKILL_CONFIG[skillType] || { label: 'Hỗn hợp', color: '#64748b', icon: <QuestionCircleOutlined /> };
-                                const allCards = grouped[skillType] || [];
-                                const pageSize = 4;
-                                const page = quizPages[skillType] || 1;
-                                const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
+                                return existingSkills.map(skillType => {
+                                    const skillCfg = SKILL_CONFIG[skillType] || { label: 'Hỗn hợp', color: '#64748b', icon: <QuestionCircleOutlined /> };
+                                    const allCards = grouped[skillType] || [];
+                                    const pageSize = 4;
+                                    const page = quizPages[skillType] || 1;
+                                    const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
 
-                                return (
-                                    <div key={skillType} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                                            <div style={{ width: 4, height: 22, borderRadius: 2, background: skillCfg.color }} />
-                                            <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                {skillCfg.icon} Kỹ năng {skillCfg.label}
-                                            </span>
-                                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>({allCards.length} bài)</span>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                            {pagedCards.map((quiz, idx) => {
-                                                const globalIdx = filteredAndSortedQuizzes.findIndex(q => q.id === quiz.id) + 1;
-                                                const qCount = quiz.questionCount || quiz.questions?.length || 0;
-                                                const timeMin = Math.ceil((quiz.timeLimitSeconds || 0) / 60);
+                                    return (
+                                        <div key={skillType} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                                                <div style={{ width: 4, height: 22, borderRadius: 2, background: skillCfg.color }} />
+                                                <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    {skillCfg.icon} Kỹ năng {skillCfg.label}
+                                                </span>
+                                                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>({allCards.length} bài)</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                {pagedCards.map((quiz) => {
+                                                    const globalIdx = filteredAndSortedQuizzes.findIndex(q => q.id === quiz.id) + 1;
+                                                    const qCount = quiz.questionCount || quiz.questions?.length || 0;
+                                                    const timeMin = Math.ceil((quiz.timeLimitSeconds || 0) / 60);
 
-                                                return (
-                                                    <div
-                                                        key={quiz.id}
-                                                        onClick={() => setQuiz(quiz)}
-                                                        style={{
-                                                            cursor: 'pointer',
-                                                            background: '#fff',
-                                                            borderRadius: 14,
-                                                            border: '1.5px solid #e2e8f0',
-                                                            borderLeft: `4px solid ${skillCfg.color}`,
-                                                            padding: '14px 16px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 14,
-                                                            transition: 'all 0.18s ease',
-                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                                                            position: 'relative',
-                                                            overflow: 'hidden',
-                                                        }}
-                                                        onMouseEnter={e => {
-                                                            (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px rgba(0,0,0,0.10)`;
-                                                            (e.currentTarget as HTMLElement).style.borderColor = skillCfg.color;
-                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                                                        }}
-                                                        onMouseLeave={e => {
-                                                            (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
-                                                            (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
-                                                            (e.currentTarget as HTMLElement).style.borderLeftColor = skillCfg.color;
-                                                            (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-                                                        }}
-                                                    >
-                                                        {/* Number badge */}
-                                                        <div style={{
-                                                            minWidth: 36, height: 36, borderRadius: 10,
-                                                            background: skillCfg.color + '15',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            fontWeight: 700, fontSize: 14, color: skillCfg.color, flexShrink: 0
-                                                        }}>
-                                                            {globalIdx}
-                                                        </div>
-
-                                                        {/* Quiz Title & Stats */}
-                                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                                                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                    {quiz.title || quiz.name}
-                                                                </div>
-                                                            </div>
-                                                            <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12 }}>
-                                                                <span>{qCount} câu</span>
-                                                                <span>{timeMin} phút</span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* CTA */}
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                    return (
+                                                        <div
+                                                            key={quiz.id}
+                                                            onClick={() => setQuiz(quiz)}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                background: '#fff',
+                                                                borderRadius: 14,
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderLeft: `4px solid ${skillCfg.color}`,
+                                                                padding: '14px 16px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 14,
+                                                                transition: 'all 0.18s ease',
+                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                                                position: 'relative',
+                                                                overflow: 'hidden',
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px rgba(0,0,0,0.10)`;
+                                                                (e.currentTarget as HTMLElement).style.borderColor = skillCfg.color;
+                                                                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                                                                (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
+                                                                (e.currentTarget as HTMLElement).style.borderLeftColor = skillCfg.color;
+                                                                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                                                            }}
+                                                        >
+                                                            {/* Number badge */}
                                                             <div style={{
-                                                                width: 30, height: 30, borderRadius: 8,
+                                                                minWidth: 36, height: 36, borderRadius: 10,
                                                                 background: skillCfg.color + '15',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                color: skillCfg.color, fontSize: 16, fontWeight: 700
+                                                                fontWeight: 700, fontSize: 14, color: skillCfg.color, flexShrink: 0
                                                             }}>
-                                                                →
+                                                                {globalIdx}
+                                                            </div>
+
+                                                            {/* Quiz Title & Stats */}
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                                                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                        {quiz.title || quiz.name}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12 }}>
+                                                                    <span>{qCount} câu</span>
+                                                                    <span>{timeMin} phút</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* CTA */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                                <Popconfirm
+                                                                    title="Xóa bài kiểm tra?"
+                                                                    description="Bài kiểm tra sẽ bị ẩn khỏi lộ trình. Bạn chắc chắn chứ?"
+                                                                    onConfirm={(e: any) => {
+                                                                        e?.stopPropagation();
+                                                                        handleDeleteQuiz(quiz.id);
+                                                                    }}
+                                                                    onCancel={(e: any) => e?.stopPropagation()}
+                                                                    okText="Xóa"
+                                                                    cancelText="Hủy"
+                                                                    okButtonProps={{ danger: true, type: 'primary', style: { backgroundColor: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
+                                                                >
+                                                                    <Button
+                                                                        type="text"
+                                                                        danger
+                                                                        icon={<DeleteOutlined />}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        style={{ borderRadius: 8 }}
+                                                                    />
+                                                                </Popconfirm>
+                                                                <div style={{
+                                                                    width: 30, height: 30, borderRadius: 8,
+                                                                    background: skillCfg.color + '15',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    color: skillCfg.color, fontSize: 16, fontWeight: 700
+                                                                }}>
+                                                                    →
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {allCards.length > pageSize && (
-                                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                                                <Pagination
-                                                    size="small"
-                                                    current={page}
-                                                    total={allCards.length}
-                                                    pageSize={pageSize}
-                                                    onChange={(newPage) => setQuizPages(prev => ({ ...prev, [skillType]: newPage }))}
-                                                    hideOnSinglePage
-                                                />
+                                                    );
+                                                })}
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            });
-                        })()}
-                    </div>
+                                            {allCards.length > pageSize && (
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                                                    <Pagination
+                                                        size="small"
+                                                        current={page}
+                                                        total={allCards.length}
+                                                        pageSize={pageSize}
+                                                        onChange={(newPage) => setQuizPages(prev => ({ ...prev, [skillType]: newPage }))}
+                                                        hideOnSinglePage
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    ) : (
+                        /* ── Roadmap View: Horizontal flow timeline ── */
+                        <div style={{
+                            position: 'relative',
+                            padding: '70px 40px',
+                            overflowX: 'auto',
+                            overflowY: 'hidden',
+                            background: '#fff',
+                            borderRadius: 16,
+                            border: '1px solid #e2e8f0',
+                            marginTop: 10,
+                            minHeight: '320px',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}>
+                            {filteredAndSortedQuizzes.length === 0 ? (
+                                <div style={{ textAlign: 'center', color: '#94a3b8', width: '100%', fontSize: 14 }}>
+                                    Chương này chưa có bài kiểm tra nào.
+                                </div>
+                            ) : (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0,
+                                    minWidth: 'max-content'
+                                }}>
+                                    {filteredAndSortedQuizzes.map((quizItem, quizIdx) => {
+                                        const skillKey = quizItem.skillType || 'MIXED';
+                                        const skillCfg = SKILL_CONFIG[skillKey] || { label: 'Hỗn hợp', color: '#64748b', icon: <QuestionCircleOutlined /> };
+                                        const qCount = quizItem.questionCount || quizItem.questions?.length || 0;
+                                        const isLast = quizIdx === filteredAndSortedQuizzes.length - 1;
+                                        const nextSkillColor = (!isLast && SKILL_CONFIG[filteredAndSortedQuizzes[quizIdx + 1]?.skillType || 'MIXED']?.color) || '#64748b';
+
+                                        const isUp = quizIdx % 2 === 0;
+
+                                        return (
+                                            <div key={quizItem.id} style={{ display: 'flex', alignItems: 'center' }}>
+                                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 220 }}>
+                                                    {/* Card positioned above or below */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        [isUp ? 'bottom' : 'top']: 60,
+                                                        width: 220,
+                                                        zIndex: 2,
+                                                        transition: 'all 0.3s ease'
+                                                    }}>
+                                                        <div
+                                                            onClick={() => setQuiz(quizItem)}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                background: '#fff',
+                                                                borderRadius: 14,
+                                                                border: `2px solid ${skillCfg.color}30`,
+                                                                borderTop: isUp ? 'none' : `4px solid ${skillCfg.color}`,
+                                                                borderBottom: isUp ? `4px solid ${skillCfg.color}` : 'none',
+                                                                padding: '12px 14px',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${skillCfg.color}40`;
+                                                                (e.currentTarget as HTMLElement).style.transform = isUp ? 'translateY(-5px)' : 'translateY(5px)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                                                                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                                                <span style={{ width: 22, height: 22, borderRadius: '50%', background: skillCfg.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: skillCfg.color, fontSize: 12, flexShrink: 0 }}>{skillCfg.icon}</span>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
+                                                                    <span style={{ color: skillCfg.color, fontWeight: 800, fontSize: 13 }}>{quizIdx + 1}.</span>
+                                                                    <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quizItem.title || quizItem.name}</span>
+                                                                </div>
+                                                                <Popconfirm
+                                                                    title="Xóa bài kiểm tra?"
+                                                                    onConfirm={(e: any) => { e?.stopPropagation(); handleDeleteQuiz(quizItem.id); }}
+                                                                    onCancel={(e: any) => e?.stopPropagation()}
+                                                                    okText="Xóa"
+                                                                    cancelText="Hủy"
+                                                                    okButtonProps={{ danger: true, type: 'primary', style: { backgroundColor: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
+                                                                >
+                                                                    <Button
+                                                                        type="text"
+                                                                        danger
+                                                                        size="small"
+                                                                        icon={<DeleteOutlined style={{ fontSize: 14 }} />}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        style={{ padding: 0, height: 14, minWidth: 14 }}
+                                                                    />
+                                                                </Popconfirm>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: 6, fontSize: 11, color: '#94a3b8', flexWrap: 'wrap' }}>
+                                                                <span style={{ background: skillCfg.color + '15', color: skillCfg.color, borderRadius: 4, padding: '2px 8px', fontWeight: 600 }}>{skillCfg.label}</span>
+                                                                <span style={{ fontWeight: 500 }}>{qCount} câu</span>
+                                                            </div>
+                                                        </div>
+                                                        {/* Dynamic stem connector to node */}
+                                                        <div style={{
+                                                            width: 2,
+                                                            height: 15,
+                                                            background: `linear-gradient(${isUp ? 'to top' : 'to bottom'}, ${skillCfg.color}60, transparent)`,
+                                                            margin: '0 auto'
+                                                        }} />
+                                                    </div>
+
+                                                    {/* Main node */}
+                                                    <div
+                                                        style={{
+                                                            width: 52,
+                                                            height: 52,
+                                                            borderRadius: '50%',
+                                                            background: '#fff',
+                                                            border: `3.5px solid ${skillCfg.color}`,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: 20,
+                                                            color: skillCfg.color,
+                                                            boxShadow: `0 0 0 6px ${skillCfg.color}15, 0 4px 12px rgba(0,0,0,0.1)`,
+                                                            zIndex: 3,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                        onClick={() => setQuiz(quizItem)}
+                                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.1)'; }}
+                                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                                                    >
+                                                        {skillCfg.icon}
+                                                    </div>
+                                                </div>
+
+                                                {/* Horizontal connector */}
+                                                {!isLast && (
+                                                    <div style={{
+                                                        width: 100,
+                                                        height: 5,
+                                                        background: `linear-gradient(to right, ${skillCfg.color}80, ${nextSkillColor}80)`,
+                                                        borderRadius: 4,
+                                                        margin: '0 -25px',
+                                                        zIndex: 1,
+                                                        opacity: 0.6
+                                                    }} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                 </div>
             )}
 
@@ -2257,976 +2372,1247 @@ const AdminQuizManagementPage: React.FC = () => {
                             </Space>
                         </div>
                     )}
-                </>
-            )}
 
 
+                    <Modal
+                        title="Nhập trực tiếp nhiều câu hỏi"
+                        open={isBatchQuestionsModalOpen}
+                        onCancel={() => setIsBatchQuestionsModalOpen(false)}
+                        width={1100}
+                        footer={
+                            <div style={{ padding: '8px 16px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                                <Button
+                                    type="primary"
+                                    loading={submittingBatchQuestions}
+                                    onClick={handleSubmitBatchQuestions}
+                                    style={{
+                                        borderRadius: 8,
+                                        height: 44,
+                                        fontWeight: 700,
+                                        paddingInline: 32,
+                                        background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
+                                        border: 'none',
+                                        boxShadow: '0 4px 12px rgba(147,51,234,0.25)'
+                                    }}
+                                >
+                                    Lưu tất cả & thêm vào quiz
+                                </Button>
+                            </div>
+                        }
+                        centered
+                        destroyOnHidden
+                    >
+                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text type="secondary">
+                                Nhập từng câu hỏi + đáp án, có thể thêm không giới hạn. Hệ thống sẽ gửi tất cả trong một lần lưu.
+                            </Text>
+                            <Button icon={<PlusOutlined />} onClick={addBatchQuestion} style={{ borderRadius: 8, fontWeight: 600 }}>
+                                Thêm câu hỏi
+                            </Button>
+                        </div>
 
-
-            <Modal
-                title="Nhập trực tiếp nhiều câu hỏi"
-                open={isBatchQuestionsModalOpen}
-                onCancel={() => setIsBatchQuestionsModalOpen(false)}
-                width={1100}
-                footer={
-                    <div style={{ padding: '8px 16px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                        <Button
-                            type="primary"
-                            loading={submittingBatchQuestions}
-                            onClick={handleSubmitBatchQuestions}
-                            style={{
-                                borderRadius: 8,
-                                height: 44,
-                                fontWeight: 700,
-                                paddingInline: 32,
-                                background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(147,51,234,0.25)'
-                            }}
-                        >
-                            Lưu tất cả & thêm vào quiz
-                        </Button>
-                    </div>
-                }
-                centered
-                destroyOnHidden
-            >
-                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Text type="secondary">
-                        Nhập từng câu hỏi + đáp án, có thể thêm không giới hạn. Hệ thống sẽ gửi tất cả trong một lần lưu.
-                    </Text>
-                    <Button icon={<PlusOutlined />} onClick={addBatchQuestion} style={{ borderRadius: 8, fontWeight: 600 }}>
-                        Thêm câu hỏi
-                    </Button>
-                </div>
-
-                <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
-                    {batchQuestions.map((q, idx) => {
-                        const filteredOptions = (q.options || []).map(o => (o || '').trim()).filter(Boolean);
-                        return (
-                            <Card
-                                key={q.tempId}
-                                size="small"
-                                style={{ marginBottom: 24, borderRadius: 12, border: '2px solid #e2e8f0', borderTop: '4px solid #3b82f6', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', background: '#f8fafc', overflow: 'hidden' }}
-                                title={<Text strong>Câu {idx + 1}</Text>}
-                                extra={
-                                    <Button
-                                        type="text"
-                                        danger
-                                        icon={<MinusCircleOutlined />}
-                                        disabled={batchQuestions.length <= 1}
-                                        onClick={() => removeBatchQuestion(q.tempId)}
+                        <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
+                            {batchQuestions.map((q, idx) => {
+                                const filteredOptions = (q.options || []).map(o => (o || '').trim()).filter(Boolean);
+                                return (
+                                    <Card
+                                        key={q.tempId}
+                                        size="small"
+                                        style={{ marginBottom: 24, borderRadius: 12, border: '2px solid #e2e8f0', borderTop: '4px solid #3b82f6', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', background: '#f8fafc', overflow: 'hidden' }}
+                                        title={<Text strong>Câu {idx + 1}</Text>}
+                                        extra={
+                                            <Button
+                                                type="text"
+                                                danger
+                                                icon={<MinusCircleOutlined />}
+                                                disabled={batchQuestions.length <= 1}
+                                                onClick={() => removeBatchQuestion(q.tempId)}
+                                            >
+                                                Xóa
+                                            </Button>
+                                        }
                                     >
-                                        Xóa
-                                    </Button>
-                                }
-                            >
-                                <Row gutter={16}>
-                                    <Col xs={24} md={8}>
-                                        <Text strong>Kỹ năng</Text>
-                                        <Select
-                                            style={{ width: '100%', marginTop: 6 }}
-                                            value={q.skillType}
-                                            onChange={(val) => updateBatchQuestionField(q.tempId, 'skillType', val)}
-                                            disabled={!!(quiz?.skillType && quiz.skillType !== 'MIXED')}
-                                            options={Object.entries(SKILL_CONFIG)
-                                                .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
-                                                .map(([key, cfg]) => ({ value: key, label: cfg.label }))}
-                                        />
-                                    </Col>
-                                </Row>
-
-                                <div style={{ marginTop: 12 }}>
-                                    <Text strong>Tiêu đề bài tập / Yêu cầu</Text>
-                                    <Input
-                                        placeholder="Ví dụ: Chọn từ đúng chính tả để điền vào chỗ trống"
-                                        value={q.contentText}
-                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'contentText', sanitizeText(e.target.value))}
-                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                        maxLength={50} showCount
-                                    />
-                                </div>
-
-                                {q.skillType === 'READING' && (
-                                    <>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>
-                                            <Input
-                                                placeholder="Ví dụ: Em đi nàm nương rẫy."
-                                                value={q.fullSentence}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'fullSentence', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={50} showCount
-                                            />
-                                        </div>
-                                        <Row gutter={12} style={{ marginTop: 12 }}>
-                                            <Col xs={24} md={12}>
-                                                <Text strong>Từ bị sai (Wrong Word)</Text>
-                                                <Input
-                                                    placeholder="Ví dụ: nàm"
-                                                    value={q.wrongWord}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'wrongWord', sanitizeText(e.target.value))}
-                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                    maxLength={15} showCount
-                                                />
-                                            </Col>
-                                            <Col xs={24} md={12}>
-                                                <Text strong>Từ viết đúng (Correct Word)</Text>
-                                                <Input
-                                                    placeholder="Ví dụ: làm"
-                                                    value={q.correctWord}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctWord', sanitizeText(e.target.value))}
-                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                    maxLength={15} showCount
+                                        <Row gutter={16}>
+                                            <Col xs={24} md={8}>
+                                                <Text strong>Kỹ năng</Text>
+                                                <Select
+                                                    style={{ width: '100%', marginTop: 6 }}
+                                                    value={q.skillType}
+                                                    onChange={(val) => updateBatchQuestionField(q.tempId, 'skillType', val)}
+                                                    disabled={!!(quiz?.skillType && quiz.skillType !== 'MIXED')}
+                                                    options={Object.entries(SKILL_CONFIG)
+                                                        .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
+                                                        .map(([key, cfg]) => ({ value: key, label: cfg.label }))}
                                                 />
                                             </Col>
                                         </Row>
+
                                         <div style={{ marginTop: 12 }}>
-                                            <Text strong>Gợi ý / Giải thích (Hint)</Text>
+                                            <Text strong>Tiêu đề bài tập / Yêu cầu</Text>
                                             <Input
-                                                placeholder="Ví dụ: Động từ 'làm' phải bắt đầu bằng 'L'."
-                                                value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                placeholder="Ví dụ: Chọn từ đúng chính tả để điền vào chỗ trống"
+                                                value={q.contentText}
+                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'contentText', sanitizeText(e.target.value))}
                                                 style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={30} showCount
+                                                maxLength={255} showCount
                                             />
                                         </div>
-                                    </>
-                                )}
 
-                                {q.skillType === 'LISTENING' && (
-                                    <>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>File âm thanh</Text>
-                                            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <Upload
-                                                    accept="audio/*"
-                                                    maxCount={1}
-                                                    showUploadList={false}
-                                                    beforeUpload={async (file) => {
-                                                        setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
-                                                        try {
-                                                            const url = await uploadToCloudinary(file);
-                                                            updateBatchQuestionField(q.tempId, 'audioUrl', url);
-                                                            message.success('Tải file lên thành công!');
-                                                        } catch (err) {
-                                                            message.error('Lỗi khi tải file lên Cloudinary');
-                                                        } finally {
-                                                            setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
-                                                        }
-                                                        return false;
-                                                    }}
-                                                >
-                                                    <Button
-                                                        icon={<UploadOutlined />}
-                                                        loading={uploadingBatch[q.tempId]}
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        {q.audioUrl ? 'Thay đổi file' : 'Chọn file âm thanh'}
-                                                    </Button>
-                                                </Upload>
-
-                                                <Button
-                                                    icon={<AudioOutlined />}
-                                                    onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
-                                                    loading={uploadingBatch[q.tempId]}
-                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
-                                                >
-                                                    Tạo bằng AI (từ Transcript)
-                                                </Button>
-                                                {q.audioUrl && (
-                                                    <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
-                                                )}
-                                            </div>
-                                            {/* Hidden input to keep value in form logic if needed, though updateBatchQuestionField handles it */}
-                                            <Input hidden value={q.audioUrl} />
-                                        </div>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Transcript</Text>
-                                            <Input.TextArea
-                                                rows={2}
-                                                placeholder="Nội dung audio"
-                                                value={q.transcript}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={50} showCount
-                                            />
-                                        </div>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Đáp án</Text>
-                                            <Row gutter={[10, 10]} style={{ marginTop: 6 }}>
-                                                {q.options.map((opt, optIdx) => (
-                                                    <Col xs={24} md={12} key={`${q.tempId}-opt-${optIdx}`}>
+                                        {q.skillType === 'READING' && (
+                                            <>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>
+                                                    <Input
+                                                        placeholder="Ví dụ: Em đi nàm nương rẫy."
+                                                        value={q.fullSentence}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'fullSentence', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <Row gutter={12} style={{ marginTop: 12 }}>
+                                                    <Col xs={24} md={12}>
+                                                        <Text strong>Từ bị sai (Wrong Word)</Text>
                                                         <Input
-                                                            placeholder={`Đáp án ${optIdx + 1}`}
-                                                            value={opt}
-                                                            onChange={(e) => updateBatchOption(q.tempId, optIdx, sanitizeText(e.target.value))}
-                                                            style={{ borderRadius: 8, background: '#fff' }}
+                                                            placeholder="Ví dụ: nàm"
+                                                            value={q.wrongWord}
+                                                            onChange={(e) => updateBatchQuestionField(q.tempId, 'wrongWord', sanitizeText(e.target.value))}
+                                                            style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
                                                             maxLength={50} showCount
                                                         />
                                                     </Col>
-                                                ))}
-                                            </Row>
-                                        </div>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Đáp án đúng</Text>
-                                            <Select
-                                                style={{ width: '100%', marginTop: 6 }}
-                                                value={q.correctAnswer || undefined}
-                                                placeholder="Chọn đáp án đúng"
-                                                onChange={(val) => updateBatchQuestionField(q.tempId, 'correctAnswer', val)}
-                                                options={filteredOptions.map((o) => ({ value: o, label: o }))}
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                                                    <Col xs={24} md={12}>
+                                                        <Text strong>Từ viết đúng (Correct Word)</Text>
+                                                        <Input
+                                                            placeholder="Ví dụ: làm"
+                                                            value={q.correctWord}
+                                                            onChange={(e) => updateBatchQuestionField(q.tempId, 'correctWord', sanitizeText(e.target.value))}
+                                                            style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                            maxLength={50} showCount
+                                                        />
+                                                    </Col>
+                                                </Row>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Gợi ý / Giải thích (Hint)</Text>
+                                                    <Input
+                                                        placeholder="Ví dụ: Động từ 'làm' phải bắt đầu bằng 'L'."
+                                                        value={q.hint}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
 
-                                {q.skillType === 'WRITING' && (
-                                    <>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Nội dung câu đố (với ký hiệu _ )</Text>
-                                            <Input
-                                                placeholder="Ví dụ: Lúa _ là lúa nếp làng."
-                                                value={q.blankSentence}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'blankSentence', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={50} showCount
-                                            />
-                                        </div>
-                                        <Row gutter={12} style={{ marginTop: 12 }}>
-                                            <Col xs={24} md={12}>
-                                                <Text strong>Đáp án đúng (Correct Answer)</Text>
-                                                <Input
-                                                    placeholder="Ví dụ: nếp"
-                                                    value={q.correctAnswer}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'correctAnswer', sanitizeText(e.target.value))}
-                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                    maxLength={15} showCount
-                                                />
-                                            </Col>
-                                            <Col xs={24} md={12}>
-                                                <Text strong>Đáp án chấp nhận khác (Alternative)</Text>
-                                                <Input
-                                                    placeholder="Cách nhau bởi dấu phẩy"
-                                                    value={q.alternatives}
-                                                    onChange={(e) => updateBatchQuestionField(q.tempId, 'alternatives', sanitizeText(e.target.value))}
-                                                    style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                    maxLength={30} showCount
-                                                />
-                                            </Col>
-                                        </Row>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Gợi ý (Hint)</Text>
-                                            <Input
-                                                placeholder="Ví dụ: Ngược lại với nếp là tẻ."
-                                                value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={30} showCount
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                                        {q.skillType === 'LISTENING' && (
+                                            <>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>File âm thanh</Text>
+                                                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <Upload
+                                                            accept="audio/*"
+                                                            maxCount={1}
+                                                            showUploadList={false}
+                                                            beforeUpload={async (file) => {
+                                                                setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
+                                                                try {
+                                                                    const url = await uploadToCloudinary(file);
+                                                                    updateBatchQuestionField(q.tempId, 'audioUrl', url);
+                                                                    message.success('Tải file lên thành công!');
+                                                                } catch (err) {
+                                                                    message.error('Lỗi khi tải file lên Cloudinary');
+                                                                } finally {
+                                                                    setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
+                                                                }
+                                                                return false;
+                                                            }}
+                                                        >
+                                                            <Button
+                                                                icon={<UploadOutlined />}
+                                                                loading={uploadingBatch[q.tempId]}
+                                                                style={{ borderRadius: 8 }}
+                                                            >
+                                                                {q.audioUrl ? 'Thay đổi file' : 'Chọn file âm thanh'}
+                                                            </Button>
+                                                        </Upload>
 
-                                {q.skillType === 'SPEAKING' && (
-                                    <>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>File âm thanh mẫu</Text>
-                                            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <Upload
-                                                    accept="audio/*"
-                                                    maxCount={1}
-                                                    showUploadList={false}
-                                                    beforeUpload={async (file) => {
-                                                        setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
-                                                        try {
-                                                            const url = await uploadToCloudinary(file);
-                                                            updateBatchQuestionField(q.tempId, 'audioUrl', url);
-                                                            message.success('Tải file lên thành công!');
-                                                        } catch (err) {
-                                                            message.error('Lỗi khi tải file lên Cloudinary');
-                                                        } finally {
-                                                            setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
-                                                        }
-                                                        return false;
-                                                    }}
-                                                >
-                                                    <Button
-                                                        icon={<UploadOutlined />}
-                                                        loading={uploadingBatch[q.tempId]}
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        {q.audioUrl ? 'Thay đổi file mẫu' : 'Chọn file mẫu từ máy tính'}
-                                                    </Button>
-                                                </Upload>
+                                                        <Button
+                                                            icon={<AudioOutlined />}
+                                                            onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
+                                                            loading={uploadingBatch[q.tempId]}
+                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                        >
+                                                            Tạo bằng AI (từ Transcript)
+                                                        </Button>
+                                                        {q.audioUrl && (
+                                                            <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
+                                                        )}
+                                                    </div>
+                                                    {/* Hidden input to keep value in form logic if needed, though updateBatchQuestionField handles it */}
+                                                    <Input hidden value={q.audioUrl} />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Transcript</Text>
+                                                    <Input.TextArea
+                                                        rows={2}
+                                                        placeholder="Nội dung audio"
+                                                        value={q.transcript}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Đáp án</Text>
+                                                    <Row gutter={[10, 10]} style={{ marginTop: 6 }}>
+                                                        {q.options.map((opt, optIdx) => (
+                                                            <Col xs={24} md={12} key={`${q.tempId}-opt-${optIdx}`}>
+                                                                <Input
+                                                                    placeholder={`Đáp án ${optIdx + 1}`}
+                                                                    value={opt}
+                                                                    onChange={(e) => updateBatchOption(q.tempId, optIdx, sanitizeText(e.target.value))}
+                                                                    style={{ borderRadius: 8, background: '#fff' }}
+                                                                    maxLength={100} showCount
+                                                                />
+                                                            </Col>
+                                                        ))}
+                                                    </Row>
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Đáp án đúng</Text>
+                                                    <Select
+                                                        style={{ width: '100%', marginTop: 6 }}
+                                                        value={q.correctAnswer || undefined}
+                                                        placeholder="Chọn đáp án đúng"
+                                                        onChange={(val) => updateBatchQuestionField(q.tempId, 'correctAnswer', val)}
+                                                        options={filteredOptions.map((o) => ({ value: o, label: o }))}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
 
-                                                <Button
-                                                    icon={<AudioOutlined />}
-                                                    onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
-                                                    loading={uploadingBatch[q.tempId]}
-                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
-                                                >
-                                                    Tạo bằng AI (từ Transcript)
-                                                </Button>
-                                                {q.audioUrl && (
-                                                    <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
-                                                )}
-                                            </div>
-                                            <Input hidden value={q.audioUrl} />
-                                        </div>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Transcript</Text>
-                                            <Input.TextArea
-                                                rows={2}
-                                                placeholder="Nội dung cần nói"
-                                                value={q.transcript}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={50} showCount
-                                            />
-                                        </div>
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text strong>Gợi ý</Text>
-                                            <Input
-                                                placeholder="Gợi ý (không bắt buộc)"
-                                                value={q.hint}
-                                                onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
-                                                style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
-                                                maxLength={30} showCount
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </Card>
-                        );
-                    })}
-                </div>
-            </Modal>
+                                        {q.skillType === 'WRITING' && (
+                                            <>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Nội dung câu đố (với ký hiệu _ )</Text>
+                                                    <Input
+                                                        placeholder="Ví dụ: Lúa _ là lúa nếp làng."
+                                                        value={q.blankSentence}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'blankSentence', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <Row gutter={12} style={{ marginTop: 12 }}>
+                                                    <Col xs={24} md={12}>
+                                                        <Text strong>Đáp án đúng (Correct Answer)</Text>
+                                                        <Input
+                                                            placeholder="Ví dụ: nếp"
+                                                            value={q.correctAnswer}
+                                                            onChange={(e) => updateBatchQuestionField(q.tempId, 'correctAnswer', sanitizeText(e.target.value))}
+                                                            style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                            maxLength={50} showCount
+                                                        />
+                                                    </Col>
+                                                    <Col xs={24} md={12}>
+                                                        <Text strong>Đáp án chấp nhận khác (Alternative)</Text>
+                                                        <Input
+                                                            placeholder="Cách nhau bởi dấu phẩy"
+                                                            value={q.alternatives}
+                                                            onChange={(e) => updateBatchQuestionField(q.tempId, 'alternatives', sanitizeText(e.target.value))}
+                                                            style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                            maxLength={255} showCount
+                                                        />
+                                                    </Col>
+                                                </Row>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Gợi ý (Hint)</Text>
+                                                    <Input
+                                                        placeholder="Ví dụ: Ngược lại với nếp là tẻ."
+                                                        value={q.hint}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
 
-            <Modal
-                title={
-                    <Space>
-                        {editingChallengeId ? <EditOutlined style={{ color: '#faad14' }} /> : <BankOutlined style={{ color: '#2563eb' }} />}
-                        <span>
-                            {editingChallengeId
-                                ? `Cập nhật câu hỏi`
-                                : `Thêm câu hỏi cho kỹ năng: ${activeSkillType ? SKILL_CONFIG[activeSkillType]?.label : ''}`
-                            }
-                        </span>
-                    </Space>
-                }
-                open={isChallengeModalOpen}
-                onCancel={() => {
-                    setIsChallengeModalOpen(false);
-                    setEditingChallengeId(null);
-                }}
-                width={800}
-                footer={null}
-                centered
-                destroyOnHidden
-            >
-                <Tabs
-                    activeKey={isCreatingNew ? 'create' : 'bank'}
-                    onChange={(key) => setIsCreatingNew(key === 'create')}
-                    items={[
-                        ...(editingChallengeId ? [] : [{
-                            key: 'bank',
-                            label: (
+                                        {q.skillType === 'SPEAKING' && (
+                                            <>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>File âm thanh mẫu</Text>
+                                                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <Upload
+                                                            accept="audio/*"
+                                                            maxCount={1}
+                                                            showUploadList={false}
+                                                            beforeUpload={async (file) => {
+                                                                setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
+                                                                try {
+                                                                    const url = await uploadToCloudinary(file);
+                                                                    updateBatchQuestionField(q.tempId, 'audioUrl', url);
+                                                                    message.success('Tải file lên thành công!');
+                                                                } catch (err) {
+                                                                    message.error('Lỗi khi tải file lên Cloudinary');
+                                                                } finally {
+                                                                    setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
+                                                                }
+                                                                return false;
+                                                            }}
+                                                        >
+                                                            <Button
+                                                                icon={<UploadOutlined />}
+                                                                loading={uploadingBatch[q.tempId]}
+                                                                style={{ borderRadius: 8 }}
+                                                            >
+                                                                {q.audioUrl ? 'Thay đổi file mẫu' : 'Chọn file mẫu từ máy tính'}
+                                                            </Button>
+                                                        </Upload>
+
+                                                        <Button
+                                                            icon={<AudioOutlined />}
+                                                            onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
+                                                            loading={uploadingBatch[q.tempId]}
+                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                        >
+                                                            Tạo bằng AI (từ Transcript)
+                                                        </Button>
+                                                        {q.audioUrl && (
+                                                            <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
+                                                        )}
+                                                    </div>
+                                                    <Input hidden value={q.audioUrl} />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Transcript</Text>
+                                                    <Input.TextArea
+                                                        rows={2}
+                                                        placeholder="Nội dung cần nói"
+                                                        value={q.transcript}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Gợi ý</Text>
+                                                    <Input
+                                                        placeholder="Gợi ý (không bắt buộc)"
+                                                        value={q.hint}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'hint', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </Modal>
+
+                    <Modal
+                        title={
+                            <Space>
+                                {editingChallengeId ? <EditOutlined style={{ color: '#faad14' }} /> : <BankOutlined style={{ color: '#2563eb' }} />}
                                 <span>
-                                    <BankOutlined /> Chọn từ ngân hàng
+                                    {editingChallengeId
+                                        ? `Cập nhật câu hỏi`
+                                        : `Thêm câu hỏi cho kỹ năng: ${activeSkillType ? SKILL_CONFIG[activeSkillType]?.label : ''}`
+                                    }
                                 </span>
-                            ),
-                            children: (
-                                <div style={{ minHeight: 400 }}>
-                                    <div style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
-                                        <Input
-                                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                            placeholder="Tìm kiếm nội dung câu hỏi..."
-                                            style={{ borderRadius: 8 }}
-                                            value={bankSearchText}
-                                            onChange={(e) => setBankSearchText(e.target.value)}
-                                        />
-                                    </div>
-                                    <Table
-                                        loading={loadingBank}
-                                        dataSource={availableChallenges
-                                            .filter(c => c.skillType === activeSkillType)
-                                            .filter(c => {
-                                                if (!bankSearchText) return true;
-                                                const search = bankSearchText.toLowerCase();
-                                                if (c.contentText?.toLowerCase().includes(search)) return true;
-                                                // Also search in metadataJson details
-                                                const meta = typeof c.metadataJson === 'string'
-                                                    ? (() => { try { return JSON.parse(c.metadataJson); } catch { return {}; } })()
-                                                    : (c.metadataJson || {});
-                                                if (Array.isArray(meta.words) && meta.words.join(' ').toLowerCase().includes(search)) return true;
-                                                if (meta.correct_word?.toLowerCase().includes(search)) return true;
-                                                if (meta.transcript?.toLowerCase().includes(search)) return true;
-                                                if (meta.correctSentence?.toLowerCase().includes(search)) return true;
-                                                return false;
-                                            })
-                                        }
-                                        rowKey="id"
-                                        size="middle"
-                                        scroll={{ x: 'max-content' }}
-                                        columns={[
-                                            {
-                                                title: 'Nội dung',
-                                                dataIndex: 'contentText',
-                                                key: 'contentText',
-                                                render: (_text: string, record: any) => {
-                                                    const parsed = parseMetadata(record);
-                                                    const meta = parsed.metadataJson || {};
-                                                    const skill = parsed.skillType;
+                            </Space>
+                        }
+                        open={isChallengeModalOpen}
+                        onCancel={() => {
+                            setIsChallengeModalOpen(false);
+                            setEditingChallengeId(null);
+                        }}
+                        width={800}
+                        footer={null}
+                        centered
+                        destroyOnHidden
+                    >
+                        <Tabs
+                            activeKey={isCreatingNew ? 'create' : 'bank'}
+                            onChange={(key) => setIsCreatingNew(key === 'create')}
+                            items={[
+                                ...(editingChallengeId ? [] : [{
+                                    key: 'bank',
+                                    label: (
+                                        <span>
+                                            <BankOutlined /> Chọn từ ngân hàng
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div style={{ minHeight: 400 }}>
+                                            <div style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
+                                                <Input
+                                                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                                                    placeholder="Tìm kiếm nội dung câu hỏi..."
+                                                    style={{ borderRadius: 8 }}
+                                                    value={bankSearchText}
+                                                    onChange={(e) => setBankSearchText(e.target.value)}
+                                                />
+                                            </div>
+                                            <Table
+                                                loading={loadingBank}
+                                                dataSource={availableChallenges
+                                                    .filter(c => c.skillType === activeSkillType)
+                                                    .filter(c => {
+                                                        if (!bankSearchText) return true;
+                                                        const search = bankSearchText.toLowerCase();
+                                                        if (c.contentText?.toLowerCase().includes(search)) return true;
+                                                        // Also search in metadataJson details
+                                                        const meta = typeof c.metadataJson === 'string'
+                                                            ? (() => { try { return JSON.parse(c.metadataJson); } catch { return {}; } })()
+                                                            : (c.metadataJson || {});
+                                                        if (Array.isArray(meta.words) && meta.words.join(' ').toLowerCase().includes(search)) return true;
+                                                        if (meta.correct_word?.toLowerCase().includes(search)) return true;
+                                                        if (meta.transcript?.toLowerCase().includes(search)) return true;
+                                                        if (meta.correctSentence?.toLowerCase().includes(search)) return true;
+                                                        return false;
+                                                    })
+                                                }
+                                                rowKey="id"
+                                                size="middle"
+                                                scroll={{ x: 'max-content' }}
+                                                columns={[
+                                                    {
+                                                        title: 'Nội dung',
+                                                        dataIndex: 'contentText',
+                                                        key: 'contentText',
+                                                        render: (_text: string, record: any) => {
+                                                            const parsed = parseMetadata(record);
+                                                            const meta = parsed.metadataJson || {};
+                                                            const skill = parsed.skillType;
 
-                                                    return (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                            <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                                                                {parsed.contentText || '—'}
-                                                            </Text>
+                                                            return (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                                    <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                                                                        {parsed.contentText || '—'}
+                                                                    </Text>
 
-                                                            <div style={{ fontSize: 14 }}>
-                                                                {skill === 'READING' && Array.isArray(meta.words) && (
-                                                                    <div>
-                                                                        {meta.words.map((w: string, i: number) => (
-                                                                            <span key={i} style={{
-                                                                                color: '#334155',
-                                                                                textDecoration: i === meta.error_index ? 'line-through' : 'none',
-                                                                                fontWeight: i === meta.error_index ? 600 : 400,
-                                                                                marginRight: 4
-                                                                            }}>
-                                                                                {w}
-                                                                            </span>
-                                                                        ))}
+                                                                    <div style={{ fontSize: 14 }}>
+                                                                        {skill === 'READING' && Array.isArray(meta.words) && (
+                                                                            <div>
+                                                                                {meta.words.map((w: string, i: number) => (
+                                                                                    <span key={i} style={{
+                                                                                        color: '#334155',
+                                                                                        textDecoration: i === meta.error_index ? 'line-through' : 'none',
+                                                                                        fontWeight: i === meta.error_index ? 600 : 400,
+                                                                                        marginRight: 4
+                                                                                    }}>
+                                                                                        {w}
+                                                                                    </span>
+                                                                                ))}
 
+                                                                            </div>
+                                                                        )}
+
+                                                                        {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
+                                                                            <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
+                                                                        )}
+
+                                                                        {skill === 'WRITING' && meta.correctSentence && (
+                                                                            <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                    },
+
+                                                    {
+                                                        title: 'Chi tiết',
+                                                        key: 'action',
+                                                        width: 80,
+                                                        align: 'center' as const,
+                                                        render: (_: any, record: any) => (
+                                                            <Tooltip title="Xem chi tiết câu hỏi">
+                                                                <Button
+                                                                    type="text"
+                                                                    icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+                                                                    onClick={() => showDetail(record)}
+                                                                />
+                                                            </Tooltip>
+                                                        )
+                                                    }
+                                                ]}
+                                                rowSelection={{
+                                                    type: 'checkbox',
+                                                    selectedRowKeys: selectedBankIds,
+                                                    onChange: (keys) => setSelectedBankIds(keys as string[])
+                                                }}
+                                                pagination={{ pageSize: 5 }}
+                                            />
+                                            <Divider />
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                                                <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
+                                                <Button
+                                                    type="primary"
+                                                    onClick={handleAssignFromBank}
+                                                    disabled={selectedBankIds.length === 0}
+                                                    loading={submittingAssign}
+                                                    style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
+                                                >
+                                                    Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )
+                                }]),
+                                {
+                                    key: 'create',
+                                    label: (
+                                        <span>
+                                            <PlusOutlined /> {editingChallengeId ? 'Cập nhật câu hỏi' : 'Tạo câu hỏi mới'}
+                                        </span>
+                                    ),
+                                    children: (
+                                        <Form
+                                            form={createForm}
+                                            layout="vertical"
+                                            onFinish={handleCreateNewChallenge}
+                                            initialValues={{ difficultyTag: 'BEGINNER' }}
+                                            style={{ marginTop: 16 }}
+                                        >
+                                            <Form.Item
+                                                name="contentText"
+                                                label={<Text strong>Nội dung câu hỏi / Yêu cầu</Text>}
+                                                normalize={sanitizeText}
+                                                rules={[{ required: true, message: 'Vui lòng nhập nội dung' }, { max: 50, message: 'Độ dài tối đa 50 ký tự' }]}
+                                            >
+                                                <Input placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                            </Form.Item>
+
+
+
+                                            <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
+                                                {activeSkillType === 'READING' && (
+                                                    <>
+                                                        <Form.Item name="fullSentence" label={<Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Độ dài tối đa 255 ký tự' }]}>
+                                                            <Input placeholder="Ví dụ: Em đi nàm nương rẫy." maxLength={255} showCount />
+                                                        </Form.Item>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                                            <Form.Item name="wrongWord" label={<Text strong>Từ bị sai (Wrong Word)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                                <Input placeholder="Ví dụ: nàm" maxLength={50} showCount />
+                                                            </Form.Item>
+                                                            <Form.Item name="correctWord" label={<Text strong>Từ viết lại đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                                <Input placeholder="Ví dụ: làm" maxLength={50} showCount />
+                                                            </Form.Item>
+                                                        </div>
+                                                        <Form.Item name="hint" label={<Text strong>Gợi ý / Giải thích (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                            <Input placeholder="Giải thích cho người học..." maxLength={255} showCount />
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+
+                                                {activeSkillType === 'LISTENING' && (
+                                                    <>
+                                                        <Form.Item label={<Text strong>File âm thanh</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                                <Upload
+                                                                    accept="audio/*"
+                                                                    maxCount={1}
+                                                                    showUploadList={false}
+                                                                    beforeUpload={async (file) => {
+                                                                        setUploadingSingle(true);
+                                                                        try {
+                                                                            const url = await uploadToCloudinary(file);
+                                                                            createForm.setFieldsValue({ audioUrl: url });
+                                                                            message.success('Tải file âm thanh lên thành công!');
+                                                                        } catch (err) {
+                                                                            message.error('Lỗi khi tải file lên Cloudinary');
+                                                                        } finally {
+                                                                            setUploadingSingle(false);
+                                                                        }
+                                                                        return false;
+                                                                    }}
+                                                                >
+                                                                    <Button
+                                                                        icon={<UploadOutlined />}
+                                                                        loading={uploadingSingle}
+                                                                        style={{ borderRadius: 8 }}
+                                                                    >
+                                                                        {createForm.getFieldValue('audioUrl') ? 'Thay đổi file' : 'Chọn file từ máy tính'}
+                                                                    </Button>
+                                                                </Upload>
+                                                                <Button
+                                                                    icon={<AudioOutlined />}
+                                                                    onClick={handleAutoGenerateAudioSingle}
+                                                                    loading={uploadingSingle}
+                                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                                >
+                                                                    Tạo bằng AI (từ Transcript)
+                                                                </Button>
+
+                                                                {createForm.getFieldValue('audioUrl') && (
+                                                                    <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử:</Text>
+                                                                        <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
                                                                     </div>
                                                                 )}
+                                                                <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh' }]} noStyle>
+                                                                    <Input hidden />
+                                                                </Form.Item>
+                                                            </Space>
+                                                        </Form.Item>
+                                                        <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc" normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                            <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                                        </Form.Item>
+                                                        <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }, { max: 100, message: 'Tối đa 100 ký tự' }]}>
+                                                            <Input.TextArea rows={3} maxLength={100} showCount />
+                                                        </Form.Item>
+                                                        <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
+                                                            {({ getFieldValue }) => {
+                                                                const optionsText = getFieldValue('options') || '';
+                                                                const parsedOptions = optionsText.split('\n').map((s: string) => s.trim()).filter(Boolean);
+                                                                return (
+                                                                    <Form.Item name="correctAnswer" label="Đáp án đúng" rules={[{ required: true }]}>
+                                                                        <Select placeholder="Chọn từ danh sách...">
+                                                                            {parsedOptions.map((opt: string, idx: number) => (
+                                                                                <Option key={idx} value={opt}>{opt}</Option>
+                                                                            ))}
+                                                                        </Select>
+                                                                    </Form.Item>
+                                                                );
+                                                            }}
+                                                        </Form.Item>
+                                                    </>
+                                                )}
 
-                                                                {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
-                                                                    <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
+                                                {activeSkillType === 'WRITING' && (
+                                                    <>
+                                                        <Form.Item name="blankSentence" label={<Text strong>Nội dung câu đố (với ký hiệu _ )</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                            <Input placeholder="Ví dụ: Lúa _ là lúa nếp làng." maxLength={255} showCount />
+                                                        </Form.Item>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                                            <Form.Item name="correctAnswer" label={<Text strong>Đáp án đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
+                                                                <Input placeholder="Ví dụ: nếp" maxLength={50} showCount />
+                                                            </Form.Item>
+                                                            <Form.Item name="alternatives" label={<Text strong>Đáp án chấp nhận khác</Text>} normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                                <Input placeholder="Cách nhau bởi dấu phẩy" maxLength={255} showCount />
+                                                            </Form.Item>
+                                                        </div>
+                                                        <Form.Item name="hint" label={<Text strong>Gợi ý (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                            <Input placeholder="Gợi ý khi gặp khó khăn..." maxLength={255} showCount />
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+
+                                                {activeSkillType === 'SPEAKING' && (
+                                                    <>
+                                                        <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                                            <Input.TextArea rows={2} style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                                        </Form.Item>
+                                                        <Form.Item label={<Text strong>File âm thanh mẫu</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                                <Upload
+                                                                    accept="audio/*"
+                                                                    maxCount={1}
+                                                                    showUploadList={false}
+                                                                    beforeUpload={async (file) => {
+                                                                        setUploadingSingle(true);
+                                                                        try {
+                                                                            const url = await uploadToCloudinary(file);
+                                                                            createForm.setFieldsValue({ audioUrl: url });
+                                                                            message.success('Tải file âm thanh mẫu lên thành công!');
+                                                                        } catch (err) {
+                                                                            message.error('Lỗi khi tải file lên Cloudinary');
+                                                                        } finally {
+                                                                            setUploadingSingle(false);
+                                                                        }
+                                                                        return false;
+                                                                    }}
+                                                                >
+                                                                    <Button
+                                                                        icon={<UploadOutlined />}
+                                                                        loading={uploadingSingle}
+                                                                        style={{ borderRadius: 8 }}
+                                                                    >
+                                                                        {createForm.getFieldValue('audioUrl') ? 'Thay đổi file mẫu' : 'Chọn file từ máy tính'}
+                                                                    </Button>
+                                                                </Upload>
+                                                                <Button
+                                                                    icon={<AudioOutlined />}
+                                                                    onClick={handleAutoGenerateAudioSingle}
+                                                                    loading={uploadingSingle}
+                                                                    style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                                >
+                                                                    Tạo bằng AI (từ Transcript)
+                                                                </Button>
+
+                                                                {createForm.getFieldValue('audioUrl') && (
+                                                                    <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
+                                                                        <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
+                                                                    </div>
                                                                 )}
+                                                                <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh mẫu' }]} noStyle>
+                                                                    <Input hidden />
+                                                                </Form.Item>
+                                                            </Space>
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+                                            </Card >
 
-                                                                {skill === 'WRITING' && meta.correctSentence && (
-                                                                    <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
+                                            <div style={{ textAlign: 'right', marginTop: 16 }}>
+                                                <Space>
+                                                    <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
+                                                    <Button type="primary" htmlType="submit" loading={submittingCreate}
+                                                        style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
+                                                        {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
+                                                    </Button>
+                                                </Space>
+                                            </div>
+                                        </Form >
+                                    )
+                                }
+                            ]}
+                        />
+                    </Modal >
+
+                    {/* Detail View Modal (Nested or separate) */}
+                    < Modal
+                        title={
+                            < Space >
+                                <EyeOutlined style={{ color: '#2563eb' }} />
+                                <span>Chi tiết câu hỏi</span>
+                            </Space >
+                        }
+                        open={isDetailModalOpen}
+                        onCancel={() => setIsDetailModalOpen(false)}
+                        footer={
+                            [
+                                <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
+                                    style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
+                                    Đóng
+                                </Button>
+                            ]}
+                        width={650}
+                        centered
+                        zIndex={2000} // Ensure it's above the first modal
+                    >
+                        {selectedDetailChallenge && (
+                            <div style={{ padding: '8px 0' }}>
+                                <div style={{ marginBottom: 20 }}>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Yêu cầu câu hỏi:</Text>
+                                    <Title level={5} style={{ marginTop: 0 }}>{selectedDetailChallenge.contentText}</Title>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 40, marginBottom: 24 }}>
+                                    <div>
+                                        <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Kỹ năng:</Text>
+                                        {(() => {
+                                            const cfg = SKILL_CONFIG[selectedDetailChallenge.skillType] || { label: selectedDetailChallenge.skillType, color: '#888' };
+                                            return <Tag color={cfg.color}>{cfg.label}</Tag>;
+                                        })()}
+                                    </div>
+
+                                </div>
+
+                                <Divider style={{ margin: '16px 0' }} />
+
+                                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <Title level={5} style={{ marginTop: 0, marginBottom: 16, fontSize: 15 }}>
+                                        <InfoCircleOutlined style={{ marginRight: 8, color: '#2563eb' }} />
+                                        Cấu trúc dữ liệu ({selectedDetailChallenge.skillType})
+                                    </Title>
+
+                                    {selectedDetailChallenge.skillType === 'READING' && (
+                                        <>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong>Các từ trong câu (phân cách bằng |):</Text>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
+                                                    {selectedDetailChallenge.metadataJson?.words?.map((word: string, idx: number) => (
+                                                        <Tag key={idx} color={idx === selectedDetailChallenge.metadataJson?.error_index ? 'error' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
+                                                            {word}
+                                                        </Tag>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                                <div>
+                                                    <Text strong style={{ display: 'block' }}>Từ viết đúng:</Text>
+                                                    <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correct_word}</Tag>
+                                                </div>
+                                                {selectedDetailChallenge.metadataJson?.hint && (
+                                                    <div>
+                                                        <Text strong style={{ display: 'block' }}>Gợi ý:</Text>
+                                                        <Text>{selectedDetailChallenge.metadataJson?.hint}</Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {selectedDetailChallenge.skillType === 'LISTENING' && (
+                                        <>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong>File âm thanh:</Text>
+                                                <div style={{ marginTop: 8 }}>
+                                                    <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
+                                                </div>
+                                            </div>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong>Các lựa chọn:</Text>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
+                                                    {selectedDetailChallenge.metadataJson?.options?.map((opt: string, idx: number) => (
+                                                        <Tag key={idx} color={opt === selectedDetailChallenge.metadataJson?.correctAnswer ? 'success' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
+                                                            {opt}
+                                                        </Tag>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                                <div>
+                                                    <Text strong style={{ display: 'block' }}>Đáp án đúng:</Text>
+                                                    <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correctAnswer}</Tag>
+                                                </div>
+                                                {selectedDetailChallenge.metadataJson?.transcript && (
+                                                    <div>
+                                                        <Text strong style={{ display: 'block' }}>Transcript:</Text>
+                                                        <Text italic>{selectedDetailChallenge.metadataJson?.transcript}</Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {selectedDetailChallenge.skillType === 'WRITING' && (
+                                        <>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong>Nội dung câu đố:</Text>
+                                                <div style={{ marginTop: 8, padding: '16px', background: '#fff', borderRadius: 12, border: '1px dashed #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                                                    <span style={{ fontSize: 18, color: '#1e293b', letterSpacing: '0.01em' }}>
+                                                        {selectedDetailChallenge.metadataJson?.blankSentence || selectedDetailChallenge.metadataJson?.correctSentence}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                                <Card size="small" style={{ borderRadius: 10, border: '1px solid #dcfce7', background: '#f0fdf4' }}>
+                                                    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN ĐÚNG</Text>
+                                                    <Text strong style={{ fontSize: 16, color: '#16a34a' }}>
+                                                        {selectedDetailChallenge.metadataJson?.correctAnswer || '—'}
+                                                    </Text>
+                                                </Card>
+
+                                                {selectedDetailChallenge.metadataJson?.alternatives?.length > 0 && (
+                                                    <Card size="small" style={{ borderRadius: 10, border: '1px solid #e0f2fe', background: '#f0f9ff' }}>
+                                                        <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN CHẤP NHẬN KHÁC</Text>
+                                                        <Space wrap>
+                                                            {selectedDetailChallenge.metadataJson?.alternatives.map((alt: string, i: number) => (
+                                                                <Tag key={i} color="blue" style={{ borderRadius: 4, margin: 0 }}>{alt}</Tag>
+                                                            ))}
+                                                        </Space>
+                                                    </Card>
+                                                )}
+
+                                                {selectedDetailChallenge.metadataJson?.hint && (
+                                                    <div style={{ gridColumn: 'span 2', marginTop: 8, padding: '12px', background: '#fef3c7', borderRadius: 10, border: '1px solid #fde68a' }}>
+                                                        <Text strong style={{ color: '#92400e', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                            <InfoCircleOutlined /> Gợi ý (Hint)
+                                                        </Text>
+                                                        <Text style={{ color: '#b45309' }}>{selectedDetailChallenge.metadataJson?.hint}</Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {selectedDetailChallenge.skillType === 'SPEAKING' && (
+                                        <>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong>Âm thanh mẫu:</Text>
+                                                <div style={{ marginTop: 8 }}>
+                                                    <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
+                                                </div>
+                                            </div>
+                                            <div style={{ marginBottom: 16 }}>
+                                                <Text strong style={{ display: 'block' }}>Nội dung cần nói:</Text>
+                                                <Text type="success" strong style={{ fontSize: 16 }}>{selectedDetailChallenge.metadataJson?.transcript}</Text>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </Modal >
+
+                    {/* Edit Quiz Modal */}
+                    < Modal
+                        title={< span style={{ fontWeight: 600 }}> Chỉnh sửa quiz</span >}
+                        open={isEditQuizModalOpen}
+                        onCancel={() => setIsEditQuizModalOpen(false)}
+                        onOk={() => editQuizForm.submit()}
+                        confirmLoading={updatingQuiz}
+                        okText="Lưu thay đổi"
+                        okButtonProps={{
+                            style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
+                        }}
+                        cancelText="Hủy bỏ"
+                        cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
+                        width={800}
+                        centered
+                    >
+                        <Form
+                            form={editQuizForm}
+                            layout="vertical"
+                            onFinish={handleUpdateQuiz}
+                        >
+                            <Row gutter={24}>
+                                <Col span={14}>
+                                    <Form.Item
+                                        label="Tên quiz"
+                                        name="title"
+                                        rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }, { max: 100, message: 'Tên quiz không được vượt quá 100 ký tự' }]}
+                                    >
+                                        <Input maxLength={100} showCount />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={10}>
+                                    <Form.Item label="Mỗi câu (giây)" name="secondsPerQuestion">
+                                        <InputNumber min={1} style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={24}>
+                                <Col span={12}>
+                                    <Form.Item label="Mô tả" name="description" rules={[{ max: 255, message: 'Mô tả không được vượt quá 255 ký tự' }]}>
+                                        <Input.TextArea rows={2} maxLength={255} showCount />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="Hướng dẫn" name="instructions" rules={[{ max: 500, message: 'Hướng dẫn không được vượt quá 500 ký tự' }]}>
+                                        <Input.TextArea rows={2} maxLength={500} showCount />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={24}>
+                                <Col span={12}>
+                                    <Form.Item label="Kỹ năng" name="skillType"
+                                        extra={quizChallenges.length > 0 ? (
+                                            <span style={{ color: '#f59e0b', fontSize: 12 }}>
+                                                ⚠️ Không thể thay đổi kỹ năng khi đã có {quizChallenges.length} câu hỏi
+                                            </span>
+                                        ) : undefined}
+                                    >
+                                        <Select
+                                            disabled={quizChallenges.length > 0}
+                                            options={[
+                                                { value: 'READING', label: '📖 Reading' },
+                                                { value: 'LISTENING', label: '🎧 Listening' },
+                                                { value: 'SPEAKING', label: '🎙️ Speaking' },
+                                                { value: 'WRITING', label: '✍️ Writing' },
+                                                { value: 'MIXED', label: '🎯 Tổng hợp' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion">
+                                        <InputNumber style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={24}>
+                                <Col span={12}>
+                                    <Form.Item label="Số thứ tự (STT)" name="orderIndex" tooltip="Thứ tự hiển thị trong level">
+                                        <InputNumber min={1} style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="Ghi chú cập nhật" name="comment" rules={[{ max: 200, message: 'Ghi chú không được vượt quá 200 ký tự' }]}>
+                                        <Input placeholder="Lý do chỉnh sửa..." maxLength={200} showCount />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </Form>
+                    </Modal >
+
+                    {/* Import Challenges Excel to Quiz Modal */}
+                    <Modal
+                        title={
+                            <Space>
+                                <UploadOutlined style={{ color: '#15803d' }} />
+                                <span style={{ fontSize: 18, fontWeight: 700 }}>Import câu hỏi từ Excel vào quiz</span>
+                            </Space>
+                        }
+                        open={isImportChallengesModalOpen}
+                        onCancel={() => setIsImportChallengesModalOpen(false)}
+                        footer={null}
+                        width={640}
+                        centered
+                        destroyOnHidden
+                    >
+                        <div style={{ marginTop: 20 }}>
+                            {/* Info box */}
+                            <div style={{
+                                marginBottom: 16,
+                                padding: 16,
+                                background: 'linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%)',
+                                borderRadius: 12,
+                                border: '1px solid #bae6fd',
+                            }}>
+                                <Text style={{ color: '#0369a1', fontSize: 13 }}>
+                                    <strong>📋 Hướng dẫn:</strong><br />
+                                    1. Chọn loại kỹ năng bên dưới<br />
+                                    2. Tải template Excel mẫu<br />
+                                    3. Điền dữ liệu câu hỏi theo template<br />
+                                    4. Upload file Excel đã điền để import câu hỏi vào quiz
+                                </Text>
+                            </div>
+
+                            {/* Skill type selector */}
+                            <div style={{ marginBottom: 16 }}>
+                                <Text strong style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
+                                    Loại kỹ năng:
+                                </Text>
+                                <Select
+                                    value={importChallengesSkillType}
+                                    onChange={(val) => setImportChallengesSkillType(val)}
+                                    style={{ width: '100%' }}
+                                    options={[
+                                        ...(quiz?.skillType === 'MIXED' || !quiz?.skillType
+                                            ? [{ value: 'MIXED', label: '🎯 Tổng hợp (4 kỹ năng — mỗi kỹ năng 1 sheet)' }]
+                                            : []),
+                                        ...Object.entries(SKILL_CONFIG)
+                                            .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
+                                            .map(([key, cfg]) => ({
+                                                value: key,
+                                                label: `${cfg.icon ? '' : ''}${cfg.label}`,
+                                            })),
+                                    ]}
+                                />
+                            </div>
+
+                            {/* Download template button */}
+                            <Button
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadChallengeTemplate}
+                                style={{
+                                    marginBottom: 16,
+                                    borderRadius: 8,
+                                    fontWeight: 600,
+                                    background: '#f0f9ff',
+                                    color: '#0369a1',
+                                    border: '1.5px solid #bae6fd',
+                                    width: '100%',
+                                }}
+                                size="large"
+                            >
+                                📥 Tải Template Excel
+                                {importChallengesSkillType === 'MIXED'
+                                    ? ' (Tổng hợp 4 kỹ năng)'
+                                    : ` (${SKILL_CONFIG[importChallengesSkillType]?.label || importChallengesSkillType})`}
+                            </Button>
+
+                            <Divider style={{ margin: '16px 0' }}>Hoặc upload file đã điền</Divider>
+
+                            {/* File upload */}
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={(e) => setImportChallengesFile(e.target.files?.[0] || null)}
+                                style={{
+                                    marginBottom: 16,
+                                    display: 'block',
+                                    width: '100%',
+                                    padding: 12,
+                                    border: '2px dashed #d1d5db',
+                                    borderRadius: 10,
+                                    cursor: 'pointer',
+                                    background: '#fafafa',
+                                }}
+                            />
+
+                            {/* Import button */}
+                            <Button
+                                type="primary"
+                                icon={<UploadOutlined />}
+                                onClick={handleImportChallengesToQuiz}
+                                loading={importingChallenges}
+                                disabled={!importChallengesFile}
+                                size="large"
+                                style={{
+                                    width: '100%',
+                                    borderRadius: 10,
+                                    fontWeight: 700,
+                                    background: 'linear-gradient(90deg, #15803d, #16a34a)',
+                                    border: 'none',
+                                    marginBottom: 16,
+                                    height: 48,
+                                    fontSize: 15,
+                                    color: '#fff',
+                                    boxShadow: '0 4px 12px rgba(21,128,61,0.25)'
+                                }}
+                            >
+                                {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}
+                            </Button>
+
+                            {/* Result display */}
+                            {importChallengesResult && (
+                                <div style={{ marginTop: 8 }}>
+                                    {importChallengesResult.successCount > 0 && (
+                                        <div style={{
+                                            padding: '12px 16px',
+                                            background: '#f0fdf4',
+                                            border: '1px solid #86efac',
+                                            borderRadius: 10,
+                                            marginBottom: 10,
+                                        }}>
+                                            <Text style={{ color: '#15803d', fontWeight: 700, fontSize: 14 }}>
+                                                ✅ Import thành công {importChallengesResult.successCount} câu hỏi
+                                            </Text>
+                                            {importChallengesResult.skipCount > 0 && (
+                                                <Text style={{ color: '#a16207', display: 'block', fontSize: 12, marginTop: 4 }}>
+                                                    ⚠️ Bỏ qua {importChallengesResult.skipCount} câu (đã tồn tại)
+                                                </Text>
+                                            )}
+                                            {importChallengesResult.errorCount > 0 && (
+                                                <Text style={{ color: '#dc2626', display: 'block', fontSize: 12, marginTop: 4 }}>
+                                                    ❌ Lỗi {importChallengesResult.errorCount} dòng
+                                                </Text>
+                                            )}
+                                        </div>
+                                    )}
+                                    {importChallengesResult.messages && importChallengesResult.messages.length > 0 && (
+                                        <div style={{
+                                            padding: '10px 14px',
+                                            background: '#f8fafc',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: 10,
+                                            maxHeight: 200,
+                                            overflowY: 'auto',
+                                            fontSize: 12,
+                                            fontFamily: 'monospace',
+                                        }}>
+                                            {importChallengesResult.messages.map((msg: string, i: number) => (
+                                                <div
+                                                    key={i}
+                                                    style={{
+                                                        marginBottom: 3,
+                                                        color: msg.includes('✅') || msg.includes('thành công') ? '#15803d'
+                                                            : msg.includes('❌') || msg.includes('Lỗi') ? '#dc2626'
+                                                                : msg.includes('bỏ qua') || msg.includes('⚠') ? '#a16207'
+                                                                    : msg.startsWith('──') ? '#2563eb'
+                                                                        : '#475569',
+                                                        fontWeight: msg.startsWith('Import hoàn tất') || msg.startsWith('──') ? 700 : 400,
+                                                    }}
+                                                >
+                                                    {msg}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </Modal>
+
+                    {/* Achievement Assignment Modal */}
+                    <Modal
+                        title={
+                            <Space>
+                                <TrophyOutlined style={{ color: '#f59e0b' }} />
+                                <span style={{ fontSize: 18, fontWeight: 700 }}>Thiết lập thành tựu cho bài kiểm tra</span>
+                            </Space>
+                        }
+                        open={isRewardModalOpen}
+                        onCancel={() => setIsRewardModalOpen(false)}
+                        footer={null}
+                        width={600}
+                        centered
+                    >
+                        <div style={{ marginTop: 20 }}>
+                            <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                                <Text style={{ color: '#92400e', fontSize: 13 }}>
+                                    💡 Mỗi bài kiểm tra chỉ được gán duy nhất <strong>01 thành tựu</strong>. Nếu bài kiểm tra này hoàn thành xuất sắc, học viên sẽ nhận được huy hiệu này.
+                                </Text>
+                            </div>
+
+                            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                                {loadingRewards ? (
+                                    <div style={{ padding: '40px 0', textAlign: 'center' }}><Spin tip="Đang tải danh sách..." /></div>
+                                ) : rewards.length === 0 ? (
+                                    <Empty description="Chưa có thành tựu nào trong kho" />
+                                ) : (
+                                    <Row gutter={[12, 12]}>
+                                        {rewards.map((reward) => {
+                                            const isCurrent = quiz?.rewardCatalogId === reward.id;
+                                            const hasOtherReward = quiz?.rewardCatalogId && !isCurrent;
+                                            const isAssignedToOther = reward.linkedQuizId && !isCurrent;
+
+                                            return (
+                                                <Col span={24} key={reward.id}>
+                                                    <div style={{
+                                                        padding: 12,
+                                                        borderRadius: 12,
+                                                        border: isCurrent ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                                                        background: isCurrent ? '#fffbeb' : (isAssignedToOther || hasOtherReward ? '#f1f5f9' : '#fff'),
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        opacity: (isAssignedToOther || (hasOtherReward && !isCurrent)) ? 0.6 : 1,
+                                                        transition: 'all 0.2s'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                            <img
+                                                                src={reward.iconUrl || 'https://via.placeholder.com/40'}
+                                                                alt={reward.name}
+                                                                style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 8 }}
+                                                            />
+                                                            <div>
+                                                                <div style={{ fontWeight: 700, color: isCurrent ? '#92400e' : '#1e293b' }}>
+                                                                    {reward.name}
+                                                                    {isCurrent && <Tag color="orange" style={{ marginLeft: 8, borderRadius: 4 }}>Đang gán</Tag>}
+                                                                </div>
+                                                                <div style={{ fontSize: 12, color: '#64748b' }}>{reward.description}</div>
+                                                                {isAssignedToOther ? (
+                                                                    <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2, fontWeight: 500 }}>
+                                                                        ⚠️ Đã gán cho Quiz khác: {reward.linkedQuizName}
+                                                                    </div>
+                                                                ) : hasOtherReward && (
+                                                                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                                                                        (Gỡ thành tựu hiện tại để gán mới)
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                    );
-                                                }
-                                            },
-
-                                            {
-                                                title: 'Chi tiết',
-                                                key: 'action',
-                                                width: 80,
-                                                align: 'center' as const,
-                                                render: (_: any, record: any) => (
-                                                    <Tooltip title="Xem chi tiết câu hỏi">
                                                         <Button
-                                                            type="text"
-                                                            icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                                                            onClick={() => showDetail(record)}
-                                                        />
-                                                    </Tooltip>
-                                                )
-                                            }
-                                        ]}
-                                        rowSelection={{
-                                            type: 'checkbox',
-                                            selectedRowKeys: selectedBankIds,
-                                            onChange: (keys) => setSelectedBankIds(keys as string[])
-                                        }}
-                                        pagination={{ pageSize: 5 }}
-                                    />
-                                    <Divider />
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                                        <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
-                                        <Button
-                                            type="primary"
-                                            onClick={handleAssignFromBank}
-                                            disabled={selectedBankIds.length === 0}
-                                            loading={submittingAssign}
-                                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
-                                        >
-                                            Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
-                                        </Button>
-                                    </div>
-                                </div>
-                            )
-                        }]),
-                        {
-                            key: 'create',
-                            label: (
-                                <span>
-                                    <PlusOutlined /> {editingChallengeId ? 'Cập nhật câu hỏi' : 'Tạo câu hỏi mới'}
-                                </span>
-                            ),
-                            children: (
-                                <Form
-                                    form={createForm}
-                                    layout="vertical"
-                                    onFinish={handleCreateNewChallenge}
-                                    initialValues={{ difficultyTag: 'BEGINNER' }}
-                                    style={{ marginTop: 16 }}
-                                >
-                                    <Form.Item
-                                        name="contentText"
-                                        label={<Text strong>Nội dung câu hỏi / Yêu cầu</Text>}
-                                        normalize={sanitizeText}
-                                        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }, { max: 50, message: 'Độ dài tối đa 50 ký tự' }]}
-                                    >
-                                        <Input placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} maxLength={50} showCount />
-                                    </Form.Item>
-
-
-
-                                    <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
-                                        {activeSkillType === 'READING' && (
-                                            <>
-                                                <Form.Item name="fullSentence" label={<Text strong>Câu chứa lỗi sai (Sentence with Error)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Độ dài tối đa 50 ký tự' }]}>
-                                                    <Input placeholder="Ví dụ: Em đi nàm nương rẫy." maxLength={50} showCount />
-                                                </Form.Item>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                                    <Form.Item name="wrongWord" label={<Text strong>Từ bị sai (Wrong Word)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
-                                                        <Input placeholder="Ví dụ: nàm" maxLength={15} showCount />
-                                                    </Form.Item>
-                                                    <Form.Item name="correctWord" label={<Text strong>Từ viết lại đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
-                                                        <Input placeholder="Ví dụ: làm" maxLength={15} showCount />
-                                                    </Form.Item>
-                                                </div>
-                                                <Form.Item name="hint" label={<Text strong>Gợi ý / Giải thích (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
-                                                    <Input placeholder="Giải thích cho người học..." maxLength={30} showCount />
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'LISTENING' && (
-                                            <>
-                                                <Form.Item label={<Text strong>File âm thanh</Text>} required={!createForm.getFieldValue('audioUrl')}>
-                                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                                        <Upload
-                                                            accept="audio/*"
-                                                            maxCount={1}
-                                                            showUploadList={false}
-                                                            beforeUpload={async (file) => {
-                                                                setUploadingSingle(true);
-                                                                try {
-                                                                    const url = await uploadToCloudinary(file);
-                                                                    createForm.setFieldsValue({ audioUrl: url });
-                                                                    message.success('Tải file âm thanh lên thành công!');
-                                                                } catch (err) {
-                                                                    message.error('Lỗi khi tải file lên Cloudinary');
-                                                                } finally {
-                                                                    setUploadingSingle(false);
-                                                                }
-                                                                return false;
+                                                            type={isCurrent ? "default" : "primary"}
+                                                            disabled={(isAssignedToOther || (hasOtherReward && !isCurrent)) || submittingReward}
+                                                            loading={submittingReward && isCurrent}
+                                                            onClick={() => handleAttachReward(reward.id)}
+                                                            style={{
+                                                                borderRadius: 8,
+                                                                fontWeight: 600,
+                                                                background: isCurrent ? '#fff' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
+                                                                borderColor: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
+                                                                color: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#94a3b8' : (hasOtherReward && !isCurrent ? '#94a3b8' : '#fff'))
                                                             }}
                                                         >
-                                                            <Button
-                                                                icon={<UploadOutlined />}
-                                                                loading={uploadingSingle}
-                                                                style={{ borderRadius: 8 }}
-                                                            >
-                                                                {createForm.getFieldValue('audioUrl') ? 'Thay đổi file' : 'Chọn file từ máy tính'}
-                                                            </Button>
-                                                        </Upload>
-                                                        <Button
-                                                            icon={<AudioOutlined />}
-                                                            onClick={handleAutoGenerateAudioSingle}
-                                                            loading={uploadingSingle}
-                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
-                                                        >
-                                                            Tạo bằng AI (từ Transcript)
+                                                            {isCurrent ? 'Hủy gán' : (isAssignedToOther ? 'Đã gán' : 'Gán ngay')}
                                                         </Button>
-
-                                                        {createForm.getFieldValue('audioUrl') && (
-                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử:</Text>
-                                                                <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
-                                                            </div>
-                                                        )}
-                                                        <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh' }]} noStyle>
-                                                            <Input hidden />
-                                                        </Form.Item>
-                                                    </Space>
-                                                </Form.Item>
-                                                <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc" normalize={sanitizeText} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
-                                                    <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} maxLength={50} showCount />
-                                                </Form.Item>
-                                                <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
-                                                    <Input.TextArea rows={3} maxLength={50} showCount />
-                                                </Form.Item>
-                                                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
-                                                    {({ getFieldValue }) => {
-                                                        const optionsText = getFieldValue('options') || '';
-                                                        const parsedOptions = optionsText.split('\n').map((s: string) => s.trim()).filter(Boolean);
-                                                        return (
-                                                            <Form.Item name="correctAnswer" label="Đáp án đúng" rules={[{ required: true }]}>
-                                                                <Select placeholder="Chọn từ danh sách...">
-                                                                    {parsedOptions.map((opt: string, idx: number) => (
-                                                                        <Option key={idx} value={opt}>{opt}</Option>
-                                                                    ))}
-                                                                </Select>
-                                                            </Form.Item>
-                                                        );
-                                                    }}
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'WRITING' && (
-                                            <>
-                                                <Form.Item name="blankSentence" label={<Text strong>Nội dung câu đố (với ký hiệu _ )</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
-                                                    <Input placeholder="Ví dụ: Lúa _ là lúa nếp làng." maxLength={50} showCount />
-                                                </Form.Item>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                                    <Form.Item name="correctAnswer" label={<Text strong>Đáp án đúng</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 15, message: 'Tối đa 15 ký tự' }]}>
-                                                        <Input placeholder="Ví dụ: nếp" maxLength={15} showCount />
-                                                    </Form.Item>
-                                                    <Form.Item name="alternatives" label={<Text strong>Đáp án chấp nhận khác</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
-                                                        <Input placeholder="Cách nhau bởi dấu phẩy" maxLength={30} showCount />
-                                                    </Form.Item>
-                                                </div>
-                                                <Form.Item name="hint" label={<Text strong>Gợi ý (Hint)</Text>} normalize={sanitizeText} rules={[{ max: 30, message: 'Tối đa 30 ký tự' }]}>
-                                                    <Input placeholder="Gợi ý khi gặp khó khăn..." maxLength={30} showCount />
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'SPEAKING' && (
-                                            <>
-                                                <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 50, message: 'Tối đa 50 ký tự' }]}>
-                                                    <Input.TextArea rows={2} style={{ borderRadius: 8 }} maxLength={50} showCount />
-                                                </Form.Item>
-                                                <Form.Item label={<Text strong>File âm thanh mẫu</Text>} required={!createForm.getFieldValue('audioUrl')}>
-                                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                                        <Upload
-                                                            accept="audio/*"
-                                                            maxCount={1}
-                                                            showUploadList={false}
-                                                            beforeUpload={async (file) => {
-                                                                setUploadingSingle(true);
-                                                                try {
-                                                                    const url = await uploadToCloudinary(file);
-                                                                    createForm.setFieldsValue({ audioUrl: url });
-                                                                    message.success('Tải file âm thanh mẫu lên thành công!');
-                                                                } catch (err) {
-                                                                    message.error('Lỗi khi tải file lên Cloudinary');
-                                                                } finally {
-                                                                    setUploadingSingle(false);
-                                                                }
-                                                                return false;
-                                                            }}
-                                                        >
-                                                            <Button
-                                                                icon={<UploadOutlined />}
-                                                                loading={uploadingSingle}
-                                                                style={{ borderRadius: 8 }}
-                                                            >
-                                                                {createForm.getFieldValue('audioUrl') ? 'Thay đổi file mẫu' : 'Chọn file từ máy tính'}
-                                                            </Button>
-                                                        </Upload>
-                                                        <Button
-                                                            icon={<AudioOutlined />}
-                                                            onClick={handleAutoGenerateAudioSingle}
-                                                            loading={uploadingSingle}
-                                                            style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
-                                                        >
-                                                            Tạo bằng AI (từ Transcript)
-                                                        </Button>
-
-                                                        {createForm.getFieldValue('audioUrl') && (
-                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
-                                                                <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
-                                                            </div>
-                                                        )}
-                                                        <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh mẫu' }]} noStyle>
-                                                            <Input hidden />
-                                                        </Form.Item>
-                                                    </Space>
-                                                </Form.Item>
-                                            </>
-                                        )}
-                                    </Card >
-
-                                    <div style={{ textAlign: 'right', marginTop: 16 }}>
-                                        <Space>
-                                            <Button onClick={() => setIsChallengeModalOpen(false)} style={{ borderRadius: 8, height: 40, fontWeight: 600 }}>Hủy</Button>
-                                            <Button type="primary" htmlType="submit" loading={submittingCreate}
-                                                style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 24, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
-                                                {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
-                                            </Button>
-                                        </Space>
-                                    </div>
-                                </Form >
-                            )
-                        }
-                    ]}
-                />
-            </Modal >
-
-            {/* Detail View Modal (Nested or separate) */}
-            < Modal
-                title={
-                    < Space >
-                        <EyeOutlined style={{ color: '#2563eb' }} />
-                        <span>Chi tiết câu hỏi</span>
-                    </Space >
-                }
-                open={isDetailModalOpen}
-                onCancel={() => setIsDetailModalOpen(false)}
-                footer={
-                    [
-                        <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary"
-                            style={{ borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}>
-                            Đóng
-                        </Button>
-                    ]}
-                width={650}
-                centered
-                zIndex={2000} // Ensure it's above the first modal
-            >
-                {selectedDetailChallenge && (
-                    <div style={{ padding: '8px 0' }}>
-                        <div style={{ marginBottom: 20 }}>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Yêu cầu câu hỏi:</Text>
-                            <Title level={5} style={{ marginTop: 0 }}>{selectedDetailChallenge.contentText}</Title>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 40, marginBottom: 24 }}>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Kỹ năng:</Text>
-                                {(() => {
-                                    const cfg = SKILL_CONFIG[selectedDetailChallenge.skillType] || { label: selectedDetailChallenge.skillType, color: '#888' };
-                                    return <Tag color={cfg.color}>{cfg.label}</Tag>;
-                                })()}
+                                                    </div>
+                                                </Col>
+                                            );
+                                        })}
+                                    </Row>
+                                )}
                             </div>
-
                         </div>
-
-                        <Divider style={{ margin: '16px 0' }} />
-
-                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <Title level={5} style={{ marginTop: 0, marginBottom: 16, fontSize: 15 }}>
-                                <InfoCircleOutlined style={{ marginRight: 8, color: '#2563eb' }} />
-                                Cấu trúc dữ liệu ({selectedDetailChallenge.skillType})
-                            </Title>
-
-                            {selectedDetailChallenge.skillType === 'READING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Các từ trong câu (phân cách bằng |):</Text>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                                            {selectedDetailChallenge.metadataJson?.words?.map((word: string, idx: number) => (
-                                                <Tag key={idx} color={idx === selectedDetailChallenge.metadataJson?.error_index ? 'error' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
-                                                    {word}
-                                                </Tag>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                        <div>
-                                            <Text strong style={{ display: 'block' }}>Từ viết đúng:</Text>
-                                            <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correct_word}</Tag>
-                                        </div>
-                                        {selectedDetailChallenge.metadataJson?.hint && (
-                                            <div>
-                                                <Text strong style={{ display: 'block' }}>Gợi ý:</Text>
-                                                <Text>{selectedDetailChallenge.metadataJson?.hint}</Text>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'LISTENING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>File âm thanh:</Text>
-                                        <div style={{ marginTop: 8 }}>
-                                            <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Các lựa chọn:</Text>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                                            {selectedDetailChallenge.metadataJson?.options?.map((opt: string, idx: number) => (
-                                                <Tag key={idx} color={opt === selectedDetailChallenge.metadataJson?.correctAnswer ? 'success' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
-                                                    {opt}
-                                                </Tag>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                        <div>
-                                            <Text strong style={{ display: 'block' }}>Đáp án đúng:</Text>
-                                            <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correctAnswer}</Tag>
-                                        </div>
-                                        {selectedDetailChallenge.metadataJson?.transcript && (
-                                            <div>
-                                                <Text strong style={{ display: 'block' }}>Transcript:</Text>
-                                                <Text italic>{selectedDetailChallenge.metadataJson?.transcript}</Text>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'WRITING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Nội dung câu đố:</Text>
-                                        <div style={{ marginTop: 8, padding: '16px', background: '#fff', borderRadius: 12, border: '1px dashed #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                                            <span style={{ fontSize: 18, color: '#1e293b', letterSpacing: '0.01em' }}>
-                                                {selectedDetailChallenge.metadataJson?.blankSentence || selectedDetailChallenge.metadataJson?.correctSentence}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                        <Card size="small" style={{ borderRadius: 10, border: '1px solid #dcfce7', background: '#f0fdf4' }}>
-                                            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN ĐÚNG</Text>
-                                            <Text strong style={{ fontSize: 16, color: '#16a34a' }}>
-                                                {selectedDetailChallenge.metadataJson?.correctAnswer || '—'}
-                                            </Text>
-                                        </Card>
-
-                                        {selectedDetailChallenge.metadataJson?.alternatives?.length > 0 && (
-                                            <Card size="small" style={{ borderRadius: 10, border: '1px solid #e0f2fe', background: '#f0f9ff' }}>
-                                                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>ĐÁP ÁN CHẤP NHẬN KHÁC</Text>
-                                                <Space wrap>
-                                                    {selectedDetailChallenge.metadataJson?.alternatives.map((alt: string, i: number) => (
-                                                        <Tag key={i} color="blue" style={{ borderRadius: 4, margin: 0 }}>{alt}</Tag>
-                                                    ))}
-                                                </Space>
-                                            </Card>
-                                        )}
-
-                                        {selectedDetailChallenge.metadataJson?.hint && (
-                                            <div style={{ gridColumn: 'span 2', marginTop: 8, padding: '12px', background: '#fef3c7', borderRadius: 10, border: '1px solid #fde68a' }}>
-                                                <Text strong style={{ color: '#92400e', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                                    <InfoCircleOutlined /> Gợi ý (Hint)
-                                                </Text>
-                                                <Text style={{ color: '#b45309' }}>{selectedDetailChallenge.metadataJson?.hint}</Text>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'SPEAKING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Âm thanh mẫu:</Text>
-                                        <div style={{ marginTop: 8 }}>
-                                            <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong style={{ display: 'block' }}>Nội dung cần nói:</Text>
-                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedDetailChallenge.metadataJson?.transcript}</Text>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </Modal >
-
-            {/* Edit Quiz Modal */}
-            < Modal
-                title={< span style={{ fontWeight: 600 }}> Chỉnh sửa quiz</span >}
-                open={isEditQuizModalOpen}
-                onCancel={() => setIsEditQuizModalOpen(false)}
-                onOk={() => editQuizForm.submit()}
-                confirmLoading={updatingQuiz}
-                okText="Lưu thay đổi"
-                okButtonProps={{
-                    style: { borderRadius: 8, height: 40, fontWeight: 700, paddingInline: 32, background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
-                }}
-                cancelText="Hủy bỏ"
-                cancelButtonProps={{ style: { borderRadius: 8, height: 40 } }}
-                width={800}
-                centered
-            >
-                <Form
-                    form={editQuizForm}
-                    layout="vertical"
-                    onFinish={handleUpdateQuiz}
-                >
-                    <Row gutter={24}>
-                        <Col span={14}>
-                            <Form.Item
-                                label="Tên quiz"
-                                name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }, { max: 100, message: 'Tên quiz không được vượt quá 100 ký tự' }]}
-                            >
-                                <Input maxLength={100} showCount />
-                            </Form.Item>
-                        </Col>
-                        <Col span={10}>
-                            <Form.Item label="Mỗi câu (giây)" name="secondsPerQuestion">
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Mô tả" name="description" rules={[{ max: 255, message: 'Mô tả không được vượt quá 255 ký tự' }]}>
-                                <Input.TextArea rows={2} maxLength={255} showCount />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Hướng dẫn" name="instructions" rules={[{ max: 500, message: 'Hướng dẫn không được vượt quá 500 ký tự' }]}>
-                                <Input.TextArea rows={2} maxLength={500} showCount />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Kỹ năng" name="skillType"
-                                extra={quizChallenges.length > 0 ? (
-                                    <span style={{ color: '#f59e0b', fontSize: 12 }}>
-                                        ⚠️ Không thể thay đổi kỹ năng khi đã có {quizChallenges.length} câu hỏi
-                                    </span>
-                                ) : undefined}
-                            >
-                                <Select
-                                    disabled={quizChallenges.length > 0}
-                                    options={[
-                                        { value: 'READING', label: '📖 Reading' },
-                                        { value: 'LISTENING', label: '🎧 Listening' },
-                                        { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                        { value: 'WRITING', label: '✍️ Writing' },
-                                        { value: 'MIXED', label: '🎯 Tổng hợp' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion">
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Số thứ tự (STT)" name="orderIndex" tooltip="Thứ tự hiển thị trong level">
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Ghi chú cập nhật" name="comment" rules={[{ max: 200, message: 'Ghi chú không được vượt quá 200 ký tự' }]}>
-                                <Input placeholder="Lý do chỉnh sửa..." maxLength={200} showCount />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                </Form>
-            </Modal >
-
+                    </Modal>
+                </>
+            )}
             <Modal
                 title={
                     <Space>
@@ -3347,279 +3733,6 @@ const AdminQuizManagementPage: React.FC = () => {
                 </div>
             </Modal>
 
-            {/* Import Challenges Excel to Quiz Modal */}
-            <Modal
-                title={
-                    <Space>
-                        <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import câu hỏi từ Excel vào quiz</span>
-                    </Space>
-                }
-                open={isImportChallengesModalOpen}
-                onCancel={() => setIsImportChallengesModalOpen(false)}
-                footer={null}
-                width={640}
-                centered
-                destroyOnHidden
-            >
-                <div style={{ marginTop: 20 }}>
-                    {/* Info box */}
-                    <div style={{
-                        marginBottom: 16,
-                        padding: 16,
-                        background: 'linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%)',
-                        borderRadius: 12,
-                        border: '1px solid #bae6fd',
-                    }}>
-                        <Text style={{ color: '#0369a1', fontSize: 13 }}>
-                            <strong>📋 Hướng dẫn:</strong><br />
-                            1. Chọn loại kỹ năng bên dưới<br />
-                            2. Tải template Excel mẫu<br />
-                            3. Điền dữ liệu câu hỏi theo template<br />
-                            4. Upload file Excel đã điền để import câu hỏi vào quiz
-                        </Text>
-                    </div>
-
-                    {/* Skill type selector */}
-                    <div style={{ marginBottom: 16 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
-                            Loại kỹ năng:
-                        </Text>
-                        <Select
-                            value={importChallengesSkillType}
-                            onChange={(val) => setImportChallengesSkillType(val)}
-                            style={{ width: '100%' }}
-                            options={[
-                                ...(quiz?.skillType === 'MIXED' || !quiz?.skillType
-                                    ? [{ value: 'MIXED', label: '🎯 Tổng hợp (4 kỹ năng — mỗi kỹ năng 1 sheet)' }]
-                                    : []),
-                                ...Object.entries(SKILL_CONFIG)
-                                    .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
-                                    .map(([key, cfg]) => ({
-                                        value: key,
-                                        label: `${cfg.icon ? '' : ''}${cfg.label}`,
-                                    })),
-                            ]}
-                        />
-                    </div>
-
-                    {/* Download template button */}
-                    <Button
-                        icon={<DownloadOutlined />}
-                        onClick={handleDownloadChallengeTemplate}
-                        style={{
-                            marginBottom: 16,
-                            borderRadius: 8,
-                            fontWeight: 600,
-                            background: '#f0f9ff',
-                            color: '#0369a1',
-                            border: '1.5px solid #bae6fd',
-                            width: '100%',
-                        }}
-                        size="large"
-                    >
-                        📥 Tải Template Excel
-                        {importChallengesSkillType === 'MIXED'
-                            ? ' (Tổng hợp 4 kỹ năng)'
-                            : ` (${SKILL_CONFIG[importChallengesSkillType]?.label || importChallengesSkillType})`}
-                    </Button>
-
-                    <Divider style={{ margin: '16px 0' }}>Hoặc upload file đã điền</Divider>
-
-                    {/* File upload */}
-                    <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={(e) => setImportChallengesFile(e.target.files?.[0] || null)}
-                        style={{
-                            marginBottom: 16,
-                            display: 'block',
-                            width: '100%',
-                            padding: 12,
-                            border: '2px dashed #d1d5db',
-                            borderRadius: 10,
-                            cursor: 'pointer',
-                            background: '#fafafa',
-                        }}
-                    />
-
-                    {/* Import button */}
-                    <Button
-                        type="primary"
-                        icon={<UploadOutlined />}
-                        onClick={handleImportChallengesToQuiz}
-                        loading={importingChallenges}
-                        disabled={!importChallengesFile}
-                        size="large"
-                        style={{
-                            width: '100%',
-                            borderRadius: 10,
-                            fontWeight: 700,
-                            background: 'linear-gradient(90deg, #15803d, #16a34a)',
-                            border: 'none',
-                            marginBottom: 16,
-                            height: 48,
-                            fontSize: 15,
-                            color: '#fff',
-                            boxShadow: '0 4px 12px rgba(21,128,61,0.25)'
-                        }}
-                    >
-                        {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}
-                    </Button>
-
-                    {/* Result display */}
-                    {importChallengesResult && (
-                        <div style={{ marginTop: 8 }}>
-                            {importChallengesResult.successCount > 0 && (
-                                <div style={{
-                                    padding: '12px 16px',
-                                    background: '#f0fdf4',
-                                    border: '1px solid #86efac',
-                                    borderRadius: 10,
-                                    marginBottom: 10,
-                                }}>
-                                    <Text style={{ color: '#15803d', fontWeight: 700, fontSize: 14 }}>
-                                        ✅ Import thành công {importChallengesResult.successCount} câu hỏi
-                                    </Text>
-                                    {importChallengesResult.skipCount > 0 && (
-                                        <Text style={{ color: '#a16207', display: 'block', fontSize: 12, marginTop: 4 }}>
-                                            ⚠️ Bỏ qua {importChallengesResult.skipCount} câu (đã tồn tại)
-                                        </Text>
-                                    )}
-                                    {importChallengesResult.errorCount > 0 && (
-                                        <Text style={{ color: '#dc2626', display: 'block', fontSize: 12, marginTop: 4 }}>
-                                            ❌ Lỗi {importChallengesResult.errorCount} dòng
-                                        </Text>
-                                    )}
-                                </div>
-                            )}
-                            {importChallengesResult.messages && importChallengesResult.messages.length > 0 && (
-                                <div style={{
-                                    padding: '10px 14px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: 10,
-                                    maxHeight: 200,
-                                    overflowY: 'auto',
-                                    fontSize: 12,
-                                    fontFamily: 'monospace',
-                                }}>
-                                    {importChallengesResult.messages.map((msg: string, i: number) => (
-                                        <div
-                                            key={i}
-                                            style={{
-                                                marginBottom: 3,
-                                                color: msg.includes('✅') || msg.includes('thành công') ? '#15803d'
-                                                    : msg.includes('❌') || msg.includes('Lỗi') ? '#dc2626'
-                                                        : msg.includes('bỏ qua') || msg.includes('⚠') ? '#a16207'
-                                                            : msg.startsWith('──') ? '#2563eb'
-                                                                : '#475569',
-                                                fontWeight: msg.startsWith('Import hoàn tất') || msg.startsWith('──') ? 700 : 400,
-                                            }}
-                                        >
-                                            {msg}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </Modal>
-
-            {/* Achievement Assignment Modal */}
-            <Modal
-                title={
-                    <Space>
-                        <TrophyOutlined style={{ color: '#f59e0b' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Thiết lập thành tựu cho bài kiểm tra</span>
-                    </Space>
-                }
-                open={isRewardModalOpen}
-                onCancel={() => setIsRewardModalOpen(false)}
-                footer={null}
-                width={600}
-                centered
-            >
-                <div style={{ marginTop: 20 }}>
-                    <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-                        <Text style={{ color: '#92400e', fontSize: 13 }}>
-                            💡 Mỗi bài kiểm tra chỉ được gán duy nhất <strong>01 thành tựu</strong>. Nếu bài kiểm tra này hoàn thành xuất sắc, học viên sẽ nhận được huy hiệu này.
-                        </Text>
-                    </div>
-
-                    <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                        {loadingRewards ? (
-                            <div style={{ padding: '40px 0', textAlign: 'center' }}><Spin tip="Đang tải danh sách..." /></div>
-                        ) : rewards.length === 0 ? (
-                            <Empty description="Chưa có thành tựu nào trong kho" />
-                        ) : (
-                            <Row gutter={[12, 12]}>
-                                {rewards.map((reward) => {
-                                    const isCurrent = quiz?.rewardCatalogId === reward.id;
-                                    const hasOtherReward = quiz?.rewardCatalogId && !isCurrent;
-                                    const isAssignedToOther = reward.linkedQuizId && !isCurrent;
-
-                                    return (
-                                        <Col span={24} key={reward.id}>
-                                            <div style={{
-                                                padding: 12,
-                                                borderRadius: 12,
-                                                border: isCurrent ? '2px solid #f59e0b' : '1px solid #e2e8f0',
-                                                background: isCurrent ? '#fffbeb' : (isAssignedToOther || hasOtherReward ? '#f1f5f9' : '#fff'),
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                opacity: (isAssignedToOther || (hasOtherReward && !isCurrent)) ? 0.6 : 1,
-                                                transition: 'all 0.2s'
-                                            }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <img
-                                                        src={reward.iconUrl || 'https://via.placeholder.com/40'}
-                                                        alt={reward.name}
-                                                        style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 8 }}
-                                                    />
-                                                    <div>
-                                                        <div style={{ fontWeight: 700, color: isCurrent ? '#92400e' : '#1e293b' }}>
-                                                            {reward.name}
-                                                            {isCurrent && <Tag color="orange" style={{ marginLeft: 8, borderRadius: 4 }}>Đang gán</Tag>}
-                                                        </div>
-                                                        <div style={{ fontSize: 12, color: '#64748b' }}>{reward.description}</div>
-                                                        {isAssignedToOther ? (
-                                                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2, fontWeight: 500 }}>
-                                                                ⚠️ Đã gán cho Quiz khác: {reward.linkedQuizName}
-                                                            </div>
-                                                        ) : hasOtherReward && (
-                                                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                                                (Gỡ thành tựu hiện tại để gán mới)
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    type={isCurrent ? "default" : "primary"}
-                                                    disabled={(isAssignedToOther || (hasOtherReward && !isCurrent)) || submittingReward}
-                                                    loading={submittingReward && isCurrent}
-                                                    onClick={() => handleAttachReward(reward.id)}
-                                                    style={{
-                                                        borderRadius: 8,
-                                                        fontWeight: 600,
-                                                        background: isCurrent ? '#fff' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
-                                                        borderColor: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#e2e8f0' : (hasOtherReward && !isCurrent ? '#e2e8f0' : '#f59e0b')),
-                                                        color: isCurrent ? '#f59e0b' : (isAssignedToOther ? '#94a3b8' : (hasOtherReward && !isCurrent ? '#94a3b8' : '#fff'))
-                                                    }}
-                                                >
-                                                    {isCurrent ? 'Hủy gán' : (isAssignedToOther ? 'Đã gán' : 'Gán ngay')}
-                                                </Button>
-                                            </div>
-                                        </Col>
-                                    );
-                                })}
-                            </Row>
-                        )}
-                    </div>
-                </div>
-            </Modal>
 
             <style>{`
                 .quiz-row-alt td {
@@ -3757,7 +3870,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     transform: translateX(4px);
                 }
             `}</style>
-        </div >
+        </div>
     );
 };
 

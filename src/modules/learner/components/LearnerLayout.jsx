@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   Mail,
+  Award,
 } from "lucide-react";
 
 const REGION_CHOICES = [
@@ -175,8 +176,14 @@ export default function LearnerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [avatarErr, setAvatarErr] = useState(false);
 
   const user = session?.user || { fullName: "Learner", avatar: null };
+
+  // Reset error when avatar changes
+  React.useEffect(() => {
+    setAvatarErr(false);
+  }, [user?.avatar]);
 
   // Check if region is missing (null, undefined, empty)
   const hasRegion = Boolean(user?.region && user.region.trim() !== "");
@@ -215,6 +222,7 @@ export default function LearnerLayout() {
     { key: "/learner/friends", icon: Users, label: "Bạn bè" },
     { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
     { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
+    { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
     { key: "/learner/profile", icon: UserCircle2, label: "Hồ sơ" },
   ];
 
@@ -312,8 +320,12 @@ export default function LearnerLayout() {
               <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
                 <div className="flex items-center gap-2 cursor-pointer px-2.5 py-1.5 rounded-xl hover:bg-purple-50/80 transition-all border border-transparent hover:border-purple-100">
                   <Avatar
-                    src={user.avatar}
-                    icon={!user.avatar && <UserOutlined />}
+                    src={avatarErr ? null : (user.avatar_url || user.avatar)}
+                    onError={() => {
+                      setAvatarErr(true);
+                      return true;
+                    }}
+                    icon={<UserOutlined />}
                     size={32}
                     className="bg-gradient-to-br from-purple-100 to-orange-50 text-purple-600 border-2 border-purple-200 flex-shrink-0"
                   />

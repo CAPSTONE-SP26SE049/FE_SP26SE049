@@ -13,6 +13,7 @@ interface LeaderboardEntry {
     accountId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     totalStars: number;
     challengesCompleted: number;
     currentStreakDays: number;
@@ -71,7 +72,7 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                     >
                         <div className="mb-0.5">{cfg.badge}</div>
                         <div className={clsx("rounded-full mb-1 relative", cfg.ring)}>
-                            <Avatar src={e.avatarUrl} size={cfg.size} className="border-2 border-white" />
+                            <Avatar src={e.avatar_url || e.avatarUrl} size={cfg.size} className="border-2 border-white" />
                             {isMe && (
                                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
                                     <CheckCircleFilled className="text-white text-[7px]" />
@@ -113,7 +114,7 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                 {e.rankPosition}
             </div>
             <div className="relative flex-shrink-0">
-                <Avatar src={e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
+                <Avatar src={e.avatar_url || e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
                 {isMe && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-500 rounded-full border border-white flex items-center justify-center">
                         <CheckCircleFilled className="text-white text-[7px]" />
@@ -188,7 +189,7 @@ export default function LearnerLeaderboardPage() {
     const scopeLabel = scope === 'GLOBAL' ? 'Toàn quốc' : `${currentRegion?.emoji} ${currentRegion?.label}`;
 
     return (
-        <div className="flex flex-col pb-12 w-full bg-[#f8f5ff]">
+        <div className="flex flex-col h-[calc(100vh-80px)] min-h-[600px] w-full bg-[#f8f5ff] overflow-hidden">
 
             {/* ── Header Strip ── */}
             <div className="flex-shrink-0 px-6 py-3 bg-white border-b border-gray-100"
@@ -290,7 +291,7 @@ export default function LearnerLeaderboardPage() {
                                                 <Crown size={10} className="text-amber-400" /> Top 3 dẫn đầu
                                             </p>
                                         </div>
-                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-end">
+                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-center">
                                             <Podium entries={top3} userId={user?.id} />
                                         </div>
 

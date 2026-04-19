@@ -15,6 +15,7 @@ export interface StudentAccount {
   fullName: string;
   email: string;
   avatar?: string;
+  avatar_url?: string;
   level: string;
   lastMessage?: string;
   lastMessageAt?: string;

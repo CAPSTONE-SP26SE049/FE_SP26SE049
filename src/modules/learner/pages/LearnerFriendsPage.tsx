@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Avatar, Input, Spin, Popconfirm, Tooltip, message } from 'antd';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Avatar, Input, Spin, Popconfirm, Tooltip, message, Modal } from 'antd';
 import {
     UserOutlined,
     SearchOutlined,
@@ -10,6 +10,7 @@ import {
     StopOutlined,
     TeamOutlined,
     SendOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import apiClient, { getUnreadCounts } from '../../../services/apiClient';
 import { Client } from '@stomp/stompjs';
@@ -17,7 +18,7 @@ import SockJS from 'sockjs-client';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle } from 'lucide-react';
+import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle, Star, MapPin, Calendar } from 'lucide-react';
 import ChatBox from '../components/ChatBox';
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -26,6 +27,7 @@ interface Friend {
     userId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     status: string;
     createdAt: string;
 }
@@ -34,10 +36,121 @@ interface SearchUser {
     userId: string;
     fullName: string;
     avatarUrl: string;
+    avatar_url?: string;
     friendshipStatus: string | null;
 }
 
+interface FriendPublicProfile {
+    id: string;
+    fullName: string;
+    avatarUrl: string;
+    avatar_url?: string;
+    region: string | null;
+    totalStars: number;
+    currentStreakDays: number;
+    totalExperience: number;
+    memberSince: string;
+}
+
 type Tab = 'friends' | 'requests' | 'sent' | 'search';
+
+/* ─── Region Label ────────────────────────────── */
+const regionLabel = (code: string | null) => {
+    if (!code) return 'Chưa cập nhật';
+    const map: Record<string, string> = {
+        NORTH: 'Miền Bắc', CENTRAL: 'Miền Trung', SOUTH: 'Miền Nam',
+        BAC: 'Miền Bắc', TRUNG: 'Miền Trung', NAM: 'Miền Nam',
+    };
+    return map[code.toUpperCase()] ?? code;
+};
+
+/* ─── Friend Profile Modal ─────────────────────────── */
+const FriendProfileModal = ({
+    open,
+    onClose,
+    friend,
+}: {
+    open: boolean;
+    onClose: () => void;
+    friend: Friend | null;
+}) => {
+    const [profile, setProfile] = useState<FriendPublicProfile | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!open || !friend) return;
+        setProfile(null);
+        setLoading(true);
+        apiClient
+            .get(`/friends/${friend.userId}/profile`)
+            .then((res) => {
+                const d = res?.data?.data ?? res?.data;
+                setProfile(d);
+            })
+            .catch((err) => {
+                message.error(err?.response?.data?.message || 'Không thể tải hồ sơ.');
+                onClose();
+            })
+            .finally(() => setLoading(false));
+    }, [open, friend?.userId]);
+
+    return (
+        <Modal
+            open={open}
+            onCancel={onClose}
+            footer={null}
+            width={400}
+            centered
+            styles={{ body: { padding: 0 } }}
+        >
+            {loading || !profile ? (
+                <div className="flex justify-center items-center py-20">
+                    <Spin size="large" />
+                </div>
+            ) : (
+                <div className="overflow-hidden rounded-2xl">
+                    {/* Banner */}
+                    <div className="h-24 bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-500 relative">
+                        <div className="absolute inset-0 opacity-20"
+                            style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                    </div>
+                    <div className="flex flex-col items-center -mt-12 px-6 pb-6">
+                        <Avatar
+                            src={profile.avatar_url || profile.avatarUrl}
+                            icon={!(profile.avatar_url || profile.avatarUrl) && <UserOutlined />}
+                            size={80}
+                            className="border-4 border-white shadow-xl bg-purple-100 text-purple-600"
+                        />
+                        <h3 className="mt-3 text-xl font-black text-gray-800 text-center">
+                            {profile.fullName || 'Người dùng'}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-1 text-gray-400 text-sm">
+                            <MapPin size={13} />
+                            <span>{regionLabel(profile.region)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 text-gray-400 text-xs">
+                            <Calendar size={12} />
+                            <span>Tham gia {new Date(profile.memberSince).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 w-full mt-5">
+                            <div className="flex flex-col items-center p-3 bg-amber-50 rounded-2xl border border-amber-100">
+                                <Star size={18} className="text-amber-500 mb-1" />
+                                <span className="font-black text-lg text-amber-600">{profile.totalStars ?? 0}</span>
+                                <span className="text-xs text-amber-400 font-medium">Sao</span>
+                            </div>
+                            <div className="flex flex-col items-center p-3 bg-orange-50 rounded-2xl border border-orange-100">
+                                <span className="text-lg mb-1">🔥</span>
+                                <span className="font-black text-lg text-orange-600">{profile.currentStreakDays ?? 0}</span>
+                                <span className="text-xs text-orange-400 font-medium">Streak</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </Modal>
+    );
+};
+
 
 /* ─── Empty State ─────────────────────────────────────── */
 const EmptyState = ({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) => (
@@ -54,12 +167,14 @@ const EmptyState = ({ icon: Icon, title, desc }: { icon: any; title: string; des
 const FriendCard = ({
     item,
     onOpenChat,
+    onViewProfile,
     onUnfriend,
     onBlock,
     unreadCount,
 }: {
     item: Friend;
     onOpenChat: (friend: Friend) => void;
+    onViewProfile: (friend: Friend) => void;
     onUnfriend: (id: string) => void;
     onBlock: (id: string) => void;
     unreadCount?: number;
@@ -72,8 +187,8 @@ const FriendCard = ({
         <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
                 <Avatar
-                    src={item.avatarUrl}
-                    icon={!item.avatarUrl && <UserOutlined />}
+                    src={item.avatar_url || item.avatarUrl}
+                    icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
                     size={56}
                     className="bg-purple-100 text-purple-600 border-2 border-purple-100"
                 />
@@ -92,6 +207,14 @@ const FriendCard = ({
             </div>
         </div>
         <div className="flex items-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-50 flex-shrink-0 w-full sm:w-auto justify-end">
+            <Tooltip title="Xem hồ sơ">
+                <button
+                    onClick={() => onViewProfile(item)}
+                    className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all text-indigo-400"
+                >
+                    <EyeOutlined className="text-sm" />
+                </button>
+            </Tooltip>
             <button
                 onClick={() => onOpenChat(item)}
                 className="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 text-sm font-black flex items-center justify-center gap-2 hover:bg-purple-600 hover:text-white hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all"
@@ -156,8 +279,8 @@ const RequestCard = ({
         )}
     >
         <Avatar
-            src={item.avatarUrl}
-            icon={!item.avatarUrl && <UserOutlined />}
+            src={item.avatar_url || item.avatarUrl}
+            icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
             size={48}
             className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
         />
@@ -237,8 +360,8 @@ const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) =
             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all"
         >
             <Avatar
-                src={item.avatarUrl}
-                icon={!item.avatarUrl && <UserOutlined />}
+                src={item.avatar_url || item.avatarUrl}
+                icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
                 size={48}
                 className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
             />
@@ -260,6 +383,8 @@ export default function LearnerFriendsPage() {
     const [activeChatFriend, setActiveChatFriend] = useState<Friend | null>(null);
     const activeChatFriendRef = useRef<Friend | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+    const [profileTarget, setProfileTarget] = useState<Friend | null>(null);
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
 
     const currentUserId = session?.user?.id;
     const token = useMemo(() => {
@@ -306,6 +431,11 @@ export default function LearnerFriendsPage() {
         setActiveChatFriend(friend);
     }, []);
 
+    const handleViewProfile = useCallback((friend: Friend) => {
+        setProfileTarget(friend);
+        setProfileModalOpen(true);
+    }, []);
+
     const fetchFriends = useCallback(async () => {
         setLoading(true);
         try {
@@ -348,7 +478,7 @@ export default function LearnerFriendsPage() {
                 const data = await getUnreadCounts();
                 if (cancelled || data == null || typeof data !== 'object') return;
                 const next: Record<string, number> = {};
-                Object.entries(data as Record<string, unknown>).forEach(([k, v]) => {
+                Object.entries(data as unknown as Record<string, unknown>).forEach(([k, v]) => {
                     const n = typeof v === 'number' ? v : Number(v);
                     if (!Number.isNaN(n)) next[k] = n;
                 });
@@ -540,29 +670,32 @@ export default function LearnerFriendsPage() {
 
             {/* ── Tab Bar ── */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1 flex gap-1">
-                {TABS.map(({ id, label, icon: Icon, count, badge }) => (
-                    <button
-                        key={id}
-                        onClick={() => setActiveTab(id)}
-                        className={clsx(
-                            "flex-1 h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 relative",
-                            activeTab === id
-                                ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-md shadow-purple-500/20"
-                                : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
-                        )}
-                    >
-                        {typeof Icon === 'function' ? <Icon size={13} /> : <Icon className="text-xs" />}
-                        <span className="hidden sm:inline">{label}</span>
-                        {badge && count > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                                {count}
-                            </span>
-                        )}
-                        {!badge && count > 0 && activeTab === id && (
-                            <span className="text-white/70 text-[10px]">({count})</span>
-                        )}
-                    </button>
-                ))}
+                {TABS.map(({ id, label, icon: Icon, count, badge }) => {
+                    const I = Icon as any;
+                    return (
+                        <button
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={clsx(
+                                "flex-1 h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 relative",
+                                activeTab === id
+                                    ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-md shadow-purple-500/20"
+                                    : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
+                            )}
+                        >
+                            <I size={13} />
+                            <span className="hidden sm:inline">{label}</span>
+                            {badge && count > 0 && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                                    {count}
+                                </span>
+                            )}
+                            {!badge && count > 0 && activeTab === id && (
+                                <span className="text-white/70 text-[10px]">({count})</span>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ── Content ── */}
@@ -592,6 +725,7 @@ export default function LearnerFriendsPage() {
                                             key={item.friendshipId}
                                             item={item}
                                             onOpenChat={handleOpenChat}
+                                            onViewProfile={handleViewProfile}
                                             onUnfriend={handleUnfriend}
                                             onBlock={handleBlock}
                                             unreadCount={unreadCounts[item.userId]}
@@ -725,6 +859,12 @@ export default function LearnerFriendsPage() {
                     onClose={() => setActiveChatFriend(null)}
                 />
             )}
+
+            <FriendProfileModal
+                open={profileModalOpen}
+                onClose={() => setProfileModalOpen(false)}
+                friend={profileTarget}
+            />
         </div>
     );
 }
