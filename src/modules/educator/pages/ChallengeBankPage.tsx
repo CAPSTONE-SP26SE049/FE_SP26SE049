@@ -65,8 +65,8 @@ const ChallengeBankPage: React.FC = () => {
                     <Typography.Title level={5} className="!mb-1">{plan.title}</Typography.Title>
                     <Typography.Paragraph type="secondary" className="!mb-2">{plan.objective}</Typography.Paragraph>
                     <Space wrap>
-                      <Tag color={plan.status === 'PUBLISHED' ? 'green' : plan.status === 'DRAFT' ? 'gold' : 'default'}>{plan.status}</Tag>
-                      <Tag color="blue">{plan.targetStudents.length} nhóm học viên</Tag>
+                      <Tag color={plan.status === 'PUBLISHED' ? 'success' : plan.status === 'DRAFT' ? 'warning' : 'default'} bordered={false}>{plan.status}</Tag>
+                      <Tag color="purple" bordered={false}>{plan.targetStudents.length} nhóm học viên</Tag>
                     </Space>
                   </div>
                   <div className="min-w-36 text-right">
@@ -77,7 +77,7 @@ const ChallengeBankPage: React.FC = () => {
                 <div className="mt-4">
                   <div className="text-sm font-semibold text-slate-700 mb-2">Mục tiêu thành tựu</div>
                   <Space wrap>
-                    {plan.achievementGoals.map((goal) => <Tag key={goal} color="geekblue">{goal}</Tag>)}
+                    {plan.achievementGoals.map((goal) => <Tag key={goal} color="orange" bordered={false}>{goal}</Tag>)}
                   </Space>
                 </div>
               </List.Item>

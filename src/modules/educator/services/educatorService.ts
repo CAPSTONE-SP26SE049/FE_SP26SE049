@@ -22,6 +22,13 @@ export interface StudentAccount {
   unreadCount?: number;
   isActive?: boolean;
   hasCustomPath?: boolean;
+  progressPercent: number;
+  pronunciationScore: number;
+  weakPhonemes: string[];
+  learningPath: {
+    id: string;
+    title: string;
+  };
 }
 
 export interface PronunciationMetric {
@@ -107,6 +114,7 @@ export const educatorService = {
   sendMessage: async (data: MessagePayload) => apiClient.post('/educator/messages', data),
   markAsRead: async (studentId: string) => apiClient.post(`/educator/messages/read/${studentId}`),
   getFeedbackItems: async () => apiClient.get('/educator/feedback'),
+  getMessages: async () => apiClient.get('/educator/feedback'), // Alias for historical compatibility in components
   sendFeedback: async (data: FeedbackPayload) => apiClient.post('/educator/feedback', data),
   getAnalyticsReports: async () => apiClient.get('/educator/analytics/reports'),
   getAnalyticsReportByStudent: async (studentId: string) => apiClient.get(`/educator/analytics/reports/${studentId}`),

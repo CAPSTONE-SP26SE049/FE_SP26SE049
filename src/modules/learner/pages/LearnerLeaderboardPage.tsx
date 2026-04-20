@@ -17,6 +17,7 @@ interface LeaderboardEntry {
     totalStars: number;
     challengesCompleted: number;
     currentStreakDays: number;
+    badgeCount: number;
 }
 interface LeaderboardData {
     entries: LeaderboardEntry[];
@@ -84,7 +85,7 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                             {isMe && <span className="block text-purple-500 text-[8px]">(Bạn)</span>}
                         </p>
                         <p className={clsx("text-[10px] font-bold mt-0.5 mb-1", cfg.label)}>
-                            {e.totalStars} ⭐
+                            {e.totalStars} ⭐ • {e.badgeCount || 0} 🏆
                         </p>
                         <div className={clsx("w-full rounded-t-xl flex items-center justify-center font-black text-white text-sm shadow-md", cfg.podBg, cfg.podH)}>
                             #{e.rankPosition}
@@ -127,7 +128,7 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                     {isMe && <span className="ml-1.5 text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-black">BẠN</span>}
                 </p>
                 <p className="text-[9px] text-gray-400 font-semibold flex items-center gap-1 mt-0.5">
-                    <FireFilled className="text-orange-400" style={{ fontSize: 9 }} /> {e.currentStreakDays || 0} ngày học
+                    <FireFilled className="text-orange-400" style={{ fontSize: 9 }} /> {e.currentStreakDays || 0} ngày học • <Trophy size={9} className="text-amber-500" /> {e.badgeCount || 0} huy hiệu
                 </p>
             </div>
             <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-100 flex-shrink-0">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Card, Button, Input, Typography, Avatar, Tag, message } from 'antd';
 import { Search, User, Rocket, Clock, CheckCircle, Compass } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { educatorService, StudentAccount } from '../services/educatorService';
+import { educatorService, type StudentAccount } from '../services/educatorService';
 
 const { Title, Text } = Typography;
 
@@ -42,7 +42,7 @@ const CustomPathSelectionPage = () => {
             key: 'user',
             render: (record: StudentAccount) => (
                 <div className="flex items-center gap-3">
-                    <Avatar icon={<User />} className="bg-indigo-100 text-indigo-500" />
+                    <Avatar icon={<User />} className="bg-purple-100 text-purple-500" />
                     <div>
                         <div className="font-bold text-slate-800">{record.fullName}</div>
                         <div className="text-xs text-slate-400">{record.email}</div>
@@ -74,7 +74,7 @@ const CustomPathSelectionPage = () => {
                     icon={record.hasCustomPath ? <Compass size={16} /> : <Rocket size={16} />}
                     className={`rounded-xl font-bold transition-all border-none ${record.hasCustomPath
                         ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100'
-                        : 'bg-indigo-600 hover:bg-violet-600 shadow-indigo-100'
+                        : 'bg-purple-600 hover:bg-purple-700 shadow-purple-100'
                         }`}
                     onClick={() => navigate(`/educator/students/${record.id}/custom-path`)}
                 >
@@ -101,7 +101,7 @@ const CustomPathSelectionPage = () => {
                 />
             </div>
 
-            <Card className="rounded-2xl shadow-sm border-indigo-50">
+            <Card className="rounded-2xl shadow-sm border-purple-50">
                 <Table
                     columns={columns}
                     dataSource={filteredStudents}

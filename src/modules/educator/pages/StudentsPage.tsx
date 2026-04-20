@@ -99,7 +99,7 @@ const StudentsPage: React.FC = () => {
       title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Cấp độ</span>,
       dataIndex: 'level',
       key: 'level',
-      render: (level: string) => <Tag color="blue" className="font-bold rounded-lg border-none bg-blue-50 text-blue-500">{level || 'N/A'}</Tag>
+      render: (level: string) => <Tag color="purple" className="font-bold rounded-lg border-none bg-purple-50 text-purple-600">{level || 'N/A'}</Tag>
     },
     {
       title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tiến độ</span>,
@@ -151,7 +151,7 @@ const StudentsPage: React.FC = () => {
           <Tooltip title={record.isActive !== false ? "Khóa học viên" : "Mở khóa học viên"}>
             <Button
               type="text" shape="circle"
-              icon={record.isActive !== false ? <LockOutlined style={{ color: '#ef4444' }} /> : <UnlockOutlined style={{ color: '#22c55e' }} />}
+              icon={record.isActive !== false ? <LockOutlined style={{ color: '#ef4444' }} /> : <UnlockOutlined style={{ color: '#10b981' }} />}
             />
           </Tooltip>
           <Tooltip title="Thiết kế lộ trình">
@@ -201,10 +201,10 @@ const StudentsPage: React.FC = () => {
       {/* ── Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Tổng học viên', value: stats.total, icon: <TeamOutlined />, color: '#9333ea', bg: '#faf5ff' },
-          { label: 'Đang hoạt động', value: stats.active, icon: <CheckCircleOutlined />, color: '#0ea5e9', bg: '#f0f9ff' },
-          { label: 'Tiến độ TB', value: `${stats.avgProgress}%`, icon: <UserOutlined />, color: '#10b981', bg: '#f0fdf4' },
-          { label: 'Phát âm TB', value: `${stats.avgPronunciation}/100`, icon: <LockOutlined />, color: '#f59e0b', bg: '#fffbeb' }
+          { label: 'Tổng học viên', value: stats.total, icon: <TeamOutlined />, color: '#9333ea', bg: '#f8f5ff' },
+          { label: 'Đang hoạt động', value: stats.active, icon: <CheckCircleOutlined />, color: '#7c3aed', bg: '#f5f3ff' },
+          { label: 'Tiến độ TB', value: `${stats.avgProgress}%`, icon: <RocketOutlined />, color: '#f59e0b', bg: '#fffbeb' },
+          { label: 'Phát âm TB', value: `${stats.avgPronunciation}/100`, icon: <SearchOutlined />, color: '#ec4899', bg: '#fdf2f8' }
         ].map((item, i) => (
           <motion.div
             key={i}
@@ -261,7 +261,7 @@ const StudentsPage: React.FC = () => {
             showTotal: (total) => <span className="font-bold text-gray-400 text-xs">Tổng {total} học viên</span>,
             style: { padding: '16px 24px' }
           }}
-          rowClassName="hover:bg-purple-50/20 transition-colors cursor-pointer"
+          rowClassName="hover:bg-purple-50/40 transition-colors cursor-pointer"
           scroll={{ x: 'max-content' }}
         />
       </div>

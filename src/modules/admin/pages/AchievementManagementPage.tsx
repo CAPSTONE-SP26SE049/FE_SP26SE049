@@ -3,7 +3,8 @@ import { message, Input, Button, Skeleton, Select, Tag, Upload, Form, Popconfirm
 import {
     PlusOutlined, SearchOutlined, TrophyOutlined, EditOutlined,
     LayoutOutlined, DeleteOutlined, StopOutlined, LoadingOutlined,
-    CheckCircleOutlined, FilterOutlined, AppstoreOutlined
+    CheckCircleOutlined, FilterOutlined, AppstoreOutlined,
+    ExportOutlined, ImportOutlined, FileExcelOutlined, CloudUploadOutlined
 } from '@ant-design/icons';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { adminService } from '../services/adminService';
@@ -30,6 +31,9 @@ const AchievementManagementPage: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
     const [editingAchievement, setEditingAchievement] = useState<any>(null);
     const [submitting, setSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -89,6 +93,70 @@ const AchievementManagementPage: React.FC = () => {
         } finally { setSubmitting(false); }
     };
 
+    const handleExportExcel = async () => {
+        try {
+            const blob: any = await adminService.exportRewardsToExcel();
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'achievements_export.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            message.success('Export Excel thành công');
+        } catch (error) {
+            message.error('Lỗi khi export Excel');
+        }
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            const blob: any = await adminService.downloadRewardTemplate();
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'achievement_template.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            message.error('Lỗi khi tải template');
+        }
+    };
+
+    const handleImportExcel = async () => {
+        if (!importFile) {
+            message.warning('Vui lòng chọn file Excel');
+            return;
+        }
+        setImporting(true);
+        try {
+            const res: any = await adminService.importRewardsFromExcel(importFile);
+            const result = res.data;
+            message.success(`Import hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
+            if (result.errorCount > 0) {
+                Modal.error({
+                    title: 'Lỗi khi import',
+                    content: (
+                        <div className="max-h-60 overflow-y-auto mt-2">
+                            {result.messages.map((msg: string, i: number) => (
+                                <p key={i} className="text-xs text-red-500 mb-1">Row {i}: {msg}</p>
+                            ))}
+                        </div>
+                    ),
+                    width: 500,
+                });
+            }
+            setIsImportModalOpen(false);
+            setImportFile(null);
+            fetchAchievements();
+        } catch (error) {
+            message.error('Lỗi khi import Excel');
+        } finally {
+            setImporting(false);
+        }
+    };
+
     useEffect(() => { fetchAchievements(); }, []);
 
     const filteredData = useMemo(() => {
@@ -133,11 +201,29 @@ const AchievementManagementPage: React.FC = () => {
                         <h1 className="text-white text-xl md:text-2xl font-black">Tổng quan hệ thống</h1>
                         <p className="text-white/60 text-sm mt-1 font-medium">Theo dõi số lượng và trạng thái gán của các huy hiệu</p>
                     </div>
-                    <Button icon={<PlusOutlined />} onClick={() => handleOpenModal()}
-                        className="h-11 px-6 rounded-2xl font-black text-sm flex-shrink-0"
-                        style={{ ...PURPLE_BTN, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.3)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
-                        Thêm thành tựu
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            icon={<ExportOutlined />}
+                            onClick={handleExportExcel}
+                            className="h-11 px-6 rounded-2xl font-black text-sm flex-shrink-0 bg-transparent text-white border-white/30 hover:bg-white/10"
+                            style={{ backdropFilter: 'blur(12px)' }}
+                        >
+                            Xuất Excel
+                        </Button>
+                        <Button
+                            icon={<ImportOutlined />}
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="h-11 px-6 rounded-2xl font-black text-sm flex-shrink-0 bg-transparent text-white border-white/30 hover:bg-white/10"
+                            style={{ backdropFilter: 'blur(12px)' }}
+                        >
+                            Nhập Excel
+                        </Button>
+                        <Button icon={<PlusOutlined />} onClick={() => handleOpenModal()}
+                            className="h-11 px-6 rounded-2xl font-black text-sm flex-shrink-0"
+                            style={{ ...PURPLE_BTN, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.3)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+                            Thêm thành tựu
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Stats inside hero */}
@@ -334,6 +420,8 @@ const AchievementManagementPage: React.FC = () => {
                             className="h-12 rounded-2xl" style={{ fontSize: 14 }} />
                     </Form.Item>
 
+
+
                     <Form.Item name="iconUrl" label={<span className="font-bold text-gray-600">Hình ảnh huy hiệu</span>}
                         rules={[{ required: true, message: 'Vui lòng tải lên icon huy hiệu' }]}>
                         <div className="flex items-center gap-5">
@@ -392,6 +480,70 @@ const AchievementManagementPage: React.FC = () => {
                         </div>
                     )}
                 </Form>
+            </Modal>
+
+            {/* ━━━ IMPORT MODAL ━━━ */}
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-xl text-orange-600">
+                            <FileExcelOutlined />
+                        </div>
+                        <div>
+                            <div className="font-extrabold text-gray-800">Nhập thành tựu từ Excel</div>
+                            <div className="text-xs text-gray-400 font-medium">Tự động thêm hàng loạt huy hiệu</div>
+                        </div>
+                    </div>
+                }
+                open={isImportModalOpen}
+                onCancel={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                footer={[
+                    <Button key="cancel" onClick={() => setIsImportModalOpen(false)} style={{ borderRadius: 12 }}>Hủy</Button>,
+                    <Button key="import" type="primary" loading={importing} onClick={handleImportExcel}
+                        style={{ background: BRAND_ORANGE, border: 'none', borderRadius: 12, fontWeight: 700, paddingInline: 24 }}>
+                        🚀 Bắt đầu Import
+                    </Button>
+                ]}
+                width={480} centered
+            >
+                <div className="mt-5 space-y-4">
+                    <div className="p-4 rounded-2xl border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors bg-gray-50 flex flex-col items-center justify-center py-8">
+                        <Upload
+                            beforeUpload={(file) => { setImportFile(file); return false; }}
+                            onRemove={() => setImportFile(null)}
+                            fileList={importFile ? [importFile as any] : []}
+                            accept=".xlsx, .xls"
+                        >
+                            {!importFile && (
+                                <div className="flex flex-col items-center cursor-pointer">
+                                    <CloudUploadOutlined className="text-4xl text-gray-300 mb-2" />
+                                    <p className="text-sm font-bold text-gray-500">Kéo thả hoặc Click để chọn file</p>
+                                    <p className="text-[10px] text-gray-400 font-medium uppercase mt-1">Chỉ hỗ trợ .xlsx, .xls</p>
+                                </div>
+                            )}
+                        </Upload>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl">💡</span>
+                            <div className="flex-1">
+                                <p className="text-xs font-bold text-blue-700 mb-1">Mẹo nhỏ:</p>
+                                <p className="text-xs text-blue-600/80 leading-relaxed font-medium">
+                                    Dùng file mẫu của hệ thống để nhập liệu chính xác nhất. Mã code không được trùng lặp.
+                                </p>
+                                <Button
+                                    type="link"
+                                    onClick={handleDownloadTemplate}
+                                    icon={<FileExcelOutlined />}
+                                    className="p-0 h-auto text-xs font-black text-blue-800 mt-2 hover:text-blue-900"
+                                >
+                                    Tải file Excel mẫu tại đây
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

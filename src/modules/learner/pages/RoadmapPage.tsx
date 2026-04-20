@@ -441,26 +441,30 @@ const RoadmapNode = ({ node, index, onClick }: { node: any; index: number; onCli
       onMouseLeave={() => setIsHovered(false)}
     >
       <motion.div
-        whileHover={{ scale: isClickable ? 1.12 : 1 }}
+        whileHover={{ scale: isClickable ? 1.12 : 1.05 }}
         whileTap={{ scale: isClickable ? 0.92 : 1 }}
         initial={{ scale: 0, rotate: -15 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ delay: index * 0.08, type: 'spring', bounce: 0.4 }}
         onClick={isClickable ? onClick : undefined}
         className={clsx(
-          'relative w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-lg border-b-4 transition-all duration-300',
-          node.type === 'completed' && 'bg-white border-b-gray-200',
-          node.type === 'active' && 'bg-white border-b-purple-300 ring-4 ring-purple-100 scale-110',
-          node.type === 'locked' && 'bg-gray-100 border-b-gray-200',
+          'relative w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-lg border-b-4 transition-all duration-300 backdrop-blur-md',
+          node.type === 'completed' && 'bg-white/90 border-b-gray-200 border border-gray-100',
+          node.type === 'active' && 'bg-white border-b-purple-400 ring-4 ring-purple-100 scale-110 shadow-purple-200',
+          node.type === 'locked' && 'bg-white/40 border-b-gray-300/30 border border-white/50 grayscale opacity-80 shadow-none',
           isClickable ? 'cursor-pointer hover:rotate-3' : 'cursor-not-allowed',
         )}
       >
         {node.type === 'locked'
-          ? <LockFilled className="text-gray-300 text-2xl" />
+          ? (
+            <div className="w-12 h-12 rounded-2xl bg-gray-200/50 flex items-center justify-center">
+              <LockFilled className="text-gray-400/60 text-xl" />
+            </div>
+          )
           : (
-            <div className={clsx("w-12 h-12 rounded-xl flex items-center justify-center", skill.bg)}>
+            <div className={clsx("w-13 h-13 rounded-2xl flex items-center justify-center shadow-inner", skill.bg)}>
               <SkillIcon
-                size={22}
+                size={24}
                 strokeWidth={2.5}
                 style={{ color: skill.color }}
                 className={node.type === 'active' ? 'animate-pulse' : ''}

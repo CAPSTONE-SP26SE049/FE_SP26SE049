@@ -9,7 +9,7 @@ import {
 
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Flame, Star, ArrowRight, BookOpen, Map, Trophy, Sparkles, Zap, Target, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Sparkles, ArrowRight, Map, Trophy, Zap, Target, ChevronLeft, ChevronRight } from 'lucide-react'
 import apiClient from '../../../services/apiClient'
 import { learnerService } from '../services/learnerService'
 import '@google/model-viewer'
@@ -48,7 +48,6 @@ export default function Dashboard() {
     const navigate = useNavigate()
     const user = session?.user
 
-    const [completedLessons, setCompletedLessons] = useState<number>(0)
     const [currentLesson, setCurrentLesson] = useState<any>({
         title: 'Lộ trình của bạn',
         description: 'Bài học • Màn 1',
@@ -110,9 +109,6 @@ export default function Dashboard() {
                 if (!dialect) { setLessonLoading(false); return }
 
                 const levels = await learnerService.getLevels(dialect.id).catch(() => [])
-                const completed = levels.filter((l: any) => l.isCompleted).length
-                setCompletedLessons(completed)
-
                 const active = levels.find((l: any) => !l.isCompleted && !l.isLocked)
                 if (active) {
                     setCurrentLesson({
@@ -138,83 +134,68 @@ export default function Dashboard() {
         }
         if (user) loadLesson()
         else setLessonLoading(false)
-    }, [user?.id])
+    }, [user?.id, updateSessionItem])
 
-    const streak = (user as any)?.currentStreakDays ?? (user as any)?.streak ?? 0
-    const totalStars = user?.totalStars ?? 0
     const firstName = user?.fullName?.split(' ').slice(-1)[0] || 'Học viên'
 
     const totalBadgePages = Math.ceil(allBadges.length / BADGES_PER_PAGE)
     const currentBadges = allBadges.slice(badgePage * BADGES_PER_PAGE, (badgePage + 1) * BADGES_PER_PAGE)
 
     return (
-        <div
-            className="flex flex-col w-full overflow-hidden"
-            style={{ height: 'calc(100vh - 57px)' }}
-        >
-            {/* ══════ HERO BANNER – nén gọn ══════ */}
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto flex flex-col w-full h-[calc(100vh-80px)] min-h-0">
+            {/* ══════ HERO BANNER ══════ */}
             <div
-                className="flex-shrink-0 relative overflow-hidden"
+                className="flex-shrink-0 relative overflow-hidden rounded-[2.5rem] mb-6"
                 style={{
-                    background: 'linear-gradient(135deg, #1e1145 0%, #3b1d8e 35%, #7c3aed 65%, #f97316 100%)',
+                    background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #f97316 100%)',
+                    boxShadow: '0 8px 32px rgba(124,58,237,0.15)'
                 }}
             >
-                {[...Array(8)].map((_, i) => (
+                {[...Array(6)].map((_, i) => (
                     <motion.div key={i}
                         className="absolute rounded-full pointer-events-none"
                         style={{
                             width: 3 + (i % 3) * 2, height: 3 + (i % 3) * 2,
-                            background: `rgba(255,255,255,${0.08 + (i % 4) * 0.06})`,
-                            left: `${(i * 12.5) % 100}%`, top: `${15 + (i * 17) % 70}%`,
+                            background: `rgba(255,255,255,${0.1 + (i % 4) * 0.08})`,
+                            left: `${(i * 15) % 100}%`, top: `${10 + (i * 15) % 80}%`,
                         }}
-                        animate={{ y: [-4, 4, -4], opacity: [0.3, 0.8, 0.3] }}
-                        transition={{ duration: 2 + i * 0.4, repeat: Infinity }}
+                        animate={{ y: [-5, 5, -5], opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 3 + i * 0.5, repeat: Infinity }}
                     />
                 ))}
 
-                <div className="max-w-6xl mx-auto relative px-6 py-3 flex items-center gap-4">
-                    {/* Mascot nhỏ hơn */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: 'spring', bounce: 0.5 }}
-                        className="hidden md:block w-16 h-16 flex-shrink-0"
-                    >
-                        <img src="/dashboard-mascot.png" alt="SpeakVN Mascot" className="w-full h-full object-contain drop-shadow-2xl" />
-                    </motion.div>
-
-                    {/* Welcome text */}
-                    <div className="flex-1 min-w-0">
-                        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <Sparkles size={12} className="text-orange-300" />
-                                <span className="text-orange-200/80 text-[9px] font-black uppercase tracking-[0.2em]">Chào mừng trở lại</span>
-                            </div>
-                            <h1 className="text-lg font-black text-white leading-tight">
-                                {firstName} <span>👋</span>
-                            </h1>
-                            <p className="text-white/40 text-[11px] font-medium">Hôm nay bạn muốn chinh phục điều gì?</p>
+                <div className="relative px-8 py-5 flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        {/* Mascot */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: 'spring', bounce: 0.5 }}
+                            className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl p-2 border border-white/20 flex-shrink-0"
+                        >
+                            <img src="/dashboard-mascot.png" alt="Mascot" className="w-full h-full object-contain" />
                         </motion.div>
+
+                        {/* Welcome text */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <Sparkles size={14} className="text-orange-300" />
+                                <span className="text-orange-100 text-xs font-black uppercase tracking-widest opacity-80">Tiếp tục hành trình</span>
+                            </div>
+                            <h1 className="text-3xl font-black text-white tracking-tight">
+                                Chào buổi tốt, {firstName}! <span>✨</span>
+                            </h1>
+                            <p className="text-white/70 text-sm font-medium mt-1">Hôm nay bạn đã sẵn sàng phá vỡ rào cản ngôn ngữ chưa?</p>
+                        </div>
                     </div>
 
-                    {/* Stat pills – compact */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        {[
-                            { icon: <Flame fill="currentColor" size={16} className="text-orange-400" />, val: streak, glow: 'rgba(249,115,22,0.2)' },
-                            { icon: <Star fill="currentColor" size={16} className="text-yellow-400" />, val: totalStars, glow: 'rgba(234,179,8,0.2)' },
-                            { icon: <BookOpen fill="currentColor" size={16} className="text-purple-300" />, val: completedLessons, glow: 'rgba(168,85,247,0.2)' },
-                            { icon: <Trophy fill="currentColor" size={16} className="text-rose-400" />, val: allBadges.length, glow: 'rgba(244,63,94,0.2)' },
-                        ].map((s, i) => (
-                            <motion.div key={i}
-                                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.1 + i * 0.05, type: 'spring', bounce: 0.4 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 transition-all cursor-default"
-                                style={{ boxShadow: `0 4px 12px ${s.glow}` }}
-                            >
-                                {s.icon}
-                                <span className="text-white font-black text-sm">{s.val}</span>
-                            </motion.div>
-                        ))}
+                    <div className="hidden lg:block">
+                        <button
+                            onClick={() => navigate('/learner/roadmap')}
+                            className="bg-white text-purple-600 px-6 py-3 rounded-2xl font-black text-sm shadow-xl shadow-black/10 hover:scale-105 transition-transform"
+                        >
+                            Học ngay thôi! 🚀
+                        </button>
                     </div>
                 </div>
             </div>
