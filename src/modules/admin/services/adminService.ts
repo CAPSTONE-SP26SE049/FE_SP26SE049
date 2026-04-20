@@ -180,6 +180,9 @@ export const adminService = {
     deleteQuiz: async (id: string) => {
         return apiClient.delete(`/admin/content/quizzes/${id}`);
     },
+    reorderQuizzes: async (quizIds: string[]) => {
+        return apiClient.put('/admin/content/quizzes/reorder', quizIds);
+    },
     getQuizChallenges: async (quizId: string) => {
         return apiClient.get(`/admin/content/quizzes/${quizId}/challenges`);
     },
