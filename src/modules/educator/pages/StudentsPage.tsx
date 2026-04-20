@@ -1,16 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Avatar, Button, Input, Progress, Select, Space, Table, Tag, Tooltip, Typography, message
+  Avatar, Button, Input, Progress, Select, Table, Tag, Tooltip, Typography, message, Dropdown
 } from 'antd';
 import {
-  CheckCircleOutlined, DownloadOutlined, LockOutlined, SearchOutlined,
-  TeamOutlined, UserOutlined, UserAddOutlined, RocketOutlined,
-  EditOutlined, UnlockOutlined, UploadOutlined
+  LockOutlined, SearchOutlined,
+  TeamOutlined, UserAddOutlined, RocketOutlined,
+  EditOutlined, UnlockOutlined
 } from '@ant-design/icons';
+import {
+  Activity, ChevronRight, Sparkles, Trophy, MoreVertical,
+  Mail, Download
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { educatorService, type StudentAccount } from '../services/educatorService';
+import clsx from 'clsx';
 
+const { Title, Paragraph } = Typography;
 const STUDENT_LEVEL_OPTIONS = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
 const StudentsPage: React.FC = () => {
@@ -20,19 +26,14 @@ const StudentsPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('ALL');
 
+  // Avatar error management
+  const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
+
   const load = async () => {
     setLoading(true);
     try {
       const res = await educatorService.getStudentAccounts();
-      const list = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res?.data?.data)
-          ? res.data.data
-          : Array.isArray(res?.data?.content)
-            ? res.data.content
-            : [];
-
-      // Filter out admins if any, and ensure we have Account entities mapping to StudentAccount interface
+      const list = Array.isArray(res?.data) ? res.data : [];
       setStudents(list.filter((user: any) => (user.roleCode || '').toUpperCase() !== 'ADMIN'));
     } catch {
       message.error('Không thể tải danh sách học viên');
@@ -41,9 +42,7 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const stats = useMemo(() => {
     const total = students.length;
@@ -61,195 +60,182 @@ const StudentsPage: React.FC = () => {
     return matchesSearch && matchesLevel;
   }), [students, searchText, levelFilter]);
 
+  const getStudentAvatar = (record: StudentAccount) => {
+    if (avatarErrors[record.id]) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.fullName || record.id}`;
+    return record.avatar_url || record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.fullName || record.id}`;
+  };
+
   const columns = [
     {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">STT</span>,
-      key: 'stt',
-      width: 60,
-      align: 'center' as const,
-      render: (_: unknown, __: StudentAccount, index: number) => (
-        <span className="font-bold text-gray-400 text-sm">{index + 1}</span>
-      )
-    },
-    {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Học viên</span>,
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Học viên</span>,
       key: 'student',
-      render: (_: unknown, record: any) => (
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Avatar
-              src={record.avatar_url || record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
-              icon={<UserOutlined />}
-              className="w-10 h-10 rounded-xl"
-              style={{ borderRadius: 10 }}
-            />
-            {record.isActive !== false
-              ? <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
-              : <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-red-400 rounded-full border-2 border-white" />
-            }
-          </div>
-          <div>
-            <div className="font-bold text-gray-800 text-sm leading-tight">{record.fullName}</div>
-            <div className="text-xs text-gray-400">{record.email}</div>
+      render: (_: unknown, record: StudentAccount) => (
+        <div className="flex items-center gap-3 py-1">
+          <Avatar
+            src={getStudentAvatar(record)}
+            onError={() => setAvatarErrors(prev => ({ ...prev, [record.id]: true }))}
+            size={40}
+            className="rounded-xl border border-white shadow-sm bg-slate-100"
+          />
+          <div className="flex flex-col">
+            <span className="font-bold text-gray-800 text-xs leading-tight">{record.fullName}</span>
+            <span className="text-[11px] text-gray-400 font-medium tracking-wide truncate max-w-[180px] italic mt-0.5">{record.email}</span>
           </div>
         </div>
       )
     },
     {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Cấp độ</span>,
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none text-center block">Level</span>,
       dataIndex: 'level',
       key: 'level',
-      render: (level: string) => <Tag color="purple" className="font-bold rounded-lg border-none bg-purple-50 text-purple-600">{level || 'N/A'}</Tag>
+      align: 'center' as const,
+      render: (level: string) => (
+        <Tag className="font-black rounded-lg border-none bg-purple-100 text-purple-700 px-2 py-0.5 text-[9px] uppercase shadow-sm m-0">
+          {level || 'N/A'}
+        </Tag>
+      )
     },
     {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tiến độ</span>,
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Tiến độ</span>,
       dataIndex: 'progressPercent',
       key: 'progressPercent',
       render: (progress: number) => (
-        <div className="min-w-[140px]">
-          <Progress percent={progress || 0} size="small" strokeColor="#9333ea" />
+        <div className="min-w-[120px] flex flex-col gap-1">
+          <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+            <span>Progress</span>
+            <span className="text-purple-600">{progress || 0}%</span>
+          </div>
+          <Progress percent={progress || 0} size="small" strokeColor="#9333ea" showInfo={false} strokeWidth={4} className="m-0" />
         </div>
       )
     },
     {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Phát âm</span>,
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none text-center block">Accuracy</span>,
       dataIndex: 'pronunciationScore',
       key: 'pronunciationScore',
-      render: (score: number) => (
-        <span className="font-bold text-gray-700 text-sm">
-          {score || 0}<span className="text-gray-400 font-normal">/100</span>
-        </span>
-      )
-    },
-    {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Trạng thái</span>,
-      key: 'status',
-      render: (_: any, record: any) => record.isActive !== false ? (
-        <Tag icon={<CheckCircleOutlined />} color="success" className="font-bold rounded-lg border-none bg-green-50 text-green-600">Hoạt động</Tag>
-      ) : (
-        <Tag icon={<LockOutlined />} color="error" className="font-bold rounded-lg border-none bg-red-50 text-red-600">Đã khóa</Tag>
-      )
-    },
-    {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tham gia</span>,
-      key: 'lastActiveAt',
-      render: (_: unknown, record: any) => (
-        <span className="text-sm text-gray-500 font-medium">
-          {(record.createdAt || record.lastActiveAt) ? new Date(record.createdAt || record.lastActiveAt).toLocaleDateString('vi-VN') : 'N/A'}
-        </span>
-      )
-    },
-    {
-      title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Thao tác</span>,
-      key: 'action',
       align: 'center' as const,
-      render: (_: any, record: any) => (
-        <Space size={4}>
-          <Tooltip title="Xem chi tiết">
-            <Button type="text" shape="circle" icon={<SearchOutlined style={{ color: '#2563eb' }} />} />
-          </Tooltip>
-          <Tooltip title={record.isActive !== false ? "Khóa học viên" : "Mở khóa học viên"}>
+      render: (score: number) => (
+        <div className="flex flex-col items-center">
+          <span className={clsx("text-xs font-black", score >= 80 ? "text-green-600" : score >= 50 ? "text-orange-500" : "text-rose-500")}>
+            {score || 0}%
+          </span>
+          <span className="text-[8px] font-bold text-gray-300 uppercase leading-none">Score</span>
+        </div>
+      )
+    },
+    {
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Path</span>,
+      key: 'path',
+      render: (_: any, record: StudentAccount) => record.hasCustomPath ? (
+        <Tag className="rounded-full px-2 py-0.5 font-black text-[8px] uppercase border-none bg-orange-100 text-orange-600 m-0">CUSTOM</Tag>
+      ) : (
+        <Tag className="rounded-full px-2 py-0.5 font-black text-[8px] uppercase border-none bg-slate-100 text-slate-400 m-0">STANDARD</Tag>
+      )
+    },
+    {
+      title: <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none text-right block">Thao tác</span>,
+      key: 'action',
+      align: 'right' as const,
+      render: (_: any, record: StudentAccount) => (
+        <div className="flex items-center justify-end gap-1">
+          <Tooltip title="Chi tiết">
             <Button
-              type="text" shape="circle"
-              icon={record.isActive !== false ? <LockOutlined style={{ color: '#ef4444' }} /> : <UnlockOutlined style={{ color: '#10b981' }} />}
-            />
-          </Tooltip>
-          <Tooltip title="Thiết kế lộ trình">
-            <Button
-              type="text" shape="circle"
-              icon={<RocketOutlined style={{ color: '#8b5cf6' }} />}
+              type="text"
+              size="small"
+              shape="circle"
+              icon={<ChevronRight size={14} />}
+              className="bg-slate-50 text-slate-400 hover:bg-purple-600 hover:text-white transition-all shadow-sm"
               onClick={() => navigate(`/educator/students/${record.id}/custom-path`)}
             />
           </Tooltip>
-          <Tooltip title="Chỉnh sửa">
-            <Button type="text" shape="circle" icon={<EditOutlined style={{ color: '#f59e0b' }} />} />
-          </Tooltip>
-        </Space>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'edit', label: 'Chỉnh sửa kỹ thuật', icon: <EditOutlined /> },
+                { key: 'status', label: record.isActive !== false ? 'Khóa tài khoản' : 'Mở khóa', icon: record.isActive !== false ? <LockOutlined /> : <UnlockOutlined />, danger: record.isActive !== false },
+              ]
+            }}
+            trigger={['click']}
+          >
+            <Button type="text" size="small" shape="circle" icon={<MoreVertical size={14} className="text-gray-400" />} />
+          </Dropdown>
+        </div>
       )
     },
   ];
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50/50">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div className="h-[calc(100vh-120px)] flex flex-col gap-4 overflow-hidden -mt-2">
+      {/* ── Header Section ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 flex-shrink-0">
         <div>
-          <Typography.Title level={3} className="!mb-1 !font-black !text-gray-800">Quản lý học viên</Typography.Title>
-          <Typography.Paragraph type="secondary" className="!mb-0 font-medium">Theo dõi danh sách học viên, tiến độ học tập và điểm phát âm từ hệ thống.</Typography.Paragraph>
+          <div className="flex items-center gap-2 text-purple-600 text-[9px] font-black uppercase tracking-[0.2em] mb-1">
+            <TeamOutlined /> Học viên & Lộ trình
+          </div>
+          <Title level={4} className="!m-0 !font-black !text-gray-800 tracking-tight">Cộng đồng học viên</Title>
+          <Paragraph className="!mb-0 text-gray-400 font-semibold text-[11px] mt-0.5 uppercase tracking-wide line-clamp-1 italic">
+            Quản lý toàn bộ {students.length} học viên trong hệ thống của bạn.
+          </Paragraph>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button icon={<DownloadOutlined />} className="rounded-xl h-11 font-bold border-gray-200 hover:text-purple-600 hover:border-purple-200 transition-all">
-            Template
-          </Button>
-          <Button icon={<UploadOutlined />} className="rounded-xl h-11 font-bold border-gray-200 hover:text-purple-600 hover:border-purple-200 transition-all">
-            Import
-          </Button>
-          <Button icon={<DownloadOutlined />} className="rounded-xl h-11 font-bold border-gray-200 hover:text-purple-600 hover:border-purple-200 transition-all">
-            Export
-          </Button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button icon={<Download size={14} />} className="h-8 rounded-lg font-black border-slate-100 shadow-sm text-[10px] uppercase tracking-wider">Export</Button>
           <Button
             type="primary"
             icon={<UserAddOutlined />}
-            className="rounded-xl h-11 font-bold border-none shadow-lg shadow-purple-100"
-            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}
+            className="h-8 rounded-lg font-black border-none bg-purple-600 shadow-lg shadow-purple-500/10 text-[10px] uppercase tracking-wider"
           >
-            Thêm học viên
+            Thêm mới
           </Button>
         </div>
       </div>
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      {/* ── Stats Section ── */}
+      <div className="grid grid-cols-4 gap-4 flex-shrink-0">
         {[
-          { label: 'Tổng học viên', value: stats.total, icon: <TeamOutlined />, color: '#9333ea', bg: '#f8f5ff' },
-          { label: 'Đang hoạt động', value: stats.active, icon: <CheckCircleOutlined />, color: '#7c3aed', bg: '#f5f3ff' },
-          { label: 'Tiến độ TB', value: `${stats.avgProgress}%`, icon: <RocketOutlined />, color: '#f59e0b', bg: '#fffbeb' },
-          { label: 'Phát âm TB', value: `${stats.avgPronunciation}/100`, icon: <SearchOutlined />, color: '#ec4899', bg: '#fdf2f8' }
+          { label: 'Tổng Học Viên', val: stats.total, icon: <TeamOutlined />, color: 'bg-purple-600' },
+          { label: 'Hoạt Động', val: stats.active, icon: <Activity size={18} />, color: 'bg-emerald-500' },
+          { label: 'Tiến độ TB', val: `${stats.avgProgress}%`, icon: <Trophy size={18} />, color: 'bg-orange-500' },
+          { label: 'Phát âm TB', val: `${stats.avgPronunciation}%`, icon: <Sparkles size={18} />, color: 'bg-rose-500' },
         ].map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white rounded-2xl p-5 border border-white shadow-sm flex items-center gap-4 hover:shadow-md transition-all group"
-          >
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-transform group-hover:scale-110"
-              style={{ backgroundColor: item.bg, color: item.color }}
-            >
+          <div key={i} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-50 flex items-center gap-3 transition-all hover:shadow-md">
+            <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center shadow-sm text-white", item.color)}>
               {item.icon}
             </div>
             <div>
-              <div className="text-2xl font-black text-slate-800 tracking-tight">{item.value}</div>
-              <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">{item.label}</div>
+              <div className="text-lg font-black text-slate-800 leading-none">{item.val}</div>
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-none">{item.label}</div>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* ── Filters ── */}
-      <div className="flex items-center gap-4 mb-5 flex-wrap">
-        <Input
-          prefix={<SearchOutlined className="text-gray-300" />}
-          placeholder="Tìm theo tên hoặc email..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="max-w-sm rounded-xl h-11 border-gray-200 shadow-sm"
-          allowClear
-        />
-        <Select
-          value={levelFilter}
-          onChange={setLevelFilter}
-          className="min-w-44 h-11 rounded-xl"
-          options={[{ value: 'ALL', label: 'Tất cả cấp độ' }, ...STUDENT_LEVEL_OPTIONS.map((level) => ({ value: level, label: level }))]}
-        />
-        <div className="ml-auto text-sm text-gray-400 font-bold">
-          {filteredStudents.length} / {students.length} kết quả
+      {/* ── Control Bar Section ── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 flex-shrink-0 shadow-sm">
+        <div className="flex items-center gap-2 flex-1 max-w-xl">
+          <Input
+            placeholder="Tìm học viên..."
+            prefix={<SearchOutlined className="text-gray-300" />}
+            className="h-9 rounded-xl border border-slate-50 bg-slate-50/50 shadow-inner px-4 text-[11px] font-semibold"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+          />
+          <Select
+            size="middle"
+            className="w-40 font-bold text-[11px] uppercase"
+            value={levelFilter}
+            onChange={setLevelFilter}
+            options={[{ value: 'ALL', label: 'TẤT CẢ LEVEL' }, ...STUDENT_LEVEL_OPTIONS.map(l => ({ value: l, label: `LEVEL ${l}` }))]}
+          />
+        </div>
+        <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest hidden md:block">
+          Hiển thị <span className="text-purple-600">{filteredStudents.length}</span> / {students.length}
         </div>
       </div>
 
-      {/* ── Table ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+      {/* ── Table Area ── */}
+      <div className="flex-1 overflow-hidden bg-white rounded-3xl shadow-sm border border-slate-50 flex flex-col">
         <Table
           rowKey="id"
           columns={columns as any}
@@ -257,14 +243,39 @@ const StudentsPage: React.FC = () => {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => <span className="font-bold text-gray-400 text-xs">Tổng {total} học viên</span>,
-            style: { padding: '16px 24px' }
+            showSizeChanger: false,
+            className: 'premium-pagination p-3 m-0 border-t border-slate-50'
           }}
-          rowClassName="hover:bg-purple-50/40 transition-colors cursor-pointer"
-          scroll={{ x: 'max-content' }}
+          className="custom-premium-table-v2 dense-table"
+          rowClassName="hover:bg-purple-50/20 transition-all"
+          scroll={{ y: 'calc(100vh - 440px)' }}
         />
       </div>
+
+      <style>{`
+        .custom-premium-table-v2 .ant-table-thead > tr > th {
+            background: #fdfaff;
+            padding: 10px 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .custom-premium-table-v2 .ant-table-tbody > tr > td {
+            padding: 8px 20px;
+            border-bottom: 1px solid #fafafa;
+        }
+        .premium-pagination .ant-pagination-item-active {
+            border-radius: 8px;
+            border-color: #9333ea;
+            background: #9333ea;
+        }
+        .premium-pagination .ant-pagination-item-active a { color: white !important; }
+        .premium-pagination .ant-pagination-item {
+            border-radius: 8px;
+            font-weight: 800;
+            border: none;
+            background: #f8fafc;
+            font-size: 10px;
+        }
+      `}</style>
     </div>
   );
 };
