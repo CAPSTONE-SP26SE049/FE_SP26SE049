@@ -1,0 +1,40 @@
+node_modules
+dist
+.git
+.gitignore
+.idea
+.DS_Store
+*.log
+# Dockerfile and nginx.conf must stay in context
+
+.env.local
+.ai
+README.md
+gadm41_VNM_2 2.json
+LocalASR_Server
+backend-email-templates
+crop_south.py
+File word capstone.docx
+fe_log.txt
+out.txt
+status.txt
+screenshot_hover.js
+puppeteer_test.js
+read_glb.js
+triple_main_flows.md.resolved
+level_api_requirement.md
+api_update_report.md
+api_documentation.md.resolved
+tmp_modals.txt
+swagger.json
+storage.rules
+firestore.rules
+firestore.indexes.json
+firebase.json
+.firebaserc
+FE_SP26SE049.code-workspace
+3D
+skils
+gltf_info.json
+test_get.js
+test_post.js
