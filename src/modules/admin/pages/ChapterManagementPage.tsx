@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider, Spin, Empty, Pagination } from 'antd';
-import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, InfoCircleOutlined, WarningOutlined, CheckCircleOutlined, RocketOutlined } from '@ant-design/icons';
 import { adminService } from '../services/adminService';
 import { adminExcelService } from '../services/adminExcelService';
 import { downloadBlob } from '../../educator/services/excelService';
@@ -1206,67 +1206,139 @@ const AdminChapterManagementPage: React.FC = () => {
 
             {/* ===== IMPORT MODAL ===== */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ Excel</span>}
+                title={
+                    <Space>
+                        <UploadOutlined style={{ color: '#9333ea' }} />
+                        <span style={{ fontWeight: 700, fontSize: 18 }}>Import chương học từ Excel</span>
+                    </Space>
+                }
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}
                 centered
-                width={520}
+                width={540}
+                destroyOnClose
             >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                    <div>
-                        <span style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>1. Tải template mẫu (API)</span>
-                        <Button
-                            htmlType="button"
-                            icon={<DownloadOutlined />}
-                            loading={templateDownloading}
-                            onClick={downloadLevelsTemplateExcel}
-                            style={{ borderRadius: 8 }}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 12 }}>
+                    {/* Step 1: Template */}
+                    <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>1. Tải template mẫu</span>
+                            <Button
+                                type="dashed"
+                                icon={<DownloadOutlined />}
+                                loading={templateDownloading}
+                                onClick={downloadLevelsTemplateExcel}
+                                style={{ borderRadius: 8, fontWeight: 600 }}
+                            >
+                                Tải mẫu .xlsx
+                            </Button>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                            Sử dụng file template đúng định dạng để đảm bảo dữ liệu được import chính xác vào hệ thống.
+                        </p>
+                    </div>
+
+                    {/* Step 2: Guidelines */}
+                    <div style={{ padding: 16, background: 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)', borderRadius: 12, border: '1px solid #bae6fd' }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            <InfoCircleOutlined style={{ color: '#0284c7', marginTop: 3 }} />
+                            <div>
+                                <p style={{ margin: 0, fontSize: 13, color: '#0369a1', fontWeight: 600 }}>
+                                    📌 Header bắt buộc (Tiếng Việt):
+                                </p>
+                                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#0c4a6e' }}>
+                                    <strong>Tên chương học, Phương ngữ, Mô tả</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step 3: File Selection */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 14 }}>2. Chọn file dữ liệu</span>
+                        <div
+                            style={{
+                                position: 'relative',
+                                border: '2px dashed #cbd5e1',
+                                borderRadius: 12,
+                                padding: '24px 16px',
+                                textAlign: 'center',
+                                background: importFile ? '#f0fdf4' : '#fafafa',
+                                transition: 'all 0.3s ease',
+                                borderColor: importFile ? '#22c55e' : '#cbd5e1'
+                            }}
                         >
-                            Tải template chương học
-                        </Button>
-                        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Cùng nguồn với nút Template trên header (GET /api/v1/admin/excel/levels/template).
-                        </p>
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0, left: 0, width: '100%', height: '100%',
+                                    opacity: 0, cursor: 'pointer', zIndex: 2
+                                }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                                <FileExcelOutlined style={{ fontSize: 32, color: importFile ? '#16a34a' : '#94a3b8' }} />
+                                <span style={{ fontSize: 14, color: '#475569', fontWeight: 500 }}>
+                                    {importFile ? importFile.name : 'Nhấn để chọn hoặc kéo thả file Excel vào đây'}
+                                </span>
+                                {importFile && <span style={{ fontSize: 12, color: '#16a34a' }}>File đã sẵn sàng để import</span>}
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
-                        <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File Excel dùng header tiếng Việt: <strong>Tên chương học, Phương ngữ, Mô tả</strong> (giống form tạo chương học mới)
-                        </p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Import map từng dòng thành payload tạo chương (metadata_json) qua API admin.
-                        </p>
-                    </div>
-                    <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                        style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '8px 12px' }}
-                    />
+
+                    {/* Result Display */}
+                    {importResult && (
+                        <div style={{
+                            padding: 16,
+                            background: importResult.failed > 0 ? '#fff7ed' : '#f0fdf4',
+                            borderRadius: 12,
+                            border: `1px solid ${importResult.failed > 0 ? '#ffedd5' : '#dcfce7'}`
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                {importResult.failed > 0 ? <WarningOutlined style={{ color: '#f97316' }} /> : <CheckCircleOutlined style={{ color: '#22c55e' }} />}
+                                <span style={{ fontWeight: 700, color: importResult.failed > 0 ? '#9a3412' : '#166534' }}>
+                                    Kết quả Import
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 16, fontSize: 13 }}>
+                                <span style={{ color: '#166534' }}>✅ Thành công: <strong>{importResult.success}</strong></span>
+                                {importResult.failed > 0 && <span style={{ color: '#991b1b' }}>❌ Thất bại: <strong>{importResult.failed}</strong></span>}
+                            </div>
+                            {importResult.errors.length > 0 && (
+                                <div style={{ marginTop: 12, maxHeight: 100, overflowY: 'auto', fontSize: 12, color: '#b91c1c', background: 'rgba(255,255,255,0.5)', padding: 8, borderRadius: 6 }}>
+                                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                        {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Action Button */}
                     <Button
                         type="primary"
-                        icon={<UploadOutlined />}
+                        icon={<RocketOutlined />}
                         loading={importing}
                         onClick={handleImportExcel}
                         disabled={!importFile}
                         block
                         size="large"
-                        style={{ borderRadius: 10, fontWeight: 600, height: 44 }}
+                        style={{
+                            borderRadius: 12,
+                            fontWeight: 700,
+                            height: 50,
+                            marginTop: 8,
+                            background: !importFile ? '#e2e8f0' : 'linear-gradient(135deg, #9333ea, #7e22ce)',
+                            border: 'none',
+                            boxShadow: !importFile ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.3)',
+                            color: !importFile ? '#94a3b8' : '#fff'
+                        }}
                     >
-                        {importing ? 'Đang import...' : 'Bắt đầu Import'}
+                        {importing ? 'Đang xử lý dữ liệu...' : 'Bắt đầu Import'}
                     </Button>
-                    {importResult && (
-                        <div style={{ padding: 12, background: importResult.failed > 0 ? '#fff7e6' : '#f6ffed', borderRadius: 8, border: `1px solid ${importResult.failed > 0 ? '#ffd591' : '#b7eb8f'}` }}>
-                            <p style={{ margin: 0, fontWeight: 600 }}>
-                                ✅ Thành công: {importResult.success} | ❌ Lỗi: {importResult.failed}
-                            </p>
-                            {importResult.errors.length > 0 && (
-                                <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 12, color: '#d4380d' }}>
-                                    {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                    )}
                 </div>
             </Modal>
         </div >
