@@ -5,7 +5,6 @@ export interface BadgeCatalogItem {
     id: string
     code: string
     name: string
-    description: string
     iconUrl: string
     criteria: Record<string, unknown>
 }

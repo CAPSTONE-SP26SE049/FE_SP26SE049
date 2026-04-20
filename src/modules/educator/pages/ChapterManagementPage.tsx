@@ -54,10 +54,10 @@ const ChapterManagementPage: React.FC = () => {
             {metrics.map((metric) => (
               <div key={metric.label}>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">{metric.label}</span>
-                  <Tag color={metric.trend === 'UP' ? 'green' : metric.trend === 'DOWN' ? 'red' : 'default'}>{metric.trend}</Tag>
+                  <span className="font-semibold text-slate-700">{metric.label}</span>
+                  <Tag color={metric.trend === 'UP' ? 'success' : metric.trend === 'DOWN' ? 'error' : 'default'} bordered={false} className="rounded-full px-3">{metric.trend}</Tag>
                 </div>
-                <Progress percent={metric.value} />
+                <Progress percent={metric.value} strokeColor={{ '0%': '#9333ea', '100%': '#f59e0b' }} />
               </div>
             ))}
           </Space>

@@ -60,12 +60,8 @@ const BadgeModal: React.FC<{ badge: MergedBadge; onClose: () => void }> = ({ bad
                     {badge.earned ? '✨ Đã đạt được' : '🔒 Chưa mở khóa'}
                 </span>
 
-                {/* Title */}
                 <div className="text-center">
                     <h3 className="text-xl font-black text-gray-800 mb-2">{badge.name}</h3>
-                    <p className="text-sm font-medium leading-relaxed text-gray-600">
-                        {badge.description}
-                    </p>
                 </div>
 
                 {/* Earned date */}
@@ -214,8 +210,8 @@ const AchievementsPage: React.FC = () => {
     }
 
     return (
-        // Height is calc(100vh - 56px) to subtract the 14 (56px) header from LearnerLayout
-        <div className="h-[calc(100vh-56px)] flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 bg-[#f8f5ff]">
+        // Height is calc(100vh-80px) to subtract the 80px header from LearnerLayout
+        <div className="h-[calc(100vh-80px)] flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 bg-[#fbfaff]">
 
             {/* ── Fixed Header Section (Does not scroll) ───────────────────────── */}
             <div className="flex-shrink-0 flex flex-col lg:flex-row gap-6 mb-6">

@@ -240,7 +240,7 @@ const InteractionsPage = () => {
                             >
                                 <div className="relative mb-10">
                                     <div className="absolute inset-0 bg-purple-200 blur-3xl opacity-20 rounded-full scale-150 animate-pulse" />
-                                    <div className="relative w-48 h-48 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-[56px] flex items-center justify-center shadow-inner">
+                                    <div className="relative w-48 h-48 bg-gradient-to-br from-purple-50 to-orange-50 rounded-[56px] flex items-center justify-center shadow-inner">
                                         <MessageCircleMore size={90} className="text-purple-500 opacity-60" />
                                     </div>
                                 </div>
@@ -265,7 +265,7 @@ const InteractionsPage = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-3">
-                                            <Button icon={<LayoutDashboard size={18} />} className="rounded-2xl h-12 px-6 font-bold flex items-center gap-2 border-indigo-100 text-indigo-600">BÁO CÁO</Button>
+                                            <Button icon={<LayoutDashboard size={18} />} className="rounded-2xl h-12 px-6 font-bold flex items-center gap-2 border-purple-100 text-purple-600">BÁO CÁO</Button>
                                         </div>
                                     </div>
                                 </Card>
@@ -291,7 +291,7 @@ const InteractionsPage = () => {
                                                                     const isHọcSinh = msg.senderId === selectedStudent.id;
                                                                     return (
                                                                         <div key={msg.id || msg.timestamp} className={`flex ${isHọcSinh ? 'justify-start' : 'justify-end'}`}>
-                                                                            <div className={`max-w-[75%] rounded-[28px] p-5 shadow-sm ${isHọcSinh ? 'bg-slate-100 border-none rounded-bl-none text-slate-800' : 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'}`}>
+                                                                            <div className={`max-w-[75%] rounded-[28px] p-5 shadow-sm ${isHọcSinh ? 'bg-slate-100 border-none rounded-bl-none text-slate-800' : 'bg-gradient-to-br from-purple-600 to-orange-600 text-white rounded-br-none'}`}>
                                                                                 <div className="font-semibold text-[15px] leading-relaxed italic">"{msg.content}"</div>
                                                                                 <div className={`text-[9px] mt-2 text-right opacity-70 font-black uppercase tracking-tighter`}>
                                                                                     {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -315,7 +315,7 @@ const InteractionsPage = () => {
                                                             />
                                                             <Button
                                                                 type="primary"
-                                                                className="h-14 px-8 rounded-2xl flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 border-none shadow-xl shadow-indigo-200/50 hover:scale-105 transition-transform"
+                                                                className="h-14 px-8 rounded-2xl flex items-center justify-center bg-gradient-to-r from-purple-600 to-orange-600 border-none shadow-xl shadow-purple-200/50 hover:scale-105 transition-transform"
                                                                 icon={<Send size={20} />}
                                                                 onClick={handleSendMessage}
                                                                 disabled={!messageInput.trim()}
@@ -374,7 +374,7 @@ const InteractionsPage = () => {
                                                                                         </div>
                                                                                     </div>
                                                                                     <Tooltip title="Nhận xét chi tiết">
-                                                                                        <Button shape="circle" icon={<MessageSquare size={20} />} className="text-indigo-600 bg-indigo-50 border-none hover:bg-indigo-600 hover:text-white transition-all w-12 h-12" onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }} />
+                                                                                        <Button shape="circle" icon={<MessageSquare size={20} />} className="text-purple-600 bg-purple-50 border-none hover:bg-purple-600 hover:text-white transition-all w-12 h-12" onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }} />
                                                                                     </Tooltip>
                                                                                 </div>
 
@@ -392,7 +392,7 @@ const InteractionsPage = () => {
 
                                                                                     {attempt.audioUrl && (
                                                                                         <div className="bg-gradient-to-r from-slate-100/50 to-purple-50/30 p-3 rounded-2xl flex items-center gap-4">
-                                                                                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-indigo-500"><AudioLines size={16} /></div>
+                                                                                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-purple-500"><AudioLines size={16} /></div>
                                                                                             <audio controls className="h-4 flex-1 custom-audio-player" src={attempt.audioUrl} />
                                                                                         </div>
                                                                                     )}
@@ -408,12 +408,12 @@ const InteractionsPage = () => {
 
                                                                                     {/* Educator Feedback section */}
                                                                                     {educatorComment && (
-                                                                                        <div className="bg-indigo-50/50 p-6 rounded-[28px] border border-indigo-100/50 border-dashed">
+                                                                                        <div className="bg-purple-50/50 p-6 rounded-[28px] border border-purple-100/50 border-dashed">
                                                                                             <div className="flex items-center gap-2 mb-3">
-                                                                                                <Star size={16} className="text-indigo-600" fill="currentColor" />
-                                                                                                <Text className="text-[10px] font-black text-indigo-800 uppercase tracking-widest">Nhận xét của bạn</Text>
+                                                                                                <Star size={16} className="text-orange-500" fill="currentColor" />
+                                                                                                <Text className="text-[10px] font-black text-purple-800 uppercase tracking-widest">Nhận xét của bạn</Text>
                                                                                             </div>
-                                                                                            <Paragraph className="text-[13px] text-indigo-900 font-bold m-0">{educatorComment.comment}</Paragraph>
+                                                                                            <Paragraph className="text-[13px] text-purple-900 font-bold m-0">{educatorComment.comment}</Paragraph>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -443,18 +443,18 @@ const InteractionsPage = () => {
                 className="premium-modal"
             >
                 <div className="rounded-[40px] overflow-hidden">
-                    <div className="bg-gradient-to-br from-indigo-700 to-purple-700 p-10 text-white relative">
+                    <div className="bg-gradient-to-br from-purple-700 to-orange-700 p-10 text-white relative">
                         <div className="absolute top-0 right-0 p-10 opacity-10"><MessageSquare size={120} /></div>
                         <Title level={2} style={{ color: 'white', margin: 0, fontWeight: 900, letterSpacing: '-1px' }}>Nhận xét chuyên môn</Title>
-                        <Text className="text-indigo-200 font-medium text-lg">Định hướng thực hành cho {selectedStudent?.fullName}</Text>
+                        <Text className="text-purple-200 font-medium text-lg">Định hướng thực hành cho {selectedStudent?.fullName}</Text>
                     </div>
                     <div className="p-10 space-y-8 bg-white">
                         {selectedAttempt ? (
                             <div className="p-6 bg-slate-50 rounded-3xl space-y-3 border border-slate-100">
                                 <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-block">Câu luyện tập</Text>
-                                <div className="text-2xl font-black text-indigo-950 leading-tight">"{selectedAttempt.targetText}"</div>
+                                <div className="text-2xl font-black text-purple-950 leading-tight">"{selectedAttempt.targetText}"</div>
                                 <div className="flex items-center gap-4 pt-2">
-                                    <div className="px-4 py-1.5 bg-white rounded-full border border-indigo-50 shadow-sm text-xs font-black text-indigo-600">{selectedAttempt.geminiScore} Điểm AI</div>
+                                    <div className="px-4 py-1.5 bg-white rounded-full border border-purple-50 shadow-sm text-xs font-black text-purple-600">{selectedAttempt.geminiScore} Điểm AI</div>
                                 </div>
                             </div>
                         ) : (
@@ -479,7 +479,7 @@ const InteractionsPage = () => {
                             type="primary"
                             block
                             size="large"
-                            className="rounded-[28px] h-20 font-black text-xl shadow-2xl shadow-indigo-200 bg-gradient-to-r from-indigo-600 to-purple-600 border-none flex items-center justify-center gap-4 hover:scale-105 transition-transform"
+                            className="rounded-[28px] h-20 font-black text-xl shadow-2xl shadow-purple-200 bg-gradient-to-r from-purple-600 to-orange-600 border-none flex items-center justify-center gap-4 hover:scale-105 transition-transform"
                             onClick={handleSendFeedback}
                         >
                             <Send size={28} /> GỬI NHẬN XÉT

@@ -185,7 +185,7 @@ export default function LearnerLayout() {
     setAvatarErr(false);
   }, [user?.avatar]);
 
-  // Check if region is missing (null, undefined, empty)
+  // Check if region is missing
   const hasRegion = Boolean(user?.region && user.region.trim() !== "");
 
   const handleRegionSelected = (region) => {
@@ -217,13 +217,12 @@ export default function LearnerLayout() {
   const menuItems = [
     { key: "/learner/dashboard", icon: LayoutDashboard, label: "Trang chủ" },
     { key: "/learner/mailbox", icon: Mail, label: "Hộp thư" },
-    { key: "/learner/custom-journey", icon: Sparkles, label: "Lộ trình riêng" },
     { key: "/learner/roadmap", icon: Map, label: "Hành trình" },
-    { key: "/learner/friends", icon: Users, label: "Bạn bè" },
     { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
+    { key: "/learner/custom-journey", icon: Sparkles, label: "Gợi ý học" },
     { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
     { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
-    { key: "/learner/profile", icon: UserCircle2, label: "Hồ sơ" },
+    { key: "/learner/friends", icon: Users, label: "Bạn bè" },
   ];
 
   const selectedKey = menuItems.find(
@@ -233,7 +232,7 @@ export default function LearnerLayout() {
   )?.key || "/learner/dashboard";
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f8f5ff] font-nunito">
+    <div className="flex flex-col h-screen bg-[#fbfaff] font-nunito overflow-hidden">
 
       {/* ── MANDATORY REGION SELECTION OVERLAY ── */}
       {!hasRegion && user?.role !== 'ADMIN' && user?.role !== 'EDUCATOR' && (
@@ -241,178 +240,181 @@ export default function LearnerLayout() {
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TOP NAVBAR — Premium Glassmorphism
+          TOP NAVIGATION BAR (Optimized)
           ══════════════════════════════════════════════════════ */}
-      <header className="flex-shrink-0 sticky top-0 z-50 w-full">
-        {/* Gradient accent strip */}
-        <div className="h-1" style={{ background: 'linear-gradient(90deg, #7c3aed, #9333ea, #a855f7, #f97316, #fb923c)' }} />
+      <header className="h-20 bg-white/80 backdrop-blur-xl border-b border-purple-100/50 flex items-center px-6 sticky top-0 z-[100] shadow-[0_4px_24px_rgba(147,51,234,0.02)]">
 
-        <div className="bg-white/95 backdrop-blur-xl border-b border-purple-100/50"
-          style={{ boxShadow: '0 4px 30px rgba(147,51,234,0.08)' }}>
-          <div className="flex items-center justify-between h-14 px-5 lg:px-8">
-
-            {/* ── Left: Logo ── */}
-            <Link to="/learner/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
-              <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:shadow-purple-500/50 transition-shadow">
-                  <Sparkles size={15} className="text-white" />
-                </div>
-                <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-purple-400 to-orange-400 opacity-0 group-hover:opacity-20 blur-md transition-opacity" />
-              </div>
-              <span className="font-black text-lg tracking-tight hidden sm:inline">
-                Speak<span className="bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent">VN</span>
-              </span>
-            </Link>
-
-            {/* ── Center: Nav Pill Bar (desktop) ── */}
-            <nav className="hidden md:flex items-center gap-1 bg-gradient-to-r from-gray-50/90 to-purple-50/40 rounded-3xl p-1.5 border border-purple-100/60 backdrop-blur-md"
-              style={{ boxShadow: 'inset 0 1px 3px rgba(147,51,234,0.06)' }}>
-              {menuItems.map((item) => {
-                const isActive = selectedKey === item.key;
-                const Icon = item.icon;
-                return (
-                  <Link key={item.key} to={item.key}>
-                    <div
-                      className={`relative flex items-center gap-1.5 px-4 lg:px-5 py-2 rounded-[14px] cursor-pointer transition-all duration-200 text-[13px] font-bold
-                        ${isActive
-                          ? "text-white"
-                          : "text-gray-500 hover:text-purple-700 hover:bg-white/80"
-                        }`}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="topNavActive"
-                          className="absolute inset-0 rounded-[14px]"
-                          style={{
-                            background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 60%, #a855f7 100%)',
-                            boxShadow: '0 4px 12px rgba(147,51,234,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                          }}
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                        />
-                      )}
-                      <Icon size={14} className="relative z-10 flex-shrink-0" />
-                      <span className="relative z-10 whitespace-nowrap">{item.label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* ── Right: Streak + Stars + User ── */}
-            <div className="flex items-center gap-2">
-              {/* Streak */}
-              <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
-                <FireFilled className="text-orange-500 text-sm" />
-                <span className="text-orange-600 font-black text-xs">
-                  {user?.currentStreakDays || user?.streak || "0"} ngày
-                </span>
-              </div>
-
-              {/* Stars */}
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-full border border-yellow-100">
-                <span className="text-yellow-500 text-sm">⭐</span>
-                <span className="text-yellow-600 font-black text-xs">
-                  {user?.totalStars || 0}
-                </span>
-              </div>
-
-              {/* User Dropdown */}
-              <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
-                <div className="flex items-center gap-2 cursor-pointer px-2.5 py-1.5 rounded-xl hover:bg-purple-50/80 transition-all border border-transparent hover:border-purple-100">
-                  <Avatar
-                    src={avatarErr ? null : (user.avatar_url || user.avatar)}
-                    onError={() => {
-                      setAvatarErr(true);
-                      return true;
-                    }}
-                    icon={<UserOutlined />}
-                    size={32}
-                    className="bg-gradient-to-br from-purple-100 to-orange-50 text-purple-600 border-2 border-purple-200 flex-shrink-0"
-                  />
-                  <div className="hidden md:block">
-                    <div className="text-[13px] font-bold text-gray-800 leading-tight">{user.fullName?.split(" ").pop() || "User"}</div>
-                    <div className="text-[9px] text-purple-500 font-black uppercase tracking-wider">Học viên</div>
-                  </div>
-                </div>
-              </Dropdown>
-
-              {/* Mobile Hamburger */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 hover:bg-purple-100 transition-all"
-              >
-                {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
-              </button>
+        {/* Logo Section */}
+        <div className="flex-shrink-0 mr-10">
+          <Link to="/learner/dashboard" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
+              <Sparkles size={18} className="text-white" />
             </div>
-          </div>
+            <span className="hidden xl:block font-black text-xl tracking-tight">
+              Speak<span className="text-purple-600">VN</span>
+            </span>
+          </Link>
         </div>
 
-        {/* ── Mobile Dropdown Menu ── */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
+        {/* Navigation Links - Centered & Optimized */}
+        <nav className="hidden lg:flex items-center justify-center flex-1 gap-1 max-w-4xl mx-auto">
+          {menuItems.map((item) => {
+            const isActive = selectedKey === item.key;
+            const Icon = item.icon;
+            return (
+              <Link key={item.key} to={item.key} className="relative px-3 py-2 flex items-center gap-2 rounded-xl group transition-all duration-300">
+                {isActive && (
+                  <motion.div
+                    layoutId="topNavLinkActive"
+                    className="absolute inset-0 bg-purple-50 rounded-xl border border-purple-100/50"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                  />
+                )}
+                <div className={`relative z-10 flex items-center gap-2 transition-colors duration-300 ${isActive ? "text-purple-700" : "text-gray-500 group-hover:text-purple-600"}`}>
+                  <Icon size={17} className={isActive ? "text-purple-600" : "text-gray-400 group-hover:text-purple-400"} />
+                  <span className="text-[13px] font-black tracking-tight whitespace-nowrap">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Right Side (Stats + Profile) */}
+        <div className="flex items-center gap-2.5 ml-auto pl-4">
+          {/* Quick Stats - Combined Pill */}
+          <div className="hidden sm:flex items-center gap-3 px-3.5 py-1.5 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
+            <div className="flex items-center gap-1.5 border-r border-gray-200 pr-3">
+              <FireFilled className="text-orange-500 text-sm" />
+              <span className="text-gray-700 font-black text-xs">
+                {user?.currentStreakDays || user?.streak || "0"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-yellow-500 text-sm leading-none mt-[-2px]">⭐</span>
+              <span className="text-gray-700 font-black text-xs">
+                {user?.totalStars || 0}
+              </span>
+            </div>
+          </div>
+
+          <div className="w-px h-8 bg-gray-100 mx-1 hidden md:block"></div>
+
+          {/* Profile Dropdown */}
+          <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
+            <div className="flex items-center gap-2.5 cursor-pointer group hover:bg-gray-50/50 p-1 pr-3 rounded-2xl transition-all">
+              <div className="relative">
+                <Avatar
+                  src={avatarErr ? null : (user.avatar_url || user.avatar)}
+                  onError={() => { setAvatarErr(true); return true; }}
+                  icon={<UserCircle2 />}
+                  size={38}
+                  className="bg-purple-100 text-purple-600 border-2 border-white shadow-md transition-transform group-hover:scale-105"
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+              </div>
+              <div className="hidden xl:block">
+                <div className="text-[13px] font-black text-gray-800 leading-none mb-0.5">
+                  {user.fullName || "User"}
+                </div>
+                <div className="text-[10px] text-purple-500 font-bold uppercase tracking-wider opacity-60">Học viên</div>
+              </div>
+            </div>
+          </Dropdown>
+        </div>
+      </header>
+
+      {/* ── MOBILE MENU OVERLAY ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden overflow-hidden border-t border-purple-100/50 bg-white/95 backdrop-blur-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[1000]"
+            />
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-80 bg-white z-[1001] flex flex-col shadow-2xl"
             >
-              <nav className="p-3 space-y-1">
+              <div className="p-6 flex items-center justify-between border-b border-gray-50 bg-[#fbfaff]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <Sparkles size={18} className="text-white" />
+                  </div>
+                  <span className="font-black text-xl tracking-tight">SpeakVN</span>
+                </div>
+                <button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5 space-y-2 custom-scrollbar">
+                <h3 className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Hệ thống menu</h3>
                 {menuItems.map((item) => {
                   const isActive = selectedKey === item.key;
                   const Icon = item.icon;
                   return (
                     <Link key={item.key} to={item.key} onClick={() => setMobileMenuOpen(false)}>
-                      <div
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all
-                          ${isActive
-                            ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-md"
-                            : "text-gray-600 hover:bg-purple-50 hover:text-purple-700"
-                          }`}
-                      >
-                        <Icon size={18} />
+                      <div className={`flex items-center gap-3.5 px-5 py-4 rounded-2xl font-black text-[15px] transition-all
+                        ${isActive ? "bg-purple-600 text-white shadow-xl shadow-purple-600/20" : "text-gray-600 hover:bg-purple-50 active:scale-95"}`}>
+                        <Icon size={20} />
                         {item.label}
                       </div>
                     </Link>
                   );
                 })}
-              </nav>
-              {/* Mobile streak/stars */}
-              <div className="flex items-center gap-3 px-4 pb-3">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
-                  <FireFilled className="text-orange-500 text-sm" />
-                  <span className="text-orange-600 font-black text-xs">
-                    {user?.currentStreakDays || user?.streak || "0"} ngày
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-full border border-yellow-100">
-                  <span className="text-yellow-500 text-sm">⭐</span>
-                  <span className="text-yellow-600 font-black text-xs">
-                    {user?.totalStars || 0}
-                  </span>
-                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
 
-      {/* ══════════════════════════════════════════════════════
-          MAIN CONTENT (grows naturally)
-          ══════════════════════════════════════════════════════ */}
-      <main className="flex-1 flex flex-col">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="min-h-full"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+              <div className="p-6 border-t border-gray-50 bg-gray-50/50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl font-black text-base text-red-500 bg-white border border-red-100 hover:bg-red-50 transition-all shadow-sm"
+                >
+                  <LogoutOutlined /> Đăng xuất
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── CONTENT AREA ── */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="h-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="w-full h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </main>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e9e4f5; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ddd6fe; }
+      `}</style>
     </div>
   );
 }

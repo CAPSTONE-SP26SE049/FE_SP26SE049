@@ -278,5 +278,20 @@ export const adminService = {
     },
     attachRewardToQuiz: async (quizId: string, rewardId: string) => {
         return apiClient.post(`/admin/rewards/${rewardId}/attach/${quizId}`);
+    },
+
+    // --- Reward Excel ---
+    downloadRewardTemplate: async () => {
+        return apiClient.get('/admin/excel/rewards/template', { responseType: 'blob' });
+    },
+    exportRewardsToExcel: async () => {
+        return apiClient.get('/admin/excel/rewards/export', { responseType: 'blob' });
+    },
+    importRewardsFromExcel: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return apiClient.post('/admin/excel/rewards/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
     }
 };
