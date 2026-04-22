@@ -20,6 +20,7 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
+import { ASR_BASE_URL } from '../../../config'
 
 
 
@@ -120,10 +121,10 @@ function parseChallenge(raw: any): ParsedChallenge {
 
   if (hasWords && meta.error_index !== undefined) {
     mode = 'FIND_WRONG_WORD'
-  } else if (skillType === 'WRITING' || hasWriting) {
-    mode = 'WRITING_FILL'
   } else if (hasOptions) {
     mode = 'MULTIPLE_CHOICE'
+  } else if (skillType === 'WRITING' || hasWriting) {
+    mode = 'WRITING_FILL'
   } else if (skillType === 'SPEAKING' || hasTranscript) {
     mode = 'SPEAKING_READ'
   }
@@ -514,11 +515,8 @@ const QuizPage: React.FC = () => {
       const asrFormData = new FormData()
       asrFormData.append('file', audioForAsr, uploadFileName)
 
-      // ASR endpoint: Hugging Face Space (Parakeet Vietnamese) — no longer requires local server
-      const ASR_URL = import.meta.env.VITE_ASR_URL || 'https://bao2311-capstone-final.hf.space/asr'
-
       const asrStartTime = performance.now()
-      const asrResponse = await fetch(ASR_URL, {
+      const asrResponse = await fetch(ASR_BASE_URL, {
         method: 'POST',
         body: asrFormData,
       })

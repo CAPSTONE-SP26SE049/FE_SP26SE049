@@ -32,6 +32,9 @@ const REGION_LABELS: Record<string, { label: string; color: string }> = {
     NORTH_NL: { label: 'Miền Bắc (N/L)', color: 'blue' },
     CENTRAL_DGIR: { label: 'Miền Trung (D/GI/R)', color: 'orange' },
     SOUTH_TRCH: { label: 'Miền Nam (TR/CH)', color: 'green' },
+    NORTH: { label: 'Miền Bắc', color: 'blue' },
+    CENTRAL: { label: 'Miền Trung', color: 'orange' },
+    SOUTH: { label: 'Miền Nam', color: 'green' },
 }
 
 const EntryTestManagementPage: React.FC = () => {
