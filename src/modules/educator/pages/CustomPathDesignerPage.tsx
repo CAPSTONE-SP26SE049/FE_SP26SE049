@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Button, Card, Checkbox, List, Typography, Space,
-    Breadcrumb, Input, message, Spin, Tag, Empty, Modal
+    Button, Card, Typography,
+    Input, message, Spin, Tag, Empty
 } from 'antd';
 import {
-    SaveOutlined, ArrowLeftOutlined, SearchOutlined,
-    BookOutlined, RocketOutlined, CompassOutlined
+    SearchOutlined,
+    BookOutlined, RocketOutlined, CompassOutlined,
+    CheckCircleFilled
 } from '@ant-design/icons';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { customPathService, type PathLevel } from '../services/customPathService';
+import { Layout, ChevronLeft, Save, Map } from 'lucide-react';
+import clsx from 'clsx';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -86,81 +89,136 @@ const CustomPathDesignerPage: React.FC = () => {
         );
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center"><Spin size="large" /></div>;
+    if (loading) return (
+        <div className="h-[80vh] flex flex-col items-center justify-center gap-4">
+            <Spin size="large" />
+            <Text className="font-bold text-gray-400 animate-pulse">Đang tải bản đồ kiến thức...</Text>
+        </div>
+    );
 
     return (
-        <div className="p-6 min-h-screen bg-gray-50/50">
-            <Breadcrumb className="mb-6">
-                <Breadcrumb.Item onClick={() => navigate('/educator/design-path')} className="cursor-pointer">Chọn học viên</Breadcrumb.Item>
-                <Breadcrumb.Item>Thiết kế lộ trình</Breadcrumb.Item>
-            </Breadcrumb>
-
-            <div className="flex items-center justify-between mb-8">
-                <Space direction="vertical" size={0}>
-                    <Title level={2} className="!m-0 !font-black !text-slate-800">Cá nhân hóa lộ trình</Title>
-                    <Text type="secondary">Thiết kế các chương học phù hợp nhất cho học viên này.</Text>
-                </Space>
-                <Space>
-                    <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/educator/design-path')} className="rounded-xl h-10">Hủy bỏ</Button>
-                    <Button
-                        type="primary"
-                        icon={<SaveOutlined />}
-                        loading={submitting}
-                        onClick={handleSave}
-                        className="rounded-xl h-10 border-none shadow-lg shadow-purple-200"
-                        style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}
-                    >
-                        Lưu lộ trình
-                    </Button>
-                </Space>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left: Settings */}
-                <div className="lg:col-span-1 space-y-6">
-                    <Card className="rounded-2xl border-none shadow-sm" title={<span className="font-bold">Thông tin lộ trình</span>}>
-                        <div className="space-y-4">
-                            <div>
-                                <Text strong className="text-gray-500 text-xs uppercase uppercase tracking-wider block mb-2">Tên lộ trình</Text>
-                                <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl h-11" placeholder="Nhập tên lộ trình..." />
-                            </div>
-                            <div>
-                                <Text strong className="text-gray-500 text-xs uppercase tracking-wider block mb-2">Mô tả mục tiêu</Text>
-                                <Input.TextArea value={description} onChange={e => setDescription(e.target.value)} className="rounded-xl" rows={4} placeholder="Mục tiêu của lộ trình này là gì?" />
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="rounded-2xl border-none shadow-sm bg-purple-600 text-white overflow-hidden relative">
-                        <div className="relative z-10">
-                            <Title level={4} className="!text-white !font-bold mb-2">Đã chọn ({selectedLevelIds.length})</Title>
-                            <Paragraph className="text-purple-100 mb-4">Các chương này sẽ xuất hiện trong bản đồ lộ trình của học viên.</Paragraph>
-                            <div className="flex flex-wrap gap-2">
-                                {selectedLevelIds.map(id => {
-                                    const l = allLevels.find(level => level.levelId === id);
-                                    return (
-                                        <Tag key={id} closable onClose={() => toggleLevel(id)} className="bg-white/20 border-none text-white font-bold rounded-lg py-1 px-3">
-                                            {l?.levelName}
-                                        </Tag>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <RocketOutlined className="absolute -bottom-4 -right-4 text-white/10 text-9xl rotate-12" />
-                    </Card>
+        <div className="flex flex-col gap-8 -mt-2">
+            {/* ── Breadcrumbs & UI ── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <div className="flex items-center gap-2 text-purple-600 text-[10px] font-black uppercase tracking-[0.35em] mb-2">
+                        <Map size={14} /> Knowledge Map Designer
+                    </div>
+                    <Title level={2} className="!m-0 !font-black !text-gray-800 tracking-tight text-3xl">Thiết kế lộ trình riêng</Title>
+                    <Paragraph className="!mb-0 text-gray-400 font-medium text-xs mt-1">
+                        Cá nhân hóa trải nghiệm học tập bằng cách chọn các học phần phù hợp nhất.
+                    </Paragraph>
                 </div>
 
-                {/* Right: Chapter Selection */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center gap-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex items-center gap-2">
+                    <Button
+                        icon={<ChevronLeft size={18} />}
+                        onClick={() => navigate('/educator/design-path')}
+                        className="h-12 px-6 rounded-2xl font-bold border-gray-100 shadow-sm hover:border-purple-200 transition-all flex items-center gap-2"
+                    >
+                        Quay lại
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<Save size={18} />}
+                        loading={submitting}
+                        onClick={handleSave}
+                        className="h-12 px-8 rounded-2xl font-black border-none bg-gradient-to-r from-purple-600 to-purple-500 shadow-xl shadow-purple-500/20 hover:scale-[1.02] transition-transform flex items-center gap-2"
+                    >
+                        Phát hành lộ trình
+                    </Button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* ── Left Sidebar Settings ── */}
+                <div className="lg:col-span-4 space-y-6">
+                    <Card
+                        className="rounded-[2rem] border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
+                        title={<div className="flex items-center gap-2 py-1"><Layout size={18} className="text-purple-500" /> <span className="font-black text-gray-800">Cấu hình lộ trình</span></div>}
+                    >
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Tiêu đề hiển thị</label>
+                                <Input
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    className="rounded-xl h-12 border-gray-100 font-bold text-gray-700 focus:border-purple-300"
+                                    placeholder="Vd: Luyện âm vực cao..."
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Mô tả định hướng</label>
+                                <Input.TextArea
+                                    value={description}
+                                    onChange={e => setDescription(e.target.value)}
+                                    className="rounded-2xl border-gray-100 font-medium text-gray-600 focus:border-purple-300"
+                                    rows={5}
+                                    placeholder="Giải thích lý do học viên cần lộ trình này..."
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
+                    <motion.div
+                        layout
+                        className="bg-gradient-to-br from-purple-700 to-purple-600 rounded-[2rem] p-8 text-white shadow-2xl shadow-purple-500/20 relative overflow-hidden"
+                    >
+                        <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <Title level={4} className="!text-white !font-black !m-0">Đã chọn ({selectedLevelIds.length})</Title>
+                                <RocketOutlined className="text-2xl opacity-50" />
+                            </div>
+                            <Paragraph className="text-purple-100 text-xs font-medium mb-6 opacity-80 leading-relaxed">
+                                Các học phần đã chọn sẽ được ưu tiên hiển thị trên giao diện của học viên sau khi bạn nhấn Lưu.
+                            </Paragraph>
+
+                            <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
+                                <AnimatePresence>
+                                    {selectedLevelIds.map(id => {
+                                        const l = allLevels.find(level => level.levelId === id);
+                                        return (
+                                            <motion.div
+                                                key={id}
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }}
+                                            >
+                                                <Tag
+                                                    closable
+                                                    onClose={() => toggleLevel(id)}
+                                                    className="bg-white/20 border-none text-white font-black rounded-lg py-1 px-3 text-[10px] flex items-center gap-1"
+                                                >
+                                                    {l?.levelName}
+                                                </Tag>
+                                            </motion.div>
+                                        );
+                                    })}
+                                    {selectedLevelIds.length === 0 && (
+                                        <div className="text-[10px] font-black uppercase text-white/40 italic py-4">Chưa có học phần nào</div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* ── Right Content Chapter Selection ── */}
+                <div className="lg:col-span-8 space-y-6">
+                    <div className="bg-white p-4 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-slate-50 flex items-center gap-4">
                         <Input
-                            prefix={<SearchOutlined className="text-gray-300" />}
-                            placeholder="Tìm kiếm chương hoặc vùng miền..."
+                            prefix={<SearchOutlined className="text-gray-400 mr-2" />}
+                            placeholder="Tìm kiếm theo tên chương, vùng miền hoặc kiến thức..."
                             value={searchText}
                             onChange={e => setSearchText(e.target.value)}
-                            className="border-none focus:ring-0 shadow-none flex-grow"
+                            className="h-12 border-none bg-slate-50 rounded-2xl font-medium focus:ring-0 shadow-none"
+                            allowClear
                         />
-                        <CompassOutlined className="text-purple-400 text-xl mr-2" />
+                        <div className="flex items-center gap-2 px-4 border-l border-slate-100 text-purple-600">
+                            <CompassOutlined className="text-xl" />
+                            <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Global Map</span>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,40 +227,65 @@ const CustomPathDesignerPage: React.FC = () => {
                             return (
                                 <motion.div
                                     key={level.levelId}
-                                    whileHover={{ y: -4 }}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.05 }}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.04 }}
                                     onClick={() => toggleLevel(level.levelId)}
+                                    className="cursor-pointer group"
                                 >
-                                    <Card
-                                        className={`rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? 'border-purple-500 bg-purple-50/30' : 'border-white hover:border-purple-200'}`}
-                                        bodyStyle={{ padding: '20px' }}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${isSelected ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                                    <BookOutlined />
+                                    <div className={clsx(
+                                        "p-6 rounded-[2rem] border-2 transition-all duration-500 relative overflow-hidden",
+                                        isSelected
+                                            ? "bg-gradient-to-br from-white to-purple-50/50 border-purple-500 shadow-xl shadow-purple-500/10"
+                                            : "bg-white border-white hover:border-purple-200 shadow-sm"
+                                    )}>
+                                        {isSelected && (
+                                            <div className="absolute top-4 right-4 text-purple-600 animate-in zoom-in-0 duration-300">
+                                                <CheckCircleFilled className="text-xl" />
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-5 relative z-10">
+                                            <div className={clsx(
+                                                "w-16 h-16 rounded-3xl flex items-center justify-center text-2xl transition-all duration-500 group-hover:scale-110",
+                                                isSelected ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30" : "bg-slate-100 text-slate-400"
+                                            )}>
+                                                <BookOutlined />
+                                            </div>
+                                            <div>
+                                                <div className={clsx(
+                                                    "font-black text-lg tracking-tight mb-1 transition-colors",
+                                                    isSelected ? "text-purple-800" : "text-gray-800"
+                                                )}>
+                                                    {level.levelName}
                                                 </div>
-                                                <div>
-                                                    <div className={`font-black text-lg ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>{level.levelName}</div>
-                                                    <Tag className="rounded-md border-none bg-slate-100 text-slate-500 font-bold text-[10px] uppercase">{level.region}</Tag>
+                                                <div className="flex items-center gap-2">
+                                                    <Tag className="rounded-lg border-none bg-slate-100 text-slate-500 font-black text-[9px] uppercase px-2">
+                                                        {level.region}
+                                                    </Tag>
+                                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest italic">Unit {i + 1}</span>
                                                 </div>
                                             </div>
-                                            <Checkbox checked={isSelected} className="custom-checkbox" />
                                         </div>
-                                    </Card>
+                                    </div>
                                 </motion.div>
                             );
                         })}
-                        {filteredLevels.length === 0 && (
-                            <div className="col-span-2">
-                                <Empty description="Không tìm thấy chương nào khớp với tìm kiếm" />
-                            </div>
-                        )}
                     </div>
+
+                    {filteredLevels.length === 0 && (
+                        <div className="py-20 bg-white rounded-[2rem] border border-dashed border-slate-200">
+                            <Empty description={<span className="text-gray-400 font-bold italic">Không tìm thấy chương nào khớp với tiêu chí của bạn</span>} />
+                        </div>
+                    )}
                 </div>
             </div>
+
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+            `}</style>
         </div>
     );
 };

@@ -3,8 +3,12 @@ import apiClient from '../../../services/apiClient';
 export interface PathQuiz {
     quizId: string;
     title: string;
+    orderIndex: number;
+    skillType: string;   // READING | LISTENING | SPEAKING | WRITING | MIXED
     score: number;
     isCompleted: boolean;
+    rewardName?: string;
+    rewardIconUrl?: string;
 }
 
 export interface PathLevel {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card, Button, Modal, Input, message, Typography, Avatar, Empty, Tooltip, Tabs, Badge, Tag } from 'antd';
-import { MessageSquare, Star, Send, Users, AudioLines, MessageCircle, History, Bot, Sparkles, MessageCircleMore, LayoutDashboard, User } from 'lucide-react';
+import { Card, Button, Modal, Input, message, Typography, Avatar, Empty, Tabs, Tag } from 'antd';
+import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore } from 'lucide-react';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { feedbackService, type SpeakingAttempt, type Feedback } from '../services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -172,20 +172,18 @@ const InteractionsPage = () => {
     const overallFeedbacks = feedbacks.filter(f => !f.attemptId);
 
     return (
-        <div className="h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-4 overflow-hidden -mt-2">
-            {/* --- Student Sidebar --- */}
-            <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-5 pb-3">
-                    <div className="flex items-center justify-between mb-4">
-                        <Title level={5} className="!m-0 !font-black !text-gray-800 tracking-tight text-sm uppercase">Học viên</Title>
-                        <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                            <Users size={16} />
-                        </div>
+        <div className="h-[calc(100vh-100px)] flex flex-col lg:flex-row gap-3 overflow-hidden -mt-4">
+            {/* Student Sidebar */}
+            <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-3 pb-2 border-b border-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                        <Title level={5} className="!m-0 !font-black !text-gray-800 tracking-tight text-[10px] uppercase">Học viên</Title>
+                        <Users size={14} className="text-purple-400" />
                     </div>
                     <Input.Search
                         placeholder="Tìm tên..."
-                        className="rounded-xl border border-slate-100 font-semibold"
-                        size="middle"
+                        className="rounded-lg border border-slate-100"
+                        size="small"
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                     />
@@ -201,33 +199,30 @@ const InteractionsPage = () => {
                             return (
                                 <motion.div
                                     key={student.id}
-                                    whileHover={{ x: 3 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    whileHover={{ x: 2 }}
                                     onClick={() => handleSelectStudent(student)}
-                                    className={`relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-purple-50 shadow-sm' : 'hover:bg-slate-50'}`}
+                                    className={`relative flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-purple-50 shadow-sm' : 'hover:bg-slate-50'}`}
                                 >
                                     <Avatar
-                                        size={40}
+                                        size={32}
                                         src={getStudentAvatar(student)}
-                                        onError={() => setAvatarErrors(prev => ({ ...prev, [student.id]: true }))}
-                                        className="border border-white shadow-sm bg-slate-100"
+                                        onError={() => { setAvatarErrors(prev => ({ ...prev, [student.id]: true })); return true; }}
+                                        className="border-2 border-white shadow-sm bg-slate-100"
                                     />
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start">
-                                            <div className={`text-xs font-bold truncate ${hasUnread ? 'text-slate-900' : 'text-slate-700'}`}>{student.fullName}</div>
-                                            <div className="text-[8px] text-slate-400 font-bold ml-1 uppercase">
+                                        <div className="flex justify-between items-center">
+                                            <div className={`text-[11px] font-bold truncate ${hasUnread ? 'text-slate-900' : 'text-slate-600'}`}>{student.fullName}</div>
+                                            <div className="text-[7px] text-slate-300 font-bold ml-1 uppercase">
                                                 {formatTimeShort(student.lastMessageAt)}
                                             </div>
                                         </div>
-                                        <div className="flex justify-between items-center">
-                                            <div className={`text-[10px] truncate ${hasUnread ? 'text-purple-600 font-black' : 'text-slate-400 font-medium'}`}>
-                                                {student.lastMessage || 'Bắt đầu cuộc trò chuyện'}
-                                            </div>
-                                            {hasUnread && (
-                                                <Badge count={student.unreadCount} size="small" />
-                                            )}
+                                        <div className={`text-[9px] truncate ${hasUnread ? 'text-purple-600 font-black' : 'text-slate-400 font-medium'}`}>
+                                            {student.lastMessage || 'Chưa có tin nhắn'}
                                         </div>
                                     </div>
+                                    {hasUnread && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                    )}
                                 </motion.div>
                             );
                         })
@@ -255,28 +250,24 @@ const InteractionsPage = () => {
                     ) : (
                         <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col h-full gap-4 overflow-hidden">
                             {/* Student Header Card */}
-                            <Card className="rounded-2xl border-none shadow-sm overflow-hidden bg-gradient-to-r from-white to-purple-50/20" bodyStyle={{ padding: '12px 20px' }}>
+                            <Card className="rounded-xl border-none shadow-sm bg-white" bodyStyle={{ padding: '8px 16px' }}>
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative p-0.5 bg-white rounded-full shadow-sm">
-                                            <Avatar
-                                                size={48}
-                                                src={getStudentAvatar(selectedStudent)}
-                                                onError={() => setAvatarErrors(prev => ({ ...prev, [selectedStudent.id]: true }))}
-                                                className="bg-slate-100"
-                                            />
-                                        </div>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar
+                                            size={40}
+                                            src={getStudentAvatar(selectedStudent)}
+                                            onError={() => { setAvatarErrors(prev => ({ ...prev, [selectedStudent.id]: true })); return true; }}
+                                            className="bg-slate-50 ring-2 ring-white"
+                                        />
                                         <div>
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <Title level={5} className="!m-0 !font-black !text-gray-800 tracking-tight">{selectedStudent.fullName}</Title>
-                                                <Tag color="purple" className="rounded-full text-[9px] font-black uppercase border-none px-2 h-4 flex items-center m-0">Level {selectedStudent.level || 'A1'}</Tag>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-black text-slate-800 text-xs leading-tight">{selectedStudent.fullName}</div>
+                                                <Tag color="purple" bordered={false} className="rounded-full text-[8px] font-black uppercase px-1.5 h-3.5 flex items-center m-0">Level {selectedStudent.level || 'A1'}</Tag>
                                             </div>
-                                            <Text className="text-[10px] text-gray-400 font-bold">{selectedStudent.email}</Text>
+                                            <div className="text-[9px] text-slate-400 font-bold">{selectedStudent.email}</div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <Button size="small" icon={<LayoutDashboard size={14} />} className="rounded-lg font-black flex items-center gap-1.5 border-purple-100 text-purple-600 text-[10px] uppercase h-8 px-3">BÁO CÁO</Button>
-                                    </div>
+                                    <Button size="small" className="rounded-lg font-black text-[9px] h-7 px-3 flex items-center gap-1.5 border-purple-100 text-purple-600 bg-purple-50/30 uppercase border hover:bg-purple-600 hover:text-white transition-all">BÁO CÁO</Button>
                                 </div>
                             </Card>
 
@@ -301,9 +292,9 @@ const InteractionsPage = () => {
                                                                 const isStudent = msg.senderId === selectedStudent.id;
                                                                 return (
                                                                     <div key={msg.id || msg.timestamp} className={`flex ${isStudent ? 'justify-start' : 'justify-end'}`}>
-                                                                        <div className={`max-w-[75%] rounded-2xl p-3 shadow-sm ${isStudent ? 'bg-white border text-slate-700 rounded-bl-none' : 'bg-purple-600 text-white rounded-br-none'}`}>
-                                                                            <div className="font-bold text-xs leading-relaxed italic">"{msg.content}"</div>
-                                                                            <div className={`text-[8px] mt-1 text-right opacity-60 font-black uppercase`}>
+                                                                        <div className={`max-w-[85%] rounded-xl p-2 shadow-sm ${isStudent ? 'bg-white border border-slate-100 text-slate-700 rounded-bl-none' : 'bg-purple-600 text-white rounded-br-none'}`}>
+                                                                            <div className="font-bold text-[10px] leading-relaxed italic">"{msg.content}"</div>
+                                                                            <div className={`text-[7px] mt-1 text-right opacity-50 font-black uppercase`}>
                                                                                 {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                             </div>
                                                                         </div>
@@ -317,16 +308,16 @@ const InteractionsPage = () => {
                                                     {/* Input Area */}
                                                     <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
                                                         <Input
-                                                            placeholder="Nhập nội dung tư vấn..."
-                                                            className="flex-1 h-9 rounded-lg border border-slate-100 bg-slate-50 font-bold text-xs"
+                                                            placeholder="Lời khuyên cho học viên..."
+                                                            className="flex-1 h-8 rounded-lg border-slate-100 bg-slate-50 font-bold text-[10px]"
                                                             value={messageInput}
                                                             onChange={e => setMessageInput(e.target.value)}
                                                             onPressEnter={handleSendMessage}
                                                         />
                                                         <Button
                                                             type="primary"
-                                                            className="h-9 px-4 rounded-lg font-black bg-purple-600 border-none shadow-sm flex items-center gap-2 text-[10px] uppercase"
-                                                            icon={<Send size={12} />}
+                                                            className="h-8 px-3 rounded-lg font-black bg-purple-600 border-none shadow-sm flex items-center gap-1.5 text-[9px] uppercase"
+                                                            icon={<Send size={10} />}
                                                             onClick={handleSendMessage}
                                                             disabled={!messageInput.trim()}
                                                         >
@@ -340,77 +331,71 @@ const InteractionsPage = () => {
                                             key: 'feedback',
                                             label: (<span className="flex items-center gap-2 font-black px-6 py-3 text-[10px] uppercase tracking-wider"><History size={14} /> LỊCH SỬ</span>),
                                             children: (
-                                                <div className="h-full overflow-y-auto p-4 space-y-4 bg-slate-50/30 custom-scrollbar">
-                                                    {overallFeedbacks.length > 0 && (
-                                                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 shadow-sm mb-4">
-                                                            <div className="flex items-center gap-2 mb-3">
-                                                                <Star size={14} fill="currentColor" className="text-amber-500" />
-                                                                <Title level={5} className="!m-0 !font-black !text-amber-800 !text-xs uppercase">Nhận xét tổng thể ({overallFeedbacks.length})</Title>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                {overallFeedbacks.map((f) => (
-                                                                    <div key={f.id} className="bg-white/70 p-3 rounded-lg border border-white/80">
-                                                                        <Paragraph className="m-0 text-amber-900 font-bold italic text-[11px]">"{f.comment}"</Paragraph>
-                                                                        <div className="mt-1 flex justify-between items-center text-[7px] text-amber-700/50 font-black uppercase">
-                                                                            <span>By {f.educatorName}</span>
-                                                                            <span>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                                <div className="flex-1 flex flex-col h-full bg-slate-50/30 overflow-hidden">
+                                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                                                        {overallFeedbacks.length > 0 && (
+                                                            <div className="bg-amber-50 rounded-xl p-3 border border-amber-100/50 mb-3">
+                                                                <div className="flex items-center gap-1.5 mb-2">
+                                                                    <Star size={12} fill="currentColor" className="text-amber-500" />
+                                                                    <div className="font-black text-amber-800 text-[9px] uppercase">Nhận xét tổng thể ({overallFeedbacks.length})</div>
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    {overallFeedbacks.map((f) => (
+                                                                        <div key={f.id} className="bg-white/80 p-2 rounded-lg border border-white">
+                                                                            <Paragraph className="m-0 text-amber-900 font-bold italic text-[10px]">"{f.comment}"</Paragraph>
+                                                                            <div className="mt-1 flex justify-between items-center text-[7px] text-amber-700/40 font-black uppercase">
+                                                                                <span>By {f.educatorName}</span>
+                                                                                <span>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                ))}
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
 
-                                                    {attemptsLoading ? (
-                                                        <div className="py-20 text-center"><Sparkles className="animate-bounce text-purple-400 inline" size={24} /></div>
-                                                    ) : attempts.length === 0 ? (
-                                                        <Empty description="Chưa có lịch sử phát âm" className="mt-10" />
-                                                    ) : (
-                                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                            {(attempts || []).map((attempt, idx) => {
-                                                                const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
-                                                                return (
-                                                                    <motion.div key={attempt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
-                                                                        <Card className="rounded-xl border border-slate-200 shadow-none hover:shadow-sm transition-all duration-300 bg-white group" bodyStyle={{ padding: '12px' }}>
-                                                                            <div className="flex justify-between items-center mb-2">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shadow-sm text-xs`} style={{ backgroundColor: getScoreColor(attempt.geminiScore) }}>
-                                                                                        {attempt.geminiScore}
+                                                        {attemptsLoading ? (
+                                                            <div className="py-20 text-center"><Sparkles className="animate-bounce text-purple-400 inline" size={24} /></div>
+                                                        ) : attempts.length === 0 ? (
+                                                            <Empty description="Chưa có lịch sử phát âm" className="mt-10" />
+                                                        ) : (
+                                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                                                {(attempts || []).map((attempt) => {
+                                                                    const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
+                                                                    return (
+                                                                        <motion.div key={attempt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                                                            <Card className="rounded-xl border border-slate-100 hover:shadow-sm transition-all bg-white" bodyStyle={{ padding: '8px' }}>
+                                                                                <div className="flex justify-between items-center mb-1.5">
+                                                                                    <div className="flex items-center gap-1.5">
+                                                                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white font-black text-[10px]`} style={{ backgroundColor: getScoreColor(attempt.groqScore ?? (attempt as any).score) }}>
+                                                                                            {attempt.groqScore ?? (attempt as any).score ?? '—'}
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div className="text-[7px] font-black text-slate-300 uppercase leading-none">{new Date(attempt.createdAt).toLocaleDateString()}</div>
+                                                                                            <div className="text-[8px] font-bold text-slate-400 leading-none">{new Date(attempt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                                                                        </div>
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <div className="text-[7px] font-black text-slate-300 uppercase tracking-widest">{new Date(attempt.createdAt).toLocaleDateString()}</div>
-                                                                                        <Text className="text-[9px] font-bold text-slate-400">{new Date(attempt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <Tooltip title="Nhận xét">
-                                                                                    <Button shape="circle" size="small" icon={<MessageSquare size={12} />} className="text-purple-600 bg-purple-50 border-none hover:bg-purple-600 hover:text-white transition-all" onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }} />
-                                                                                </Tooltip>
-                                                                            </div>
-
-                                                                            <div className="space-y-2">
-                                                                                <div className="text-[11px] font-black text-slate-800 leading-tight line-clamp-1">"{attempt.targetText}"</div>
-                                                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 overflow-hidden text-[10px] font-bold leading-relaxed">
-                                                                                    {highlightErrors(attempt.targetText, attempt.asrTranscription)}
+                                                                                    <Button shape="circle" size="small" icon={<MessageSquare size={10} />} className="text-purple-600 bg-purple-50 border-none h-6 w-6" onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }} />
                                                                                 </div>
 
-                                                                                {/* AI Insights Compact */}
-                                                                                <div className="flex items-start gap-1.5 p-1.5 bg-purple-50/30 rounded-lg border border-purple-50/50">
-                                                                                    <Bot size={12} className="text-purple-400 flex-shrink-0 mt-0.5" />
-                                                                                    <Paragraph className="text-[9px] text-slate-500 font-bold leading-tight m-0 italic line-clamp-1">"{attempt.geminiFeedback}"</Paragraph>
-                                                                                </div>
-
-                                                                                {educatorComment && (
-                                                                                    <div className="p-1.5 bg-orange-50/30 rounded-lg border border-orange-100/50 border-dashed">
-                                                                                        <Paragraph className="text-[10px] text-purple-900 font-black m-0 line-clamp-1 italic">"{educatorComment.comment}"</Paragraph>
+                                                                                <div className="space-y-1.5">
+                                                                                    <div className="text-[10px] font-bold text-slate-400 italic">Mục tiêu: "{attempt.targetText}"</div>
+                                                                                    <div className="text-[10px] font-black text-slate-700 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                                                                                        {highlightErrors(attempt.targetText, attempt.asrTranscription)}
                                                                                     </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </Card>
-                                                                    </motion.div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+
+                                                                                    {educatorComment && (
+                                                                                        <div className="p-1 px-2 bg-purple-600 text-white rounded-lg text-[9px] font-bold italic">
+                                                                                            Edu: "{educatorComment.comment}"
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </Card>
+                                                                        </motion.div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )
                                         }
@@ -469,6 +454,47 @@ const InteractionsPage = () => {
                     </div>
                 </div>
             </Modal>
+            <style>{`
+                /* Ensure Tabs component fills container */
+                .premium-tabs-compact {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                }
+                .premium-tabs-compact .ant-tabs-content-holder {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0;
+                }
+                .premium-tabs-compact .ant-tabs-content {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                }
+                .premium-tabs-compact .ant-tabs-tabpane-hidden {
+                    display: none !important;
+                }
+                .premium-tabs-compact .ant-tabs-tabpane {
+                    display: flex !important;
+                    flex-direction: column;
+                    height: 100%;
+                    min-height: 0;
+                }
+                .premium-tabs-compact .ant-tabs-tabpane.ant-tabs-tabpane-hidden {
+                    display: none !important;
+                }
+                .premium-tabs-compact .ant-tabs-nav {
+                    margin-bottom: 0 !important;
+                    background: white;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+                .premium-tabs-compact .ant-tabs-nav .ant-tabs-tab {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+            `}</style>
         </div>
     );
 };

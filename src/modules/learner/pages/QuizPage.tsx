@@ -514,8 +514,11 @@ const QuizPage: React.FC = () => {
       const asrFormData = new FormData()
       asrFormData.append('file', audioForAsr, uploadFileName)
 
+      // ASR endpoint: Hugging Face Space (Parakeet Vietnamese) — no longer requires local server
+      const ASR_URL = import.meta.env.VITE_ASR_URL || 'https://bao2311-capstone-final.hf.space/asr'
+
       const asrStartTime = performance.now()
-      const asrResponse = await fetch('http://localhost:8000/asr', {
+      const asrResponse = await fetch(ASR_URL, {
         method: 'POST',
         body: asrFormData,
       })

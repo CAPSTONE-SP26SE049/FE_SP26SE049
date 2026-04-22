@@ -227,7 +227,7 @@ const FriendCard = ({
                 onConfirm={() => onUnfriend(item.friendshipId)}
                 okText="Hủy"
                 cancelText="Đóng"
-                okButtonProps={{ danger: true }}
+                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
             >
                 <Tooltip title="Hủy kết bạn">
                     <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
@@ -241,7 +241,7 @@ const FriendCard = ({
                 onConfirm={() => onBlock(item.friendshipId)}
                 okText="Chặn"
                 cancelText="Hủy"
-                okButtonProps={{ danger: true }}
+                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
             >
                 <Tooltip title="Chặn">
                     <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
@@ -297,7 +297,7 @@ const RequestCard = ({
                     onConfirm={() => onDecline(item.friendshipId)}
                     okText="Từ chối"
                     cancelText="Hủy"
-                    okButtonProps={{ danger: true }}
+                    okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
                 >
                     <button className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-all">
                         <CloseOutlined className="text-gray-400 text-sm" />
@@ -316,7 +316,7 @@ const RequestCard = ({
                 onConfirm={() => onCancel?.(item.friendshipId)}
                 okText="Hủy"
                 cancelText="Đóng"
-                okButtonProps={{ danger: true }}
+                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
             >
                 <button className="h-8 px-3 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-all">
                     Hủy lời mời

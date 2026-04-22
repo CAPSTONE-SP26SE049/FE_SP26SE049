@@ -11,8 +11,8 @@ export interface SpeakingAttempt {
     targetText: string;
     asrTranscription: string;
     audioUrl: string;
-    geminiScore: number;
-    geminiFeedback: string;
+    groqScore: number;
+    groqFeedback: string;
     createdAt: string;
 }
 
@@ -27,8 +27,8 @@ export interface Feedback {
     attemptId: string;
     targetText: string;
     audioUrl?: string;
-    geminiScore?: number;
-    geminiFeedback?: string;
+    groqScore?: number;
+    groqFeedback?: string;
     asrTranscription?: string;
 }
 

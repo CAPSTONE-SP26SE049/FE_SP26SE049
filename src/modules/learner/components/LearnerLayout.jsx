@@ -56,7 +56,7 @@ const REGION_CHOICES = [
 ];
 
 /* ── Region Selection Overlay (blocks UI if no region) ── */
-const RegionSelectionOverlay = ({ onSelected }) => {
+const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -162,7 +162,17 @@ const RegionSelectionOverlay = ({ onSelected }) => {
               <>Xác nhận & Bắt đầu 🚀</>
             )}
           </button>
-          <p className="text-center text-[11px] text-gray-300 mt-3 font-medium">
+
+          <button
+            onClick={onLogout}
+            disabled={saving}
+            className="w-full mt-3 h-11 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 text-red-500 bg-red-50 hover:bg-red-100 transition-all duration-300 border border-red-100"
+          >
+            <LogoutOutlined />
+            Đăng xuất
+          </button>
+
+          <p className="text-center text-[11px] text-gray-300 mt-4 font-medium">
             Bạn có thể thay đổi vùng miền sau trong phần Hồ sơ cá nhân
           </p>
         </div>
@@ -236,7 +246,7 @@ export default function LearnerLayout() {
 
       {/* ── MANDATORY REGION SELECTION OVERLAY ── */}
       {!hasRegion && user?.role !== 'ADMIN' && user?.role !== 'EDUCATOR' && (
-        <RegionSelectionOverlay onSelected={handleRegionSelected} />
+        <RegionSelectionOverlay onSelected={handleRegionSelected} onLogout={handleLogout} />
       )}
 
       {/* ══════════════════════════════════════════════════════

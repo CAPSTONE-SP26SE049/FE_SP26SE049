@@ -1,20 +1,22 @@
+import { useNavigate } from 'react-router-dom'
 import React, { useEffect, useMemo, useState } from 'react'
-import { Card, Col, Row, Typography, Progress, Table, Tag, Button, Form, Input, Select, message, Empty, Avatar, Skeleton } from 'antd'
+import { Card, Col, Row, Typography, Progress, Table, Tag, Button, message, Empty, Avatar, Skeleton } from 'antd'
 import { educatorService, type StudentAccount, type ProgressOverview, type LessonPlan, type FeedbackItem, type AnalyticsReport } from '../services/educatorService'
-import { ArrowUpRight, MessageSquareMore, Users, BrainCircuit, Sparkles, Trophy, Rocket, ChevronRight, Activity, TrendingUp, CheckCircle2 } from 'lucide-react'
+import { ArrowUpRight, MessageSquareMore, Users, BrainCircuit, Sparkles, Trophy, Activity, TrendingUp } from 'lucide-react'
 import { motion } from 'framer-motion'
 import clsx from 'clsx'
 
 const { Title, Text } = Typography
 
 const EducatorOverviewPage: React.FC = () => {
+  const navigate = useNavigate()
   const [students, setStudents] = useState<StudentAccount[]>([])
   const [overview, setOverview] = useState<ProgressOverview | null>(null)
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([])
   const [messages, setMessages] = useState<FeedbackItem[]>([])
   const [reports, setReports] = useState<AnalyticsReport[]>([])
   const [loading, setLoading] = useState(false)
-  const [form] = Form.useForm()
+
 
   useEffect(() => {
     const load = async () => {
@@ -57,6 +59,14 @@ const EducatorOverviewPage: React.FC = () => {
     [students]
   )
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Chào buổi sáng';
+    if (hour < 14) return 'Chào buổi trưa';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  }, []);
+
   return (
     <div className="flex flex-col gap-4 -mt-2">
       {/* ─── Hero Section ─── */}
@@ -70,7 +80,7 @@ const EducatorOverviewPage: React.FC = () => {
               <div className="flex items-center gap-2 text-white/80 text-[11px] font-bold uppercase tracking-widest mb-2">
                 <Sparkles size={12} className="text-orange-300" /> Executive Overview
               </div>
-              <Title level={3} className="!text-white !m-0 !font-black tracking-tight mb-2">Chào buổi sáng, Giáo viên! 👋</Title>
+              <Title level={3} className="!text-white !m-0 !font-black tracking-tight mb-2">{greeting}, Giáo viên! 👋</Title>
               <p className="text-white/80 text-[13px] font-medium max-w-lg leading-relaxed">
                 Hệ thống đã sẵn sàng. Hôm nay có <span className="text-orange-200 font-black decoration-orange-200/30 underline decoration-2 underline-offset-4">{overview?.pendingFeedbackCount || 0} yêu cầu</span> mới cần bạn xử lý.
               </p>
@@ -139,23 +149,7 @@ const EducatorOverviewPage: React.FC = () => {
                     </div>
                   )
                 },
-                {
-                  title: 'Thao tác',
-                  align: 'right',
-                  render: (_, row: StudentAccount) => (
-                    <Button
-                      type="text"
-                      className="text-purple-600 font-black text-[10px] hover:bg-purple-50 rounded-lg flex items-center gap-0.5 ml-auto h-7 px-2"
-                      onClick={() => form.setFieldsValue({
-                        studentId: row.id,
-                        title: `Lộ trình luyện tập: ${row.fullName}`,
-                        focusArea: (row.weakPhonemes || []).join(', ')
-                      })}
-                    >
-                      Sửa <ChevronRight size={12} />
-                    </Button>
-                  )
-                },
+
               ]}
               className="custom-dashboard-table compact-table"
             />
@@ -253,7 +247,14 @@ const EducatorOverviewPage: React.FC = () => {
                     <Tag color={item.priority === 'HIGH' ? 'red' : item.priority === 'MEDIUM' ? 'orange' : 'blue'} bordered={false} className="rounded-full text-[8px] font-black px-1.5 leading-none h-4 flex items-center">
                       {item.priority}
                     </Tag>
-                    <Button type="link" size="small" className="text-purple-600 font-bold text-[10px] h-auto p-0">Trả lời 💬</Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      className="text-purple-600 font-bold text-[10px] h-auto p-0"
+                      onClick={() => navigate('/educator/messages', { state: { studentId: item.studentId } })}
+                    >
+                      Trả lời 💬
+                    </Button>
                   </div>
                 </motion.div>
               )) : (
@@ -302,80 +303,7 @@ const EducatorOverviewPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card
-        className="rounded-3xl border-none shadow-sm bg-white overflow-hidden relative"
-        bodyStyle={{ padding: 0 }}
-      >
-        <div className="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-[100%] z-0" />
-        <div className="relative z-10 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 shadow-inner">
-              <Rocket size={20} />
-            </div>
-            <div>
-              <Title level={4} className="!m-0 !font-black !text-gray-800 !text-base">Thiết kế lộ trình học cá nhân 🚀</Title>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Custom AI-Assisted learning paths</p>
-            </div>
-          </div>
 
-          <Form form={form} layout="vertical" onFinish={async values => {
-            try {
-              const payload = {
-                studentId: values.studentId,
-                title: values.title,
-                focusArea: values.focusArea,
-                milestones: (values.milestones || '').split('\n').filter(Boolean),
-                description: values.description
-              }
-              await educatorService.createCustomLearningPath(payload)
-              message.success('Đã tạo lộ trình học thành công')
-              form.resetFields()
-            } catch {
-              message.error('Không thể tạo lộ trình học')
-            }
-          }} className="max-w-5xl">
-            <Row gutter={16}>
-              <Col xs={24} md={8}>
-                <Form.Item name="studentId" label={<span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Học viên mục tiêu</span>} rules={[{ required: true }]}>
-                  <Select
-                    size="middle" placeholder="Chọn học viên..."
-                    className="w-full"
-                    options={students.map(s => ({ value: s.id, label: s.fullName }))}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="title" label={<span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Tên lộ trình</span>} rules={[{ required: true }]}>
-                  <Input size="middle" placeholder="Vd: Luyện phát âm /r/ & /l/" className="rounded-lg" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="focusArea" label={<span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Trọng tâm</span>} rules={[{ required: true }]}>
-                  <Input size="middle" placeholder="Vd: Phonetic precision" className="rounded-lg" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="milestones" label={<span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mốc đạt được (Mỗi dòng 1 mốc)</span>} rules={[{ required: true }]} className="mb-2">
-                  <Input.TextArea rows={3} className="rounded-xl text-xs" placeholder="Chinh phục được 10 từ khó nhất..." />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="description" label={<span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mô tả thêm</span>} className="mb-2">
-                  <Input.TextArea rows={3} className="rounded-xl text-xs" placeholder="Lộ trình này tập trung vào..." />
-                </Form.Item>
-              </Col>
-            </Row>
-            <div className="flex justify-end mt-2">
-              <Button
-                type="primary" htmlType="submit"
-                className="h-10 px-8 rounded-xl font-black text-xs border-none bg-gradient-to-r from-purple-600 to-purple-500 shadow-lg shadow-purple-500/20 hover:scale-[1.02] transition-transform flex items-center gap-2"
-              >
-                <CheckCircle2 size={16} /> Lưu & Kích hoạt
-              </Button>
-            </div>
-          </Form>
-        </div>
-      </Card>
 
       <style>{`
                 .custom-dashboard-table .ant-table-thead > tr > th {

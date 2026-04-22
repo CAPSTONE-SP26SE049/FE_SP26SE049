@@ -1,4 +1,12 @@
 import apiClient from '../../../services/apiClient';
+import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+function getAuthHeaders() {
+    const token = window.sessionStorage.getItem('ACCESS_TOKEN') || window.localStorage.getItem('ACCESS_TOKEN');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // --- Interfaces for Request/Response ---
 
@@ -231,8 +239,7 @@ export const adminService = {
     getErrorTags: async (dialectId?: string) => {
         const params: any = {};
         if (dialectId) params.dialectId = dialectId;
-        // The backend exposes this via EducatorController for curriculum context
-        return apiClient.get('/educator/curriculum/error-tags', { params });
+        return apiClient.get('/public/error-tags', { params });
     },
     createErrorTag: async (tagCode: string, name: string, description: string, regions: string[]) => {
         // Backend ErrorTagController uses @RequestParam, but we can try sending as JSON if the backend is updated, 
@@ -282,16 +289,27 @@ export const adminService = {
 
     // --- Reward Excel ---
     downloadRewardTemplate: async () => {
-        return apiClient.get('/admin/excel/rewards/template', { responseType: 'blob' });
+        const res = await axios.get(`${BASE_URL}/admin/excel/rewards/template`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
     },
     exportRewardsToExcel: async () => {
-        return apiClient.get('/admin/excel/rewards/export', { responseType: 'blob' });
+        const res = await axios.get(`${BASE_URL}/admin/excel/rewards/export`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
     },
     importRewardsFromExcel: async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return apiClient.post('/admin/excel/rewards/import', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        return axios.post(`${BASE_URL}/admin/excel/rewards/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...getAuthHeaders()
+            }
         });
     }
 };
