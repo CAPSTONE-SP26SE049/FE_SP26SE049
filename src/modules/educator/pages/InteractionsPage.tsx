@@ -365,8 +365,8 @@ const InteractionsPage = () => {
                                                                             <Card className="rounded-[36px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 bg-white group">
                                                                                 <div className="flex justify-between items-center mb-6">
                                                                                     <div className="flex items-center gap-4">
-                                                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transition-transform group-hover:scale-110 duration-300`} style={{ backgroundColor: getScoreColor(attempt.geminiScore) }}>
-                                                                                            <span className="text-xl">{attempt.geminiScore}</span>
+                                                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transition-transform group-hover:scale-110 duration-300`} style={{ backgroundColor: getScoreColor(attempt.groqScore) }}>
+                                                                                            <span className="text-xl">{attempt.groqScore}</span>
                                                                                         </div>
                                                                                         <div>
                                                                                             <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{new Date(attempt.createdAt).toLocaleDateString()}</div>
@@ -403,7 +403,7 @@ const InteractionsPage = () => {
                                                                                             <Bot size={18} className="text-purple-500" />
                                                                                             <Text className="text-[10px] font-black text-purple-800 uppercase tracking-widest">AI Insights</Text>
                                                                                         </div>
-                                                                                        <Paragraph className="text-[13px] text-slate-600 font-medium leading-relaxed m-0 italic">"{attempt.geminiFeedback}"</Paragraph>
+                                                                                        <Paragraph className="text-[13px] text-slate-600 font-medium leading-relaxed m-0 italic">"{attempt.groqFeedback}"</Paragraph>
                                                                                     </div>
 
                                                                                     {/* Educator Feedback section */}
@@ -454,7 +454,7 @@ const InteractionsPage = () => {
                                 <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-block">Câu luyện tập</Text>
                                 <div className="text-2xl font-black text-purple-950 leading-tight">"{selectedAttempt.targetText}"</div>
                                 <div className="flex items-center gap-4 pt-2">
-                                    <div className="px-4 py-1.5 bg-white rounded-full border border-purple-50 shadow-sm text-xs font-black text-purple-600">{selectedAttempt.geminiScore} Điểm AI</div>
+                                    <div className="px-4 py-1.5 bg-white rounded-full border border-purple-50 shadow-sm text-xs font-black text-purple-600">{selectedAttempt.groqScore} Điểm AI</div>
                                 </div>
                             </div>
                         ) : (

@@ -19,6 +19,7 @@ export interface AuthUser {
   totalExperience?: number
   completedLessons?: number
   createdAt?: string
+  hasDoneEntryTest?: boolean
 }
 
 
@@ -113,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             totalStars: data.user.totalStars ?? 0,
             totalExperience: data.user.totalExperience ?? 0,
             totalXp: data.user.totalExperience ?? 0,
+            hasDoneEntryTest: data.user.hasDoneEntryTest
           },
 
         }
@@ -139,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             totalStars: data.user.totalStars ?? 0,
             totalExperience: data.user.totalExperience ?? 0,
             totalXp: data.user.totalExperience ?? 0,
+            hasDoneEntryTest: data.user.hasDoneEntryTest
           },
 
         }

@@ -269,10 +269,10 @@ const AdminDashboardPage = () => {
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                 <span className="flex items-center gap-2 text-slate-600 text-xs">
-                  <TrendingUp size={14} className="text-blue-500" /> Gemini Flash (Cloud)
+                  <TrendingUp size={14} className="text-blue-500" /> Groq Flash (Cloud)
                 </span>
-                <span className={`font-bold text-[12px] ${health.geminiStatus === 'CONNECTED' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                  {health.geminiStatus || 'OFFLINE'}
+                <span className={`font-bold text-[12px] ${health.groqStatus === 'CONNECTED' ? 'text-emerald-600' : 'text-amber-500'}`}>
+                  {health.groqStatus || 'OFFLINE'}
                 </span>
               </div>
             </div>
