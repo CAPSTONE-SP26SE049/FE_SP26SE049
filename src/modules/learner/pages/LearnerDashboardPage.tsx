@@ -183,7 +183,13 @@ export default function Dashboard() {
                                 <span className="text-orange-100 text-xs font-black uppercase tracking-widest opacity-80">Tiếp tục hành trình</span>
                             </div>
                             <h1 className="text-3xl font-black text-white tracking-tight">
-                                Chào buổi tốt, {firstName}! <span>✨</span>
+                                {(() => {
+                                    const hour = new Date().getHours()
+                                    if (hour < 11) return 'Chào buổi sáng'
+                                    if (hour < 14) return 'Chào buổi trưa'
+                                    if (hour < 18) return 'Chào buổi chiều'
+                                    return 'Chào buổi tối'
+                                })()}, {firstName}! <span>✨</span>
                             </h1>
                             <p className="text-white/70 text-sm font-medium mt-1">Hôm nay bạn đã sẵn sàng phá vỡ rào cản ngôn ngữ chưa?</p>
                         </div>

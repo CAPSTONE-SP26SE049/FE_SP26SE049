@@ -75,8 +75,8 @@ const AiMonitorPage = () => {
                 spanGaps: true,
             },
             {
-                label: 'Groq Flash (AI) ms',
-                data: chartLogs.map((l) => l.processingTimeMs ?? null),
+                label: 'Groq AI (Cloud) ms',
+                data: chartLogs.map((l) => l.processingTimeMs ?? (l as any).groqLatencyMs ?? (l as any).geminiLatencyMs ?? null),
                 borderColor: 'rgba(59, 130, 246, 1)',
                 backgroundColor: 'rgba(59, 130, 246, 0.08)',
                 borderWidth: 2,
@@ -110,15 +110,15 @@ const AiMonitorPage = () => {
         },
     }
 
-    const validGroqFlash = logs.filter((l) => l.processingTimeMs != null)
-    const validAsr = logs.filter((l) => l.asrProcessingTimeMs != null)
-    const avgGroqFlash =
-        validGroqFlash.length > 0
-            ? Math.round(validGroqFlash.reduce((s, l) => s + l.processingTimeMs!, 0) / validGroqFlash.length)
+    const validGroq = logs.filter((l) => (l.processingTimeMs ?? (l as any).groqLatencyMs ?? (l as any).geminiLatencyMs) != null)
+    const validAsr = logs.filter((l) => (l.asrProcessingTimeMs ?? (l as any).azureLatencyMs) != null)
+    const avgGroq =
+        validGroq.length > 0
+            ? Math.round(validGroq.reduce((s, l) => s + (l.processingTimeMs ?? (l as any).groqLatencyMs ?? (l as any).geminiLatencyMs)!, 0) / validGroq.length)
             : null
     const avgAsr =
         validAsr.length > 0
-            ? Math.round(validAsr.reduce((s, l) => s + l.asrProcessingTimeMs!, 0) / validAsr.length)
+            ? Math.round(validAsr.reduce((s, l) => s + (l.asrProcessingTimeMs ?? (l as any).azureLatencyMs)!, 0) / validAsr.length)
             : null
     const accuracy = logs.length > 0 ? ((logs.filter((l) => l.isCorrect).length / logs.length) * 100).toFixed(1) : null
 
@@ -136,7 +136,8 @@ const AiMonitorPage = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-slate-500 mt-1">Theo dõi hiệu năng của Parakeet (Local) và Groq Flash (Cloud) theo thời gian thực</p>
+                    <h1 className="text-2xl font-black text-slate-800">AI Performance Monitor</h1>
+                    <p className="text-sm text-slate-500 mt-1">Theo dõi hiệu năng của Parakeet (Local) và Groq AI (Cloud) theo thời gian thực</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <select
@@ -164,7 +165,7 @@ const AiMonitorPage = () => {
                 {[
                     { label: 'Tổng lượt luyện tập', value: logs.length, icon: Activity, tone: 'text-violet-600 bg-violet-100' },
                     { label: 'Avg. Latency Parakeet', value: avgAsr != null ? `${avgAsr}ms` : '---', icon: Mic, tone: 'text-violet-600 bg-violet-100' },
-                    { label: 'Avg. Latency Groq Flash', value: avgGroqFlash != null ? `${avgGroqFlash}ms` : '---', icon: Brain, tone: 'text-blue-600 bg-blue-100' },
+                    { label: 'Avg. Latency Groq AI', value: avgGroq != null ? `${avgGroq}ms` : '---', icon: Brain, tone: 'text-blue-600 bg-blue-100' },
                     { label: 'Tỷ lệ chính xác', value: accuracy != null ? `${accuracy}%` : '---', icon: CheckCircle, tone: 'text-emerald-600 bg-emerald-100' },
                 ].map((card) => {
                     const Icon = card.icon
@@ -186,7 +187,7 @@ const AiMonitorPage = () => {
                 <div className="mb-4 flex items-center justify-between">
                     <div>
                         <h2 className="text-lg font-black text-slate-800">Biểu đồ Latency theo thời gian</h2>
-                        <p className="text-sm text-slate-500">Violet = Parakeet ASR | Blue = Groq Flash</p>
+                        <p className="text-sm text-slate-500">Violet = Parakeet ASR | Blue = Groq AI</p>
                     </div>
                     <span className="flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
                         <Clock size={12} /> Real-time
@@ -223,7 +224,7 @@ const AiMonitorPage = () => {
                                     <th className="py-3 px-4 font-semibold">ASR nhận diện</th>
                                     <th className="py-3 px-4 font-semibold text-center">Điểm</th>
                                     <th className="py-3 px-4 font-semibold text-center">Parakeet</th>
-                                    <th className="py-3 px-4 font-semibold text-center">Groq Flash</th>
+                                    <th className="py-3 px-4 font-semibold text-center">Groq AI</th>
                                     <th className="py-3 px-4 font-semibold">Vùng</th>
                                 </tr>
                             </thead>
@@ -267,7 +268,9 @@ const AiMonitorPage = () => {
                                                     ) : (
                                                         <XCircle size={14} className="text-rose-500" />
                                                     )}
-                                                    <span className="font-bold text-xs">{log.groqScore ?? '—'}</span>
+                                                    <span className="font-bold text-xs">
+                                                        {log.groqScore ?? (log as any).score ?? (log as any).geminiScore ?? '—'}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className="py-3 px-4 text-center">
@@ -277,7 +280,9 @@ const AiMonitorPage = () => {
                                             </td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className="font-mono text-xs text-blue-600">
-                                                    {log.processingTimeMs != null ? `${log.processingTimeMs}ms` : '—'}
+                                                    {(log.processingTimeMs ?? (log as any).groqLatencyMs ?? (log as any).geminiLatencyMs) != null
+                                                        ? `${log.processingTimeMs ?? (log as any).groqLatencyMs ?? (log as any).geminiLatencyMs}ms`
+                                                        : '—'}
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4">
@@ -320,12 +325,14 @@ const AiMonitorPage = () => {
                                         {selectedLog.asrTranscription || '(không nhận diện được)'}
                                     </div>
                                 </div>
-                                {selectedLog.groqFeedback && (
+                                {(selectedLog.groqFeedback || (selectedLog as any).feedback || (selectedLog as any).geminiFeedback) && (
                                     <div className="rounded-xl bg-blue-50 p-3">
                                         <div className="text-xs text-blue-500 font-semibold mb-1 flex items-center gap-1">
-                                            <Brain size={11} /> Groq Flash Feedback
+                                            <Brain size={11} /> Groq AI Feedback
                                         </div>
-                                        <div className="text-xs text-slate-700 leading-relaxed">{selectedLog.groqFeedback}</div>
+                                        <div className="text-xs text-slate-700 leading-relaxed">
+                                            {selectedLog.groqFeedback || (selectedLog as any).feedback || (selectedLog as any).geminiFeedback}
+                                        </div>
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -336,9 +343,11 @@ const AiMonitorPage = () => {
                                         </div>
                                     </div>
                                     <div className="rounded-xl bg-slate-50 p-3 text-center">
-                                        <div className="text-xs text-slate-400">Groq Flash</div>
+                                        <div className="text-xs text-slate-400">Groq AI</div>
                                         <div className="font-bold text-blue-600 text-lg">
-                                            {selectedLog.processingTimeMs != null ? `${selectedLog.processingTimeMs}ms` : '—'}
+                                            {(selectedLog.processingTimeMs ?? (selectedLog as any).groqLatencyMs ?? (selectedLog as any).geminiLatencyMs) != null
+                                                ? `${selectedLog.processingTimeMs ?? (selectedLog as any).groqLatencyMs ?? (selectedLog as any).geminiLatencyMs}ms`
+                                                : '—'}
                                         </div>
                                     </div>
                                 </div>

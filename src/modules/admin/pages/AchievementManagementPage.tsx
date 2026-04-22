@@ -353,7 +353,9 @@ const AchievementManagementPage: React.FC = () => {
                                                 <EditOutlined style={{ fontSize: 11 }} /> Sửa
                                             </motion.button>
                                             <Popconfirm title="Xóa thành tựu này?" onConfirm={() => handleDelete(item.id)}
-                                                okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+                                                okText="Xóa" cancelText="Hủy"
+                                                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
+                                                cancelButtonProps={{ style: { borderRadius: 8, fontWeight: 600 } }}>
                                                 <motion.button whileTap={{ scale: 0.95 }}
                                                     className="flex items-center justify-center gap-1 h-8 rounded-xl bg-red-50 border border-red-100 text-red-500 text-xs font-black hover:bg-red-100 transition-colors">
                                                     <DeleteOutlined style={{ fontSize: 11 }} /> Xóa

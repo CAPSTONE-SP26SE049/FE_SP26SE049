@@ -27,6 +27,9 @@ from huggingface_hub import hf_hub_download
 # Load mô hình NVIDIA Parakeet Vietnamese
 print("Đang tải mô hình NVIDIA Parakeet... Vui lòng đợi.")
 
+TEMP_DIR = "temp_audio"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
 def load_model():
     try:
         print("Đang kiểm tra và tải file mô hình từ HuggingFace (nếu chưa có)...")

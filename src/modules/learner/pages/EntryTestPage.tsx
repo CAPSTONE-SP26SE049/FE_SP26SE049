@@ -15,6 +15,7 @@ import { Spin, Button, Progress, message } from 'antd'
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
+import { ASR_BASE_URL } from '../../../config'
 
 // --- Types ---
 interface EntryTestQuestion {
@@ -123,19 +124,24 @@ const EntryTestPage: React.FC = () => {
                 uploadFileName = 'recording.webm'
             }
 
-            // Bước 2: gọi Local ASR (giống hệt QuizPage)
+            // Bước 2: gọi Local ASR (Sử dụng ASR_URL từ env, đo latency)
+            const asrStartTime = Date.now()
             const asrFormData = new FormData()
             asrFormData.append('file', audioForAsr, uploadFileName)
 
-            const asrResponse = await fetch('http://localhost:8000/asr', {
+            const asrResponse = await fetch(ASR_BASE_URL, {
                 method: 'POST',
                 body: asrFormData,
             })
+            if (!asrResponse.ok) throw new Error(`ASR Server error: ${asrResponse.status}`)
+
             const asrData = await asrResponse.json()
+            const asrProcessingTimeMs = Date.now() - asrStartTime
+
             const rawText = asrData.text || ''
             const transcribedText = typeof rawText === 'object' ? (rawText.text || '') : rawText
 
-            // Bước 3: gọi BE /ai/feedback với transcript (giống hệt QuizPage)
+            // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
             const targetText = questions[idx]?.targetText || ''
             const feedbackResponse = await apiClient.post('/ai/feedback', {
                 transcribedText,
@@ -143,9 +149,11 @@ const EntryTestPage: React.FC = () => {
                 challengeId: questions[idx]?.id || null,
                 dialect: questions[idx]?.regionCategory || '',
                 consentGiven: false,
+                asrProcessingTimeMs
             })
 
-            const result = feedbackResponse.data || feedbackResponse
+            // Fix: Unwrap data if needed
+            const result = feedbackResponse.data?.data || feedbackResponse.data || feedbackResponse
             const normalizedScore = Number(result?.score ?? result?.accuracy ?? 0)
             const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || '')
             const detectedError = result?.detectedError || result?.errorType || ''
@@ -168,11 +176,12 @@ const EntryTestPage: React.FC = () => {
         }
     }
 
-    // Phát hiện lỗi phát âm vùng miền từ errorType string
+    // Phát hiện lỗi phát âm vùng miền từ errorType string (Cập nhật pattern đầy đủ hơn)
     const detectRegionalError = (errorType: string): boolean => {
         if (!errorType) return false
-        const regional = ['n/l', 'nl', 's/x', 'sx', 'tr/ch', 'trch', 'd/r', 'dr', 'r/gi', 'rgi']
-        return regional.some(p => errorType.toLowerCase().includes(p))
+        const lower = errorType.toLowerCase()
+        const regional = ['n/l', 'nl', 's/x', 'sx', 'tr/ch', 'trch', 'd/r', 'dr', 'r/gi', 'rgi', 'v/z', 'vz', 'dialect', 'vùng miền', 'đặc trưng']
+        return regional.some(p => lower.includes(p))
     }
 
     // 3. Next Question

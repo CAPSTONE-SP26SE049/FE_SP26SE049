@@ -20,6 +20,7 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
+import { ASR_BASE_URL } from '../../../config'
 
 
 
@@ -120,10 +121,10 @@ function parseChallenge(raw: any): ParsedChallenge {
 
   if (hasWords && meta.error_index !== undefined) {
     mode = 'FIND_WRONG_WORD'
-  } else if (skillType === 'WRITING' || hasWriting) {
-    mode = 'WRITING_FILL'
   } else if (hasOptions) {
     mode = 'MULTIPLE_CHOICE'
+  } else if (skillType === 'WRITING' || hasWriting) {
+    mode = 'WRITING_FILL'
   } else if (skillType === 'SPEAKING' || hasTranscript) {
     mode = 'SPEAKING_READ'
   }
@@ -515,7 +516,7 @@ const QuizPage: React.FC = () => {
       asrFormData.append('file', audioForAsr, uploadFileName)
 
       const asrStartTime = performance.now()
-      const asrResponse = await fetch('http://localhost:8000/asr', {
+      const asrResponse = await fetch(ASR_BASE_URL, {
         method: 'POST',
         body: asrFormData,
       })

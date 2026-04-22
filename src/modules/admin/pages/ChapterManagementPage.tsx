@@ -316,7 +316,11 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Helper to resolve region key from dialectId ---
     const getRegionKey = (dialectId: string) => {
         const dialect = dialects.find((item) => item.id === dialectId);
-        return (dialect?.name || '').toUpperCase();
+        const name = (dialect?.name || '').toUpperCase();
+        if (name.includes('BẮC')) return 'NORTH';
+        if (name.includes('TRUNG')) return 'CENTRAL';
+        if (name.includes('NAM')) return 'SOUTH';
+        return name || 'NORTH';
     };
 
     const fetchedAssignments = (location.state as any)?.fetchedAssignments as any[] | undefined;
@@ -588,7 +592,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 }}
                 onOk={() => form.submit()}
                 confirmLoading={creating}
-                okText="Xác Nhận"
+                okText="Xác nhận"
                 okButtonProps={{
                     style: { background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', borderRadius: '8px', height: 40, fontWeight: 600, paddingInline: 24, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }
                 }}
