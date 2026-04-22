@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Button, Modal, Input, message, Typography, Avatar, Empty, Tabs, Tag } from 'antd';
-import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore } from 'lucide-react';
+import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore, Bot, Info } from 'lucide-react';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { feedbackService, type SpeakingAttempt, type Feedback } from '../services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -123,7 +123,7 @@ const InteractionsPage = () => {
             message.success('Đã gửi nhận xét thành công');
             setComment('');
             setFeedbackModalVisible(false);
-            fetchAttempts(selectedStudent.id);
+            if (selectedStudent) fetchAttempts(selectedStudent.id);
         } catch (error) {
             message.error('Gửi nhận xét thất bại');
         }
@@ -235,7 +235,10 @@ const InteractionsPage = () => {
                 <AnimatePresence mode="wait">
                     {!selectedStudent ? (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                            key="empty"
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
                             className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center"
                         >
                             <div className="relative mb-6">
@@ -248,7 +251,12 @@ const InteractionsPage = () => {
                             <Paragraph className="text-slate-400 text-sm max-w-xs mx-auto font-medium">Chọn một học viên từ danh sách bên trái để bắt đầu thảo luận và gửi những nhận xét quý báu giúp họ cải thiện kỹ năng.</Paragraph>
                         </motion.div>
                     ) : (
-                        <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col h-full gap-4 overflow-hidden">
+                        <motion.div
+                            key={selectedStudent.id}
+                            initial={{ opacity: 0, scale: 0.99 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col h-full gap-4 overflow-hidden"
+                        >
                             {/* Student Header Card */}
                             <Card className="rounded-xl border-none shadow-sm bg-white" bodyStyle={{ padding: '8px 16px' }}>
                                 <div className="flex items-center justify-between">
@@ -359,15 +367,18 @@ const InteractionsPage = () => {
                                                             <Empty description="Chưa có lịch sử phát âm" className="mt-10" />
                                                         ) : (
                                                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                                {(attempts || []).map((attempt) => {
+                                                                {(attempts || []).map((attempt, idx) => {
                                                                     const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
+                                                                    const score = attempt.groqScore || attempt.geminiScore || (attempt as any).score || 0;
+                                                                    const feedbackText = attempt.groqFeedback || attempt.geminiFeedback || (attempt as any).feedback || "";
+
                                                                     return (
-                                                                        <motion.div key={attempt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                                                            <Card className="rounded-xl border border-slate-100 hover:shadow-sm transition-all bg-white" bodyStyle={{ padding: '8px' }}>
-                                                                                <div className="flex justify-between items-center mb-1.5">
-                                                                                    <div className="flex items-center gap-1.5">
-                                                                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white font-black text-[10px]`} style={{ backgroundColor: getScoreColor(attempt.groqScore ?? (attempt as any).score) }}>
-                                                                                            {attempt.groqScore ?? (attempt as any).score ?? '—'}
+                                                                        <motion.div key={attempt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+                                                                            <Card className="rounded-xl border border-slate-200 shadow-none hover:shadow-sm transition-all duration-300 bg-white group" bodyStyle={{ padding: '12px' }}>
+                                                                                <div className="flex justify-between items-center mb-2">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shadow-sm text-xs`} style={{ backgroundColor: getScoreColor(score) }}>
+                                                                                            {score}
                                                                                         </div>
                                                                                         <div>
                                                                                             <div className="text-[7px] font-black text-slate-300 uppercase leading-none">{new Date(attempt.createdAt).toLocaleDateString()}</div>
@@ -383,9 +394,16 @@ const InteractionsPage = () => {
                                                                                         {highlightErrors(attempt.targetText, attempt.asrTranscription)}
                                                                                     </div>
 
+                                                                                    {feedbackText && (
+                                                                                        <div className="flex items-start gap-1.5 p-1.5 bg-purple-50/30 rounded-lg border border-purple-50/50">
+                                                                                            <Bot size={12} className="text-purple-400 flex-shrink-0 mt-0.5" />
+                                                                                            <Paragraph className="text-[9px] text-slate-500 font-bold leading-tight m-0 italic line-clamp-1">"{feedbackText}"</Paragraph>
+                                                                                        </div>
+                                                                                    )}
+
                                                                                     {educatorComment && (
-                                                                                        <div className="p-1 px-2 bg-purple-600 text-white rounded-lg text-[9px] font-bold italic">
-                                                                                            Edu: "{educatorComment.comment}"
+                                                                                        <div className="p-1.5 bg-orange-50/30 rounded-lg border border-orange-100/50 border-dashed">
+                                                                                            <Paragraph className="text-[10px] text-purple-900 font-black m-0 line-clamp-1 italic">"{educatorComment.comment}"</Paragraph>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -409,9 +427,12 @@ const InteractionsPage = () => {
 
             {/* Modal Gửi Nhận Xét */}
             <Modal
-                title={null} open={feedbackModalVisible}
+                title={null}
+                open={feedbackModalVisible}
                 onCancel={() => { setFeedbackModalVisible(false); setSelectedAttempt(null); }}
-                footer={null} centered width={450}
+                footer={null}
+                centered
+                width={450}
                 className="premium-modal-compact"
                 bodyStyle={{ padding: 0 }}
             >
@@ -421,9 +442,14 @@ const InteractionsPage = () => {
                     </div>
                     <div className="p-6 space-y-4">
                         {selectedAttempt ? (
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <Text className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mục tiêu luyện tập</Text>
-                                <div className="text-xs font-bold text-slate-700 italic">"{selectedAttempt.targetText}"</div>
+                            <div className="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-100">
+                                <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Mục tiêu luyện tập</Text>
+                                <div className="text-sm font-bold text-slate-700 italic">"{selectedAttempt.targetText}"</div>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <div className="px-3 py-1 bg-white rounded-full border border-purple-50 shadow-sm text-[10px] font-black text-purple-600">
+                                        {selectedAttempt.geminiScore || selectedAttempt.groqScore} Điểm AI
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-center gap-2">
@@ -444,7 +470,9 @@ const InteractionsPage = () => {
                         </div>
 
                         <Button
-                            type="primary" block size="middle"
+                            type="primary"
+                            block
+                            size="middle"
                             className="rounded-xl h-10 font-black shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-[11px] uppercase tracking-widest"
                             onClick={handleSendFeedback}
                             disabled={!comment.trim()}

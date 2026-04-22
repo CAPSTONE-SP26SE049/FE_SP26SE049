@@ -9,6 +9,10 @@ import nemo.collections.asr as nemo_asr
 
 app = FastAPI(title="NVIDIA Parakeet ASR Server")
 
+# Cấu hình thư mục tạm
+TEMP_DIR = "temp_audio"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
 # Cấu hình CORS để Frontend có thể gọi API
 app.add_middleware(
     CORSMiddleware,
@@ -74,6 +78,7 @@ if asr_model:
 else:
     print("Không thể tải mô hình. Vui lòng kiểm tra lại kết nối hoặc file cache.")
 
+
 @app.post("/asr")
 async def transcribe(file: UploadFile = File(...)):
     if asr_model is None:
@@ -87,8 +92,16 @@ async def transcribe(file: UploadFile = File(...)):
         buffer.write(await file.read())
 
     try:
-        # Xử lý audio (Nemo yêu cầu 16kHz mono)
-        audio, sr = librosa.load(temp_path, sr=16000, mono=True)
+        # Xử lý audio (Ưu tiên dùng soundfile để tránh phụ thuộc ffmpeg)
+        try:
+            audio, sr = sf.read(temp_path)
+            if sr != 16000:
+                audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+                sr = 16000
+        except Exception:
+            # Fallback nếu soundfile không đọc được định dạng này
+            audio, sr = librosa.load(temp_path, sr=16000, mono=True)
+
         processed_path = os.path.join(TEMP_DIR, f"processed_{file_id}.wav")
         sf.write(processed_path, audio, sr)
 

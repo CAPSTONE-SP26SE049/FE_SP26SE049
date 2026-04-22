@@ -529,7 +529,7 @@ const QuizPage: React.FC = () => {
       const rawText = asrData.text || ""
       const transcribedText = typeof rawText === 'object' ? (rawText.text || "") : rawText
 
-      // 3. Call Backend Gemini Feedback (kèm metadata cho dataset)
+      // 3. Call Backend Groq Feedback (kèm metadata cho dataset)
       // Upload audio thẳng lên Cloudinary từ Frontend nếu được phép
       let audioUrl = null
       if (consentGiven && audioForAsr) {
@@ -618,7 +618,7 @@ const QuizPage: React.FC = () => {
         isCorrect: false,
         transcription: "Lỗi hệ thống",
         errorDetail: String(err?.response?.data?.message || err?.message || 'Lỗi hệ thống'),
-        suggestion: 'Kiểm tra ASR Server (8000) và Gemini API Key ở Backend.'
+        suggestion: 'Kiểm tra ASR Server (8000) và Groq API Key ở Backend.'
       })
       setAnswered(true)
     } finally {

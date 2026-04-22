@@ -136,6 +136,7 @@ const AiMonitorPage = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
+                    <h1 className="text-2xl font-black text-slate-800">AI Performance Monitor</h1>
                     <p className="text-sm text-slate-500 mt-1">Theo dõi hiệu năng của Parakeet (Local) và Groq AI (Cloud) theo thời gian thực</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -324,7 +325,6 @@ const AiMonitorPage = () => {
                                         {selectedLog.asrTranscription || '(không nhận diện được)'}
                                     </div>
                                 </div>
-                                {/* Use a logical OR for the feedback content as well */}
                                 {(selectedLog.groqFeedback || (selectedLog as any).feedback || (selectedLog as any).geminiFeedback) && (
                                     <div className="rounded-xl bg-blue-50 p-3">
                                         <div className="text-xs text-blue-500 font-semibold mb-1 flex items-center gap-1">

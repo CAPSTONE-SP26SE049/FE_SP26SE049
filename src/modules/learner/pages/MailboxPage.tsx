@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Typography, Spin, Avatar, Tag, message, Badge, Button } from 'antd';
-import { Mail, Clock, Sparkles, MessageCircle } from 'lucide-react';
+import { Card, Typography, Spin, Avatar, Tag, message, Badge, Button, Progress } from 'antd';
+import { Mail, Clock, Sparkles, MessageCircle, AudioLines, Info } from 'lucide-react';
 import { feedbackService, type Feedback } from '../../educator/services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBox from '../components/ChatBox';
@@ -96,14 +96,36 @@ const MailboxPage = () => {
                                             )}
                                         </div>
 
-                                        <div className="text-center bg-white px-2 py-1.5 rounded-xl border border-slate-100 min-w-[70px]">
-                                            <div className="text-[8px] font-black text-slate-300 uppercase leading-none mb-0.5">Điểm AI</div>
-                                            <div className="text-lg font-black text-indigo-600 leading-none">
+                                        <div className="text-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100 min-w-[100px]">
+                                            <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Điểm AI</div>
+                                            <div className="text-2xl font-black text-indigo-600 leading-none">
                                                 {item.groqScore ?? (item as any).score ?? 0}
-                                                <span className="text-[9px] text-slate-300">/100</span>
+                                                <span className="text-xs text-slate-300">/100</span>
                                             </div>
+                                            <Progress percent={item.groqScore ?? (item as any).score ?? 0} showInfo={false} size="small" strokeColor="#6366f1" />
                                         </div>
                                     </div>
+
+                                    {item.audioUrl && (
+                                        <div className="bg-white p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                                            <AudioLines className="text-indigo-400" size={20} />
+                                            <audio controls className="h-8 flex-1 custom-audio-player" src={item.audioUrl} />
+                                        </div>
+                                    )}
+
+                                    {(item.groqFeedback || (item as any).feedback) && (
+                                        <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-2 opacity-10">
+                                                <Sparkles className="text-amber-500" />
+                                            </div>
+                                            <div className="text-[10px] font-bold text-amber-700 uppercase mb-1 flex items-center gap-1">
+                                                <Info size={12} /> AI phân tích lỗi phát âm
+                                            </div>
+                                            <Paragraph className="text-xs text-amber-900 m-0 leading-relaxed italic">
+                                                {item.groqFeedback || (item as any).feedback}
+                                            </Paragraph>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
