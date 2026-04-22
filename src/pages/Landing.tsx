@@ -1,10 +1,28 @@
 import { useNavigate } from 'react-router-dom';
-import { Mic, Map, Award, Globe, Brain, Sparkles, ArrowRight } from 'lucide-react';
+import { Mic, Map, Award, Globe, Brain, Sparkles, ArrowRight, User, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../core/auth/AuthContext';
 
 const Landing = () => {
+    const { isAuthenticated, session, logout } = useAuth();
     const navigate = useNavigate();
+
+    const handleStart = () => {
+        if (isAuthenticated) {
+            navigate(session?.user?.role === 'USER' ? '/learner/dashboard' : (session?.user?.role === 'ADMIN' ? '/admin' : '/educator'));
+        } else {
+            navigate('/register');
+        }
+    };
+
+    const handleLogin = () => {
+        if (isAuthenticated) {
+            navigate(session?.user?.role === 'USER' ? '/learner/dashboard' : (session?.user?.role === 'ADMIN' ? '/admin' : '/educator'));
+        } else {
+            navigate('/login');
+        }
+    };
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -44,8 +62,32 @@ const Landing = () => {
                         <div className="text-2xl font-extrabold text-purple-600 tracking-wide">SpeakVN</div>
                     </div>
                     <div className="hidden sm:flex items-center gap-4">
-                        <Button variant="ghost" onClick={() => navigate('/login')} className="hover:bg-gray-100/50 font-bold">Đăng nhập</Button>
-                        <Button variant="primary" onClick={() => navigate('/register')} className="shadow-lg shadow-purple-300/50 hover:shadow-purple-300 hover:-translate-y-0.5 transition-all font-bold">Bắt đầu</Button>
+                        {isAuthenticated ? (
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleLogin}
+                                    className="hover:bg-gray-100/50 font-bold flex items-center gap-2"
+                                >
+                                    <User size={18} />
+                                    {session?.user?.fullName || 'Tài khoản'}
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={logout}
+                                    className="text-gray-500 hover:text-red-500 border-none bg-transparent hover:bg-red-50 rounded-full h-10 w-10 p-0 flex items-center justify-center transition-colors"
+                                    title="Đăng xuất"
+                                >
+                                    <LogOut size={18} />
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <Button variant="ghost" onClick={() => navigate('/login')} className="hover:bg-gray-100/50 font-bold">Đăng nhập</Button>
+                                <Button variant="primary" onClick={() => navigate('/register')} className="shadow-lg shadow-purple-300/50 hover:shadow-purple-300 hover:-translate-y-0.5 transition-all font-bold">Bắt đầu</Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
@@ -74,19 +116,31 @@ const Landing = () => {
                         </motion.p>
 
                         <motion.div variants={itemVariants} className="flex flex-row gap-3 w-full sm:w-auto">
-                            <Button
-                                className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 shadow-xl shadow-purple-300/40 hover:shadow-purple-300/60 transition-all hover:scale-105 active:scale-95 font-extrabold whitespace-nowrap"
-                                onClick={() => navigate('/register')}
-                            >
-                                Bắt đầu miễn phí
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 hover:bg-gray-50 border-2 font-bold text-gray-600 whitespace-nowrap"
-                                onClick={() => navigate('/login')}
-                            >
-                                Đăng nhập
-                            </Button>
+                            {isAuthenticated ? (
+                                <Button
+                                    className="flex-1 sm:flex-none text-base sm:text-lg px-6 sm:px-10 py-4 shadow-xl shadow-purple-300/40 hover:shadow-purple-300/60 transition-all hover:scale-105 active:scale-95 font-extrabold whitespace-nowrap bg-gradient-to-r from-purple-600 to-indigo-600"
+                                    onClick={handleStart}
+                                >
+                                    Vào học ngay
+                                    <ArrowRight className="ml-2" />
+                                </Button>
+                            ) : (
+                                <>
+                                    <Button
+                                        className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 shadow-xl shadow-purple-300/40 hover:shadow-purple-300/60 transition-all hover:scale-105 active:scale-95 font-extrabold whitespace-nowrap"
+                                        onClick={() => navigate('/register')}
+                                    >
+                                        Bắt đầu miễn phí
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        className="flex-1 sm:flex-none text-base sm:text-lg px-4 sm:px-8 py-4 hover:bg-gray-50 border-2 font-bold text-gray-600 whitespace-nowrap"
+                                        onClick={() => navigate('/login')}
+                                    >
+                                        Đăng nhập
+                                    </Button>
+                                </>
+                            )}
                         </motion.div>
 
                         <motion.div variants={itemVariants} className="flex items-center gap-6 pt-4 text-gray-400 text-sm font-semibold">

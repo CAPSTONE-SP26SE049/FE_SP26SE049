@@ -26,6 +26,7 @@ import AchievementManagementPage from '../modules/admin/pages/AchievementManagem
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
+import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -36,11 +37,12 @@ import QuizPage from '../modules/learner/pages/QuizPage'
 import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardPage'
 import AchievementsPage from '../modules/learner/pages/AchievementsPage'
 
-import { ProtectedRoute, GuestRoute } from '../core/auth/ProtectedRoute'
+import { ProtectedRoute, AnonymousRoute } from '../core/auth/ProtectedRoute'
 
 import CustomPathDesignerPage from '../modules/educator/pages/CustomPathDesignerPage'
 import CustomJourneyPage from '../modules/learner/pages/CustomJourneyPage'
 import MailboxPage from '../modules/learner/pages/MailboxPage'
+import EntryTestPage from '../modules/learner/pages/EntryTestPage'
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -49,8 +51,8 @@ export const AppRoutes: React.FC = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
 
-      {/* Guest-only routes: đã đăng nhập → redirect về home của role */}
-      <Route element={<GuestRoute />}>
+      {/* Routes dành cho người chưa đăng nhập: đã đăng nhập → redirect về home của role */}
+      <Route element={<AnonymousRoute />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
@@ -69,6 +71,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="achievements" element={<AchievementManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="ai-monitor" element={<AiMonitorPage />} />
+          <Route path="entry-test" element={<EntryTestManagementPage />} />
         </Route>
       </Route>
 
@@ -92,6 +95,7 @@ export const AppRoutes: React.FC = () => {
 
       {/* Learner routes - chỉ USER */}
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+        <Route path="/entry-test" element={<EntryTestPage />} />
         <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
         <Route path="/learner" element={<LearnerLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />

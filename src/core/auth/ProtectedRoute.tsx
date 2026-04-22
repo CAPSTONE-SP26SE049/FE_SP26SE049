@@ -43,14 +43,23 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo ?? home} replace />
   }
 
+  // Ràng buộc Entry Test cho Learner mới
+  if (
+    session.user.role === 'USER' &&
+    !session.user.hasDoneEntryTest &&
+    location.pathname !== '/entry-test'
+  ) {
+    return <Navigate to="/entry-test" replace />
+  }
+
   return <Outlet />
 }
 
 /**
- * GuestRoute – dành cho các trang chỉ dành cho khách (login, register…).
- * Nếu đã đăng nhập → redirect về trang home của role.
+ * AnonymousRoute – dành cho các trang chỉ dành cho người chưa đăng nhập (login, register…).
+ * Nếu đã đăng nhập, tự động chuyển hướng về trang chủ tương ứng của role.
  */
-export const GuestRoute: React.FC = () => {
+export const AnonymousRoute: React.FC = () => {
   const { isAuthenticated, session } = useAuth()
 
   if (isAuthenticated && session) {

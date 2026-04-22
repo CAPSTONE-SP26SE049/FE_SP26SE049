@@ -102,8 +102,8 @@ const MailboxPage = () => {
 
                                         <div className="text-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
                                             <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Điểm AI</div>
-                                            <div className="text-2xl font-black text-indigo-600 leading-none">{item.geminiScore || 0}<span className="text-xs text-slate-300">/100</span></div>
-                                            <Progress percent={item.geminiScore || 0} showInfo={false} size="small" strokeColor="#6366f1" />
+                                            <div className="text-2xl font-black text-indigo-600 leading-none">{item.groqScore || 0}<span className="text-xs text-slate-300">/100</span></div>
+                                            <Progress percent={item.groqScore || 0} showInfo={false} size="small" strokeColor="#6366f1" />
                                         </div>
                                     </div>
 
@@ -114,7 +114,7 @@ const MailboxPage = () => {
                                         </div>
                                     )}
 
-                                    {item.geminiFeedback && (
+                                    {item.groqFeedback && (
                                         <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50 relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-2 opacity-10">
                                                 <Sparkles className="text-amber-500" />
@@ -123,7 +123,7 @@ const MailboxPage = () => {
                                                 <Info size={12} /> AI phân tích lỗi phát âm
                                             </div>
                                             <Paragraph className="text-xs text-amber-900 m-0 leading-relaxed italic">
-                                                {item.geminiFeedback}
+                                                {item.groqFeedback}
                                             </Paragraph>
                                         </div>
                                     )}

@@ -14,12 +14,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Medal,
+  FlaskConical,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { key: '/admin', icon: LayoutDashboard, label: 'Tổng quan (Analytics)' },
   { key: '/admin/chapters', icon: BookOpen, label: 'Quản lý bài tập (Content)' },
   { key: '/admin/ai-monitor', icon: Bot, label: 'Giám sát AI (AI Monitor)' },
+  { key: '/admin/entry-test', icon: FlaskConical, label: 'Quản lý Entry Test' },
   { key: '/admin/users', icon: Users, label: 'Quản lý người dùng' },
   { key: '/admin/achievements', icon: Medal, label: 'Hệ thống Thành tựu' },
   { key: '/admin/settings', icon: Settings, label: 'Cài đặt hệ thống' },
