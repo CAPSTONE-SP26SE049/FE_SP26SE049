@@ -946,29 +946,12 @@ const QuizPage: React.FC = () => {
                           ? (isCorrect ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-400 text-red-500 bg-red-50')
                           : 'border-purple-400 text-purple-600 bg-purple-100/50'
                           } rounded-t-xl`}>
-                          {answered ? (isCorrect ? writingInput : ch.correctWords[0]) : (writingInput || '...')}
+                          {answered ? writingInput : (writingInput || '...')}
                         </span>
                       )}
                     </React.Fragment>
                   )) : ch.sentence}
                 </p>
-              </div>
-            )}
-
-            {ch.distractors.length > 0 && !answered && (
-              <div className="flex flex-wrap gap-2 mb-6 justify-center">
-                {[...ch.correctWords, ...ch.distractors].sort(() => Math.random() - 0.5).map((w, i) => (
-                  <motion.button key={i}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setWritingInput(w)}
-                    className={`px-5 py-2.5 rounded-2xl border-2 font-bold text-sm shadow-sm transition-all ${writingInput === w
-                      ? 'border-purple-500 bg-purple-500 text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
-                      }`}>
-                    {w}
-                  </motion.button>
-                ))}
               </div>
             )}
 
@@ -989,7 +972,7 @@ const QuizPage: React.FC = () => {
                     }`}>
                   {isCorrect
                     ? <><CheckCircleFilled className="text-xl" /> Chính xác!</>
-                    : <><CloseCircleFilled className="text-xl" /> Đáp án đúng: &ldquo;{ch.correctWords[0]}&rdquo;</>}
+                    : <><CloseCircleFilled className="text-xl" /> Sai rồi, hãy cố gắng ở câu sau!</>}
                 </motion.div>
               )}
             </div>
@@ -1132,7 +1115,7 @@ const QuizPage: React.FC = () => {
                       className="absolute -inset-4 border-2 border-dashed border-purple-200 rounded-full"
                     />
                   </div>
-                  <p className="text-purple-600 font-black text-lg animate-bounce">AI Gemma 4 đang chấm điểm...</p>
+                  <p className="text-purple-600 font-black text-lg animate-bounce">AI LLAMA đang chấm điểm...</p>
                 </div>
               )}
 
