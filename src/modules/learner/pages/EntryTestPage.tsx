@@ -37,7 +37,7 @@ interface StepResult {
 
 const EntryTestPage: React.FC = () => {
     const navigate = useNavigate()
-    const { updateSessionItem } = useAuth()
+    const { session, updateSessionItem } = useAuth()
     const recorder = useAudioRecorder()
 
     const [questions, setQuestions] = useState<EntryTestQuestion[]>([])
@@ -49,6 +49,15 @@ const EntryTestPage: React.FC = () => {
     const [finished, setFinished] = useState(false)
     const [finalData, setFinalData] = useState<any>(null)
     const initialized = useRef(false)
+
+    // 0. Redirect if already done
+    useEffect(() => {
+        console.log("Current session user:", session?.user);
+        if (session?.user?.hasDoneEntryTest) {
+            console.log("User already done entry test. Redirecting...");
+            navigate('/learner/roadmap')
+        }
+    }, [session, navigate])
 
     // 1. Fetch Question Set
     useEffect(() => {

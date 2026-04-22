@@ -332,26 +332,45 @@ const ChapterStep = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, type: 'spring', stiffness: 100, damping: 15 }}
-                whileHover={{ y: -4, scale: 1.01 }}
-                className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer group hover:shadow-lg hover:border-purple-200 transition-all duration-400"
-                onClick={() => onSelect(ch)}
+                whileHover={!ch.isLocked ? { y: -4, scale: 1.01 } : {}}
+                className={clsx(
+                  "relative bg-white rounded-2xl border transition-all duration-400 overflow-hidden",
+                  ch.isLocked
+                    ? "opacity-75 cursor-not-allowed border-gray-100 bg-gray-50/30"
+                    : "cursor-pointer group hover:shadow-lg hover:border-purple-200 border-gray-100"
+                )}
+                onClick={() => !ch.isLocked && onSelect(ch)}
               >
                 {/* Left accent stripe */}
                 <div
-                  className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl transition-all duration-300 group-hover:w-2"
-                  style={{ background: `linear-gradient(to bottom, ${meta.color}, ${meta.accent})` }}
+                  className={clsx(
+                    "absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl transition-all duration-300",
+                    !ch.isLocked && "group-hover:w-2"
+                  )}
+                  style={{
+                    background: ch.isLocked
+                      ? '#d1d5db'
+                      : `linear-gradient(to bottom, ${meta.color}, ${meta.accent})`
+                  }}
                 />
 
                 <div className="flex items-center gap-5 p-5 pl-6">
                   {/* Number badge */}
                   <div className="relative flex-shrink-0">
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
-                      style={{ background: `linear-gradient(135deg, ${meta.color}, ${meta.accent})` }}
+                      className={clsx(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg transition-all duration-300",
+                        !ch.isLocked && "group-hover:scale-110 group-hover:rotate-3"
+                      )}
+                      style={{
+                        background: ch.isLocked
+                          ? '#9ca3af'
+                          : `linear-gradient(135deg, ${meta.color}, ${meta.accent})`
+                      }}
                     >
-                      {seqNum}
+                      {ch.isLocked ? <LockFilled className="text-white/80 text-lg" /> : seqNum}
                     </div>
-                    {isCompleted && (
+                    {isCompleted && !ch.isLocked && (
                       <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-md border-2 border-white">
                         <CheckCircleFilled className="text-white text-[10px]" />
                       </div>
@@ -363,23 +382,38 @@ const ChapterStep = ({
                     <div className="flex items-center gap-2 mb-1">
                       <span
                         className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md"
-                        style={{ color: meta.color, backgroundColor: `${meta.color}15` }}
+                        style={{
+                          color: ch.isLocked ? '#6b7280' : meta.color,
+                          backgroundColor: ch.isLocked ? '#f3f4f6' : `${meta.color}15`
+                        }}
                       >
                         Chương {seqNum}
                       </span>
-                      {isCompleted && (
+                      {isCompleted && !ch.isLocked && (
                         <span className="text-[10px] font-black tracking-wider uppercase text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">
                           ✓ Hoàn thành
                         </span>
                       )}
+                      {ch.isLocked && (
+                        <span className="text-[10px] font-black tracking-wider uppercase text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
+                          🔒 Đang khóa
+                        </span>
+                      )}
                     </div>
-                    <h4 className="font-black text-gray-800 text-base truncate group-hover:text-purple-700 transition-colors">{ch.name}</h4>
-                    <p className="text-sm text-gray-400 mt-0.5 truncate font-medium">{desc}</p>
+                    <h4 className={clsx(
+                      "font-black text-base truncate transition-colors",
+                      ch.isLocked ? "text-gray-400" : "text-gray-800 group-hover:text-purple-700"
+                    )}>
+                      {ch.name}
+                    </h4>
+                    <p className="text-sm text-gray-400 mt-0.5 truncate font-medium">
+                      {ch.isLocked ? "Hoàn thành chương trước để mở khóa" : desc}
+                    </p>
                   </div>
 
                   {/* Right side: Stars + Arrow */}
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    {isCompleted && stars > 0 && (
+                    {isCompleted && stars > 0 && !ch.isLocked && (
                       <div className="flex gap-0.5">
                         {[...Array(3)].map((_, i) => (
                           <StarFilled key={i} className={clsx('text-sm', i < stars ? 'text-yellow-400' : 'text-gray-200')} />
@@ -387,10 +421,16 @@ const ChapterStep = ({
                       </div>
                     )}
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:translate-x-1"
-                      style={{ backgroundColor: `${meta.color}12`, color: meta.color }}
+                      className={clsx(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm transition-all duration-300",
+                        !ch.isLocked && "group-hover:shadow-md group-hover:translate-x-1"
+                      )}
+                      style={{
+                        backgroundColor: ch.isLocked ? '#f3f4f6' : `${meta.color}12`,
+                        color: ch.isLocked ? '#9ca3af' : meta.color
+                      }}
                     >
-                      <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                      {ch.isLocked ? <LockFilled size={18} /> : <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />}
                     </div>
                   </div>
                 </div>
