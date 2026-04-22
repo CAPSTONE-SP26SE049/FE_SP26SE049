@@ -98,7 +98,7 @@ apiClient.interceptors.response.use(
             const expiredToken = window.sessionStorage.getItem('ACCESS_TOKEN') || window.localStorage.getItem('ACCESS_TOKEN');
             console.log("Attempting to refresh token with:", refreshToken);
 
-            const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken }, {
+            const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }, {
               headers: { Authorization: `Bearer ${expiredToken}` }
             });
             console.log("Refresh response:", res.data);
