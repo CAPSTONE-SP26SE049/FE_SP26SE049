@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Table, Card, Button, Input, Typography, Avatar, Tag, message } from 'antd';
-import { Search, Rocket, Clock, CheckCircle, Compass, Users, Map } from 'lucide-react';
+import { Search, Rocket, Clock, CheckCircle, Compass, Users, Map } from '../../../lib/icons';
 import { useNavigate } from 'react-router-dom';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { motion } from 'framer-motion';

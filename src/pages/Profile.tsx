@@ -1,4 +1,4 @@
-import { Flame, Target, Zap, Lock, Shield, Settings } from 'lucide-react';
+import { Flame, Target, Zap, Lock, Shield, Settings } from '../lib/icons';
 import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
 

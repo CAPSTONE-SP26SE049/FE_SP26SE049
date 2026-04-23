@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Headphones, Mic, PenTool, BookOpen, Sparkles } from 'lucide-react';
+import { Headphones, Mic, PenTool, BookOpen, Sparkles } from '../../../lib/icons';
 import { customPathService, type CustomPath, type PathQuiz } from '../../educator/services/customPathService';
 
 const { Title, Text, Paragraph } = Typography;

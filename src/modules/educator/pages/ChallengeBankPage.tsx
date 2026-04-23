@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Empty, List, Tag, Typography, message, Button, Skeleton } from 'antd';
-import { BookOpen, CheckCircle2, Clock3, Target, LayoutDashboard, Rocket, Plus, ChevronRight, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle2, Clock3, Target, LayoutDashboard, Rocket, Plus, ChevronRight, Sparkles } from '../../../lib/icons';
 import { educatorService, type LessonPlan } from '../services/educatorService';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';

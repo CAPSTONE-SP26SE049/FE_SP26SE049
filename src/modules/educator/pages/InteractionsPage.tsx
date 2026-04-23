@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Button, Modal, Input, message, Typography, Avatar, Empty, Tabs, Tag } from 'antd';
-import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore, Bot, Info } from 'lucide-react';
+import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore, Bot, Info } from '../../../lib/icons';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { feedbackService, type SpeakingAttempt, type Feedback } from '../services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';

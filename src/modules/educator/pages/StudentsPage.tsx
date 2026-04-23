@@ -10,7 +10,7 @@ import {
 import {
   Activity, ChevronRight, Sparkles, Trophy, MoreVertical,
   Mail, Download
-} from 'lucide-react';
+} from '../../../lib/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { educatorService, type StudentAccount } from '../services/educatorService';

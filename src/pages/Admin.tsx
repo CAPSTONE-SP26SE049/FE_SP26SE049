@@ -1,5 +1,5 @@
 // import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, Activity, AlertCircle, Calendar } from 'lucide-react';
+import { Users, BookOpen, Activity, AlertCircle, Calendar } from '../lib/icons';
 import AdminLayout from '../components/layout/AdminLayout';
 import { Button } from '../components/ui/Button';
 

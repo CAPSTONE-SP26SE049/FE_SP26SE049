@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Spin } from 'antd';
 import { FireFilled, CheckCircleFilled, GlobalOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight } from '../../../lib/icons';
 import apiClient from '../../../services/apiClient';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';

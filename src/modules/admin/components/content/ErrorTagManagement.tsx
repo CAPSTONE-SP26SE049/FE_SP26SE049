@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, message, Space, Popconfirm, Select } from 'antd';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from '../../../../lib/icons';
 import { adminService } from '../../services/adminService';
 
 const ErrorTagManagement: React.FC = () => {

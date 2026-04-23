@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Empty, Progress, Tag, Typography, message, Skeleton } from 'antd';
 import { educatorService, type ProgressOverview } from '../services/educatorService';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Sparkles } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Sparkles } from '../../../lib/icons';
 import clsx from 'clsx';
 
 const { Title, Paragraph } = Typography;
