@@ -16,6 +16,108 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { ASR_BASE_URL } from '../../../config'
+import { Globe, Play, ChevronRight, MapPin } from 'lucide-react'
+
+// ─────────────────────────────────────────────────────────────────────
+// Region metadata match RoadmapPage
+// ─────────────────────────────────────────────────────────────────────
+const DIALECT_META: Record<string, {
+    viName: string;
+    tagline: string;
+    emoji: string;
+    description: string;
+    photo: string;
+    gradient: string;
+    accent: string;
+    color: string;
+}> = {
+    NORTH: {
+        viName: 'Miền Bắc',
+        tagline: 'Thanh lịch & Chuẩn mực',
+        emoji: '🏛️',
+        description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
+        photo: '/region_mien_bac.png',
+        gradient: 'from-indigo-500/90 to-blue-600/90',
+        color: '#6366f1',
+        accent: '#818cf8',
+    },
+    CENTRAL: {
+        viName: 'Miền Trung',
+        tagline: 'Nồng hậu & Di sản',
+        emoji: '🏯',
+        description: 'Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.',
+        photo: '/region_mien_trung.png',
+        gradient: 'from-amber-500/90 to-orange-600/90',
+        color: '#f59e0b',
+        accent: '#fbbf24',
+    },
+    SOUTH: {
+        viName: 'Miền Nam',
+        tagline: 'Sôi động & Cởi mở',
+        emoji: '🌆',
+        description: 'Làm quen với giọng Nam năng động, cởi mở và thân thiện.',
+        photo: '/region_mien_nam.png',
+        gradient: 'from-emerald-500/90 to-teal-600/90',
+        color: '#10b981',
+        accent: '#34d399',
+    },
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Sub-component: Region Card
+// ─────────────────────────────────────────────────────────────────────
+const RegionCard = ({ id, meta, index, onSelect }: any) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.15, type: 'spring', bounce: 0.3 }}
+            whileHover={{ y: -8, scale: 1.02 }}
+            className="relative group cursor-pointer"
+            onClick={() => onSelect(id)}
+        >
+            <div className="relative bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 transition-all duration-500 group-hover:shadow-2xl group-hover:border-purple-200">
+                {/* Photo Section */}
+                <div className="relative h-48 overflow-hidden">
+                    <img
+                        src={meta.photo}
+                        alt={meta.viName}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                        onError={(e: any) => { e.target.src = `https://images.unsplash.com/photo-1528127269322-539801943592?w=800&q=80` }}
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${meta.gradient} opacity-70`} />
+
+                    <div className="absolute top-4 left-4">
+                        <span className="text-[10px] font-black tracking-[0.15em] text-white bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 uppercase">
+                            {meta.tagline}
+                        </span>
+                    </div>
+
+                    <div className="absolute bottom-5 left-6 right-6 flex items-end justify-between">
+                        <h3 className="text-3xl font-black text-white drop-shadow-lg leading-none">{meta.viName}</h3>
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/20 backdrop-blur-sm bg-white/10">
+                            {meta.emoji}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6">
+                    <p className="text-gray-400 text-xs font-bold leading-relaxed mb-6 line-clamp-2 h-8">
+                        {meta.description}
+                    </p>
+                    <button
+                        className="w-full h-11 rounded-2xl font-black text-white text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95"
+                        style={{ background: `linear-gradient(135deg, ${meta.color}, ${meta.accent})` }}
+                    >
+                        <Play size={14} className="fill-white" />
+                        Bắt đầu chẩn đoán
+                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    )
+}
 
 // --- Types ---
 interface EntryTestQuestion {
@@ -48,34 +150,39 @@ const EntryTestPage: React.FC = () => {
     const [currentStepResult, setCurrentStepResult] = useState<StepResult | null>(null)
     const [finished, setFinished] = useState(false)
     const [finalData, setFinalData] = useState<any>(null)
-    const initialized = useRef(false)
+    const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+    const [regionSelected, setRegionSelected] = useState(false)
 
-    // 0. Redirect if already done
+    // 0. Redirect if already done or auto-start if region exists
     useEffect(() => {
-        console.log("Current session user:", session?.user);
-        if (session?.user?.hasDoneEntryTest) {
+        if (session?.user?.hasDoneEntryTest && !finished && !analyzing) {
             console.log("User already done entry test. Redirecting...");
             navigate('/learner/roadmap')
+            return
         }
-    }, [session, navigate])
 
-    // 1. Fetch Question Set
-    useEffect(() => {
-        if (initialized.current) return
-        initialized.current = true
-
-        const fetchQuestions = async () => {
-            try {
-                const res = await apiClient.get('/test/placement-set')
-                setQuestions(res.data?.data || res.data || [])
-            } catch (err) {
-                message.error('Không thể tải bộ câu hỏi kiểm tra')
-            } finally {
-                setLoading(false)
-            }
+        // If user already has a region in profile, auto-start test
+        if (session?.user?.region && !regionSelected && !loading) {
+            console.log("Region detected in profile:", session.user.region);
+            startTest(session.user.region.toUpperCase())
         }
-        fetchQuestions()
-    }, [])
+    }, [session, navigate, finished, analyzing, regionSelected, loading])
+
+    // 1. Fetch Question Set based on selected region
+    const startTest = async (region: string) => {
+        setSelectedRegion(region)
+        setRegionSelected(true)
+        setLoading(true)
+        try {
+            const res = await apiClient.get(`/test/placement-set?region=${region}`)
+            setQuestions(res.data?.data || res.data || [])
+        } catch (err) {
+            message.error('Không thể tải bộ câu hỏi kiểm tra')
+            setRegionSelected(false)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     // WebM → WAV converter (giống QuizPage)
     const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
@@ -195,31 +302,101 @@ const EntryTestPage: React.FC = () => {
 
     // 3. Next Question
     const handleNext = () => {
-        if (currentStepResult) {
-            setStepResults(prev => [...prev, currentStepResult])
-            setCurrentStepResult(null)
+        if (!currentStepResult) return
 
-            if (idx + 1 < questions.length) {
-                setIdx(idx + 1)
-            } else {
-                finishTest([...stepResults, currentStepResult])
-            }
+        const nextResults = [...stepResults, currentStepResult]
+
+        if (idx + 1 < questions.length) {
+            setStepResults(nextResults)
+            setCurrentStepResult(null)
+            setIdx(idx + 1)
+        } else {
+            // Câu cuối: Chạy finishTest luôn mà không xóa UI cũ để tránh flicker
+            finishTest(nextResults)
         }
     }
 
     // 4. Finish Test
     const finishTest = async (results: StepResult[]) => {
+        setAnalyzing(true) // Dùng analyzing làm trạng thái loading chung
         try {
             const res = await apiClient.post('/test/finish', results)
             const data = res.data?.data || res.data
             setFinalData(data)
+
+            // Cập nhật trạng thái xong
             setFinished(true)
 
-            // Update session to reflect completed test
-            updateSessionItem({ hasDoneEntryTest: true })
+            // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
+            if (updateSessionItem) {
+                updateSessionItem({ hasDoneEntryTest: true })
+            }
         } catch (err) {
             message.error('Lỗi khi lưu kết quả bài test')
+        } finally {
+            setAnalyzing(false)
         }
+    }
+
+    // Màn hình chọn miền đẹp chuẩn Roadmap
+    if (!regionSelected) {
+        return (
+            <div className="min-h-screen bg-[#fbfaff] relative overflow-hidden flex flex-col items-center justify-center p-6">
+                {/* Decorative background blur elements */}
+                <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-purple-600/5 rounded-full filter blur-[120px] pointer-events-none"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-orange-500/5 rounded-full filter blur-[120px] pointer-events-none"></div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="max-w-6xl w-full relative z-10"
+                >
+                    {/* Header */}
+                    <div className="text-center mb-12">
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-purple-100 mb-6 shadow-sm"
+                        >
+                            <Globe size={16} className="text-purple-600 animate-pulse" />
+                            <span className="text-purple-700 text-[10px] font-black uppercase tracking-widest">Hệ thống chẩn đoán</span>
+                        </motion.div>
+
+                        <h1 className="text-4xl md:text-6xl font-black text-gray-800 leading-tight mb-4 tracking-tight">
+                            Chào mừng <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500 font-black">Người Bạn Mới</span>
+                        </h1>
+                        <p className="text-gray-400 font-bold text-lg max-w-2xl mx-auto">
+                            Để bắt đầu, hãy cho chúng tôi biết bạn muốn chẩn đoán theo giọng miền nào nhé.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {Object.entries(DIALECT_META).map(([key, meta], index) => (
+                            <RegionCard
+                                key={key}
+                                id={key}
+                                meta={meta}
+                                index={index}
+                                onSelect={startTest}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Footer hint */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1 }}
+                        className="mt-16 text-center"
+                    >
+                        <p className="text-gray-300 text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                            <MapPin size={12} /> Bạn có thể thay đổi khu vực học sau này trong hồ sơ cá nhân
+                        </p>
+                    </motion.div>
+                </motion.div>
+            </div>
+        )
     }
 
     if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#f8f5ff]"><Spin size="large" /></div>
