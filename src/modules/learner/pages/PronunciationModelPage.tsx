@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Slider, Spin } from 'antd';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Volume2, Play, RotateCcw, Lightbulb, Mouse, AlertTriangle } from 'lucide-react';
+import { Volume2, Play, RotateCcw, Lightbulb, Mouse, AlertTriangle } from '../../../lib/icons';
 import '@google/model-viewer';
 
 /* ─── Types ─────────────────────────────────────────── */

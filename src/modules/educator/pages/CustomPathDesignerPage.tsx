@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { customPathService, type PathLevel } from '../services/customPathService';
-import { Layout, ChevronLeft, Save, Map } from 'lucide-react';
+import { Layout, ChevronLeft, Save, Map } from '../../../lib/icons';
 import clsx from 'clsx';
 
 const { Title, Text, Paragraph } = Typography;

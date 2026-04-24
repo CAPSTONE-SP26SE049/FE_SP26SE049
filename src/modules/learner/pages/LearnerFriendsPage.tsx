@@ -18,7 +18,7 @@ import SockJS from 'sockjs-client';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle, Star, MapPin, Calendar } from 'lucide-react';
+import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle, Star, MapPin, Calendar } from '../../../lib/icons';
 import ChatBox from '../components/ChatBox';
 
 /* ─── Types ─────────────────────────────────────────── */

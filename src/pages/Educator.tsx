@@ -1,4 +1,4 @@
-import { Plus, BookOpen, MessageSquare } from 'lucide-react';
+import { Plus, BookOpen, MessageSquare } from '../lib/icons';
 import { Button } from '../components/ui/Button';
 
 const Educator = () => {

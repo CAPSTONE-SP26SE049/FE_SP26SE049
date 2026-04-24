@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Typography, Spin, Avatar, Tag, message, Badge, Button, Progress } from 'antd';
-import { Mail, Clock, Sparkles, MessageCircle, AudioLines, Info } from 'lucide-react';
+import { Mail, Clock, Sparkles, MessageCircle, AudioLines, Info } from '../../../lib/icons';
 import { feedbackService, type Feedback } from '../../educator/services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBox from '../components/ChatBox';

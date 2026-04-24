@@ -20,7 +20,18 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
+import characterImg from '../../../assets/sprite-max-px-36.gif'
 import { ASR_BASE_URL } from '../../../config'
+
+const PAGE_STYLES = `
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.01); }
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 5s infinite ease-in-out;
+  }
+`
 
 
 
@@ -83,6 +94,7 @@ interface ParsedChallenge {
   distractors: string[]          // wrong options to show as chips
   // SPEAKING
   transcript: string
+  correctSentence?: string
   // Common
   audioUrl: string | null
   ipaText: string | null
@@ -157,6 +169,7 @@ function parseChallenge(raw: any): ParsedChallenge {
     distractors: dtrs,
     // SPEAKING
     transcript: meta.transcript ?? meta.text ?? '',
+    correctSentence: meta.correctSentence ?? meta.fullCorrectText ?? '',
     // Common
     audioUrl: meta.audioUrl ?? meta.audio_url ?? meta.referenceAudioUrl ?? meta.reference_audio_url ?? null,
     ipaText: meta.ipaText ?? meta.ipa_text ?? meta.phoneticTranscriptionIpa ?? meta.phonetic_transcription_ipa ?? null,
@@ -259,6 +272,48 @@ const QuizPage: React.FC = () => {
   } | null>(null)
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null) // null = not decided yet
   const [showFullSuggestion, setShowFullSuggestion] = useState(false)
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [explaining, setExplaining] = useState(false)
+  const [audioPlays, setAudioPlays] = useState<Record<number, number>>({})
+  const [playingTTS, setPlayingTTS] = useState<string | null>(null)
+
+
+  const playRegionalTTS = async (text: string, voice: string) => {
+    setPlayingTTS(voice)
+    try {
+      const res = await apiClient.post('/ai/tts', { text, voice })
+      const data = res?.data || res
+      if (data.async) {
+        const audio = new Audio(data.async)
+        audio.play()
+      }
+    } catch (err) {
+      console.error('[QuizPage] TTS failed:', err)
+    } finally {
+      setPlayingTTS(null)
+    }
+  }
+
+  const explainAnswer = async (ch: ParsedChallenge, selected: string) => {
+    setExplaining(true)
+    try {
+      const res = await apiClient.post('/ai/explain-quiz-answer', {
+        question: ch.content,
+        selectedAnswer: selected,
+        correctAnswer: ch.correctAnswer || ch.correctWord || ch.correctWords?.[0] || 'Unknown',
+        skillType: ch.skillType || 'READING',
+        transcript: ch.transcript || '',
+        correctSentence: ch.correctSentence || ''
+      })
+      const data = res?.data || res
+      setExplanation(data.explanation || data.reply)
+    } catch (err) {
+      console.error('[QuizPage] Failed to get explanation:', err)
+      setExplanation(null)
+    } finally {
+      setExplaining(false)
+    }
+  }
 
 
   // ── Handle Finish ─────────────────────────────────────────────────────────
@@ -355,6 +410,8 @@ const QuizPage: React.FC = () => {
     setNextQuizId(null)
     setSaving(false)
     setConsentGiven(null)
+    setExplanation(null)
+    setExplaining(false)
   }, [quizId])
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -419,6 +476,8 @@ const QuizPage: React.FC = () => {
       setWordPicked(null)
       setSelected(null)
       setAnswered(false)
+      setExplanation(null)
+      setExplaining(false)
       setIdx(i => i + 1)
     }
   }
@@ -864,6 +923,7 @@ const QuizPage: React.FC = () => {
           if (answered) return
           setSelected(opt); setAnswered(true)
           if (opt === ch.correctAnswer) setScore(s => s + 1)
+          explainAnswer(ch, opt)
         }
         return (
           <>
@@ -886,6 +946,7 @@ const QuizPage: React.FC = () => {
           if (answered) return
           setWordPicked(wordIdx); setAnswered(true)
           if (wordIdx === ch.errorIndex) setScore(s => s + 1)
+          explainAnswer(ch, ch.words[wordIdx])
         }
         return (
           <>
@@ -930,6 +991,7 @@ const QuizPage: React.FC = () => {
           setAnswered(true)
           const isCorrect = ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
           if (isCorrect) setScore(s => s + 1)
+          explainAnswer(ch, writingInput.trim())
         }
         const isCorrect = answered && ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
 
@@ -1219,6 +1281,7 @@ const QuizPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f8f5ff] pb-16">
+      <style>{PAGE_STYLES}</style>
       {/* Gradient accent strip */}
       <div className="h-1 w-full bg-gradient-to-r from-purple-600 via-orange-400 to-amber-400" />
 
@@ -1277,7 +1340,72 @@ const QuizPage: React.FC = () => {
 
 
       {/* Question area */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 relative">
+        {/* Character on the right */}
+        <div className="hidden xl:block absolute -right-52 bottom-0 w-48 transition-all duration-500">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx + (answered ? '_ans' : '')}
+              initial={{ opacity: 0, scale: 0.8, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: 20 }}
+            >
+              {/* Speech Bubble */}
+              <div className="bg-white border-2 border-purple-200 rounded-2xl p-3 mb-2 shadow-lg relative min-h-[60px] flex flex-col items-center justify-center">
+                <p className="text-xs font-black text-purple-900 leading-tight text-center">
+                  {explaining ? (
+                    <span className="flex items-center gap-2">
+                      <LoadingOutlined /> ...
+                    </span>
+                  ) : (
+                    explanation || ch.content || "Hãy cùng luyện tập!"
+                  )}
+                </p>
+
+                {explanation && !explaining && (
+                  <div className="mt-3 w-full border-t border-purple-50 pt-2 text-center">
+                    <p className="text-[10px] text-purple-400 font-bold mb-1">Nghe thử các giọng miền khác?</p>
+                    <div className="flex justify-center gap-1">
+                      <Button
+                        size="small"
+                        loading={playingTTS === 'banmai'}
+                        className="text-[10px] h-6 px-2 bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                        onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'banmai')}
+                      >
+                        Bắc
+                      </Button>
+                      <Button
+                        size="small"
+                        loading={playingTTS === 'myan'}
+                        className="text-[10px] h-6 px-2 bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100"
+                        onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'myan')}
+                      >
+                        Trung
+                      </Button>
+                      <Button
+                        size="small"
+                        loading={playingTTS === 'linhsan'}
+                        className="text-[10px] h-6 px-2 bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
+                        onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'linhsan')}
+                      >
+                        Nam
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bubble Tail */}
+                <div className="absolute -bottom-1.5 right-10 w-4 h-4 bg-white border-b-2 border-r-2 border-purple-200 rotate-45" />
+              </div>
+              <img
+                src={characterImg}
+                alt="Character"
+                className="w-full drop-shadow-xl"
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
         <AnimatePresence mode="wait">
           <motion.div key={idx}
             initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
@@ -1288,14 +1416,11 @@ const QuizPage: React.FC = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Tag color={skillMeta.color} icon={skillMeta.icon}>{skillMeta.label}</Tag>
                 <Tag>{ch.mode === 'FIND_WRONG_WORD' ? 'Tìm từ sai' : ch.mode === 'WRITING_FILL' ? 'Điền từ' : ch.mode === 'SPEAKING_READ' ? 'Đọc to' : 'Trắc nghiệm'}</Tag>
-                <span className="text-xs text-gray-400 ml-auto">#{idx + 1}</span>
+                <span className="text-xs text-purple-400 font-bold ml-auto">Câu {idx + 1}</span>
               </div>
 
-              {ch.content && ch.mode !== 'SPEAKING_READ' && (
-                <p className="text-gray-800 font-semibold text-lg leading-relaxed mb-3">{ch.content}</p>
-              )}
               {ch.hint && (
-                <div className="mt-4">
+                <div className="mt-4 mb-3">
                   {!showHint ? (
                     <Button
                       size="small"
@@ -1323,13 +1448,27 @@ const QuizPage: React.FC = () => {
               )}
 
               {ch.audioUrl && ch.mode !== 'SPEAKING_READ' && (
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-semibold text-sm hover:bg-blue-100 transition-colors mb-2"
-                  onClick={() => { try { new Audio(ch.audioUrl!).play() } catch (_) { } }}>
-                  <SoundFilled /> Nghe âm thanh
-                </button>
+                <Button
+                  disabled={(audioPlays[idx] || 0) >= 2}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl h-auto font-bold text-sm transition-all ${(audioPlays[idx] || 0) >= 2
+                    ? 'bg-gray-100 text-gray-400 border-gray-200'
+                    : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'
+                    } mb-2`}
+                  onClick={() => {
+                    try {
+                      const plays = audioPlays[idx] || 0;
+                      if (plays < 2) {
+                        new Audio(ch.audioUrl!).play();
+                        setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
+                      }
+                    } catch (_) { }
+                  }}
+                >
+                  <SoundFilled /> Nghe âm thanh {(audioPlays[idx] || 0) > 0 && `(${(audioPlays[idx] || 0)}/2)`}
+                </Button>
               )}
               {ch.imageUrl && <img src={ch.imageUrl} alt="" className="rounded-xl max-h-48 object-contain mb-3" />}
-              {!ch.content && !ch.audioUrl && ch.mode !== 'SPEAKING_READ' && (
+              {ch.mode !== 'SPEAKING_READ' && !ch.audioUrl && (
                 <p className="text-gray-400 italic">Câu hỏi {idx + 1}</p>
               )}
             </div>

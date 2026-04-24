@@ -1,4 +1,4 @@
-import { Shield } from 'lucide-react';
+import { Shield } from '../lib/icons';
 import { Button } from '../components/ui/Button';
 
 const LeaderboardRow = ({ rank, name, xp, isUser, avatar }: any) => (

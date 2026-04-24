@@ -95,6 +95,7 @@ interface BatchQuestion {
     options: string[];
     correctAnswer: string;
     transcript: string;
+    correctSentence?: string;
     // WRITING (Fill in blank)
     blankSentence: string;
     alternatives: string;
@@ -124,7 +125,6 @@ const AdminQuizManagementPage: React.FC = () => {
 
     const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
     const [activeSkillType, setActiveSkillType] = useState<string | null>(null);
-    const [isCreatingNew, setIsCreatingNew] = useState(false);
     const [createForm] = Form.useForm();
     const [submittingCreate, setSubmittingCreate] = useState(false);
     const [updatingQuiz, setUpdatingQuiz] = useState(false);
@@ -591,57 +591,6 @@ const AdminQuizManagementPage: React.FC = () => {
         return parsed;
     };
 
-    const showDetail = async (record: any, index?: number) => {
-        console.log('[showDetail] called with record:', record, 'index:', index);
-        if (quiz?.id) {
-            try {
-                // Resolve detailed information from Bank via Quiz ID API
-                const res: any = await adminService.getQuizChallenges(quiz.id);
-                console.log('[showDetail] getQuizChallenges response:', res);
-
-                // Handle both res.data (wrapped) and res (unwrapped) array
-                const items = res?.data || (Array.isArray(res) ? res : []);
-                console.log('[showDetail] items count:', items.length);
-
-                // Strategy 1: Match by challengeId
-                let bankItem = items.find((item: any) =>
-                    (record.id && item.challenge?.id === record.id) ||
-                    (record.challengeId && item.challenge?.id === record.challengeId)
-                );
-
-                // Strategy 2: Match by orderIndex === questionOrder
-                if (!bankItem && record.questionOrder != null) {
-                    bankItem = items.find((item: any) =>
-                        item.orderIndex === record.questionOrder
-                    );
-                    console.log('[showDetail] matched by orderIndex:', bankItem);
-                }
-
-                // Strategy 3: Match by array index position
-                if (!bankItem && index != null && index < items.length) {
-                    bankItem = items[index];
-                    console.log('[showDetail] matched by array index:', bankItem);
-                }
-
-                console.log('[showDetail] final bankItem:', bankItem);
-
-                if (bankItem?.challenge) {
-                    const parsed = parseMetadata(bankItem.challenge);
-                    console.log('[showDetail] parsed challenge:', parsed);
-                    setSelectedDetailChallenge(parsed);
-                    setIsDetailModalOpen(true);
-                    return;
-                }
-            } catch (err) {
-                console.error("Failed to resolve challenge detail:", err);
-            }
-        }
-
-        // Fallback: use the record directly (also parse metadataJson)
-        const parsed = parseMetadata(record);
-        setSelectedDetailChallenge(parsed);
-        setIsDetailModalOpen(true);
-    };
 
 
 
@@ -684,6 +633,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     formVals.options = meta.options?.join('\n');
                     formVals.correctAnswer = meta.correctAnswer;
                     formVals.transcript = meta.transcript;
+                    formVals.correctSentence = meta.correctSentence;
                 } else if (skill === 'WRITING') {
                     formVals.blankSentence = meta.blankSentence || meta.correctSentence;
                     formVals.correctAnswer = meta.correctAnswer;
@@ -692,6 +642,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 } else if (skill === 'SPEAKING') {
                     formVals.audioUrl = meta.audioUrl;
                     formVals.transcript = meta.transcript;
+                    formVals.correctSentence = meta.correctSentence;
                     formVals.hint = meta.hint;
                 }
 
@@ -810,7 +761,8 @@ const AdminQuizManagementPage: React.FC = () => {
                     options: values.options ? values.options.split('\n').filter((o: string) => o.trim()) : [],
                     correctAnswer: values.correctAnswer,
                     answer: values.correctAnswer, // Giữ cả answer cho tương thích
-                    transcript: values.transcript || ""
+                    transcript: values.transcript || "",
+                    correctSentence: values.correctSentence || ""
                 };
                 console.log('[handleCreateNewChallenge] Prepared LISTENING metadata:', metadataJson);
             } else if (skill === 'WRITING') {
@@ -825,6 +777,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 metadataJson = {
                     audioUrl: finalAudioUrl,
                     transcript: values.transcript || "",
+                    correctSentence: values.correctSentence || "",
                     hint: values.hint || ""
                 };
                 console.log('[handleCreateNewChallenge] Prepared SPEAKING metadata:', metadataJson);
@@ -1069,6 +1022,7 @@ const AdminQuizManagementPage: React.FC = () => {
         options: ['', '', '', ''],
         correctAnswer: '',
         transcript: '',
+        correctSentence: '',
         // Writing (Fill in blank)
         blankSentence: '',
         alternatives: '',
@@ -1102,7 +1056,8 @@ const AdminQuizManagementPage: React.FC = () => {
                     options: Array.isArray(meta.options) ? [...meta.options, '', '', ''].slice(0, 4) : ['', '', '', ''],
                     correctAnswer: meta.correctAnswer || meta.answer || '',
                     transcript: meta.transcript || '',
-                    blankSentence: meta.blankSentence || meta.correctSentence || '', // fallback to old correctSentence if any
+                    correctSentence: meta.correctSentence || '',
+                    blankSentence: meta.blankSentence || '',
                     alternatives: Array.isArray(meta.alternatives) ? meta.alternatives.join(', ') : '',
                     hint: meta.hint || ''
                 };
@@ -1242,7 +1197,8 @@ const AdminQuizManagementPage: React.FC = () => {
                         options: q.options,
                         correctAnswer: q.correctAnswer.trim(),
                         answer: q.correctAnswer.trim(),
-                        transcript: q.transcript || ''
+                        transcript: q.transcript || '',
+                        correctSentence: q.correctSentence || ''
                     };
                     console.log(`[handleSubmitBatchQuestions] Câu ${q._index} LISTENING Meta:`, metadataJson);
                 } else if (q.skillType === 'WRITING') {
@@ -1257,6 +1213,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     metadataJson = {
                         audioUrl: q.audioUrl || '',
                         transcript: q.transcript || '',
+                        correctSentence: q.correctSentence || '',
                         hint: q.hint || ''
                     };
                     console.log(`[handleSubmitBatchQuestions] Câu ${q._index} SPEAKING Meta:`, metadataJson);
@@ -1401,7 +1358,12 @@ const AdminQuizManagementPage: React.FC = () => {
                                 )}
 
                                 {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
-                                    <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <Text italic style={{ color: '#64748b', fontSize: 13 }}>Transcript: "{meta.transcript}"</Text>
+                                        {meta.correctSentence && (
+                                            <Text strong style={{ color: '#059669', fontSize: 13 }}>Đúng: "{meta.correctSentence}"</Text>
+                                        )}
+                                    </div>
                                 )}
 
                                 {skill === 'WRITING' && (meta.blankSentence || meta.correctSentence) && (
@@ -2572,12 +2534,23 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     <Input hidden value={q.audioUrl} />
                                                 </div>
                                                 <div style={{ marginTop: 12 }}>
-                                                    <Text strong>Transcript</Text>
+                                                    <Text strong>Transcript (Có thể chứa lỗi ngọng)</Text>
                                                     <Input.TextArea
                                                         rows={2}
-                                                        placeholder="Nội dung audio"
+                                                        placeholder="Nội dung audio thực tế (ví dụ: Việt Lam)"
                                                         value={q.transcript}
                                                         onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Câu đúng hoàn chỉnh (Full Correct Sentence)</Text>
+                                                    <Input.TextArea
+                                                        rows={2}
+                                                        placeholder="Nội dung đúng chính tả (ví dụ: Việt Nam)"
+                                                        value={q.correctSentence}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'correctSentence', sanitizeText(e.target.value))}
                                                         style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
                                                         maxLength={255} showCount
                                                     />
@@ -2679,12 +2652,23 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     <Input hidden value={q.audioUrl} />
                                                 </div>
                                                 <div style={{ marginTop: 12 }}>
-                                                    <Text strong>Transcript</Text>
+                                                    <Text strong>Transcript (Có thể chứa lỗi ngọng)</Text>
                                                     <Input.TextArea
                                                         rows={2}
-                                                        placeholder="Nội dung cần nói"
+                                                        placeholder="Nội dung cần nói (thực tế)"
                                                         value={q.transcript}
                                                         onChange={(e) => updateBatchQuestionField(q.tempId, 'transcript', sanitizeText(e.target.value))}
+                                                        style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
+                                                        maxLength={255} showCount
+                                                    />
+                                                </div>
+                                                <div style={{ marginTop: 12 }}>
+                                                    <Text strong>Câu đúng hoàn chỉnh (Full Correct Sentence)</Text>
+                                                    <Input.TextArea
+                                                        rows={2}
+                                                        placeholder="Nội dung đúng chính tả"
+                                                        value={q.correctSentence}
+                                                        onChange={(e) => updateBatchQuestionField(q.tempId, 'correctSentence', sanitizeText(e.target.value))}
                                                         style={{ marginTop: 6, borderRadius: 8, background: '#fff' }}
                                                         maxLength={255} showCount
                                                     />
@@ -2796,8 +2780,11 @@ const AdminQuizManagementPage: React.FC = () => {
                                                 </Form.Item>
                                             </Space>
                                         </Form.Item>
-                                        <Form.Item name="transcript" label={<Text strong>Lời thoại (Transcript)</Text>} extra="Nhập nội dung để AI tạo giọng đọc" normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
-                                            <Input.TextArea rows={2} placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                        <Form.Item name="transcript" label={<Text strong>Lời thoại / Transcript (Có thể chứa lỗi ngọng)</Text>} extra="Nhập nội dung audio thực tế (ví dụ: Việt Lam)" normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                            <Input.TextArea rows={2} placeholder="Nhập nội dung audio thực tế..." style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                        </Form.Item>
+                                        <Form.Item name="correctSentence" label={<Text strong>Câu đúng hoàn chỉnh (Full Correct Sentence)</Text>} extra="Nhập nội dung đúng chính tả (ví dụ: Việt Nam)" normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                            <Input.TextArea rows={2} placeholder="Nhập nội dung đúng chính tả..." style={{ borderRadius: 8 }} maxLength={255} showCount />
                                         </Form.Item>
                                         <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }, { max: 100, message: 'Tối đa 100 ký tự' }]}>
                                             <Input.TextArea rows={3} maxLength={100} showCount />
@@ -2841,8 +2828,11 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                 {activeSkillType === 'SPEAKING' && (
                                     <>
-                                        <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
-                                            <Input.TextArea rows={2} style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                        <Form.Item name="transcript" label={<Text strong>Nội dung cần nói (Transcript thực tế)</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                            <Input.TextArea rows={2} placeholder="Ví dụ: Việt Lam" style={{ borderRadius: 8 }} maxLength={255} showCount />
+                                        </Form.Item>
+                                        <Form.Item name="correctSentence" label={<Text strong>Câu đúng hoàn chỉnh</Text>} normalize={sanitizeText} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+                                            <Input.TextArea rows={2} placeholder="Ví dụ: Việt Nam" style={{ borderRadius: 8 }} maxLength={255} showCount />
                                         </Form.Item>
                                         <Form.Item label={<Text strong>Âm thanh mẫu (AI Generated)</Text>}>
                                             <Space direction="vertical" style={{ width: '100%' }}>
