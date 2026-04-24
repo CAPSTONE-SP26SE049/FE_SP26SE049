@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Spin } from 'antd';
-import { FireFilled, CheckCircleFilled, GlobalOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight } from '../../../lib/icons';
+import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight, Landmark, Castle, Building2, CheckCircle2, Globe, Flame } from '../../../lib/icons';
 import apiClient from '../../../services/apiClient';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,9 +25,9 @@ interface LeaderboardData {
 
 /* ─── Regions ─────────────────────────────────────────── */
 const REGIONS = [
-    { label: 'Miền Bắc', value: 'NORTH', emoji: '🏛️' },
-    { label: 'Miền Trung', value: 'CENTRAL', emoji: '🏯' },
-    { label: 'Miền Nam', value: 'SOUTH', emoji: '🌆' },
+    { label: 'Miền Bắc', value: 'NORTH', icon: Landmark },
+    { label: 'Miền Trung', value: 'CENTRAL', icon: Castle },
+    { label: 'Miền Nam', value: 'SOUTH', icon: Building2 },
 ];
 
 const PAGE_SIZE = 10;
@@ -76,7 +75,7 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                             <Avatar src={e.avatar_url || e.avatarUrl} size={cfg.size} className="border-2 border-white" />
                             {isMe && (
                                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <CheckCircleFilled className="text-white text-[7px]" />
+                                    <CheckCircle2 size={8} className="text-white" />
                                 </div>
                             )}
                         </div>
@@ -118,7 +117,7 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                 <Avatar src={e.avatar_url || e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
                 {isMe && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-500 rounded-full border border-white flex items-center justify-center">
-                        <CheckCircleFilled className="text-white text-[7px]" />
+                        <CheckCircle2 size={8} className="text-white" />
                     </div>
                 )}
             </div>
@@ -128,7 +127,7 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                     {isMe && <span className="ml-1.5 text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-black">BẠN</span>}
                 </p>
                 <p className="text-[9px] text-gray-400 font-semibold flex items-center gap-1 mt-0.5">
-                    <FireFilled className="text-orange-400" style={{ fontSize: 9 }} /> {e.currentStreakDays || 0} ngày học • <Trophy size={9} className="text-amber-500" /> {e.badgeCount || 0} huy hiệu
+                    <Flame size={9} className="text-orange-400 fill-orange-400" /> {e.currentStreakDays || 0} ngày học • <Trophy size={9} className="text-amber-500" /> {e.badgeCount || 0} huy hiệu
                 </p>
             </div>
             <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-100 flex-shrink-0">
@@ -187,7 +186,12 @@ export default function LearnerLeaderboardPage() {
     const pagedRest = rest.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     const currentRegion = REGIONS.find(r => r.value === region);
-    const scopeLabel = scope === 'GLOBAL' ? 'Toàn quốc' : `${currentRegion?.emoji} ${currentRegion?.label}`;
+    const scopeLabel = scope === 'GLOBAL' ? 'Toàn quốc' : (
+        <div className="flex items-center gap-1">
+            {currentRegion?.icon && <currentRegion.icon size={10} />}
+            {currentRegion?.label}
+        </div>
+    );
 
     return (
         <div className="flex flex-col h-[calc(100vh-80px)] min-h-[600px] w-full bg-[#f8f5ff] overflow-hidden">
@@ -214,8 +218,8 @@ export default function LearnerLeaderboardPage() {
                         {/* Scope toggle */}
                         <div className="bg-gray-50 rounded-xl border border-gray-100 p-0.5 flex gap-0.5">
                             {([
-                                { label: 'Khu vực', value: 'REGIONAL', icon: EnvironmentOutlined },
-                                { label: 'Toàn quốc', value: 'GLOBAL', icon: GlobalOutlined },
+                                { label: 'Khu vực', value: 'REGIONAL', icon: MapPin },
+                                { label: 'Toàn quốc', value: 'GLOBAL', icon: Globe },
                             ] as const).map(({ label, value, icon: Icon }) => (
                                 <button key={value} onClick={() => setScope(value)}
                                     className={clsx(
@@ -224,7 +228,7 @@ export default function LearnerLeaderboardPage() {
                                             ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-sm shadow-purple-500/20"
                                             : "text-gray-400 hover:text-purple-500 hover:bg-white"
                                     )}>
-                                    <Icon style={{ fontSize: 10 }} /> {label}
+                                    <Icon size={10} /> {label}
                                 </button>
                             ))}
                         </div>
@@ -242,7 +246,7 @@ export default function LearnerLeaderboardPage() {
                                                     ? "bg-purple-600 text-white shadow-sm"
                                                     : "text-gray-400 hover:text-purple-500 hover:bg-white"
                                             )}>
-                                            {r.emoji} {r.label}
+                                            <r.icon size={11} /> {r.label}
                                         </button>
                                     ))}
                                 </motion.div>

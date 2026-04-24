@@ -23,6 +23,13 @@ import {
   X,
   Mail,
   Award,
+  Flame,
+  Star,
+  LogOut,
+  User,
+  Landmark,
+  Castle,
+  Building2,
 } from "lucide-react";
 
 const REGION_CHOICES = [
@@ -30,6 +37,7 @@ const REGION_CHOICES = [
     value: "north",
     label: "Giọng miền Bắc",
     emoji: "🏛️",
+    icon: Landmark,
     tagline: "Thanh lịch & Chuẩn mực",
     description: "Chinh phục phát âm chuẩn — nền tảng tiếng Việt quy chuẩn.",
     photo: "/region_mien_bac.png",
@@ -39,6 +47,7 @@ const REGION_CHOICES = [
     value: "central",
     label: "Giọng miền Trung",
     emoji: "🏯",
+    icon: Castle,
     tagline: "Nồng hậu & Di sản",
     description: "Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.",
     photo: "/region_mien_trung.png",
@@ -48,6 +57,7 @@ const REGION_CHOICES = [
     value: "south",
     label: "Giọng miền Nam",
     emoji: "🌆",
+    icon: Building2,
     tagline: "Sôi động & Cởi mở",
     description: "Làm quen với giọng Nam năng động, cởi mở và thân thiện.",
     photo: "/region_mien_nam.png",
@@ -122,7 +132,9 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
                   <div className={`absolute inset-0 bg-gradient-to-t ${r.gradient} opacity-70`} />
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                     <h3 className="text-lg font-black text-white drop-shadow leading-none">{r.label}</h3>
-                    <span className="text-xl">{r.emoji}</span>
+                    <div className="text-white bg-white/20 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
+                      <r.icon size={18} strokeWidth={2.5} />
+                    </div>
                   </div>
                   {isChosen && (
                     <motion.div
@@ -168,7 +180,7 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
             disabled={saving}
             className="w-full mt-3 h-11 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 text-red-500 bg-red-50 hover:bg-red-100 transition-all duration-300 border border-red-100"
           >
-            <LogoutOutlined />
+            <LogOut size={16} />
             Đăng xuất
           </button>
 
@@ -211,13 +223,13 @@ export default function LearnerLayout() {
     items: [
       {
         key: "profile",
-        icon: <UserOutlined />,
+        icon: <User size={16} />,
         label: <Link to="/learner/profile">Hồ sơ cá nhân</Link>,
       },
       { type: "divider" },
       {
         key: "logout",
-        icon: <LogoutOutlined className="text-red-500" />,
+        icon: <LogOut size={16} className="text-red-500" />,
         label: <span className="text-red-500 font-semibold">Đăng xuất</span>,
         onClick: handleLogout,
       },
@@ -302,13 +314,13 @@ export default function LearnerLayout() {
           {/* Quick Stats - Combined Pill */}
           <div className="hidden sm:flex items-center gap-3 px-3.5 py-1.5 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
             <div className="flex items-center gap-1.5 border-r border-gray-200 pr-3">
-              <FireFilled className="text-orange-500 text-sm" />
+              <Flame size={14} className="text-orange-500 fill-orange-500" />
               <span className="text-gray-700 font-black text-xs">
                 {user?.currentStreakDays || user?.streak || "0"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-yellow-500 text-sm leading-none mt-[-2px]">⭐</span>
+              <Star size={14} className="text-yellow-500 fill-yellow-500" />
               <span className="text-gray-700 font-black text-xs">
                 {user?.totalStars || 0}
               </span>
@@ -393,7 +405,7 @@ export default function LearnerLayout() {
                   onClick={handleLogout}
                   className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl font-black text-base text-red-500 bg-white border border-red-100 hover:bg-red-50 transition-all shadow-sm"
                 >
-                  <LogoutOutlined /> Đăng xuất
+                  <LogOut size={20} /> Đăng xuất
                 </button>
               </div>
             </motion.aside>

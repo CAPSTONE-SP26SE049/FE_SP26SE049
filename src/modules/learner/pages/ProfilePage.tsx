@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Form, Input, Select, Modal, message } from 'antd'
 import {
-    EditOutlined, PhoneOutlined, EnvironmentOutlined,
-    CameraOutlined, TrophyOutlined, MailOutlined, CheckCircleOutlined, CalendarOutlined,
+    CameraOutlined, TrophyOutlined, CheckCircleOutlined,
 } from '@ant-design/icons'
-import { Flame, Star, Shield, BookOpen, ArrowRight } from 'lucide-react'
+import { Flame, Star, Shield, BookOpen, ArrowRight, Landmark, Castle, Building2, Mail, Phone, Calendar, Edit } from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiClient } from '../../../services/apiClient'
@@ -12,14 +11,14 @@ import { apiClient } from '../../../services/apiClient'
 const { Option } = Select
 
 const REGION_OPTIONS = [
-    { value: 'north', label: 'Miền Bắc', emoji: '🏛️' },
-    { value: 'central', label: 'Miền Trung', emoji: '🏯' },
-    { value: 'south', label: 'Miền Nam', emoji: '🌆' },
+    { value: 'north', label: 'Miền Bắc', icon: Landmark },
+    { value: 'central', label: 'Miền Trung', icon: Castle },
+    { value: 'south', label: 'Miền Nam', icon: Building2 },
 ]
-const REGION_MAP: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
-    north: { label: 'Miền Bắc', emoji: '🏛️', color: '#6366f1', bg: '#eef2ff' },
-    central: { label: 'Miền Trung', emoji: '🏯', color: '#f59e0b', bg: '#fffbeb' },
-    south: { label: 'Miền Nam', emoji: '🌆', color: '#10b981', bg: '#ecfdf5' },
+const REGION_MAP: Record<string, { label: string; icon: any; color: string; bg: string }> = {
+    north: { label: 'Miền Bắc', icon: Landmark, color: '#6366f1', bg: '#eef2ff' },
+    central: { label: 'Miền Trung', icon: Castle, color: '#f59e0b', bg: '#fffbeb' },
+    south: { label: 'Miền Nam', icon: Building2, color: '#10b981', bg: '#ecfdf5' },
 }
 const PROGRESS_LABELS: Record<string, { label: string; color: string }> = {
     NORTH: { label: 'Giọng Bắc', color: '#6366f1' },
@@ -89,7 +88,7 @@ export default function ProfilePage() {
             fullName: user?.fullName,
             phone: user?.phone || user?.phoneNumber,
             region: (user?.region || '').toLowerCase(),
-            avatarUrl: user?.avatar_url || user?.avatar,
+            avatarUrl: (user as any)?.avatar_url || user?.avatar,
         })
         setIsModalOpen(true)
     }
@@ -99,7 +98,7 @@ export default function ProfilePage() {
             const v = await form.validateFields()
             setSaving(true)
             await apiClient.put('/users/me', { fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl })
-            updateSessionItem?.({ fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl })
+            updateSessionItem?.({ fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl } as any)
             message.success('Cập nhật hồ sơ thành công!')
             setIsModalOpen(false)
         } catch (e: any) {
@@ -142,7 +141,7 @@ export default function ProfilePage() {
                     onClick={handleEdit}
                     className="ml-auto flex items-center gap-1.5 text-white text-xs font-black px-4 py-1.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 transition-all backdrop-blur-sm"
                 >
-                    <EditOutlined style={{ fontSize: 11 }} /> Chỉnh sửa
+                    <Edit size={11} /> Chỉnh sửa
                 </button>
             </div>
 
@@ -179,7 +178,7 @@ export default function ProfilePage() {
                                 {region && (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg mt-1.5 border"
                                         style={{ color: region.color, background: region.bg, borderColor: `${region.color}30` }}>
-                                        {region.emoji} {region.label}
+                                        <region.icon size={10} /> {region.label}
                                     </span>
                                 )}
                             </div>
@@ -194,10 +193,10 @@ export default function ProfilePage() {
                             </div>
                             <div className="p-3 grid grid-cols-2 gap-2">
                                 {[
-                                    { icon: <MailOutlined />, label: 'Email', val: user?.email, c: '#9333ea', bg: '#faf5ff' },
-                                    { icon: <PhoneOutlined />, label: 'Điện thoại', val: user?.phone || user?.phoneNumber || 'Chưa cập nhật', c: BRAND_ORANGE, bg: '#fff7ed' },
-                                    { icon: <EnvironmentOutlined />, label: 'Khu vực', val: region ? `${region.emoji} ${region.label}` : 'Chưa cập nhật', c: '#10b981', bg: '#f0fdf4' },
-                                    { icon: <CalendarOutlined />, label: 'Tham gia', val: joinDate, c: '#6366f1', bg: '#eef2ff' },
+                                    { icon: <Mail size={12} />, label: 'Email', val: user?.email, c: '#9333ea', bg: '#faf5ff' },
+                                    { icon: <Phone size={12} />, label: 'Điện thoại', val: user?.phone || user?.phoneNumber || 'Chưa cập nhật', c: BRAND_ORANGE, bg: '#fff7ed' },
+                                    { icon: <region.icon size={12} />, label: 'Khu vực', val: region ? region.label : 'Chưa cập nhật', c: '#10b981', bg: '#f0fdf4' },
+                                    { icon: <Calendar size={12} />, label: 'Tham gia', val: joinDate, c: '#6366f1', bg: '#eef2ff' },
                                 ].map(({ icon, label, val, c, bg }, i) => (
                                     <div key={i} className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                                         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs" style={{ background: bg, color: c }}>{icon}</div>
@@ -356,7 +355,7 @@ export default function ProfilePage() {
                 title={
                     <div className="flex items-center gap-3 pb-1">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#fff7ed' }}>
-                            <EditOutlined style={{ color: BRAND_ORANGE, fontSize: 16 }} />
+                            <Edit size={16} style={{ color: BRAND_ORANGE }} />
                         </div>
                         <div>
                             <div className="font-extrabold text-gray-800">Chỉnh sửa hồ sơ</div>
@@ -380,7 +379,7 @@ export default function ProfilePage() {
                     <Form.Item name="region" label={<span className="font-bold text-gray-600 text-sm">Khu vực học</span>}
                         rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}>
                         <Select placeholder="Chọn khu vực" className="h-11">
-                            {REGION_OPTIONS.map(o => <Option key={o.value} value={o.value}>{o.emoji} {o.label}</Option>)}
+                            {REGION_OPTIONS.map(o => <Option key={o.value} value={o.value}><div className="flex items-center gap-2"><o.icon size={14} /> {o.label}</div></Option>)}
                         </Select>
                     </Form.Item>
                     <Form.Item name="avatarUrl" label={<span className="font-bold text-gray-600 text-sm">Link ảnh đại diện</span>}
