@@ -19,7 +19,6 @@ import {
     Input,
     InputNumber,
     message,
-    Upload,
     Pagination,
     Popconfirm
 } from 'antd';
@@ -67,6 +66,17 @@ const REGION_LABEL: Record<string, { label: string; color: string; bg: string }>
     SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
     CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
 };
+
+const SECOND_OPTIONS = [
+    { label: '10 giây', value: 10 },
+    { label: '15 giây', value: 15 },
+    { label: '20 giây', value: 20 },
+    { label: '30 giây', value: 30 },
+    { label: '45 giây', value: 45 },
+    { label: '60 giây', value: 60 },
+    { label: '90 giây', value: 90 },
+    { label: '120 giây', value: 120 },
+];
 
 interface BatchQuestion {
     tempId: string;
@@ -146,6 +156,24 @@ const AdminQuizManagementPage: React.FC = () => {
     const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
     const [uploadingSingle, setUploadingSingle] = useState(false);
     const [uploadingBatch, setUploadingBatch] = useState<Record<string, boolean>>({});
+
+    const [secondsOptions, setSecondsOptions] = useState(SECOND_OPTIONS);
+
+    const handleSecondsSearch = (val: string) => {
+        if (!val) {
+            setSecondsOptions(SECOND_OPTIONS);
+            return;
+        }
+        const num = parseInt(val);
+        if (!isNaN(num)) {
+            const hasExact = SECOND_OPTIONS.some(o => o.value === num);
+            if (!hasExact) {
+                setSecondsOptions([{ label: `${num} giây`, value: num }, ...SECOND_OPTIONS]);
+            } else {
+                setSecondsOptions(SECOND_OPTIONS);
+            }
+        }
+    };
 
     const sanitizeText = (val: string) => {
         if (typeof val !== 'string') return '';
@@ -2526,40 +2554,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                         {q.skillType === 'LISTENING' && (
                                             <>
                                                 <div style={{ marginTop: 12 }}>
-                                                    <Text strong>File âm thanh</Text>
+                                                    <Text strong>Âm thanh (AI Generated)</Text>
                                                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                        <Upload
-                                                            accept="audio/*"
-                                                            maxCount={1}
-                                                            showUploadList={false}
-                                                            beforeUpload={async (file) => {
-                                                                setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
-                                                                try {
-                                                                    const url = await uploadToCloudinary(file);
-                                                                    updateBatchQuestionField(q.tempId, 'audioUrl', url);
-                                                                    message.success('Tải file lên thành công!');
-                                                                } catch (err) {
-                                                                    message.error('Lỗi khi tải file lên Cloudinary');
-                                                                } finally {
-                                                                    setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
-                                                                }
-                                                                return false;
-                                                            }}
-                                                        >
-                                                            <Button
-                                                                icon={<UploadOutlined />}
-                                                                loading={uploadingBatch[q.tempId]}
-                                                                style={{ borderRadius: 8 }}
-                                                            >
-                                                                {q.audioUrl ? 'Thay đổi file' : 'Chọn file âm thanh'}
-                                                            </Button>
-                                                        </Upload>
-
                                                         <Button
                                                             icon={<AudioOutlined />}
                                                             onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
                                                             loading={uploadingBatch[q.tempId]}
                                                             style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                            disabled={!q.transcript}
                                                         >
                                                             Tạo bằng AI (từ Transcript)
                                                         </Button>
@@ -2567,7 +2569,6 @@ const AdminQuizManagementPage: React.FC = () => {
                                                             <audio src={q.audioUrl} controls style={{ flex: 1, height: 32 }} />
                                                         )}
                                                     </div>
-                                                    {/* Hidden input to keep value in form logic if needed, though updateBatchQuestionField handles it */}
                                                     <Input hidden value={q.audioUrl} />
                                                 </div>
                                                 <div style={{ marginTop: 12 }}>
@@ -2660,40 +2661,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                         {q.skillType === 'SPEAKING' && (
                                             <>
                                                 <div style={{ marginTop: 12 }}>
-                                                    <Text strong>File âm thanh mẫu</Text>
+                                                    <Text strong>Âm thanh mẫu (AI Generated)</Text>
                                                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                        <Upload
-                                                            accept="audio/*"
-                                                            maxCount={1}
-                                                            showUploadList={false}
-                                                            beforeUpload={async (file) => {
-                                                                setUploadingBatch(prev => ({ ...prev, [q.tempId]: true }));
-                                                                try {
-                                                                    const url = await uploadToCloudinary(file);
-                                                                    updateBatchQuestionField(q.tempId, 'audioUrl', url);
-                                                                    message.success('Tải file lên thành công!');
-                                                                } catch (err) {
-                                                                    message.error('Lỗi khi tải file lên Cloudinary');
-                                                                } finally {
-                                                                    setUploadingBatch(prev => ({ ...prev, [q.tempId]: false }));
-                                                                }
-                                                                return false;
-                                                            }}
-                                                        >
-                                                            <Button
-                                                                icon={<UploadOutlined />}
-                                                                loading={uploadingBatch[q.tempId]}
-                                                                style={{ borderRadius: 8 }}
-                                                            >
-                                                                {q.audioUrl ? 'Thay đổi file mẫu' : 'Chọn file mẫu từ máy tính'}
-                                                            </Button>
-                                                        </Upload>
-
                                                         <Button
                                                             icon={<AudioOutlined />}
                                                             onClick={() => handleAutoGenerateAudioBatch(q.tempId)}
                                                             loading={uploadingBatch[q.tempId]}
                                                             style={{ borderRadius: 8, background: '#faf5ff', color: '#9333ea', border: '1px solid #c084fc' }}
+                                                            disabled={!q.transcript}
                                                         >
                                                             Tạo bằng AI (từ Transcript)
                                                         </Button>
@@ -2794,34 +2769,8 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                 {activeSkillType === 'LISTENING' && (
                                     <>
-                                        <Form.Item label={<Text strong>File âm thanh</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                        <Form.Item label={<Text strong>Âm thanh mẫu (AI Generated)</Text>}>
                                             <Space direction="vertical" style={{ width: '100%' }}>
-                                                <Upload
-                                                    accept="audio/*"
-                                                    maxCount={1}
-                                                    showUploadList={false}
-                                                    beforeUpload={async (file) => {
-                                                        setUploadingSingle(true);
-                                                        try {
-                                                            const url = await uploadToCloudinary(file);
-                                                            createForm.setFieldsValue({ audioUrl: url });
-                                                            message.success('Tải file âm thanh lên thành công!');
-                                                        } catch (err) {
-                                                            message.error('Lỗi khi tải file lên Cloudinary');
-                                                        } finally {
-                                                            setUploadingSingle(false);
-                                                        }
-                                                        return false;
-                                                    }}
-                                                >
-                                                    <Button
-                                                        icon={<UploadOutlined />}
-                                                        loading={uploadingSingle}
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        {createForm.getFieldValue('audioUrl') ? 'Thay đổi file' : 'Chọn file từ máy tính'}
-                                                    </Button>
-                                                </Upload>
                                                 <Button
                                                     icon={<AudioOutlined />}
                                                     onClick={handleAutoGenerateAudioSingle}
@@ -2831,13 +2780,18 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     Tạo bằng AI (từ Transcript)
                                                 </Button>
 
-                                                {createForm.getFieldValue('audioUrl') && (
-                                                    <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử:</Text>
-                                                        <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
-                                                    </div>
-                                                )}
-                                                <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh' }]} noStyle>
+                                                <Form.Item noStyle shouldUpdate={(prev, curr) => prev.audioUrl !== curr.audioUrl}>
+                                                    {({ getFieldValue }) => {
+                                                        const url = getFieldValue('audioUrl');
+                                                        return url ? (
+                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
+                                                                <audio src={url} controls style={{ width: '100%', height: 36 }} />
+                                                            </div>
+                                                        ) : null;
+                                                    }}
+                                                </Form.Item>
+                                                <Form.Item name="audioUrl" noStyle>
                                                     <Input hidden />
                                                 </Form.Item>
                                             </Space>
@@ -2890,34 +2844,8 @@ const AdminQuizManagementPage: React.FC = () => {
                                         <Form.Item name="transcript" label={<Text strong>Nội dung cần nói</Text>} normalize={sanitizeText} rules={[{ required: true }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
                                             <Input.TextArea rows={2} style={{ borderRadius: 8 }} maxLength={255} showCount />
                                         </Form.Item>
-                                        <Form.Item label={<Text strong>File âm thanh mẫu</Text>} required={!createForm.getFieldValue('audioUrl')}>
+                                        <Form.Item label={<Text strong>Âm thanh mẫu (AI Generated)</Text>}>
                                             <Space direction="vertical" style={{ width: '100%' }}>
-                                                <Upload
-                                                    accept="audio/*"
-                                                    maxCount={1}
-                                                    showUploadList={false}
-                                                    beforeUpload={async (file) => {
-                                                        setUploadingSingle(true);
-                                                        try {
-                                                            const url = await uploadToCloudinary(file);
-                                                            createForm.setFieldsValue({ audioUrl: url });
-                                                            message.success('Tải file âm thanh mẫu lên thành công!');
-                                                        } catch (err) {
-                                                            message.error('Lỗi khi tải file lên Cloudinary');
-                                                        } finally {
-                                                            setUploadingSingle(false);
-                                                        }
-                                                        return false;
-                                                    }}
-                                                >
-                                                    <Button
-                                                        icon={<UploadOutlined />}
-                                                        loading={uploadingSingle}
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        {createForm.getFieldValue('audioUrl') ? 'Thay đổi file mẫu' : 'Chọn file từ máy tính'}
-                                                    </Button>
-                                                </Upload>
                                                 <Button
                                                     icon={<AudioOutlined />}
                                                     onClick={handleAutoGenerateAudioSingle}
@@ -2927,13 +2855,18 @@ const AdminQuizManagementPage: React.FC = () => {
                                                     Tạo bằng AI (từ Transcript)
                                                 </Button>
 
-                                                {createForm.getFieldValue('audioUrl') && (
-                                                    <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
-                                                        <audio src={createForm.getFieldValue('audioUrl')} controls style={{ width: '100%', height: 36 }} />
-                                                    </div>
-                                                )}
-                                                <Form.Item name="audioUrl" rules={[{ required: true, message: 'Vui lòng upload file âm thanh mẫu' }]} noStyle>
+                                                <Form.Item noStyle shouldUpdate={(prev, curr) => prev.audioUrl !== curr.audioUrl}>
+                                                    {({ getFieldValue }) => {
+                                                        const url = getFieldValue('audioUrl');
+                                                        return url ? (
+                                                            <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Nghe thử mẫu:</Text>
+                                                                <audio src={url} controls style={{ width: '100%', height: 36 }} />
+                                                            </div>
+                                                        ) : null;
+                                                    }}
+                                                </Form.Item>
+                                                <Form.Item name="audioUrl" noStyle>
                                                     <Input hidden />
                                                 </Form.Item>
                                             </Space>
@@ -3154,7 +3087,25 @@ const AdminQuizManagementPage: React.FC = () => {
                                 </Col>
                                 <Col span={10}>
                                     <Form.Item label="Mỗi câu (giây)" name="secondsPerQuestion">
-                                        <InputNumber min={1} style={{ width: '100%' }} />
+                                        <Select
+                                            showSearch
+                                            placeholder="Chọn hoặc nhập số"
+                                            options={secondsOptions}
+                                            onSearch={handleSecondsSearch}
+                                            onBlur={() => setSecondsOptions(SECOND_OPTIONS)}
+                                            filterOption={(input, option) =>
+                                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                            }
+                                            dropdownRender={(menu) => (
+                                                <>
+                                                    {menu}
+                                                    <Divider style={{ margin: '8px 0' }} />
+                                                    <div style={{ padding: '0 8px 4px', color: '#94a3b8', fontSize: 12 }}>
+                                                        * Nhập số giây tùy chỉnh và nhấn Chọn
+                                                    </div>
+                                                </>
+                                            )}
+                                        />
                                     </Form.Item>
                                 </Col>
                             </Row>
@@ -3184,10 +3135,10 @@ const AdminQuizManagementPage: React.FC = () => {
                                         <Select
                                             disabled={quizChallenges.length > 0}
                                             options={[
-                                                { value: 'READING', label: '📖 Reading' },
-                                                { value: 'LISTENING', label: '🎧 Listening' },
-                                                { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                                { value: 'WRITING', label: '✍️ Writing' },
+                                                { value: 'READING', label: 'Reading' },
+                                                { value: 'LISTENING', label: 'Listening' },
+                                                { value: 'SPEAKING', label: 'Speaking' },
+                                                { value: 'WRITING', label: 'Writing' },
                                             ]}
                                         />
                                     </Form.Item>
@@ -3526,10 +3477,10 @@ const AdminQuizManagementPage: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <Form.Item name="skillType" label={<Text strong>Loại kỹ năng</Text>} rules={[{ required: true, message: 'Chọn loại kỹ năng' }]}>
                             <Select placeholder="Chọn loại" options={[
-                                { value: 'READING', label: '📖 Reading' },
-                                { value: 'LISTENING', label: '🎧 Listening' },
-                                { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                { value: 'WRITING', label: '✍️ Writing' },
+                                { value: 'READING', label: 'Reading' },
+                                { value: 'LISTENING', label: 'Listening' },
+                                { value: 'SPEAKING', label: 'Speaking' },
+                                { value: 'WRITING', label: 'Writing' },
                             ]} />
                         </Form.Item>
                         <Form.Item
@@ -3538,7 +3489,25 @@ const AdminQuizManagementPage: React.FC = () => {
                             initialValue={90}
                             rules={[{ required: true, message: 'Nhập số giây mỗi câu' }]}
                         >
-                            <InputNumber min={1} style={{ width: '100%' }} />
+                            <Select
+                                showSearch
+                                placeholder="Chọn hoặc nhập số"
+                                options={secondsOptions}
+                                onSearch={handleSecondsSearch}
+                                onBlur={() => setSecondsOptions(SECOND_OPTIONS)}
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Divider style={{ margin: '8px 0' }} />
+                                        <div style={{ padding: '0 8px 4px', color: '#94a3b8', fontSize: 12 }}>
+                                            * Nhập số giây tùy chỉnh vào ô tìm kiếm để chọn
+                                        </div>
+                                    </>
+                                )}
+                            />
                         </Form.Item>
                     </div>
                 </Form>
