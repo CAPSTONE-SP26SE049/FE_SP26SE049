@@ -11,7 +11,7 @@ import { Spin, Empty, Pagination } from 'antd'
 import clsx from 'clsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { learnerService, type Level, type Dialect, type Quiz } from '../services/learnerService'
-import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe } from 'lucide-react'
+import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe, Landmark, Castle, Building2 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────
 // Region metadata with Unsplash photo backgrounds
@@ -27,6 +27,7 @@ const DIALECT_META: Record<string, {
   tagline: string;
   keyword: string;
   emoji: string;
+  icon: any;
   description: string;
   photo: string;
   gradient: string;
@@ -40,6 +41,7 @@ const DIALECT_META: Record<string, {
     tagline: 'Thanh lịch & Chuẩn mực',
     keyword: '',
     emoji: '🏛️',
+    icon: Landmark,
     description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
     photo: '/region_mien_bac.png',
     gradient: 'from-indigo-500/90 to-blue-600/90',
@@ -53,6 +55,7 @@ const DIALECT_META: Record<string, {
     tagline: 'Nồng hậu & Di sản',
     keyword: '',
     emoji: '🏯',
+    icon: Castle,
     description: 'Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.',
     photo: '/region_mien_trung.png',
     gradient: 'from-amber-500/90 to-orange-600/90',
@@ -66,6 +69,7 @@ const DIALECT_META: Record<string, {
     tagline: 'Sôi động & Cởi mở',
     keyword: '',
     emoji: '🌆',
+    icon: Building2,
     description: 'Làm quen với giọng Nam năng động, cởi mở và thân thiện.',
     photo: '/region_mien_nam.png',
     gradient: 'from-emerald-500/90 to-teal-600/90',
@@ -82,6 +86,7 @@ const UNKNOWN_META = {
   tagline: 'Mở rộng kiến thức',
   keyword: 'VIỆT NAM',
   emoji: '🇻🇳',
+  icon: Globe,
   description: 'Khám phá thêm về ngôn ngữ và văn hóa Việt Nam đa dạng.',
   photo: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800&q=80',
   gradient: 'from-purple-600/90 to-violet-700/90',
@@ -169,9 +174,9 @@ const RegionCard = ({ dialect, meta, index, onSelect, isMyRegion }: any) => {
                 <h3 className="text-4xl font-black text-white drop-shadow-lg leading-none">{meta.viName}</h3>
               </div>
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg border border-white/20 backdrop-blur-sm bg-white/10"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg border border-white/20 backdrop-blur-sm bg-white/10"
               >
-                {meta.emoji}
+                <meta.icon size={26} strokeWidth={2} />
               </div>
             </div>
           </div>
@@ -299,8 +304,8 @@ const ChapterStep = ({
           >
             <ArrowLeftOutlined className="text-white" />
           </button>
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border border-white/20 flex-shrink-0">
-            {meta.emoji}
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white border border-white/20 flex-shrink-0">
+            <meta.icon size={24} strokeWidth={2.5} />
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-black text-white leading-tight">{meta.viName}</h2>
@@ -635,7 +640,10 @@ const QuizRoadmapStep = ({
                   Vùng Đất Khám Phá
                 </span>
               </div>
-              <h3 className="text-xl md:text-2xl font-black text-gray-800 mb-0.5">{dialectMeta.viName} {dialectMeta.emoji}</h3>
+              <h3 className="text-xl md:text-2xl font-black text-gray-800 mb-0.5 flex items-center gap-2">
+                {dialectMeta.viName}
+                <span className="text-purple-500"><dialectMeta.icon size={24} strokeWidth={2.5} /></span>
+              </h3>
               <p className="text-gray-500 font-medium text-xs md:text-sm line-clamp-2 max-w-xl">
                 {chapter.description || 'Hoàn thành các thử thách phát âm, đọc và nói để tích luỹ sao và mở khoá hành trình mới.'}
               </p>

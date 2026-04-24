@@ -13,8 +13,10 @@ import {
   LoadingOutlined,
   ReloadOutlined,
   StarFilled,
+  TrophyFilled,
+  ArrowRightOutlined,
 } from '@ant-design/icons'
-import { Spin, Button, Tag, Empty, Input } from 'antd'
+import { Spin, Button, Tag, Empty, Input, message } from 'antd'
 
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -24,12 +26,19 @@ import characterImg from '../../../assets/sprite-max-px-36.gif'
 import { ASR_BASE_URL } from '../../../config'
 
 const PAGE_STYLES = `
-  @keyframes pulse-slow {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.9; transform: scale(1.01); }
+  @keyframes pulse-intense {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0); }
   }
-  .animate-pulse-slow {
-    animation: pulse-slow 5s infinite ease-in-out;
+  .animate-timer-danger {
+    animation: pulse-intense 0.6s infinite ease-in-out;
+  }
+  @keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  .animate-bounce-subtle {
+    animation: bounce-subtle 3s infinite ease-in-out;
   }
 `
 
@@ -199,21 +208,21 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
   options: string[]; correct: string; answered: boolean; selected: string | null; onSelect: (o: string) => void
 }) {
   return (
-    <div className="grid gap-3 mb-6">
+    <div className="grid gap-2 mb-4">
       {options.map((opt, i) => {
         const isRight = answered && opt === correct
         const isWrong = answered && opt === selected && opt !== correct
         return (
-          <motion.button key={i} whileTap={{ scale: answered ? 1 : 0.97 }} onClick={() => onSelect(opt)}
+          <motion.button key={i} whileHover={answered ? {} : { scale: 1.01, x: 4 }} whileTap={{ scale: answered ? 1 : 0.98 }} onClick={() => onSelect(opt)}
             className={[
-              'w-full text-left px-5 py-4 rounded-2xl border-2 font-semibold text-base transition-all duration-200',
+              'w-full text-left px-6 py-5 rounded-3xl border-[3px] font-bold text-xl transition-all duration-200 shadow-sm',
               isRight ? 'border-green-500 bg-green-50 text-green-700'
                 : isWrong ? 'border-red-400 bg-red-50 text-red-600'
-                  : selected === opt && !answered ? 'border-purple-500 bg-purple-100 text-purple-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50',
+                  : selected === opt && !answered ? 'border-purple-500 bg-purple-100 text-purple-700 shadow-md'
+                    : 'border-gray-100 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50',
             ].join(' ')}
           >
-            <span className="inline-flex items-center gap-3">
+            <span className="inline-flex items-center gap-4">
               {isRight && <CheckCircleFilled className="text-green-500" />}
               {isWrong && <CloseCircleFilled className="text-red-400" />}
               {opt}
@@ -222,6 +231,27 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
         )
       })}
     </div>
+  )
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+function BubbleContent({ text }: { text: string }) {
+  const shouldTruncate = text.length > 200
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  if (!shouldTruncate) return <>{text}</>
+
+  return (
+    <>
+      {isExpanded ? text : `${text.slice(0, 200)}...`}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="block mx-auto mt-1 text-[9px] text-purple-500 underline underline-offset-1 font-bold"
+      >
+        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+      </button>
+    </>
   )
 }
 
@@ -389,6 +419,7 @@ const QuizPage: React.FC = () => {
       return () => clearInterval(timer)
     } else if (timeLeft === 0 && !answered) {
       setAnswered(true)
+      explainAnswer(ch, 'Người dùng chưa chọn đáp án (Hết thời gian)')
     }
   }, [idx, timeLeft, answered, finished, loading, quiz])
 
@@ -448,15 +479,7 @@ const QuizPage: React.FC = () => {
     }).finally(() => setLoading(false))
   }, [quizId])
 
-  // ── Auto-play audio for LISTENING ─────────────────────────────────────────
-  useEffect(() => {
-    if (!quiz) return
-    const ch = quiz.challenges?.[idx]
-    if (ch?.skillType === 'LISTENING' && ch.audioUrl) {
-      try { const a = new Audio(ch.audioUrl); audioRef.current = a; a.play().catch(() => { }) } catch (_) { }
-    }
-    return () => { audioRef.current?.pause() }
-  }, [idx, quiz])
+
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = () => {
@@ -921,6 +944,10 @@ const QuizPage: React.FC = () => {
       case 'MULTIPLE_CHOICE': {
         const handleSelect = (opt: string) => {
           if (answered) return
+          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+            message.warning('Bạn cần nghe âm thanh trước khi chọn đáp án!')
+            return
+          }
           setSelected(opt); setAnswered(true)
           if (opt === ch.correctAnswer) setScore(s => s + 1)
           explainAnswer(ch, opt)
@@ -928,14 +955,6 @@ const QuizPage: React.FC = () => {
         return (
           <>
             <MCOptions options={ch.options} correct={ch.correctAnswer} answered={answered} selected={selected} onSelect={handleSelect} />
-            {answered && ch.correctAnswer && (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                className={`mb-4 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2 ${selected === ch.correctAnswer ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                {selected === ch.correctAnswer
-                  ? <><CheckCircleFilled /> Chính xác!</>
-                  : <><CloseCircleFilled /> Đáp án đúng: &ldquo;{ch.correctAnswer}&rdquo;</>}
-              </motion.div>
-            )}
           </>
         )
       }
@@ -944,9 +963,12 @@ const QuizPage: React.FC = () => {
       case 'FIND_WRONG_WORD': {
         const handleWordClick = (wordIdx: number) => {
           if (answered) return
+          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+            message.warning('Bạn cần nghe âm thanh trước khi chọn đáp án!')
+            return
+          }
           setWordPicked(wordIdx); setAnswered(true)
           if (wordIdx === ch.errorIndex) setScore(s => s + 1)
-          explainAnswer(ch, ch.words[wordIdx])
         }
         return (
           <>
@@ -972,14 +994,6 @@ const QuizPage: React.FC = () => {
                 })}
               </div>
             </div>
-            {answered && (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                className={`mb-4 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2 ${wordPicked === ch.errorIndex ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                {wordPicked === ch.errorIndex
-                  ? <><CheckCircleFilled /> Chính xác! Từ sai là &ldquo;{ch.words[ch.errorIndex]}&rdquo; → đúng: &ldquo;{ch.correctWord}&rdquo;</>
-                  : <><CloseCircleFilled /> Từ sai là &ldquo;{ch.words[ch.errorIndex]}&rdquo; → đúng: &ldquo;{ch.correctWord}&rdquo;</>}
-              </motion.div>
-            )}
           </>
         )
       }
@@ -988,6 +1002,10 @@ const QuizPage: React.FC = () => {
       case 'WRITING_FILL': {
         const handleWritingSubmit = () => {
           if (!writingInput.trim()) return
+          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+            message.warning('Bạn cần nghe âm thanh trước khi trả lời!')
+            return
+          }
           setAnswered(true)
           const isCorrect = ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
           if (isCorrect) setScore(s => s + 1)
@@ -1017,7 +1035,7 @@ const QuizPage: React.FC = () => {
               </div>
             )}
 
-            <div className="mb-8">
+            <div className="mb-4">
               <Input
                 placeholder="Nhập đáp án của bạn..."
                 size="large"
@@ -1028,15 +1046,6 @@ const QuizPage: React.FC = () => {
                 onPressEnter={handleWritingSubmit}
                 autoFocus
               />
-              {answered && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className={`mt-4 rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 shadow-sm ${isCorrect ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
-                    }`}>
-                  {isCorrect
-                    ? <><CheckCircleFilled className="text-xl" /> Chính xác!</>
-                    : <><CloseCircleFilled className="text-xl" /> Sai rồi, hãy cố gắng ở câu sau!</>}
-                </motion.div>
-              )}
             </div>
 
             {!answered && (
@@ -1280,7 +1289,7 @@ const QuizPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f5ff] pb-16">
+    <div className="min-h-screen bg-[#f8f5ff] pb-8">
       <style>{PAGE_STYLES}</style>
       {/* Gradient accent strip */}
       <div className="h-1 w-full bg-gradient-to-r from-purple-600 via-orange-400 to-amber-400" />
@@ -1301,24 +1310,20 @@ const QuizPage: React.FC = () => {
             <p className="text-xs text-gray-400 font-semibold">Câu {idx + 1} / {total}</p>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-3 ml-auto flex-shrink-0">
             {/* Timer */}
             {timeLeft !== null && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-black border-2 min-w-[70px] justify-center ${timeLeft < 10
-                ? 'bg-red-50 text-red-500 border-red-300 animate-pulse'
-                : timeLeft < 30
-                  ? 'bg-orange-50 text-orange-500 border-orange-200'
-                  : 'bg-blue-50 text-blue-600 border-blue-200'
-                }`}>
-                <ThunderboltFilled className="text-sm" />
+              <motion.div
+                className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-2xl font-black border-4 shadow-xl justify-center transition-all ${timeLeft < 10
+                  ? 'bg-red-600 text-white border-red-300 animate-timer-danger'
+                  : timeLeft < 30
+                    ? 'bg-orange-500 text-white border-orange-200'
+                    : 'bg-indigo-600 text-white border-indigo-300 shadow-indigo-200/50'
+                  }`}>
+                <ThunderboltFilled className={timeLeft < 10 ? 'text-3xl' : 'text-2xl'} />
                 <span>{timeLeft}s</span>
-              </div>
+              </motion.div>
             )}
-            {/* Passing score */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-black bg-emerald-50 text-emerald-600 border-2 border-emerald-200">
-              <span>🎯</span>
-              <span>Đạt: {quiz.passingScore}%</span>
-            </div>
           </div>
         </div>
 
@@ -1340,9 +1345,9 @@ const QuizPage: React.FC = () => {
 
 
       {/* Question area */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 relative">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 relative">
         {/* Character on the right */}
-        <div className="hidden xl:block absolute -right-52 bottom-0 w-48 transition-all duration-500">
+        <div className="hidden xl:block absolute -right-80 bottom-0 w-64 transition-all duration-500">
           <AnimatePresence mode="wait">
             <motion.div
               key={idx + (answered ? '_ans' : '')}
@@ -1351,25 +1356,27 @@ const QuizPage: React.FC = () => {
               exit={{ opacity: 0, scale: 0.8, x: 20 }}
             >
               {/* Speech Bubble */}
-              <div className="bg-white border-2 border-purple-200 rounded-2xl p-3 mb-2 shadow-lg relative min-h-[60px] flex flex-col items-center justify-center">
-                <p className="text-xs font-black text-purple-900 leading-tight text-center">
-                  {explaining ? (
-                    <span className="flex items-center gap-2">
-                      <LoadingOutlined /> ...
-                    </span>
-                  ) : (
-                    explanation || ch.content || "Hãy cùng luyện tập!"
-                  )}
-                </p>
+              <div className="bg-white border-2 border-purple-200 rounded-2xl p-3 mb-2 shadow-lg relative min-h-[80px] flex flex-col items-center justify-center">
+                <div className="max-h-[220px] overflow-y-auto no-scrollbar scroll-smooth w-full">
+                  <p className="text-xs font-bold text-purple-900 leading-normal text-center">
+                    {explaining ? (
+                      <span className="flex items-center gap-2">
+                        <LoadingOutlined /> ...
+                      </span>
+                    ) : (
+                      <BubbleContent text={explanation || ch.content || "Hãy cùng luyện tập!"} />
+                    )}
+                  </p>
+                </div>
 
                 {explanation && !explaining && (
-                  <div className="mt-3 w-full border-t border-purple-50 pt-2 text-center">
+                  <div className="mt-2 w-full border-t border-purple-50 pt-2 text-center">
                     <p className="text-[10px] text-purple-400 font-bold mb-1">Nghe thử các giọng miền khác?</p>
                     <div className="flex justify-center gap-1">
                       <Button
                         size="small"
                         loading={playingTTS === 'banmai'}
-                        className="text-[10px] h-6 px-2 bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                        className="text-[10px] h-6 px-2 bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
                         onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'banmai')}
                       >
                         Bắc
@@ -1377,7 +1384,7 @@ const QuizPage: React.FC = () => {
                       <Button
                         size="small"
                         loading={playingTTS === 'myan'}
-                        className="text-[10px] h-6 px-2 bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100"
+                        className="text-[10px] h-6 px-2 bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
                         onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'myan')}
                       >
                         Trung
@@ -1385,7 +1392,7 @@ const QuizPage: React.FC = () => {
                       <Button
                         size="small"
                         loading={playingTTS === 'linhsan'}
-                        className="text-[10px] h-6 px-2 bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
+                        className="text-[10px] h-6 px-2 bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
                         onClick={() => playRegionalTTS(ch.correctSentence || ch.content, 'linhsan')}
                       >
                         Nam
@@ -1395,12 +1402,12 @@ const QuizPage: React.FC = () => {
                 )}
 
                 {/* Bubble Tail */}
-                <div className="absolute -bottom-1.5 right-10 w-4 h-4 bg-white border-b-2 border-r-2 border-purple-200 rotate-45" />
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b-2 border-r-2 border-purple-200 rotate-45" />
               </div>
               <img
                 src={characterImg}
                 alt="Character"
-                className="w-full drop-shadow-xl"
+                className="w-36 mx-auto drop-shadow-xl"
               />
             </motion.div>
           </AnimatePresence>
@@ -1412,11 +1419,14 @@ const QuizPage: React.FC = () => {
             exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 22 }}>
 
             {/* Question card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-purple-50 p-6 mb-6" style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-              <div className="flex items-center gap-2 mb-4">
-                <Tag color={skillMeta.color} icon={skillMeta.icon}>{skillMeta.label}</Tag>
-                <Tag>{ch.mode === 'FIND_WRONG_WORD' ? 'Tìm từ sai' : ch.mode === 'WRITING_FILL' ? 'Điền từ' : ch.mode === 'SPEAKING_READ' ? 'Đọc to' : 'Trắc nghiệm'}</Tag>
-                <span className="text-xs text-purple-400 font-bold ml-auto">Câu {idx + 1}</span>
+            <div className="bg-white rounded-3xl shadow-sm border border-purple-50 p-6 mb-4" style={{ boxShadow: '0 4px 24px rgba(147,51,234,0.08)' }}>
+              <div className="flex items-center gap-6 mb-4">
+                <span className="text-4xl font-black text-purple-600 flex items-center gap-3">
+                  Câu {idx + 1}
+                </span>
+                <div className="flex items-center gap-3">
+                  <Tag color={skillMeta.color} icon={skillMeta.icon} className="px-4 py-1.5 rounded-xl font-bold text-sm flex items-center gap-2">{skillMeta.label}</Tag>
+                </div>
               </div>
 
               {ch.hint && (
@@ -1450,10 +1460,10 @@ const QuizPage: React.FC = () => {
               {ch.audioUrl && ch.mode !== 'SPEAKING_READ' && (
                 <Button
                   disabled={(audioPlays[idx] || 0) >= 2}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl h-auto font-bold text-sm transition-all ${(audioPlays[idx] || 0) >= 2
+                  className={`flex items-center gap-3 px-6 py-4 rounded-2xl h-auto font-black text-lg transition-all animate-bounce-subtle ${(audioPlays[idx] || 0) >= 2
                     ? 'bg-gray-100 text-gray-400 border-gray-200'
-                    : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'
-                    } mb-2`}
+                    : 'bg-indigo-50 text-indigo-600 border-2 border-indigo-200 hover:bg-indigo-100 hover:scale-105 shadow-md shadow-indigo-100'
+                    } mb-3`}
                   onClick={() => {
                     try {
                       const plays = audioPlays[idx] || 0;
@@ -1467,10 +1477,7 @@ const QuizPage: React.FC = () => {
                   <SoundFilled /> Nghe âm thanh {(audioPlays[idx] || 0) > 0 && `(${(audioPlays[idx] || 0)}/2)`}
                 </Button>
               )}
-              {ch.imageUrl && <img src={ch.imageUrl} alt="" className="rounded-xl max-h-48 object-contain mb-3" />}
-              {ch.mode !== 'SPEAKING_READ' && !ch.audioUrl && (
-                <p className="text-gray-400 italic">Câu hỏi {idx + 1}</p>
-              )}
+              {ch.imageUrl && <img src={ch.imageUrl} alt="" className="rounded-xl max-h-32 object-contain mb-2" />}
             </div>
 
             {renderInteraction()}
@@ -1480,9 +1487,10 @@ const QuizPage: React.FC = () => {
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Button type="primary" size="large" block
                   loading={saving}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 border-none hover:from-green-600 hover:to-emerald-600 rounded-xl h-12 text-base font-black shadow-md shadow-green-200"
+                  icon={idx + 1 >= total ? <TrophyFilled /> : <ArrowRightOutlined />}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 border-none hover:from-green-600 hover:to-emerald-600 rounded-xl h-12 text-lg font-black shadow-lg shadow-green-200"
                   onClick={goNext}>
-                  {idx + 1 >= total ? 'Hoàn thành 🎉' : 'Tiếp theo →'}
+                  {idx + 1 >= total ? 'Hoàn thành' : 'Tiếp theo'}
                 </Button>
 
               </motion.div>

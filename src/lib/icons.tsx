@@ -1,4 +1,11 @@
-import { Sparkles as LucideSparkles } from 'lucide-react';
+import {
+  Sparkles as LucideSparkles,
+  Landmark,
+  Castle,
+  Building2,
+  CheckCircle2,
+  Flame,
+} from 'lucide-react';
 
 export {
   FaArrowLeft as ArrowLeft,
@@ -16,7 +23,6 @@ export {
   FaChartSimple as BarChart3,
   FaCheck as Check,
   FaCircleCheck as CheckCircle,
-  FaCircleCheck as CheckCircle2,
   FaCircleInfo as AlertCircle,
   FaCircleInfo as Info,
   FaCircleQuestion as HelpCircle,
@@ -26,7 +32,6 @@ export {
   FaCrown as Crown,
   FaEarthAsia as Globe,
   FaEnvelope as Mail,
-  FaFire as Flame,
   FaGraduationCap as GraduationCap,
   FaHouse as Home,
   FaLightbulb as Lightbulb,
@@ -92,4 +97,11 @@ export {
   FaComputerMouse as Mouse,
 } from 'react-icons/fa6';
 
-export { LucideSparkles as Sparkles };
+export {
+  LucideSparkles as Sparkles,
+  Landmark,
+  Castle,
+  Building2,
+  CheckCircle2,
+  Flame,
+};
