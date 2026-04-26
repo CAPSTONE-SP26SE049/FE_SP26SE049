@@ -403,7 +403,7 @@ export default function LearnerFriendsPage() {
             const resolved = new URL(apiUrl, window.location.origin);
             return `${resolved.protocol}//${resolved.host}${resolved.pathname}`.replace('/api/v1', '/ws');
         }
-        return 'http://localhost:8082/ws';
+        return 'https://speakvn-backend-221596280724.asia-southeast1.run.app/ws';
     }, []);
 
     useEffect(() => {

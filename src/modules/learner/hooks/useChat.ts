@@ -154,7 +154,7 @@ export function useChat({
         );
       return wsHttp;
     }
-    return "http://localhost:8082/ws";
+    return "https://speakvn-backend-221596280724.asia-southeast1.run.app/ws";
   }, []);
 
   const sendReadReceipt = useCallback(() => {

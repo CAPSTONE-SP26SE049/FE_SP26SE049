@@ -4,7 +4,7 @@
  */
 
 // 1. Backend URL
-const USE_DEPLOYED_BE = false;
+const USE_DEPLOYED_BE = true;
 export const API_BASE_URL = USE_DEPLOYED_BE
     ? 'https://speakvn-backend-221596280724.asia-southeast1.run.app/api/v1'
     : 'http://localhost:8082/api/v1';
