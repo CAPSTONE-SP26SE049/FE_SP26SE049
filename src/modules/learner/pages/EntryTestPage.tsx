@@ -135,6 +135,7 @@ interface StepResult {
     regionCategory: string
     feedback?: string
     errorDetail?: string
+    wordDetails?: any[] // Thêm chi tiết từng từ
 }
 
 const EntryTestPage: React.FC = () => {
@@ -243,7 +244,9 @@ const EntryTestPage: React.FC = () => {
             // Bước 2: gọi Local ASR (Sử dụng ASR_URL từ env, đo latency)
             const asrStartTime = Date.now()
             const asrFormData = new FormData()
-            asrFormData.append('file', audioForAsr, uploadFileName)
+            asrFormData.append('audio', audioForAsr, uploadFileName)
+            const targetText = questions[idx]?.targetText || ''
+            asrFormData.append('target', targetText)
 
             const asrResponse = await fetch(ASR_BASE_URL, {
                 method: 'POST',
@@ -254,11 +257,15 @@ const EntryTestPage: React.FC = () => {
             const asrData = await asrResponse.json()
             const asrProcessingTimeMs = Date.now() - asrStartTime
 
-            const rawText = asrData.text || ''
-            const transcribedText = typeof rawText === 'object' ? (rawText.text || '') : rawText
+            // Format mới: { success: true, data: { transcribed, score, word_details, record_id } }
+            const apiResult = asrData.success ? asrData.data : null
+            if (!apiResult) throw new Error("Server trả về lỗi logic")
+
+            const transcribedText = apiResult.transcribed || ''
+            const normalizedScore = apiResult.score || 0
+            const wordDetails = apiResult.word_details || []
 
             // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
-            const targetText = questions[idx]?.targetText || ''
             const feedbackResponse = await apiClient.post('/ai/feedback', {
                 transcribedText,
                 targetText,
@@ -270,19 +277,21 @@ const EntryTestPage: React.FC = () => {
 
             // Fix: Unwrap data if needed
             const result = feedbackResponse.data?.data || feedbackResponse.data || feedbackResponse
-            const normalizedScore = Number(result?.score ?? result?.accuracy ?? 0)
+            // Ưu tiên điểm từ model ASR custom
+            const finalScore = normalizedScore || Number(result?.score ?? result?.accuracy ?? 0)
             const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || '')
             const detectedError = result?.detectedError || result?.errorType || ''
 
             setCurrentStepResult({
-                accuracy: normalizedScore,
-                detectedError,
+                accuracy: finalScore,
+                detectedError: detectedError,
                 isRegional,
                 rawText: transcribedText || '(Không nhận diện được)',
                 targetText,
                 regionCategory: questions[idx]?.regionCategory || '',
                 feedback: result?.feedback || result?.suggestion || '',
-                errorDetail: result?.errorDetail || ''
+                errorDetail: result?.errorDetail || '',
+                wordDetails: wordDetails // Lưu thêm chi tiết từ
             })
         } catch (err: any) {
             console.error('[EntryTest] Analyze failed:', err)
@@ -507,9 +516,26 @@ const EntryTestPage: React.FC = () => {
                                         <span className="font-bold text-gray-700">Kết quả nhận diện:</span>
                                         <span className="font-black text-gray-900 ml-auto">{Math.round(normalizedAccuracy)}%</span>
                                     </div>
-                                    <p className="italic text-gray-600 bg-white/50 p-3 rounded-xl border border-black/5">
+                                    <p className="italic text-gray-600 bg-white/50 p-3 rounded-xl border border-black/5 mb-4">
                                         {currentStepResult.rawText || "Không nhận diện được âm thanh"}
                                     </p>
+
+                                    {/* Hiển thị chi tiết từng từ (Word Details) */}
+                                    {currentStepResult.wordDetails && currentStepResult.wordDetails.length > 0 && (
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4">
+                                            {currentStepResult.wordDetails.map((item: any, i: number) => {
+                                                const isWrong = item.status === 'wrong';
+                                                const textColor = item.status === 'correct' ? 'text-green-600' :
+                                                                  item.status === 'near' ? 'text-yellow-600' :
+                                                                  'text-red-600';
+                                                return (
+                                                    <span key={i} className={`font-black text-lg ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-4' : ''}`}>
+                                                        {item.word}
+                                                    </span>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
 
                                     {(currentStepResult.errorDetail || currentStepResult.feedback) && (
                                         <div className="mt-4 p-5 bg-blue-50/80 rounded-3xl border border-blue-100 text-blue-900 text-sm leading-relaxed">
