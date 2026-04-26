@@ -299,6 +299,7 @@ const QuizPage: React.FC = () => {
     errorDetail: string
     suggestion: string
     transcription?: string
+    wordDetails?: any[]
   } | null>(null)
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null) // null = not decided yet
   const [showFullSuggestion, setShowFullSuggestion] = useState(false)
@@ -595,7 +596,8 @@ const QuizPage: React.FC = () => {
 
       // 2. Call Local ASR Server
       const asrFormData = new FormData()
-      asrFormData.append('file', audioForAsr, uploadFileName)
+      asrFormData.append('audio', audioForAsr, uploadFileName)
+      asrFormData.append('target', targetText)
 
       const asrStartTime = performance.now()
       const asrResponse = await fetch(ASR_BASE_URL, {
@@ -606,8 +608,13 @@ const QuizPage: React.FC = () => {
       const asrProcessingTimeMs = Math.round(asrEndTime - asrStartTime)
 
       const asrData = await asrResponse.json()
-      const rawText = asrData.text || ""
-      const transcribedText = typeof rawText === 'object' ? (rawText.text || "") : rawText
+      // Format mới: { success: true, data: { transcribed, score, word_details, record_id } }
+      const apiResult = asrData.success ? asrData.data : null
+      if (!apiResult) throw new Error("Server ASR trả về lỗi logic")
+
+      const transcribedText = apiResult.transcribed || ""
+      const asrScore = apiResult.score || 0
+      const wordDetails = apiResult.word_details || []
 
       // 3. Call Backend Groq Feedback (kèm metadata cho dataset)
       // Upload audio thẳng lên Cloudinary từ Frontend nếu được phép
@@ -657,7 +664,8 @@ const QuizPage: React.FC = () => {
 
       // Normalize nhiều format response khác nhau từ backend AI
       const scoreFromText = extractScoreFromText(replyText)
-      const normalizedScore = Number(result?.score ?? result?.overallScore ?? scoreFromText ?? 0)
+      // Ưu tiên điểm từ model ASR custom vì nó chính xác hơn
+      const normalizedScore = asrScore || Number(result?.score ?? result?.overallScore ?? scoreFromText ?? 0)
       const normalizedIsCorrect = typeof result?.isCorrect === 'boolean'
         ? result.isCorrect
         : normalizedScore >= 80
@@ -685,7 +693,8 @@ const QuizPage: React.FC = () => {
         isCorrect: normalizedIsCorrect,
         errorDetail: safeErrorDetail,
         suggestion: safeSuggestion,
-        transcription: safeTranscription || "(Không nhận diện được giọng nói)"
+        transcription: safeTranscription || "(Không nhận diện được giọng nói)",
+        wordDetails: wordDetails // Lưu thêm chi tiết từ
       })
 
       setAnswered(true)
@@ -1218,9 +1227,26 @@ const QuizPage: React.FC = () => {
 
                   <div className="space-y-4">
                     {ollamaResult.transcription && (
-                      <div className="bg-gray-100 rounded-2xl p-4 border-l-4 border-gray-400">
+                      <div className="bg-gray-100 rounded-2xl p-4 border-l-4 border-gray-400 mb-4">
                         <p className="text-xs text-gray-400 font-bold uppercase mb-1">Văn bản nhận diện (ASR):</p>
                         <p className="text-gray-800 font-black text-lg italic">{String(ollamaResult.transcription ?? '').replace(/^['"“”]+|['"“”]+$/g, '').replace(/[.。！？!?.]+$/g, '')}</p>
+                      </div>
+                    )}
+
+                    {/* Hiển thị chi tiết từng từ (Word Details) */}
+                    {ollamaResult.wordDetails && ollamaResult.wordDetails.length > 0 && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4">
+                        {ollamaResult.wordDetails.map((item: any, i: number) => {
+                          const isWrong = item.status === 'wrong';
+                          const textColor = item.status === 'correct' ? 'text-green-600' :
+                                            item.status === 'near' ? 'text-yellow-600' :
+                                            'text-red-600';
+                          return (
+                            <span key={i} className={`font-black text-xl ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-8' : ''}`}>
+                              {item.word}
+                            </span>
+                          )
+                        })}
                       </div>
                     )}
 
