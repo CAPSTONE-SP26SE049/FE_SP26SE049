@@ -26,7 +26,8 @@ const AdminChapterManagementPage: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingLevel, setEditingLevel] = useState<any | null>(null);
-    const [errorTags, setErrorTags] = useState<any[]>([]);
+    const [errorTags, setErrorTags] = useState<any[]>([]); // Tags for current dialect (dropdown)
+    const [allErrorTags, setAllErrorTags] = useState<any[]>([]); // Global list for name lookup
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
@@ -119,7 +120,30 @@ const AdminChapterManagementPage: React.FC = () => {
     useEffect(() => {
         fetchLevels();
         fetchDialects();
+        fetchAllErrorTags();
     }, []);
+
+    const fetchAllErrorTags = async () => {
+        try {
+            const response: any = await adminService.getErrorTags();
+            if (response && (response.status === 'success' || response.data)) {
+                setAllErrorTags(response.data || response);
+            } else {
+                setAllErrorTags(Array.isArray(response) ? response : []);
+            }
+        } catch (error) {
+            console.error('Error fetching all error tags:', error);
+        }
+    };
+
+    const getErrorTagName = (tagRef: any) => {
+        if (!tagRef) return null;
+        if (typeof tagRef === 'object' && tagRef.name) return tagRef.name;
+        
+        // Lookup by tagCode or id
+        const tag = allErrorTags.find(t => t.tagCode === tagRef || t.id === tagRef);
+        return tag ? tag.name : tagRef;
+    };
 
     const handleCreateLevel = async (values: any) => {
         setCreating(true);
@@ -155,8 +179,8 @@ const AdminChapterManagementPage: React.FC = () => {
             levelOrder: record.levelOrder,
             minStarsRequired: record.minStarsRequired,
             aiThreshold: record.aiThreshold,
-            difficultyLevel: record.difficultyLevel,
-            errorTagId: record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
+            difficultyLevel: record.difficulty_level || record.difficultyLevel,
+            errorTagId: record.error_tag || record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
             description: record.description || '',
             comment: record.rejectionReason || '',
         });
@@ -660,21 +684,18 @@ const AdminChapterManagementPage: React.FC = () => {
 
                                                                 <div className="mt-4 pt-4 border-t-[2px] border-slate-900/5 flex flex-col gap-3">
                                                                     <div className="flex flex-wrap items-center gap-2">
-                                                                        {level.difficultyLevel && (
+                                                                        {(level.difficulty_level || level.difficultyLevel) && (
                                                                             <div className="px-2 py-1 rounded-md bg-[#49B6E5]/10 text-[#49B6E5] text-[9px] font-black uppercase tracking-widest border border-[#49B6E5]/20">
-                                                                                {level.difficultyLevel === 'BEGINNER' ? 'Cơ bản' : level.difficultyLevel === 'INTERMEDIATE' ? 'Trung bình' : 'Nâng cao'}
+                                                                                {(level.difficulty_level || level.difficultyLevel) === 'BEGINNER' ? 'Cơ bản' : (level.difficulty_level || level.difficultyLevel) === 'INTERMEDIATE' ? 'Trung bình' : 'Nâng cao'}
                                                                             </div>
                                                                         )}
-                                                                        {level.errorTag && (
+                                                                        {(level.error_tag || level.errorTag) && (
                                                                             <div className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 text-[9px] font-black uppercase tracking-widest border border-purple-500/20">
-                                                                                {typeof level.errorTag === 'object' ? level.errorTag.name : level.errorTag}
+                                                                                {getErrorTagName(level.error_tag || level.errorTag)}
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                     <div className="flex items-center justify-between">
-                                                                        <div className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-black uppercase text-slate-500">
-                                                                            Mã: {level.id.slice(0, 8)}
-                                                                        </div>
                                                                         <div className="flex items-center gap-1 text-[#49B6E5] font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                                                                             Chi tiết <ChevronRight size={14} strokeWidth={4} />
                                                                         </div>

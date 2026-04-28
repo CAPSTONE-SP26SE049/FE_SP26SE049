@@ -15,7 +15,7 @@ import { Spin, Button, Progress, message } from 'antd'
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
-import { ASR_BASE_URL } from '../../../config'
+import { ASR_BASE_URL, ASR_MODEL, ASR_LANGUAGE, ASR_SAMPLING_RATE } from '../../../config'
 import { Globe, Play, ChevronRight, MapPin } from 'lucide-react'
 import mienbacImg from '../../../assets/mienbac.png'
 import mientrungImg from '../../../assets/mientrung.png'
@@ -138,6 +138,7 @@ interface StepResult {
     feedback?: string
     errorDetail?: string
     wordDetails?: any[] // Thêm chi tiết từng từ
+    audioUrl?: string
 }
 
 const EntryTestPage: React.FC = () => {
@@ -219,83 +220,58 @@ const EntryTestPage: React.FC = () => {
         return new Blob([buffer], { type: 'audio/wav' })
     }
 
-    // 2. Handle Recording Stop & Analyze — COPY ĐÚNG LUỒNG từ QuizPage.evaluateSpeaking
+    // 2. Handle Recording Stop & Analyze — Use centralized BE endpoint
     const handleRecordStop = async (blob: Blob) => {
         if (!blob || blob.size < 100) return
         setAnalyzing(true)
 
         try {
-            // Bước 1: convert audio sang WAV
-            let audioForAsr = blob
-            let uploadFileName = 'recording.webm'
-            try {
-                const mime = (blob.type || '').toLowerCase()
-                if (!mime.includes('wav')) {
-                    audioForAsr = await convertWebmToWav(blob)
-                    uploadFileName = 'recording.wav'
-                } else {
-                    uploadFileName = 'recording.wav'
+            // convert audio to WAV for better compatibility if needed, but BE usually handles it
+            let audioFile = blob
+            let fileName = 'recording.webm'
+            const mime = (blob.type || '').toLowerCase()
+            if (!mime.includes('wav')) {
+                try {
+                    audioFile = await convertWebmToWav(blob)
+                    fileName = 'recording.wav'
+                } catch (e) {
+                    console.warn("WAV conversion failed, using original blob", e)
                 }
-            } catch {
-                audioForAsr = blob
-                uploadFileName = 'recording.webm'
+            } else {
+                fileName = 'recording.wav'
             }
 
-            // Bước 2: gọi Local ASR (Sử dụng ASR_URL từ env, đo latency)
-            const asrStartTime = Date.now()
-            const asrFormData = new FormData()
-            asrFormData.append('audio', audioForAsr, uploadFileName)
-            const targetText = questions[idx]?.targetText || ''
-            asrFormData.append('target', targetText)
+            const formData = new FormData()
+            formData.append('audio', audioFile, fileName)
+            formData.append('questionId', questions[idx]?.id)
 
-            const asrResponse = await fetch(ASR_BASE_URL, {
-                method: 'POST',
-                body: asrFormData,
-            })
-            if (!asrResponse.ok) throw new Error(`ASR Server error: ${asrResponse.status}`)
-
-            const asrData = await asrResponse.json()
-            const asrProcessingTimeMs = Date.now() - asrStartTime
-
-            // Format mới: { success: true, data: { transcribed, score, word_details, record_id } }
-            const apiResult = asrData.success ? asrData.data : null
-            if (!apiResult) throw new Error("Server trả về lỗi logic")
-
-            const transcribedText = apiResult.transcribed || ''
-            const normalizedScore = apiResult.score || 0
-            const wordDetails = apiResult.word_details || []
-
-            // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
-            const feedbackResponse = await apiClient.post('/ai/feedback', {
-                transcribedText,
-                targetText,
-                challengeId: questions[idx]?.id || null,
-                dialect: questions[idx]?.regionCategory || '',
-                consentGiven: false,
-                asrProcessingTimeMs
+            const res = await apiClient.post('/test/analyze-step', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             })
 
-            // Fix: Unwrap data if needed
-            const result = feedbackResponse.data?.data || feedbackResponse.data || feedbackResponse
-            // Ưu tiên điểm từ model ASR custom
-            const finalScore = normalizedScore || Number(result?.score ?? result?.accuracy ?? 0)
-            const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || '')
-            const detectedError = result?.detectedError || result?.errorType || ''
+            const result = res.data?.data || res.data
+            
+            // Extract values from unified BE response
+            const finalScore = Number(result?.accuracy ?? result?.score ?? 0)
+            const transcribedText = result?.azureTranscript || result?.rawText || result?.text || ''
+            const wordDetails = result?.word_details || []
+            const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || result?.errorType || '')
 
             setCurrentStepResult({
                 accuracy: finalScore,
-                detectedError: detectedError,
+                detectedError: result?.detectedError || result?.errorType || '',
                 isRegional,
                 rawText: transcribedText || '(Không nhận diện được)',
-                targetText,
+                targetText: questions[idx]?.targetText || '',
                 regionCategory: questions[idx]?.regionCategory || '',
                 feedback: result?.feedback || result?.suggestion || '',
                 errorDetail: result?.errorDetail || '',
-                wordDetails: wordDetails // Lưu thêm chi tiết từ
+                wordDetails: wordDetails,
+                audioUrl: result?.audioUrl // Store the Firebase URL from BE
             })
         } catch (err: any) {
             console.error('[EntryTest] Analyze failed:', err)
-            message.error('Lỗi khi phân tích giọng nói: ' + (err?.message || 'Không rõ'))
+            message.error('Lỗi khi phân tích giọng nói: ' + (err?.response?.data?.message || err?.message || 'Không rõ'))
         } finally {
             setAnalyzing(false)
         }
