@@ -27,6 +27,7 @@ import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagement
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
 import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementPage'
+import ErrorTagManagementPage from '../modules/admin/pages/ErrorTagManagementPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -72,6 +73,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="ai-monitor" element={<AiMonitorPage />} />
           <Route path="entry-test" element={<EntryTestManagementPage />} />
+          <Route path="error-tags" element={<ErrorTagManagementPage />} />
         </Route>
       </Route>
 

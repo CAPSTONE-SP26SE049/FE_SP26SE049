@@ -102,6 +102,8 @@ export const adminService = {
             name: data.name,
             type: 'LEVEL',
             parent_id: data.dialectId,
+            difficultyLevel: data.difficultyLevel,
+            errorTag: data.errorTagId,
             metadata_json: {
                 status: data.status || 'APPROVED',
                 audio_url: data.audioUrl ?? null,
@@ -120,6 +122,8 @@ export const adminService = {
             name: data.name,
             type: 'LEVEL',
             parent_id: data.dialectId,
+            difficultyLevel: data.difficultyLevel,
+            errorTag: data.errorTagId,
             metadata_json: {
                 status: data.status || 'APPROVED',
                 audio_url: data.audioUrl ?? null,
