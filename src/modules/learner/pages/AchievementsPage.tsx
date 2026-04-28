@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import badgeService from '../services/badgeService'
 import type { BadgeCatalogItem, MyBadge } from '../services/badgeService'
-import { Trophy, Star, Lock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trophy, Star, Lock, ChevronLeft, ChevronRight, CheckCircle2 } from '../../../lib/icons'
+import { DoodleLoading } from '../../../components/ui/DoodleLoading'
+import clsx from 'clsx'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Tab = 'ALL' | 'EARNED' | 'LOCKED'
@@ -18,63 +20,71 @@ const BadgeModal: React.FC<{ badge: MergedBadge; onClose: () => void }> = ({ bad
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
         onClick={onClose}
     >
         <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            initial={{ scale: 0.9, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            exit={{ scale: 0.9, opacity: 0, y: 30 }}
             transition={{ type: 'spring', bounce: 0.35, duration: 0.5 }}
-            className="relative w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl"
+            className="relative w-full max-w-sm bg-white rounded-[2.5rem] overflow-hidden border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937]"
             onClick={(e) => e.stopPropagation()}
         >
-            <div className="p-8 flex flex-col items-center gap-5">
+            <div className="p-10 flex flex-col items-center gap-6">
                 {/* Icon */}
                 <div
-                    className={`relative w-28 h-28 rounded-full flex items-center justify-center shadow-inner ${badge.earned
-                        ? 'bg-gradient-to-br from-orange-50 to-amber-100 border-2 border-amber-300 shadow-amber-200/50'
-                        : 'bg-gray-100 border-2 border-gray-200'
-                        }`}
+                    className={clsx(
+                        "relative w-32 h-32 rounded-[2.5rem] flex items-center justify-center border-[2.5px] border-slate-900 transition-all",
+                        badge.earned
+                            ? 'bg-yellow-50 shadow-[4px_4px_0_#1f2937]'
+                            : 'bg-slate-100 shadow-inner'
+                    )}
                 >
                     <img
                         src={badge.iconUrl}
                         alt={badge.name}
-                        className={`w-16 h-16 object-contain ${!badge.earned ? 'grayscale opacity-40' : ''}`}
+                        className={clsx("w-20 h-20 object-contain", !badge.earned && 'grayscale opacity-30')}
                         onError={(e: any) => { e.target.style.display = 'none' }}
                     />
                     {!badge.earned && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <Lock size={32} className="text-gray-400" />
+                            <Lock size={40} className="text-slate-400" />
                         </div>
                     )}
                 </div>
 
-                {/* Status chip */}
-                <span
-                    className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase border ${badge.earned
-                        ? 'bg-amber-50 text-amber-600 border-amber-200'
-                        : 'bg-gray-50 text-gray-400 border-gray-200'
-                        }`}
-                >
-                    {badge.earned ? '✨ Đã đạt được' : '🔒 Chưa mở khóa'}
-                </span>
-
                 <div className="text-center">
-                    <h3 className="text-xl font-black text-gray-800 mb-2">{badge.name}</h3>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2 font-nunito">{badge.name}</h3>
+                    <p className="text-slate-500 font-bold text-sm leading-relaxed px-2">
+                        {badge.earned ? 'Bạn đã xuất sắc chinh phục được danh hiệu này!' : 'Danh hiệu này vẫn đang chờ bạn khám phá đó!'}
+                    </p>
+                </div>
+
+                {/* Status chip */}
+                <div
+                    className={clsx(
+                        "px-6 py-2 rounded-2xl text-xs font-black tracking-widest uppercase border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center gap-2",
+                        badge.earned ? 'bg-yellow-400 text-slate-900' : 'bg-slate-200 text-slate-500 shadow-none translate-y-0.5'
+                    )}
+                >
+                    {badge.earned ? <><Star size={14} fill="currentColor" /> Đã đạt được</> : <><Lock size={14} /> Chưa mở khóa</>}
                 </div>
 
                 {/* Earned date */}
                 {badge.earned && badge.earnedAt && (
-                    <p className="text-xs text-amber-600 font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
-                        Đạt được lúc: {new Date(badge.earnedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </p>
+                    <div className="bg-slate-50 px-4 py-2 rounded-xl border-[2px] border-slate-900 border-dashed">
+                        <p className="text-[11px] text-slate-600 font-black flex items-center gap-2">
+                            <CheckCircle2 size={12} className="text-green-500" />
+                            Ngày đạt: {new Date(badge.earnedAt).toLocaleDateString('vi-VN')}
+                        </p>
+                    </div>
                 )}
 
                 {/* Close */}
                 <button
                     onClick={onClose}
-                    className="w-full h-12 mt-2 rounded-2xl font-black text-sm transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                    className="w-full h-14 mt-4 rounded-2xl font-black text-sm transition-all bg-white text-slate-900 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
                 >
                     Đóng
                 </button>
@@ -86,35 +96,32 @@ const BadgeModal: React.FC<{ badge: MergedBadge; onClose: () => void }> = ({ bad
 // ── Badge Card ────────────────────────────────────────────────────────────────
 const BadgeCard: React.FC<{ badge: MergedBadge; index: number; onClick: () => void }> = ({ badge, index, onClick }) => (
     <motion.div
-        initial={{ opacity: 0, scale: 0.85, y: 16 }}
+        initial={{ opacity: 0, scale: 0.85, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ delay: Math.min(index * 0.02, 0.2), type: 'spring', bounce: 0.3 }}
-        whileHover={{ y: -4, scale: 1.02 }}
+        transition={{ delay: Math.min(index * 0.05, 0.4), type: 'spring', bounce: 0.4 }}
+        whileHover={{ y: -6, scale: 1.05 }}
         onClick={onClick}
-        className="flex flex-col items-center gap-3 cursor-pointer group bg-white p-4 rounded-3xl border border-purple-50 shadow-[0_2px_10px_rgba(147,51,234,0.03)] hover:shadow-[0_8px_20px_rgba(147,51,234,0.08)] hover:border-purple-100 transition-all"
+        className={clsx(
+            "flex flex-col items-center gap-4 cursor-pointer group bg-white p-6 rounded-[2rem] border-[2.5px] border-slate-900 transition-all font-nunito",
+            badge.earned ? "shadow-[4px_4px_0_#49B6E5]" : "shadow-[4px_4px_0_#1f2937] hover:shadow-[6px_6px_0_#1f2937]"
+        )}
     >
-        {/* Circle */}
+        {/* Circle/Icon container */}
         <div
-            className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all duration-300 ${badge.earned
-                ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 shadow-inner'
-                : 'bg-gray-50 border border-gray-100'
-                }`}
+            className={clsx(
+                "relative w-20 h-20 rounded-[1.5rem] flex items-center justify-center transition-all duration-300 border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]",
+                badge.earned ? "bg-yellow-50" : "bg-slate-50 opacity-60"
+            )}
         >
             {badge.iconUrl ? (
                 <img
                     src={badge.iconUrl}
                     alt={badge.name}
-                    className={`w-12 h-12 sm:w-14 sm:h-14 object-contain transition-transform group-hover:scale-110 ${!badge.earned ? 'grayscale opacity-30' : ''}`}
+                    className={clsx("w-12 h-12 object-contain transition-transform group-hover:scale-110", !badge.earned && 'grayscale opacity-30')}
                     onError={(e: any) => { e.target.style.display = 'none' }}
                 />
             ) : (
-                <Trophy size={40} className={badge.earned ? "text-amber-400" : "text-gray-300"} />
-            )}
-
-            {/* Lock overlay */}
-            {!badge.earned && (
-                <div className="absolute inset-0 rounded-full flex items-center justify-center">
-                </div>
+                <Trophy size={40} className={badge.earned ? "text-yellow-400" : "text-slate-200"} />
             )}
 
             {/* Earned checkmark */}
@@ -122,19 +129,19 @@ const BadgeCard: React.FC<{ badge: MergedBadge; index: number; onClick: () => vo
                 <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ delay: Math.min(index * 0.02, 0.2) + 0.2, type: 'spring', bounce: 0.6 }}
-                    className="absolute -top-1 -right-1 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white"
+                    transition={{ delay: Math.min(index * 0.05, 0.4) + 0.3, type: 'spring', bounce: 0.6 }}
+                    className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-slate-900 shadow-[2px_2px_0_#1f2937] border-[2px] border-slate-900 z-10"
                 >
-                    <Star size={14} fill="currentColor" />
+                    <CheckCircle2 size={16} strokeWidth={3} />
                 </motion.div>
             )}
         </div>
 
         {/* Name */}
-        <p
-            className={`text-center text-[13px] font-bold leading-snug w-full line-clamp-2 px-1 ${badge.earned ? 'text-gray-800' : 'text-gray-400'
-                }`}
-        >
+        <p className={clsx(
+            "text-center text-sm font-black leading-tight w-full line-clamp-2 px-1 font-nunito uppercase tracking-tight",
+            badge.earned ? 'text-slate-900' : 'text-slate-400'
+        )}>
             {badge.name}
         </p>
     </motion.div>
@@ -211,50 +218,48 @@ const AchievementsPage: React.FC = () => {
 
     return (
         // Height is calc(100vh-80px) to subtract the 80px header from LearnerLayout
-        <div className="h-[calc(100vh-80px)] flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 bg-[#fbfaff]">
+        <div className="min-h-screen flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-20 bg-[#fbf6ef] font-nunito">
 
             {/* ── Fixed Header Section (Does not scroll) ───────────────────────── */}
-            <div className="flex-shrink-0 flex flex-col lg:flex-row gap-6 mb-6">
+            <div className="flex-shrink-0 flex flex-col lg:flex-row gap-8 mb-12">
 
                 {/* Title & Progress Card */}
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex-1 bg-white rounded-[2rem] p-6 lg:p-8 shadow-[0_8px_30px_rgba(147,51,234,0.04)] border border-purple-50 flex flex-col justify-center relative overflow-hidden"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex-1 bg-white rounded-[2.5rem] p-8 md:p-10 border-[2.5px] border-slate-900 shadow-[8px_8px_0_#1f2937] flex flex-col justify-center relative overflow-hidden"
                 >
-                    {/* Decorative background shapes */}
-                    <div className="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-amber-100 to-orange-50 rounded-full blur-3xl opacity-60 pointer-events-none" />
-                    <div className="absolute right-20 -bottom-10 w-32 h-32 bg-gradient-to-br from-purple-100 to-pink-50 rounded-full blur-3xl opacity-60 pointer-events-none" />
-
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
 
                         {/* Left: Title */}
                         <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-200">
-                                    <Trophy size={24} className="text-white" />
+                            <div className="flex items-center gap-5 mb-4">
+                                <div className="w-16 h-16 bg-[#BAE6FD] rounded-[1.5rem] border-[2.5px] border-slate-900 flex items-center justify-center shadow-[4px_4px_0_#1f2937] -rotate-2">
+                                    <Trophy size={32} className="text-[#0369A1]" strokeWidth={2.5} />
                                 </div>
-                                <h1 className="text-3xl font-black text-gray-800 tracking-tight">Thành Tựu</h1>
+                                <h1 className="text-4xl font-black text-slate-900 tracking-tight">Thành Tựu</h1>
                             </div>
-                            <p className="text-gray-500 font-medium">Khám phá và chinh phục các huy hiệu</p>
+                            <p className="text-slate-500 font-bold text-lg">Hành trình chinh phục kho tàng huy hiệu SpeakVN</p>
                         </div>
 
                         {/* Right: Progress */}
-                        <div className="flex-1 max-w-md w-full bg-gray-50/80 backdrop-blur rounded-2xl p-4 border border-gray-100">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-gray-600">
-                                    Bạn đã chinh phục <span className="text-purple-600">{earnedCount}</span>/{totalCount}
+                        <div className="flex-1 max-w-md w-full bg-[#f8fafc] rounded-[2rem] p-6 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm font-black text-slate-600 uppercase tracking-wider">
+                                    Bạn đã đạt <span className="text-[#49B6E5]">{earnedCount}</span>/{totalCount}
                                 </span>
-                                <span className="text-lg font-black text-purple-600">{pct}%</span>
+                                <div className="bg-slate-900 text-white px-3 py-1 rounded-full text-sm font-black">
+                                    {pct}%
+                                </div>
                             </div>
 
                             {/* Progress bar */}
-                            <div className="relative h-3 rounded-full bg-gray-200 overflow-hidden shadow-inner">
+                            <div className="relative h-6 rounded-2xl bg-white border-[2.5px] border-slate-900 overflow-hidden">
                                 <motion.div
-                                    className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-purple-600 to-orange-500"
+                                    className="absolute left-0 top-0 h-full rounded-full bg-[#49B6E5] border-r-[2.5px] border-slate-900"
                                     initial={{ width: 0 }}
                                     animate={{ width: `${pct}%` }}
-                                    transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                                    transition={{ duration: 1.5, ease: 'easeOut', delay: 0.3 }}
                                 />
                             </div>
                         </div>
@@ -266,36 +271,36 @@ const AchievementsPage: React.FC = () => {
                 <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="w-full lg:w-80 flex flex-col gap-4 flex-shrink-0"
+                    className="w-full lg:w-96 flex flex-col gap-6 flex-shrink-0"
                 >
                     {/* Quick Stats */}
-                    <div className="flex gap-3 h-full">
-                        <div className="flex-1 bg-white rounded-3xl p-4 flex flex-col items-center justify-center shadow-[0_4px_20px_rgba(147,51,234,0.03)] border border-purple-50">
-                            <div className="text-2xl font-black text-amber-500">{earnedCount}</div>
-                            <div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-wider">Đã mở</div>
+                    <div className="flex gap-4">
+                        <div className="flex-1 bg-white rounded-[2rem] p-6 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center">
+                            <div className="text-3xl font-black text-[#49B6E5]">{earnedCount}</div>
+                            <div className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-widest leading-none">Đã quy đổi</div>
                         </div>
-                        <div className="flex-1 bg-white rounded-3xl p-4 flex flex-col items-center justify-center shadow-[0_4px_20px_rgba(147,51,234,0.03)] border border-purple-50">
-                            <div className="text-2xl font-black text-gray-300">{totalCount - earnedCount}</div>
-                            <div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-wider">Còn lại</div>
+                        <div className="flex-1 bg-white rounded-[2rem] p-6 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center">
+                            <div className="text-3xl font-black text-slate-200">{totalCount - earnedCount}</div>
+                            <div className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-widest leading-none">Cần đạt</div>
                         </div>
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex bg-white p-1.5 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.03)] border border-purple-50">
+                    <div className="flex bg-white p-1.5 rounded-[1.8rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
                         {TABS.map((t) => (
                             <button
                                 key={t.key}
                                 onClick={() => handleTabChange(t.key)}
-                                className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all relative ${tab === t.key
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                                    }`}
+                                className={clsx(
+                                    "flex-1 py-3 rounded-[1.4rem] text-xs font-black transition-all relative z-10",
+                                    tab === t.key ? "text-white" : "text-slate-500 hover:text-slate-900"
+                                )}
                             >
                                 {t.label}
                                 {tab === t.key && (
                                     <motion.div
                                         layoutId="achievementsTab"
-                                        className="absolute inset-0 bg-white rounded-xl shadow-sm border border-purple-100/50"
+                                        className="absolute inset-0 bg-[#49B6E5] rounded-[1.2rem] border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
                                         style={{ zIndex: -1 }}
                                         transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                                     />
@@ -307,31 +312,30 @@ const AchievementsPage: React.FC = () => {
             </div>
 
             {/* ── Scrollable Grid Section ────────────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto pb-8 min-h-0 hide-scrollbar -mx-4 px-4 sm:-mx-6 sm:px-6">
+            <div className="flex-1">
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4 pb-20">
-                        <div className="w-10 h-10 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin" />
-                        <p className="text-sm font-bold text-purple-600/60">Đang tải danh sách thành tựu...</p>
+                    <div className="flex flex-col items-center justify-center py-40">
+                        <DoodleLoading message="Đang tìm kho báu..." />
                     </div>
                 ) : filtered.length === 0 ? (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="flex flex-col items-center justify-center h-full pb-20 text-center"
+                        className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937]"
                     >
-                        <div className="w-24 h-24 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Lock size={32} className="text-gray-300" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-700 mb-1">
-                            {tab === 'EARNED' ? 'Chưa có thành tựu nào' : 'Bạn đã mở khóa tất cả!'}
+                        <div className="text-7xl mb-6">🏜️</div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-2 font-nunito">
+                            {tab === 'EARNED' ? 'Trống trải quá...' : 'Bạn đỉnh quá!'}
                         </h3>
-                        <p className="text-gray-400 font-medium">
-                            {tab === 'EARNED' ? 'Hãy hoàn thành các bài học để nhận thêm danh hiệu nhé.' : 'Tuyệt vời, không còn thành tựu nào bị khóa.'}
+                        <p className="text-slate-500 font-bold max-w-sm text-center px-6">
+                            {tab === 'EARNED'
+                                ? 'Bạn chưa đạt được huy hiệu nào ở mục này cả. Hãy tiếp tục học tập để lấp đầy kho báu nhé!'
+                                : 'Tất cả huy hiệu đã được bạn mở khóa hết rồi đó. Không còn gì có thể làm khó được bạn!'}
                         </p>
                     </motion.div>
                 ) : (
                     <div className="flex flex-col h-full">
-                        <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5 auto-rows-max mb-6">
+                        <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 sm:gap-8 auto-rows-max mb-12">
                             <AnimatePresence mode="popLayout">
                                 {paginatedBadges.map((badge, i) => (
                                     <BadgeCard
@@ -346,23 +350,29 @@ const AchievementsPage: React.FC = () => {
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="mt-auto flex items-center justify-center gap-4 pb-8">
+                            <div className="mt-8 flex items-center justify-center gap-6 pb-12">
                                 <button
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    onClick={() => {
+                                        setCurrentPage(p => Math.max(1, p - 1));
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                     disabled={currentPage === 1}
-                                    className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-purple-600 shadow-sm border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-purple-50 transition-colors"
+                                    className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-[4px_4px_0_#1f2937] border-[2.5px] border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all"
                                 >
-                                    <ChevronLeft size={20} />
+                                    <ChevronLeft size={24} strokeWidth={3} />
                                 </button>
-                                <div className="px-4 py-1.5 bg-white rounded-full text-sm font-bold text-gray-600 shadow-sm border border-purple-100">
+                                <div className="px-6 py-2.5 bg-white rounded-2xl text-base font-black text-slate-900 shadow-[4px_4px_0_#1f2937] border-[2.5px] border-slate-900 font-nunito">
                                     {currentPage} / {totalPages}
                                 </div>
                                 <button
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    onClick={() => {
+                                        setCurrentPage(p => Math.min(totalPages, p + 1));
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                     disabled={currentPage === totalPages}
-                                    className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-purple-600 shadow-sm border border-purple-100 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-purple-50 transition-colors"
+                                    className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-[4px_4px_0_#1f2937] border-[2.5px] border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all"
                                 >
-                                    <ChevronRight size={20} />
+                                    <ChevronRight size={24} strokeWidth={3} />
                                 </button>
                             </div>
                         )}

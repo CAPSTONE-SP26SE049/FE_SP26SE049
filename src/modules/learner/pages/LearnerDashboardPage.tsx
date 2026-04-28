@@ -1,48 +1,37 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import {
-    PlayCircleFilled,
-    RightOutlined,
-    LockOutlined,
-    TrophyOutlined,
-} from '@ant-design/icons'
+import { LockOutlined, PlayCircleFilled, RightOutlined, TrophyOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, ChevronLeft, ChevronRight, Diamond, Leaf, Map, Sparkles, Target, Trophy, Zap } from 'lucide-react'
 
 import { useAuth } from '../../../core/auth/AuthContext'
-import { useNavigate } from 'react-router-dom'
-import { Sparkles, ArrowRight, Map, Trophy, Zap, Target, ChevronLeft, ChevronRight } from 'lucide-react'
 import apiClient from '../../../services/apiClient'
 import { learnerService } from '../services/learnerService'
 import '@google/model-viewer'
 
-/* ─── model-viewer JSX type ───────────────────────────── */
 declare global {
     namespace JSX {
         interface IntrinsicElements {
-            'model-viewer': React.DetailedHTMLProps<
-                React.HTMLAttributes<HTMLElement> & {
-                    src?: string
-                    alt?: string
-                    'camera-controls'?: boolean | string
-                    'auto-rotate'?: boolean | string
-                    'shadow-intensity'?: string
-                    exposure?: string
-                    'camera-orbit'?: string
-                    'field-of-view'?: string
-                    'interaction-prompt'?: string
-                    'animation-name'?: string
-                    autoplay?: boolean | string
-                    'animation-crossfade-duration'?: string
-                    loading?: string
-                    style?: React.CSSProperties
-                },
-                HTMLElement
-            >
+            'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+                src?: string
+                alt?: string
+                'camera-controls'?: boolean | string
+                'auto-rotate'?: boolean | string
+                'shadow-intensity'?: string
+                exposure?: string
+                'camera-orbit'?: string
+                'field-of-view'?: string
+                'interaction-prompt'?: string
+                'animation-name'?: string
+                autoplay?: boolean | string
+                'animation-crossfade-duration'?: string
+                loading?: string
+                style?: React.CSSProperties
+            }, HTMLElement>
         }
     }
 }
 
-
-/* ─── Main Dashboard ───────────────────────────────────── */
 export default function Dashboard() {
     const { session, updateSessionItem } = useAuth()
     const navigate = useNavigate()
@@ -54,27 +43,27 @@ export default function Dashboard() {
         progress: 0,
         id: null,
         dialectId: null,
-        locked: false
+        locked: false,
     })
     const [allBadges, setAllBadges] = useState<any[]>([])
     const [badgePage, setBadgePage] = useState(0)
-    const BADGES_PER_PAGE = 8
-
     const [lessonLoading, setLessonLoading] = useState(true)
     const [badgesLoading, setBadgesLoading] = useState(true)
 
     const badgesFetched = useRef(false)
     const lessonFetched = useRef(false)
+    const BADGES_PER_PAGE = 8
 
     useEffect(() => {
         if (badgesFetched.current) return
         badgesFetched.current = true
+
         apiClient.get('/learner/my-badges')
             .then((res: any) => {
                 const list = res?.data?.data ?? res?.data ?? res ?? []
                 setAllBadges(Array.isArray(list) ? list : [])
             })
-            .catch(() => { })
+            .catch(() => {})
             .finally(() => setBadgesLoading(false))
     }, [])
 
@@ -84,19 +73,21 @@ export default function Dashboard() {
 
         const loadLesson = async () => {
             try {
-                apiClient.get('/users/me').then((res: any) => {
-                    const data = res?.data?.data ?? res?.data;
-                    if (data && updateSessionItem) {
-                        updateSessionItem({
-                            totalStars: data.totalStars ?? data.totalStar ?? 0,
-                            streak: data.streak ?? data.currentStreakDays ?? 0,
-                            totalExperience: data.totalXp ?? data.totalExperience ?? 0,
-                        });
-                    }
-                }).catch(() => { });
+                apiClient.get('/users/me')
+                    .then((res: any) => {
+                        const data = res?.data?.data ?? res?.data
+                        if (data && updateSessionItem) {
+                            updateSessionItem({
+                                totalStars: data.totalStars ?? data.totalStar ?? 0,
+                                streak: data.streak ?? data.currentStreakDays ?? 0,
+                                totalExperience: data.totalXp ?? data.totalExperience ?? 0,
+                            })
+                        }
+                    })
+                    .catch(() => {})
 
                 const dialects = await learnerService.getDialects().catch(() => [])
-                if (!dialects.length) { setLessonLoading(false); return }
+                if (!dialects.length) return
 
                 const userRegion = (user?.region || 'SOUTH').toUpperCase()
                 const dialect = dialects.find((d: any) => {
@@ -106,10 +97,11 @@ export default function Dashboard() {
                     return n.includes('NAM') || n === 'SOUTH'
                 }) ?? dialects[0]
 
-                if (!dialect) { setLessonLoading(false); return }
+                if (!dialect) return
 
                 const levels = await learnerService.getLevels(dialect.id).catch(() => [])
                 const active = levels.find((l: any) => !l.isCompleted && !l.isLocked)
+
                 if (active) {
                     setCurrentLesson({
                         title: active.name,
@@ -117,7 +109,7 @@ export default function Dashboard() {
                         progress: active.starsEarned ? Math.round((active.starsEarned / 3) * 100) : 0,
                         id: active.id,
                         dialectId: dialect.id,
-                        locked: false
+                        locked: false,
                     })
                 } else if (levels.length > 0) {
                     setCurrentLesson({
@@ -126,303 +118,212 @@ export default function Dashboard() {
                         progress: 100,
                         id: levels[levels.length - 1].id,
                         dialectId: dialect.id,
-                        locked: false
+                        locked: false,
                     })
                 }
-            } catch { }
-            finally { setLessonLoading(false) }
+            } catch {
+            } finally {
+                setLessonLoading(false)
+            }
         }
+
         if (user) loadLesson()
         else setLessonLoading(false)
     }, [user?.id, updateSessionItem])
 
     const firstName = user?.fullName?.split(' ').slice(-1)[0] || 'Học viên'
-
     const totalBadgePages = Math.ceil(allBadges.length / BADGES_PER_PAGE)
     const currentBadges = allBadges.slice(badgePage * BADGES_PER_PAGE, (badgePage + 1) * BADGES_PER_PAGE)
 
+    const quickActions = useMemo(() => ([
+        { icon: Map, label: 'Lộ trình', desc: 'Bản đồ học', path: '/learner/roadmap', tint: '#263D5B', bg: '#f7f4ee' },
+        { icon: Trophy, label: 'Xếp hạng', desc: 'Bảng điểm', path: '/learner/leaderboard', tint: '#D97706', bg: '#fff8ee' },
+        { icon: Zap, label: 'Phát âm', desc: 'Luyện ngay', path: '/learner/pronunciation', tint: '#49B6E5', bg: '#eef9fe' },
+        { icon: Target, label: 'Bạn bè', desc: 'Kết nối', path: '/learner/friends', tint: '#16A34A', bg: '#effaf3' },
+    ]), [])
+
     return (
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto flex flex-col w-full h-[calc(100vh-80px)] min-h-0">
-            {/* ══════ HERO BANNER ══════ */}
-            <div
-                className="flex-shrink-0 relative overflow-hidden rounded-[2.5rem] mb-6"
-                style={{
-                    background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #f97316 100%)',
-                    boxShadow: '0 8px 32px rgba(124,58,237,0.15)'
-                }}
-            >
-                {[...Array(6)].map((_, i) => (
-                    <motion.div key={i}
-                        className="absolute rounded-full pointer-events-none"
-                        style={{
-                            width: 3 + (i % 3) * 2, height: 3 + (i % 3) * 2,
-                            background: `rgba(255,255,255,${0.1 + (i % 4) * 0.08})`,
-                            left: `${(i * 15) % 100}%`, top: `${10 + (i * 15) % 80}%`,
-                        }}
-                        animate={{ y: [-5, 5, -5], opacity: [0.3, 0.7, 0.3] }}
-                        transition={{ duration: 3 + i * 0.5, repeat: Infinity }}
-                    />
-                ))}
-
-                <div className="relative px-8 py-5 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        {/* Mascot */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ type: 'spring', bounce: 0.5 }}
-                            className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl p-2 border border-white/20 flex-shrink-0"
-                        >
-                            <img src="/dashboard-mascot.png" alt="Mascot" className="w-full h-full object-contain" />
-                        </motion.div>
-
-                        {/* Welcome text */}
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <Sparkles size={14} className="text-orange-300" />
-                                <span className="text-orange-100 text-xs font-black uppercase tracking-widest opacity-80">Tiếp tục hành trình</span>
-                            </div>
-                            <h1 className="text-3xl font-black text-white tracking-tight">
-                                {(() => {
-                                    const hour = new Date().getHours()
-                                    if (hour < 11) return 'Chào buổi sáng'
-                                    if (hour < 14) return 'Chào buổi trưa'
-                                    if (hour < 18) return 'Chào buổi chiều'
-                                    return 'Chào buổi tối'
-                                })()}, {firstName}! <span>✨</span>
-                            </h1>
-                            <p className="text-white/70 text-sm font-medium mt-1">Hôm nay bạn đã sẵn sàng phá vỡ rào cản ngôn ngữ chưa?</p>
-                        </div>
-                    </div>
-
-                    <div className="hidden lg:block">
-                        <button
-                            onClick={() => navigate('/learner/roadmap')}
-                            className="bg-white text-purple-600 px-6 py-3 rounded-2xl font-black text-sm shadow-xl shadow-black/10 hover:scale-105 transition-transform"
-                        >
-                            Học ngay thôi! 🚀
-                        </button>
-                    </div>
-                </div>
+        <div className="relative min-h-screen overflow-hidden bg-[#f8f3ea] text-slate-900">
+            <div className="pointer-events-none absolute inset-0 z-0">
+                <div className="absolute inset-0 opacity-55" style={{ backgroundImage: 'radial-gradient(#e6dccb 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+                <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'linear-gradient(to right, rgba(38,61,91,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(38,61,91,0.05) 1px, transparent 1px)', backgroundSize: '96px 96px' }} />
+                <div className="absolute -top-24 right-[-8%] h-80 w-80 rounded-full bg-[#49B6E5]/10 blur-3xl" />
+                <div className="absolute bottom-[-10%] left-[-6%] h-96 w-96 rounded-full bg-[#f1c46f]/20 blur-3xl" />
             </div>
 
-            {/* ══════ BODY – flex-1 để lấp đầy chiều cao còn lại ══════ */}
-            <div className="flex-1 min-h-0 bg-[#f8f5ff] overflow-hidden">
-                <div className="h-full max-w-6xl mx-auto px-6 py-4 flex flex-col">
+            <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-5 lg:px-8">
+                <section className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] shadow-[10px_10px_0_#1f2937]">
+                    <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(38,61,91,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(38,61,91,0.05) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
+                    <div className="absolute left-6 top-6 h-5 w-5 rounded-full border-[3px] border-slate-900 bg-[#49B6E5]" />
+                    <div className="absolute right-8 top-8 h-4 w-14 rotate-[-8deg] rounded-full bg-[#f1c46f]" />
+                    <div className="relative grid gap-8 p-6 lg:grid-cols-[1.35fr_0.8fr] lg:p-8">
+                        <div className="space-y-6">
+                            <div className="inline-flex items-center gap-3 rounded-full border-[3px] border-slate-900 bg-white px-4 py-2 shadow-[5px_5px_0_#1f2937]">
+                                <Leaf size={16} className="text-[#49B6E5]" />
+                                <span className="text-xs font-black uppercase tracking-[0.22em] text-slate-700">Learner dashboard</span>
+                            </div>
 
-                    {/* Main Layout Grid – flex-1 giãn đều */}
-                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div className="max-w-3xl">
+                                <p className="mb-3 text-sm font-semibold text-slate-600">Xin chào {firstName},</p>
+                                <h1 className="font-serif text-4xl leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                                    Học vui hơn với một giao diện <span className="relative ml-3 inline-block"><span className="relative z-10">phác thảo</span><span className="absolute inset-x-0 bottom-2 h-4 rotate-[-2deg] rounded-full bg-[#7dd3fc]" /></span>.
+                                </h1>
+                                <p className="mt-4 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">Tiếp tục lộ trình, mở khóa huy hiệu và luyện tập theo phong cách doodle: nhẹ nhàng, rõ ràng, dễ dùng và có điểm nhấn.</p>
+                            </div>
 
-                        {/* ── LEFT COLUMN ── */}
-                        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-
-                            {/* Lesson Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="flex-shrink-0"
-                            >
-                                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                                    style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-                                    <div className="px-4 py-2.5 border-b border-gray-50 flex items-center justify-between">
-                                        <h3 className="font-black text-gray-800 text-sm flex items-center gap-2">
-                                            <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-orange-400 rounded-full" />
-                                            Tiếp tục bài học
-                                        </h3>
-                                        <button onClick={() => navigate('/learner/roadmap')}
-                                            className="text-purple-500 font-bold text-[11px] uppercase tracking-wider hover:text-purple-700 flex items-center gap-1 transition-colors">
-                                            Xem tất cả <RightOutlined style={{ fontSize: 9 }} />
-                                        </button>
-                                    </div>
-                                    <div className="p-3">
-                                        {lessonLoading ? (
-                                            <div className="bg-gray-100 rounded-xl h-16 animate-pulse" />
-                                        ) : (
-                                            <div
-                                                className={`relative bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900 rounded-xl px-4 py-3.5 text-white cursor-pointer group overflow-hidden hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300 ${currentLesson.locked ? 'opacity-60 grayscale' : ''}`}
-                                                onClick={() => !currentLesson.locked && navigate('/learner/roadmap', { state: { fromRoadmap: true, dialectId: currentLesson.dialectId, chapterId: currentLesson.id } })}
-                                            >
-                                                <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/8 to-transparent group-hover:left-full transition-all duration-1000" />
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/15 flex-shrink-0 group-hover:rotate-6 transition-transform">
-                                                        {currentLesson.locked
-                                                            ? <LockOutlined className="text-base text-white/50" />
-                                                            : <PlayCircleFilled className="text-xl text-white" />}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-purple-200/70 text-[9px] font-bold uppercase tracking-widest mb-0.5">{currentLesson.description}</div>
-                                                        <h4 className="text-sm font-black text-white leading-tight">{currentLesson.title}</h4>
-                                                        <div className="flex items-center gap-2 mt-1.5">
-                                                            <div className="flex-1 h-1 bg-white/15 rounded-full overflow-hidden">
-                                                                <motion.div
-                                                                    initial={{ width: 0 }} animate={{ width: `${currentLesson.progress}%` }}
-                                                                    transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
-                                                                    className="h-full bg-gradient-to-r from-orange-400 to-yellow-300 rounded-full"
-                                                                />
-                                                            </div>
-                                                            <span className="text-white/80 font-black text-xs">{currentLesson.progress}%</span>
-                                                        </div>
-                                                    </div>
-                                                    <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            {/* ── Badges Section – flex-1 lấp đầy không gian còn lại ── */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="flex-1 min-h-0 flex flex-col"
-                            >
-                                <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100"
-                                    style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-                                    <div className="px-4 py-2.5 border-b border-gray-50 flex items-center justify-between flex-shrink-0">
-                                        <h3 className="font-black text-gray-800 text-sm flex items-center gap-2">
-                                            <div className="w-1 h-4 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-full" />
-                                            Huy hiệu đạt được
-                                        </h3>
-                                        <div className="flex items-center gap-3">
-                                            {totalBadgePages > 1 && (
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => setBadgePage(p => Math.max(0, p - 1))}
-                                                        disabled={badgePage === 0}
-                                                        className="w-5 h-5 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-purple-600 hover:border-purple-200 disabled:opacity-30 transition-colors"
-                                                    >
-                                                        <ChevronLeft size={12} />
-                                                    </button>
-                                                    <span className="text-[10px] font-black text-gray-400">{badgePage + 1}/{totalBadgePages}</span>
-                                                    <button
-                                                        onClick={() => setBadgePage(p => Math.min(totalBadgePages - 1, p + 1))}
-                                                        disabled={badgePage === totalBadgePages - 1}
-                                                        className="w-5 h-5 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-purple-600 hover:border-purple-200 disabled:opacity-30 transition-colors"
-                                                    >
-                                                        <ChevronRight size={12} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <button onClick={() => navigate('/learner/profile')}
-                                                className="text-orange-500 font-bold text-[11px] uppercase tracking-wider hover:text-orange-700 flex items-center gap-1 transition-colors">
-                                                Xem tất cả <RightOutlined style={{ fontSize: 9 }} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-h-0 p-3 overflow-hidden">
-                                        {badgesLoading ? (
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {[...Array(8)].map((_, i) => (
-                                                    <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                                                ))}
-                                            </div>
-                                        ) : allBadges.length > 0 ? (
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {currentBadges.map((b, i) => {
-                                                    const bData = b?.badge ?? b
-                                                    const imgUrl = bData?.iconUrl || bData?.imageUrl || bData?.icon_url
-                                                    return (
-                                                        <motion.div key={b.id || i} whileHover={{ y: -2, scale: 1.04 }}
-                                                            className="flex flex-col items-center p-2.5 rounded-xl text-center group cursor-default"
-                                                            style={{ background: 'linear-gradient(135deg,#fefce8,#fef3c7)', border: '1px solid #fde68a' }}>
-                                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400/20 to-orange-400/20 border border-yellow-200 flex items-center justify-center mb-1 group-hover:rotate-12 transition-transform overflow-hidden">
-                                                                {imgUrl
-                                                                    ? <img src={imgUrl} alt={bData?.name} className="w-6 h-6 object-contain" />
-                                                                    : <TrophyOutlined className="text-yellow-500 text-xs" />}
-                                                            </div>
-                                                            <div className="text-[8px] font-black text-gray-600 leading-tight line-clamp-2">{bData?.name || 'Huy hiệu'}</div>
-                                                        </motion.div>
-                                                    )
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-3 py-2 px-2">
-                                                <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center border border-yellow-100 flex-shrink-0">
-                                                    <TrophyOutlined className="text-lg text-yellow-300" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-gray-500 font-bold text-sm">Chưa có huy hiệu</div>
-                                                    <p className="text-gray-400 text-xs mt-0.5">Tiếp tục học để mở khóa danh hiệu đầu tiên!</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
-
+                            <div className="flex flex-wrap gap-3">
+                                <button onClick={() => navigate('/learner/roadmap')} className="group inline-flex items-center gap-3 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] px-6 py-4 text-base font-black text-slate-900 shadow-[6px_6px_0_#1f2937] transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#49B6E5]/30">
+                                    Đi tiếp lộ trình
+                                    <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                                </button>
+                                <button onClick={() => navigate('/learner/profile')} className="inline-flex items-center gap-3 rounded-2xl border-[3px] border-slate-900 bg-white px-6 py-4 text-base font-black text-slate-900 shadow-[6px_6px_0_#1f2937] transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-slate-300">
+                                    Xem hồ sơ
+                                </button>
+                            </div>
                         </div>
 
-                        {/* ── RIGHT COLUMN ── */}
-                        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+                        <div className="relative flex items-end justify-center lg:justify-end">
+                            <div className="w-full max-w-sm rounded-[2rem] border-[3px] border-slate-900 bg-white p-5 shadow-[8px_8px_0_#1f2937]">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Tiến độ hôm nay</span>
+                                    <span className="rounded-full border-[2px] border-slate-900 bg-[#f1c46f] px-3 py-1 text-xs font-black">{currentLesson.progress}%</span>
+                                </div>
 
-                            {/* Mục tiêu hôm nay – flex-shrink-0 */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.15 }}
-                                className="flex-shrink-0"
-                            >
-                                <div className="bg-gradient-to-br from-indigo-700 via-purple-700 to-fuchsia-700 rounded-2xl p-4 text-white border border-purple-400/30 shadow-lg shadow-purple-500/20 relative overflow-hidden group hover:shadow-purple-500/30 transition-all flex flex-col justify-end"
-                                    style={{ minHeight: 150 }}>
-                                    <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
-                                        <img src="/daily_goal_card.png" alt="Goal Illustration" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 group-hover:scale-110 transition-all duration-700 mix-blend-screen" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-purple-900/95 via-purple-800/40 to-transparent" />
-                                    </div>
-                                    <div className="relative z-10 w-full">
-                                        <h3 className="font-black text-base mb-0.5 leading-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">Mục tiêu hôm nay</h3>
-                                        <p className="text-white/95 text-[10px] mb-3 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] font-semibold leading-relaxed">Hoàn thành bài học mới để không làm tắt ngọn lửa nhiệt huyết nhé!</p>
-                                        <button
-                                            onClick={() => navigate('/learner/roadmap')}
-                                            className="w-full py-2 rounded-xl bg-white/95 backdrop-blur-md text-purple-700 font-extrabold text-[11px] uppercase tracking-wider hover:bg-white hover:text-orange-600 hover:-translate-y-0.5 transition-all shadow-[0_4px_16px_rgba(0,0,0,0.3)] focus:outline-none"
+                                <div className="rounded-[1.5rem] border-[3px] border-slate-900 bg-[#fffaf2] p-4">
+                                    {lessonLoading ? (
+                                        <div className="h-36 animate-pulse rounded-[1rem] bg-slate-100" />
+                                    ) : (
+                                        <div
+                                            className={`${currentLesson.locked ? 'opacity-60 grayscale' : ''} cursor-pointer`}
+                                            onClick={() => !currentLesson.locked && navigate('/learner/roadmap', { state: { fromRoadmap: true, dialectId: currentLesson.dialectId, chapterId: currentLesson.id } })}
                                         >
-                                            Chơi ngay 🚀
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            {/* Truy cập nhanh – flex-1 lấp đầy */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="flex-1 min-h-0 flex flex-col"
-                            >
-                                <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100"
-                                    style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-                                    <div className="px-4 py-2.5 border-b border-gray-50 flex-shrink-0">
-                                        <h3 className="font-black text-gray-800 text-sm flex items-center gap-2">
-                                            <div className="w-1 h-4 bg-gradient-to-b from-orange-400 to-pink-500 rounded-full" />
-                                            Truy cập nhanh
-                                        </h3>
-                                    </div>
-                                    <div className="flex-1 min-h-0 p-3 grid grid-cols-2 gap-2 content-center">
-                                        {[
-                                            { icon: Map, label: 'Lộ trình', desc: 'Bản đồ', path: '/learner/roadmap', c: '#7c3aed', bg: '#f5f3ff', border: '#ede9fe' },
-                                            { icon: Trophy, label: 'Xếp hạng', desc: 'Thứ hạng', path: '/learner/leaderboard', c: '#f97316', bg: '#fff7ed', border: '#fed7aa' },
-                                            { icon: Zap, label: 'Phát âm', desc: 'Luyện tập', path: '/learner/pronunciation', c: '#06b6d4', bg: '#ecfeff', border: '#a5f3fc' },
-                                            { icon: Target, label: 'Bạn bè', desc: 'Kết nối', path: '/learner/friends', c: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
-                                        ].map(({ icon: Icon, label, desc, path, c, bg, border }, i) => (
-                                            <motion.button key={i}
-                                                whileHover={{ y: -2 }}
-                                                onClick={() => navigate(path)}
-                                                className="flex flex-col items-center gap-1 p-3 rounded-xl border transition-all hover:shadow-md group"
-                                                style={{ background: bg, borderColor: border }}
-                                            >
-                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform"
-                                                    style={{ background: `${c}18` }}>
-                                                    <Icon size={15} style={{ color: c }} />
+                                            <div className="mb-3 flex items-center gap-3">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5]/20">
+                                                    {currentLesson.locked ? <LockOutlined className="text-lg text-slate-500" /> : <PlayCircleFilled className="text-xl text-slate-900" />}
                                                 </div>
-                                                <span className="text-[11px] font-black" style={{ color: c }}>{label}</span>
-                                                <span className="text-[9px] text-gray-400 font-medium">{desc}</span>
-                                            </motion.button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{currentLesson.description}</p>
+                                                    <h2 className="text-lg font-black text-slate-900">{currentLesson.title}</h2>
+                                                </div>
+                                            </div>
 
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-3 flex-1 overflow-hidden rounded-full border-[2px] border-slate-900 bg-white">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${currentLesson.progress}%` }}
+                                                        transition={{ duration: 1, ease: 'easeOut' }}
+                                                        className="h-full rounded-full bg-[#49B6E5]"
+                                                    />
+                                                </div>
+                                                <span className="text-sm font-black">{currentLesson.progress}%</span>
+                                            </div>
+
+                                            <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-slate-700">
+                                                Tiếp tục học
+                                                <RightOutlined style={{ fontSize: 11 }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
+
+                <section className="grid gap-6 lg:grid-cols-[1.35fr_0.95fr]">
+                    <div className="rounded-[2rem] border-[3px] border-slate-900 bg-[#fffaf2] p-5 shadow-[8px_8px_0_#1f2937]">
+                        <div className="mb-4 flex items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900">Huy hiệu đã mở khóa</h3>
+                                <p className="text-sm text-slate-600">Bộ sưu tập nhỏ để ghi nhận tiến bộ của bạn.</p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {totalBadgePages > 1 && (
+                                    <div className="flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2 py-1 shadow-[3px_3px_0_#1f2937]">
+                                        <button onClick={() => setBadgePage((p) => Math.max(0, p - 1))} disabled={badgePage === 0} className="grid h-8 w-8 place-items-center rounded-full border-[2px] border-slate-900 bg-[#f7f2ea] text-slate-900 disabled:opacity-30">
+                                            <ChevronLeft size={14} />
+                                        </button>
+                                        <span className="px-2 text-xs font-black text-slate-600">{badgePage + 1}/{totalBadgePages}</span>
+                                        <button onClick={() => setBadgePage((p) => Math.min(totalBadgePages - 1, p + 1))} disabled={badgePage === totalBadgePages - 1} className="grid h-8 w-8 place-items-center rounded-full border-[2px] border-slate-900 bg-[#f7f2ea] text-slate-900 disabled:opacity-30">
+                                            <ChevronRight size={14} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <button onClick={() => navigate('/learner/profile')} className="inline-flex items-center gap-2 rounded-full border-[2px] border-slate-900 bg-[#f1c46f] px-4 py-2 text-sm font-black text-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                    Xem tất cả
+                                    <RightOutlined style={{ fontSize: 10 }} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {badgesLoading ? (
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                {[...Array(8)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-[1.25rem] border-2 border-slate-900 bg-slate-100" />)}
+                            </div>
+                        ) : allBadges.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                {currentBadges.map((b, i) => {
+                                    const bData = b?.badge ?? b
+                                    const imgUrl = bData?.iconUrl || bData?.imageUrl || bData?.icon_url
+
+                                    return (
+                                        <motion.div key={b.id || i} whileHover={{ y: -3, rotate: -1 }} className="rounded-[1.25rem] border-2 border-slate-900 bg-white p-3 text-center shadow-[4px_4px_0_#1f2937]">
+                                            <div className="mx-auto mb-2 grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-900 bg-[#f1c46f]/30">
+                                                {imgUrl ? <img src={imgUrl} alt={bData?.name} className="h-10 w-10 object-contain" /> : <TrophyOutlined className="text-2xl text-[#D97706]" />}
+                                            </div>
+                                            <div className="text-sm font-black leading-snug text-slate-800 line-clamp-2">{bData?.name || 'Huy hiệu'}</div>
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+                        ) : (
+                            <div className="rounded-[1.25rem] border-2 border-dashed border-slate-300 bg-white p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="grid h-12 w-12 place-items-center rounded-2xl border-2 border-slate-900 bg-[#f1c46f]/30">
+                                        <TrophyOutlined className="text-xl text-[#D97706]" />
+                                    </div>
+                                    <div>
+                                        <div className="text-base font-black text-slate-900">Chưa có huy hiệu</div>
+                                        <p className="text-sm text-slate-600">Hoàn thành các bài học để mở khóa danh hiệu đầu tiên.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="overflow-hidden rounded-[2rem] border-[3px] border-slate-900 bg-[#263D5B] p-5 text-white shadow-[8px_8px_0_#1f2937]">
+                            <div className="mb-3 inline-flex rounded-full border-2 border-white/30 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-white/80">Mục tiêu hôm nay</div>
+                            <h3 className="text-2xl font-black leading-tight">Hoàn thành bài học mới để giữ nhịp học tập.</h3>
+                            <p className="mt-3 text-sm leading-7 text-white/80">Một bước nhỏ mỗi ngày sẽ giúp lộ trình của bạn luôn trôi chảy và rõ ràng.</p>
+                            <button onClick={() => navigate('/learner/roadmap')} className="mt-5 inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-[#7dd3fc] px-5 py-3 text-sm font-black text-slate-900 shadow-[5px_5px_0_#111827] transition-transform hover:-translate-y-0.5">
+                                Bắt đầu ngay
+                                <ArrowRight size={18} />
+                            </button>
+                        </div>
+
+                        <div className="rounded-[2rem] border-[3px] border-slate-900 bg-[#fffaf2] p-5 shadow-[8px_8px_0_#1f2937]">
+                            <div className="mb-4">
+                                <h3 className="text-2xl font-black text-slate-900">Truy cập nhanh</h3>
+                                <p className="text-sm text-slate-600">Đi thẳng tới phần bạn cần mà không phải tìm lại.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {quickActions.map(({ icon: Icon, label, desc, path, tint, bg }) => (
+                                    <motion.button key={label} whileHover={{ y: -2 }} onClick={() => navigate(path)} className="rounded-[1.25rem] border-2 border-slate-900 p-4 text-left shadow-[4px_4px_0_#1f2937] transition-transform" style={{ background: bg }}>
+                                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white">
+                                            <Icon size={18} style={{ color: tint }} />
+                                        </div>
+                                        <div className="text-sm font-black" style={{ color: tint }}>{label}</div>
+                                        <div className="mt-1 text-xs font-medium text-slate-500">{desc}</div>
+                                    </motion.button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     )

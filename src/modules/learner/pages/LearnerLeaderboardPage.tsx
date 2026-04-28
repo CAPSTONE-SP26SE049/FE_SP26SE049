@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Avatar, Spin } from 'antd';
+import { Avatar } from 'antd';
 import { Trophy, Star, Crown, Medal, Award, RefreshCw, MapPin, ChevronLeft, ChevronRight, Landmark, Castle, Building2, CheckCircle2, Globe, Flame } from '../../../lib/icons';
 import apiClient from '../../../services/apiClient';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DoodleLoading } from '../../../components/ui/DoodleLoading';
 import clsx from 'clsx';
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -35,22 +36,22 @@ const PAGE_SIZE = 10;
 /* ─── Compact Podium ─────────────────────────────────── */
 const podConfig = (rank: number) => {
     if (rank === 1) return {
-        badge: <Crown size={16} className="text-amber-400 drop-shadow" />,
-        ring: 'ring-2 ring-amber-300 ring-offset-1',
-        podBg: 'bg-gradient-to-b from-amber-400 to-yellow-500',
-        podH: 'h-20', size: 48, label: 'text-amber-600',
+        badge: <Crown size={24} className="text-yellow-400 fill-yellow-400 drop-shadow-[2px_2px_0_rgba(0,0,0,0.2)]" />,
+        ring: 'border-[3px] border-yellow-400 shadow-[3px_3px_0_#1f2937]',
+        podBg: 'bg-yellow-100',
+        podH: 'h-32', size: 72, label: 'text-yellow-700',
     };
     if (rank === 2) return {
-        badge: <Medal size={14} className="text-slate-400" />,
-        ring: 'ring-2 ring-slate-200 ring-offset-1',
-        podBg: 'bg-gradient-to-b from-slate-300 to-slate-400',
-        podH: 'h-14', size: 40, label: 'text-slate-500',
+        badge: <Medal size={20} className="text-slate-400 fill-slate-400" />,
+        ring: 'border-[3px] border-slate-300 shadow-[3px_3px_0_#1f2937]',
+        podBg: 'bg-slate-100',
+        podH: 'h-24', size: 60, label: 'text-slate-600',
     };
     return {
-        badge: <Award size={14} className="text-orange-400" />,
-        ring: 'ring-2 ring-orange-200 ring-offset-1',
-        podBg: 'bg-gradient-to-b from-orange-300 to-amber-400',
-        podH: 'h-10', size: 40, label: 'text-orange-500',
+        badge: <Award size={20} className="text-orange-400 fill-orange-400" />,
+        ring: 'border-[3px] border-orange-300 shadow-[3px_3px_0_#1f2937]',
+        podBg: 'bg-orange-50',
+        podH: 'h-16', size: 56, label: 'text-orange-600',
     };
 };
 
@@ -60,34 +61,48 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
     const ordered = top.length === 3 ? [top[1], top[0], top[2]] : top;
 
     return (
-        <div className="flex items-end justify-center gap-3 pt-1 pb-0">
+        <div className="flex items-end justify-center gap-1 md:gap-4 pt-10 pb-4">
             {ordered.map((e, i) => {
                 const cfg = podConfig(e.rankPosition);
                 const isMe = e.accountId === userId;
                 return (
                     <motion.div key={e.accountId}
-                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08, type: 'spring', bounce: 0.3 }}
-                        className="flex flex-col items-center flex-1 max-w-[110px]"
+                        initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1, type: 'spring', bounce: 0.4 }}
+                        className="flex flex-col items-center flex-1 max-w-[140px]"
                     >
-                        <div className="mb-0.5">{cfg.badge}</div>
-                        <div className={clsx("rounded-full mb-1 relative", cfg.ring)}>
-                            <Avatar src={e.avatar_url || e.avatarUrl} size={cfg.size} className="border-2 border-white" />
+                        <div className="mb-2 relative">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10 scale-110">
+                                {cfg.badge}
+                            </div>
+                            <Avatar
+                                src={e.avatar_url || e.avatarUrl}
+                                size={cfg.size}
+                                className={clsx("bg-white", cfg.ring)}
+                            />
                             {isMe && (
-                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <CheckCircle2 size={8} className="text-white" />
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-600 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center z-10">
+                                    <CheckCircle2 size={12} className="text-white" />
                                 </div>
                             )}
                         </div>
-                        <p className="font-black text-gray-800 text-[10px] text-center truncate max-w-[100px] leading-tight">
-                            {e.fullName || 'Player'}
-                            {isMe && <span className="block text-purple-500 text-[8px]">(Bạn)</span>}
-                        </p>
-                        <p className={clsx("text-[10px] font-bold mt-0.5 mb-1", cfg.label)}>
-                            {e.totalStars} ⭐ • {e.badgeCount || 0} 🏆
-                        </p>
-                        <div className={clsx("w-full rounded-t-xl flex items-center justify-center font-black text-white text-sm shadow-md", cfg.podBg, cfg.podH)}>
-                            #{e.rankPosition}
+                        <div className="text-center mb-3">
+                            <p className="font-black text-slate-800 text-xs md:text-sm truncate max-w-[110px] leading-tight font-nunito">
+                                {e.fullName || 'Người học'}
+                            </p>
+                            {isMe && <span className="text-purple-600 text-[10px] font-black uppercase tracking-tighter">Bạn</span>}
+                        </div>
+
+                        <div className={clsx(
+                            "w-full rounded-t-3xl border-t-[2.5px] border-x-[2.5px] border-slate-900 flex flex-col items-center justify-center shadow-[4px_0_0_#1f2937,-4px_0_0_#1f2937] relative",
+                            cfg.podBg,
+                            cfg.podH
+                        )}>
+                            <span className="font-black text-slate-900 text-2xl md:text-3xl leading-none">#{e.rankPosition}</span>
+                            <div className="flex items-center gap-1 mt-1">
+                                <Star size={12} className="text-yellow-600 fill-yellow-600" />
+                                <span className="text-slate-700 font-black text-xs">{e.totalStars}</span>
+                            </div>
                         </div>
                     </motion.div>
                 );
@@ -101,38 +116,49 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
     const isMe = e.accountId === userId;
     return (
         <motion.div
-            initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: Math.min(idx * 0.025, 0.25) }}
+            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: Math.min(idx * 0.05, 0.5) }}
             className={clsx(
-                "flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all",
-                isMe
-                    ? "bg-purple-50 border-purple-200 ring-1 ring-purple-100"
-                    : "bg-white border-gray-100 hover:border-purple-100 hover:bg-purple-50/30"
+                "flex items-center gap-3 px-4 py-3 rounded-2xl border-[2.5px] border-slate-900 transition-all font-nunito bg-white group",
+                isMe ? "shadow-[4px_4px_0_#9333ea]" : "shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1f2937]"
             )}
         >
-            <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs flex-shrink-0">
+            <div className={clsx(
+                "w-8 h-8 rounded-xl border-[2px] border-slate-900 flex items-center justify-center font-black text-sm flex-shrink-0 shadow-[2px_2px_0_#1f2937]",
+                isMe ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-900"
+            )}>
                 {e.rankPosition}
             </div>
             <div className="relative flex-shrink-0">
-                <Avatar src={e.avatar_url || e.avatarUrl} size={32} className={clsx("border-2", isMe ? "border-purple-300" : "border-gray-100")} />
+                <Avatar
+                    src={e.avatar_url || e.avatarUrl}
+                    size={40}
+                    className={clsx("border-[2px] border-slate-900", isMe ? "bg-purple-100" : "bg-white")}
+                />
                 {isMe && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-500 rounded-full border border-white flex items-center justify-center">
-                        <CheckCircle2 size={8} className="text-white" />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-600 rounded-full border-[1.5px] border-slate-900 flex items-center justify-center z-10 shadow-[1px_1px_0_#1f2937]">
+                        <CheckCircle2 size={10} className="text-white" />
                     </div>
                 )}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-800 text-xs truncate">
+                <p className="font-black text-slate-900 text-sm truncate">
                     {e.fullName || 'Người học'}
-                    {isMe && <span className="ml-1.5 text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-black">BẠN</span>}
                 </p>
-                <p className="text-[9px] text-gray-400 font-semibold flex items-center gap-1 mt-0.5">
-                    <Flame size={9} className="text-orange-400 fill-orange-400" /> {e.currentStreakDays || 0} ngày học • <Trophy size={9} className="text-amber-500" /> {e.badgeCount || 0} huy hiệu
-                </p>
+                <div className="flex items-center gap-3 mt-1">
+                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
+                        <Flame size={10} className="text-orange-500 fill-orange-500" />
+                        <span className="text-slate-700">{e.currentStreakDays || 0}d</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
+                        <Award size={10} className="text-purple-500" />
+                        <span className="text-slate-700">{e.badgeCount || 0} trophies</span>
+                    </p>
+                </div>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-100 flex-shrink-0">
-                <Star size={10} className="text-yellow-500" />
-                <span className="font-black text-yellow-600 text-xs">{e.totalStars || 0}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex-shrink-0">
+                <Star size={14} className="text-yellow-600 fill-yellow-600" />
+                <span className="font-black text-slate-900 text-sm">{e.totalStars || 0}</span>
             </div>
         </motion.div>
     );
@@ -194,41 +220,39 @@ export default function LearnerLeaderboardPage() {
     );
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] min-h-[600px] w-full bg-[#f8f5ff] overflow-hidden">
-
+        <div className="flex flex-col min-h-screen bg-[#fbf6ef] font-nunito pb-20">
             {/* ── Header Strip ── */}
-            <div className="flex-shrink-0 px-6 py-3 bg-white border-b border-gray-100"
-                style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.04)' }}>
-                <div className="max-w-6xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-400/20">
-                            <Trophy size={16} className="text-white" />
+            <div className="sticky top-0 z-[50] bg-[#fbf6ef]/95 backdrop-blur-md px-6 py-6 transition-all duration-300 border-b-[2.5px] border-slate-900/10">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center -rotate-2">
+                            <Trophy size={28} className="text-yellow-500 fill-yellow-500 stroke-[2.5px]" />
                         </div>
                         <div>
-                            <h2 className="text-base font-black text-gray-800 leading-none">Bảng Xếp Hạng</h2>
-                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1">
-                                {scope === 'REGIONAL' && <MapPin size={9} className="text-purple-400" />}
+                            <h2 className="text-3xl font-black text-slate-900 leading-none">Bảng Xếp Hạng</h2>
+                            <p className="text-sm text-slate-500 font-bold mt-1 flex items-center gap-1">
+                                {scope === 'REGIONAL' && <MapPin size={14} className="text-[#49B6E5]" />}
                                 {scopeLabel}
                             </p>
                         </div>
                     </div>
 
                     {/* Controls row */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-3">
                         {/* Scope toggle */}
-                        <div className="bg-gray-50 rounded-xl border border-gray-100 p-0.5 flex gap-0.5">
+                        <div className="bg-white rounded-2xl border-[2.5px] border-slate-900 p-1 flex gap-1 shadow-[3px_3px_0_#1f2937]">
                             {([
                                 { label: 'Khu vực', value: 'REGIONAL', icon: MapPin },
                                 { label: 'Toàn quốc', value: 'GLOBAL', icon: Globe },
                             ] as const).map(({ label, value, icon: Icon }) => (
                                 <button key={value} onClick={() => setScope(value)}
                                     className={clsx(
-                                        "h-7 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-all duration-200 whitespace-nowrap",
+                                        "h-9 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all duration-200 whitespace-nowrap",
                                         scope === value
-                                            ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-sm shadow-purple-500/20"
-                                            : "text-gray-400 hover:text-purple-500 hover:bg-white"
+                                            ? "bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
+                                            : "text-slate-500 hover:bg-slate-50"
                                     )}>
-                                    <Icon size={10} /> {label}
+                                    <Icon size={14} strokeWidth={2.5} /> {label}
                                 </button>
                             ))}
                         </div>
@@ -236,17 +260,17 @@ export default function LearnerLeaderboardPage() {
                         {/* Region chips */}
                         <AnimatePresence>
                             {scope === 'REGIONAL' && (
-                                <motion.div key="regions" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
-                                    className="flex gap-0.5 bg-gray-50 rounded-xl border border-gray-100 p-0.5">
+                                <motion.div key="regions" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                                    className="flex gap-1 bg-white rounded-2xl border-[2.5px] border-slate-900 p-1 shadow-[3px_3px_0_#1f2937]">
                                     {REGIONS.map(r => (
                                         <button key={r.value} onClick={() => setRegion(r.value)}
                                             className={clsx(
-                                                "h-7 px-2.5 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all duration-200 whitespace-nowrap",
+                                                "h-9 px-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-200 whitespace-nowrap",
                                                 region === r.value
-                                                    ? "bg-purple-600 text-white shadow-sm"
-                                                    : "text-gray-400 hover:text-purple-500 hover:bg-white"
+                                                    ? "bg-[#BAE6FD] text-[#0369A1] border-[2px] border-slate-900"
+                                                    : "text-slate-400 hover:bg-slate-50"
                                             )}>
-                                            <r.icon size={11} /> {r.label}
+                                            <r.icon size={14} strokeWidth={2.5} /> {r.label}
                                         </button>
                                     ))}
                                 </motion.div>
@@ -254,133 +278,137 @@ export default function LearnerLeaderboardPage() {
                         </AnimatePresence>
 
                         <button onClick={load} disabled={loading}
-                            className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-purple-50 hover:border-purple-200 transition-all disabled:opacity-40">
-                            <RefreshCw size={12} className={clsx("text-gray-400", loading && "animate-spin")} />
+                            className="w-11 h-11 rounded-2xl bg-white border-[2.5px] border-slate-900 flex items-center justify-center hover:bg-slate-50 transition-all shadow-[3px_3px_0_#1f2937] active:translate-y-0.5 active:shadow-none">
+                            <RefreshCw size={18} className={clsx("text-slate-900", loading && "animate-spin")} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* ── Content ── */}
-            <div className="flex-1 min-h-0 overflow-hidden p-4">
-                <div className="max-w-6xl mx-auto h-full">
+            <div className="flex-1 px-6 py-8 overflow-y-auto">
+                <div className="max-w-6xl mx-auto">
                     {loading ? (
-                        <div className="flex justify-center items-center h-full bg-white rounded-2xl border border-gray-100">
-                            <Spin size="large" />
+                        <div className="flex justify-center items-center py-40">
+                            <DoodleLoading message="Đang tải bảng vàng..." />
                         </div>
                     ) : error ? (
-                        <div className="flex flex-col items-center justify-center h-full bg-white rounded-2xl border border-red-100">
-                            <span className="text-3xl mb-2">⚠️</span>
-                            <p className="font-bold text-gray-500 text-sm">Không thể tải dữ liệu</p>
-                            <button onClick={load} className="mt-2 text-purple-600 font-bold text-sm hover:underline">Thử lại</button>
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937]">
+                            <div className="text-6xl mb-6">🏜️</div>
+                            <h3 className="text-2xl font-black text-slate-900 mb-2">Ối! Có lỗi rồi</h3>
+                            <p className="text-slate-500 font-bold mb-8 text-center max-w-sm px-6">Chúng tôi không thể kết nối được với bảng vàng lúc này. Hãy thử lại xem sao nhé!</p>
+                            <button
+                                onClick={load}
+                                className="px-8 py-3 bg-[#49B6E5] text-white font-black rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-1 active:shadow-none transition-all"
+                            >
+                                Thử lại ngay
+                            </button>
                         </div>
                     ) : entries.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full bg-white rounded-2xl border border-gray-100">
-                            <div className="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center mb-3 border border-yellow-100">
-                                <Trophy size={22} className="text-yellow-200" />
-                            </div>
-                            <p className="font-bold text-gray-400 text-sm">Chưa có dữ liệu xếp hạng</p>
-                            <p className="text-gray-300 text-xs mt-1">Hãy là người đầu tiên ghi tên lên bảng vàng!</p>
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937]">
+                            <div className="text-6xl mb-6">👻</div>
+                            <h3 className="text-2xl font-black text-slate-900 mb-2">Bảng vàng trống trơn</h3>
+                            <p className="text-slate-500 font-bold mb-6">Hãy là người đầu tiên ghi tên lên đây nhé!</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 h-full">
-
-                            {/* Left: Podium — 2 cols */}
-                            <div className="lg:col-span-2 h-full overflow-hidden">
-                                {top3.length > 0 && (
-                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col"
-                                        style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-                                        <div className="h-0.5 w-full bg-gradient-to-r from-purple-500 via-orange-400 to-amber-400" />
-                                        <div className="px-4 pt-3 pb-2 flex-shrink-0">
-                                            <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5">
-                                                <Crown size={10} className="text-amber-400" /> Top 3 dẫn đầu
-                                            </p>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* Left: Podium — 5 cols */}
+                            <div className="lg:col-span-5 hidden md:block sticky top-28">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[8px_8px_0_#1f2937] overflow-hidden flex flex-col"
+                                >
+                                    <div className="bg-[#BAE6FD] px-8 py-4 border-b-[2.5px] border-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Crown size={20} className="text-yellow-500 fill-yellow-500" />
+                                            <span className="font-black text-slate-900 uppercase tracking-wider text-sm mt-0.5">Top 3 Dẫn Đầu</span>
                                         </div>
-                                        <div className="flex-1 px-3 pb-3 flex flex-col justify-center">
-                                            <Podium entries={top3} userId={user?.id} />
-                                        </div>
-
-                                        {data?.myRank && data.myRank.rankPosition <= 3 && (
-                                            <div className="px-3 pb-3">
-                                                <div className="bg-purple-50 rounded-xl px-3 py-1.5 text-center border border-purple-100">
-                                                    <p className="text-[9px] font-black text-purple-500">🎉 Bạn đang trong Top 3!</p>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
-                                )}
+                                    <div className="flex-1 p-4 bg-[#fdfaff]">
+                                        <Podium entries={top3} userId={user?.id} />
+                                    </div>
+
+                                    {data?.myRank && (
+                                        <div className="p-6 bg-slate-50 border-t-[2.5px] border-slate-900">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vị trí của bạn</p>
+                                            <Row e={data.myRank} idx={0} userId={user?.id} />
+                                        </div>
+                                    )}
+                                </motion.div>
                             </div>
 
-                            {/* Right: Full ranking — 3 cols */}
-                            <div className="lg:col-span-3 flex flex-col h-full gap-2 overflow-hidden">
-
-                                {/* My rank if not top 3 */}
-                                {data?.myRank && data.myRank.rankPosition > 3 && (
-                                    <div className="bg-white rounded-xl border border-purple-100 shadow-sm p-2.5 flex-shrink-0"
-                                        style={{ boxShadow: '0 2px 12px rgba(147,51,234,0.06)' }}>
-                                        <p className="text-[9px] uppercase font-black text-purple-500 tracking-widest mb-1.5">Vị trí của bạn</p>
-                                        <Row e={data.myRank} idx={0} userId={user?.id} />
+                            {/* Right: Full ranking — 7 cols */}
+                            <div className="lg:col-span-7 flex flex-col gap-4">
+                                <div className="bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] p-8">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-2">
+                                            <Medal size={20} className="text-[#49B6E5]" />
+                                            <h3 className="text-xl font-black text-slate-900">Thứ Hạng Khác</h3>
+                                        </div>
+                                        <span className="text-xs font-black bg-slate-100 px-3 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                                            {entries.length} người học
+                                        </span>
                                     </div>
-                                )}
 
-                                {/* Rankings #4+ with pagination */}
-                                {rest.length > 0 && (
-                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex-1 flex flex-col min-h-0 overflow-hidden"
-                                        style={{ boxShadow: '0 4px 20px rgba(147,51,234,0.06)' }}>
-                                        <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                                            <p className="text-[9px] uppercase font-black text-gray-400 tracking-widest">
-                                                Bảng xếp hạng
-                                            </p>
-                                            <span className="text-[9px] text-gray-300 font-bold">{entries.length} người</span>
-                                        </div>
-
-                                        <style dangerouslySetInnerHTML={{
-                                            __html: `
-                                        .lb-scroll::-webkit-scrollbar { width: 3px; }
-                                        .lb-scroll::-webkit-scrollbar-track { background: transparent; }
-                                        .lb-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
-                                        .lb-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-                                    `}} />
-                                        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 lb-scroll">
-                                            {pagedRest.map((e, i) => <Row key={e.accountId} e={e} idx={i} userId={user?.id} />)}
-                                        </div>
-
-                                        {/* Pagination */}
-                                        {totalPages > 1 && (
-                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 flex-shrink-0">
-                                                <button
-                                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                                    disabled={page === 1}
-                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-400 hover:bg-purple-50 hover:border-purple-100 hover:text-purple-600 transition-all disabled:opacity-30"
-                                                >
-                                                    <ChevronLeft size={11} /> Trước
-                                                </button>
-                                                <div className="flex items-center gap-0.5">
-                                                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                                        const p = totalPages <= 5 ? i + 1 : (page <= 3 ? i + 1 : page - 2 + i);
-                                                        if (p < 1 || p > totalPages) return null;
-                                                        return (
-                                                            <button key={p} onClick={() => setPage(p)}
-                                                                className={clsx(
-                                                                    "w-6 h-6 rounded-lg text-[10px] font-black transition-all",
-                                                                    page === p ? "bg-purple-600 text-white shadow-sm" : "bg-gray-50 text-gray-400 hover:bg-purple-50"
-                                                                )}>
-                                                                {p}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <button
-                                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                                    disabled={page === totalPages}
-                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-400 hover:bg-purple-50 hover:border-purple-100 hover:text-purple-600 transition-all disabled:opacity-30"
-                                                >
-                                                    Tiếp <ChevronRight size={11} />
-                                                </button>
+                                    <div className="space-y-3">
+                                        {pagedRest.length > 0 ? (
+                                            pagedRest.map((e, i) => <Row key={e.accountId} e={e} idx={i} userId={user?.id} />)
+                                        ) : (
+                                            <div className="py-12 text-center">
+                                                <p className="text-slate-400 font-bold">Chưa có người học khác xếp hạng</p>
                                             </div>
                                         )}
                                     </div>
-                                )}
+
+                                    {/* Pagination */}
+                                    {totalPages > 1 && (
+                                        <div className="flex items-center justify-between mt-10 pt-8 border-t-[2.5px] border-slate-900/10">
+                                            <button
+                                                onClick={() => {
+                                                    setPage(p => Math.max(1, p - 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={page === 1}
+                                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border-[2px] border-slate-900 font-black text-xs text-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30"
+                                            >
+                                                <ChevronLeft size={16} strokeWidth={3} /> Trước
+                                            </button>
+
+                                            <div className="flex items-center gap-1.5">
+                                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                                    const p = totalPages <= 5 ? i + 1 : (page <= 3 ? i + 1 : page - 2 + i);
+                                                    if (p < 1 || p > totalPages) return null;
+                                                    return (
+                                                        <button key={p} onClick={() => {
+                                                            setPage(p);
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }}
+                                                            className={clsx(
+                                                                "w-9 h-9 rounded-xl font-black text-xs transition-all border-[2px]",
+                                                                page === p
+                                                                    ? "bg-slate-900 text-white border-slate-900 shadow-[2px_2px_0_#49B6E5]"
+                                                                    : "bg-white text-slate-400 border-slate-200 hover:border-slate-900 hover:text-slate-900 shadow-[2px_2px_0_#e2e8f0]"
+                                                            )}>
+                                                            {p}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    setPage(p => Math.min(totalPages, p + 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={page === totalPages}
+                                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border-[2px] border-slate-900 font-black text-xs text-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30"
+                                            >
+                                                Tiếp <ChevronRight size={16} strokeWidth={3} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

@@ -31,6 +31,10 @@ import {
   Castle,
   Building2,
 } from "lucide-react";
+import mienbacImg from "../../../assets/mienbac.png";
+import mientrungImg from "../../../assets/mientrung.png";
+import miennamImg from "../../../assets/miennam.png";
+import logoImg from "../../../assets/logoSpeakVN.png";
 
 const REGION_CHOICES = [
   {
@@ -40,7 +44,7 @@ const REGION_CHOICES = [
     icon: Landmark,
     tagline: "Thanh lịch & Chuẩn mực",
     description: "Chinh phục phát âm chuẩn — nền tảng tiếng Việt quy chuẩn.",
-    photo: "/region_mien_bac.png",
+    photo: mienbacImg,
     gradient: "from-indigo-600 to-blue-700",
   },
   {
@@ -50,7 +54,7 @@ const REGION_CHOICES = [
     icon: Castle,
     tagline: "Nồng hậu & Di sản",
     description: "Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.",
-    photo: "/region_mien_trung.png",
+    photo: mientrungImg,
     gradient: "from-amber-500 to-orange-600",
   },
   {
@@ -60,7 +64,7 @@ const REGION_CHOICES = [
     icon: Building2,
     tagline: "Sôi động & Cởi mở",
     description: "Làm quen với giọng Nam năng động, cởi mở và thân thiện.",
-    photo: "/region_mien_nam.png",
+    photo: miennamImg,
     gradient: "from-emerald-500 to-teal-600",
   },
 ];
@@ -129,7 +133,6 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
                     alt={r.label}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${r.gradient} opacity-70`} />
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                     <h3 className="text-lg font-black text-white drop-shadow leading-none">{r.label}</h3>
                     <div className="text-white bg-white/20 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
@@ -262,94 +265,100 @@ export default function LearnerLayout() {
       )}
 
       {/* ══════════════════════════════════════════════════════
-          TOP NAVIGATION BAR (Optimized)
+          TOP NAVIGATION BAR (Doodle Minimalist Style)
           ══════════════════════════════════════════════════════ */}
-      <header className="h-20 bg-white/80 backdrop-blur-xl border-b border-purple-100/50 flex items-center px-6 sticky top-0 z-[100] shadow-[0_4px_24px_rgba(147,51,234,0.02)]">
+      <header className="sticky top-0 z-[100] bg-[#fbf6ef]/95 backdrop-blur-md px-6 py-4">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo */}
+            <Link to="/learner/dashboard" className="group flex items-center text-left">
+              <img
+                src={logoImg}
+                alt="SpeakVN Logo"
+                className="h-14 w-auto drop-shadow-[2px_2px_0_rgba(0,0,0,0.1)] transition-transform duration-200 group-hover:-translate-y-0.5"
+              />
+            </Link>
 
-        {/* Logo Section */}
-        <div className="flex-shrink-0 mr-10">
-          <Link to="/learner/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
-              <Sparkles size={18} className="text-white" />
-            </div>
-            <span className="hidden xl:block font-black text-xl tracking-tight">
-              Speak<span className="text-purple-600">VN</span>
-            </span>
-          </Link>
-        </div>
+            {/* Navigation - Hidden on small screens, simplified */}
+            <nav className="hidden xl:flex items-center gap-6">
+              {menuItems.map((item) => {
+                const isActive = selectedKey === item.key;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.key}
+                    className={`group relative flex items-center gap-2 px-1 py-1 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                  >
+                    <Icon size={14} className={isActive ? "text-[#49B6E5]" : "text-slate-400 group-hover:text-[#49B6E5]"} />
+                    <span className="text-[13px] font-black tracking-tight whitespace-nowrap">
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeNav"
+                        className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-[#7dd3fc]"
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
 
-        {/* Navigation Links - Centered & Optimized */}
-        <nav className="hidden lg:flex items-center justify-center flex-1 gap-1 max-w-4xl mx-auto">
-          {menuItems.map((item) => {
-            const isActive = selectedKey === item.key;
-            const Icon = item.icon;
-            return (
-              <Link key={item.key} to={item.key} className="relative px-3 py-2 flex items-center gap-2 rounded-xl group transition-all duration-300">
-                {isActive && (
-                  <motion.div
-                    layoutId="topNavLinkActive"
-                    className="absolute inset-0 bg-purple-50 rounded-xl border border-purple-100/50"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                  />
-                )}
-                <div className={`relative z-10 flex items-center gap-2 transition-colors duration-300 ${isActive ? "text-purple-700" : "text-gray-500 group-hover:text-purple-600"}`}>
-                  <Icon size={17} className={isActive ? "text-purple-600" : "text-gray-400 group-hover:text-purple-400"} />
-                  <span className="text-[13px] font-black tracking-tight whitespace-nowrap">{item.label}</span>
+            {/* Right Actions */}
+            <div className="flex items-center gap-3">
+              {/* Stats */}
+              <div className="hidden sm:flex items-center gap-3 rounded-full border-[2px] border-slate-900 bg-white px-3 py-1.5 shadow-[3px_3px_0_#1f2937]">
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  <Flame size={12} className="text-orange-500 fill-orange-500" />
+                  <span className="text-slate-700 font-black text-[11px]">{user?.currentStreakDays || user?.streak || "0"}</span>
                 </div>
-              </Link>
-            );
-          })}
-        </nav>
+                <div className="flex items-center gap-1">
+                  <Star size={12} className="text-yellow-500 fill-yellow-500" />
+                  <span className="text-slate-700 font-black text-[11px]">{user?.totalStars || 0}</span>
+                </div>
+              </div>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-        >
-          <Menu size={20} />
-        </button>
+              {/* User Dropdown */}
+              <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
+                <button type="button" className="flex items-center gap-2 rounded-full border-[2px] border-slate-900 bg-white p-0.5 pr-2.5 shadow-[3px_3px_0_#1f2937] transition-transform hover:-translate-y-0.5">
+                  <Avatar
+                    src={avatarErr ? null : (user.avatar_url || user.avatar)}
+                    onError={() => { setAvatarErr(true); return true; }}
+                    icon={<UserCircle2 />}
+                    size={32}
+                    className="bg-[#49B6E5] text-white border-2 border-white"
+                  />
+                  <div className="hidden md:block text-left">
+                    <div className="text-[11px] font-black leading-none text-slate-800 mb-0.5 truncate max-w-[100px]">{user.fullName || "User"}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-[#49B6E5]">Học viên</div>
+                  </div>
+                </button>
+              </Dropdown>
 
-        {/* Right Side (Stats + Profile) */}
-        <div className="flex items-center gap-2.5 ml-auto pl-4">
-          {/* Quick Stats - Combined Pill */}
-          <div className="hidden sm:flex items-center gap-3 px-3.5 py-1.5 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
-            <div className="flex items-center gap-1.5 border-r border-gray-200 pr-3">
-              <Flame size={14} className="text-orange-500 fill-orange-500" />
-              <span className="text-gray-700 font-black text-xs">
-                {user?.currentStreakDays || user?.streak || "0"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Star size={14} className="text-yellow-500 fill-yellow-500" />
-              <span className="text-gray-700 font-black text-xs">
-                {user?.totalStars || 0}
-              </span>
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="grid h-10 w-10 place-items-center rounded-full border-[2px] border-slate-900 bg-white text-slate-700 shadow-[3px_3px_0_#1f2937] xl:hidden"
+                aria-label="Open menu"
+              >
+                <Menu size={18} />
+              </button>
             </div>
           </div>
+        </div>
 
-          <div className="w-px h-8 bg-gray-100 mx-1 hidden md:block"></div>
-
-          {/* Profile Dropdown */}
-          <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
-            <div className="flex items-center gap-2.5 cursor-pointer group hover:bg-gray-50/50 p-1 pr-3 rounded-2xl transition-all">
-              <div className="relative">
-                <Avatar
-                  src={avatarErr ? null : (user.avatar_url || user.avatar)}
-                  onError={() => { setAvatarErr(true); return true; }}
-                  icon={<UserCircle2 />}
-                  size={38}
-                  className="bg-purple-100 text-purple-600 border-2 border-white shadow-md transition-transform group-hover:scale-105"
-                />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-              </div>
-              <div className="hidden xl:block">
-                <div className="text-[13px] font-black text-gray-800 leading-none mb-0.5">
-                  {user.fullName || "User"}
-                </div>
-                <div className="text-[10px] text-purple-500 font-bold uppercase tracking-wider opacity-60">Học viên</div>
-              </div>
-            </div>
-          </Dropdown>
+        {/* Hand-drawn style bottom line */}
+        <div className="absolute left-0 right-0 bottom-0 px-6">
+          <svg className="w-full h-1 text-slate-900/20" viewBox="0 0 1200 4" preserveAspectRatio="none">
+            <path
+              d="M0,2 Q300,0 600,2 T1200,2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
         </div>
       </header>
 

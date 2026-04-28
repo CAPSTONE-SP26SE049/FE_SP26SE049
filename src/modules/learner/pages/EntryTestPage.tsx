@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -17,6 +17,9 @@ import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { ASR_BASE_URL } from '../../../config'
 import { Globe, Play, ChevronRight, MapPin } from 'lucide-react'
+import mienbacImg from '../../../assets/mienbac.png'
+import mientrungImg from '../../../assets/mientrung.png'
+import miennamImg from '../../../assets/miennam.png'
 
 // ─────────────────────────────────────────────────────────────────────
 // Region metadata match RoadmapPage
@@ -36,7 +39,7 @@ const DIALECT_META: Record<string, {
         tagline: 'Thanh lịch & Chuẩn mực',
         emoji: '🏛️',
         description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
-        photo: '/region_mien_bac.png',
+        photo: mienbacImg,
         gradient: 'from-indigo-500/90 to-blue-600/90',
         color: '#6366f1',
         accent: '#818cf8',
@@ -46,7 +49,7 @@ const DIALECT_META: Record<string, {
         tagline: 'Nồng hậu & Di sản',
         emoji: '🏯',
         description: 'Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.',
-        photo: '/region_mien_trung.png',
+        photo: mientrungImg,
         gradient: 'from-amber-500/90 to-orange-600/90',
         color: '#f59e0b',
         accent: '#fbbf24',
@@ -56,7 +59,7 @@ const DIALECT_META: Record<string, {
         tagline: 'Sôi động & Cởi mở',
         emoji: '🌆',
         description: 'Làm quen với giọng Nam năng động, cởi mở và thân thiện.',
-        photo: '/region_mien_nam.png',
+        photo: miennamImg,
         gradient: 'from-emerald-500/90 to-teal-600/90',
         color: '#10b981',
         accent: '#34d399',
@@ -85,7 +88,6 @@ const RegionCard = ({ id, meta, index, onSelect }: any) => {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                         onError={(e: any) => { e.target.src = `https://images.unsplash.com/photo-1528127269322-539801943592?w=800&q=80` }}
                     />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${meta.gradient} opacity-70`} />
 
                     <div className="absolute top-4 left-4">
                         <span className="text-[10px] font-black tracking-[0.15em] text-white bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 uppercase">
@@ -151,7 +153,6 @@ const EntryTestPage: React.FC = () => {
     const [currentStepResult, setCurrentStepResult] = useState<StepResult | null>(null)
     const [finished, setFinished] = useState(false)
     const [finalData, setFinalData] = useState<any>(null)
-    const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
     const [regionSelected, setRegionSelected] = useState(false)
 
     // 0. Redirect if already done or auto-start if region exists
@@ -171,7 +172,6 @@ const EntryTestPage: React.FC = () => {
 
     // 1. Fetch Question Set based on selected region
     const startTest = async (region: string) => {
-        setSelectedRegion(region)
         setRegionSelected(true)
         setLoading(true)
         try {
@@ -526,8 +526,8 @@ const EntryTestPage: React.FC = () => {
                                             {currentStepResult.wordDetails.map((item: any, i: number) => {
                                                 const isWrong = item.status === 'wrong';
                                                 const textColor = item.status === 'correct' ? 'text-green-600' :
-                                                                  item.status === 'near' ? 'text-yellow-600' :
-                                                                  'text-red-600';
+                                                    item.status === 'near' ? 'text-yellow-600' :
+                                                        'text-red-600';
                                                 return (
                                                     <span key={i} className={`font-black text-lg ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-4' : ''}`}>
                                                         {item.word}

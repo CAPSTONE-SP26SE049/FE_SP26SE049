@@ -2,20 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  StarFilled,
   LockFilled,
   CheckCircleFilled,
   ArrowLeftOutlined,
 } from '@ant-design/icons'
-import { Spin, Empty, Pagination } from 'antd'
+import { Empty, Pagination } from 'antd'
 import clsx from 'clsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { learnerService, type Level, type Dialect, type Quiz } from '../services/learnerService'
-import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe, Landmark, Castle, Building2 } from 'lucide-react'
+import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe, Landmark, Castle, Building2, Star, Flame } from 'lucide-react'
+import { DoodleLoading } from '../../../components/ui/DoodleLoading'
+import mienbacImg from '../../../assets/mienbac.png'
+import mientrungImg from '../../../assets/mientrung.png'
+import miennamImg from '../../../assets/miennam.png'
+import vietnamMapImg from '../../../assets/bandovietnam-Photoroom.png'
 
-// ─────────────────────────────────────────────────────────────────────
-// Region metadata with Unsplash photo backgrounds
-// ─────────────────────────────────────────────────────────────────────
 const DIALECT_ORDER = ['NORTH', 'CENTRAL', 'SOUTH']
 
 const DIALECT_META: Record<string, {
@@ -43,7 +44,7 @@ const DIALECT_META: Record<string, {
     emoji: '🏛️',
     icon: Landmark,
     description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
-    photo: '/region_mien_bac.png',
+    photo: mienbacImg,
     gradient: 'from-indigo-500/90 to-blue-600/90',
   },
   CENTRAL: {
@@ -57,7 +58,7 @@ const DIALECT_META: Record<string, {
     emoji: '🏯',
     icon: Castle,
     description: 'Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.',
-    photo: '/region_mien_trung.png',
+    photo: mientrungImg,
     gradient: 'from-amber-500/90 to-orange-600/90',
   },
   SOUTH: {
@@ -71,7 +72,7 @@ const DIALECT_META: Record<string, {
     emoji: '🌆',
     icon: Building2,
     description: 'Làm quen với giọng Nam năng động, cởi mở và thân thiện.',
-    photo: '/region_mien_nam.png',
+    photo: miennamImg,
     gradient: 'from-emerald-500/90 to-teal-600/90',
   },
 }
@@ -103,9 +104,6 @@ const getDialectMeta = (dialect: Dialect) => {
   return UNKNOWN_META
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Region Card - Modern Design
-// ─────────────────────────────────────────────────────────────────────
 const RegionCard = ({ dialect, meta, index, onSelect, isMyRegion }: any) => {
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -122,35 +120,24 @@ const RegionCard = ({ dialect, meta, index, onSelect, isMyRegion }: any) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.15, type: 'spring', bounce: 0.3 }}
       whileHover={{ y: -8, scale: 1.02 }}
-      className="relative group cursor-pointer"
+      className="relative group cursor-pointer w-full h-full"
       onClick={() => onSelect(dialect)}
     >
-      {/* Glow Effect — always on for user's region, hover for others */}
       <div
-        className={`absolute -inset-0.5 rounded-3xl blur-lg transition-all duration-500 ${isMyRegion ? 'opacity-70' : 'opacity-0 group-hover:opacity-60'
-          }`}
+        className={`absolute -inset-0.5 rounded-3xl blur-lg transition-all duration-500 ${isMyRegion ? 'opacity-70' : 'opacity-0 group-hover:opacity-60'}`}
         style={{ backgroundColor: meta.color }}
       />
 
-      <div className={`relative bg-white rounded-3xl overflow-hidden shadow-lg transition-all duration-500 ${isMyRegion
-        ? 'border-2 shadow-2xl ring-2 ring-offset-2'
-        : 'border border-gray-100 group-hover:shadow-2xl'
-        }`}
-        style={isMyRegion ? { borderColor: meta.color, ringColor: meta.color } as any : {}}
-      >
-        {/* Photo Section */}
-        <div className="relative h-52 overflow-hidden">
+      <div className="relative bg-white rounded-3xl overflow-hidden border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] transition-all duration-500 w-full h-full min-h-[440px] flex flex-col">
+        <div className="relative h-[200px] overflow-hidden">
           <img
             src={meta.photo}
             alt={meta.viName}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             onError={(e: any) => { e.target.src = `https://images.unsplash.com/photo-1528127269322-539801943592?w=800&q=80` }}
           />
-          {/* Gradient overlay */}
-          <div className={`absolute inset-0 bg-gradient-to-t ${meta.gradient} opacity-70`} />
 
-          {/* Tagline Chip */}
-          <div className="absolute top-4 left-4 flex items-center gap-2">
+          <div className="absolute top-4 left-4 flex items-center gap-2 max-w-[calc(100%-2rem)] flex-wrap">
             <span className="text-[11px] font-black tracking-[0.15em] text-white bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
               {meta.tagline}
             </span>
@@ -167,34 +154,26 @@ const RegionCard = ({ dialect, meta, index, onSelect, isMyRegion }: any) => {
             )}
           </div>
 
-          {/* Region Name */}
           <div className="absolute bottom-5 left-6 right-6">
-            <div className="flex items-end justify-between">
-              <div>
-                <h3 className="text-4xl font-black text-white drop-shadow-lg leading-none">{meta.viName}</h3>
+            <div className="flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="text-4xl font-black text-white drop-shadow-lg leading-none break-keep">{meta.viName}</h3>
               </div>
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg border border-white/20 backdrop-blur-sm bg-white/10"
-              >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg border border-white/20 backdrop-blur-sm bg-white/10 flex-shrink-0">
                 <meta.icon size={26} strokeWidth={2} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="p-6">
-          <p className="text-gray-500 text-sm font-medium leading-relaxed mb-5">
+        <div className="p-6 flex-1 flex flex-col">
+          <p className="text-slate-500 text-sm font-bold leading-relaxed mb-5 flex-1">
             {dialect.description && dialect.description !== meta.viName ? dialect.description : meta.description}
           </p>
 
-          {/* CTA Button */}
-          <button
-            className="w-full h-12 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all duration-300 group-hover:shadow-lg active:scale-95"
-            style={{ background: isMyRegion ? `linear-gradient(135deg, ${meta.color}, ${meta.accent})` : `linear-gradient(135deg, ${meta.color}, ${meta.accent})` }}
-          >
+          <button className="w-full h-12 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all duration-300 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-1 active:shadow-none bg-[#49B6E5]">
             <Play size={16} className="fill-white" />
-            {isMyRegion ? 'Vào học ngay ✦' : 'Vào học ngay'}
+            {isMyRegion ? 'Khám phá ngay ✦' : 'Khám phá ngay'}
             <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -203,9 +182,6 @@ const RegionCard = ({ dialect, meta, index, onSelect, isMyRegion }: any) => {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Step 1: Dialect Selection
-// ─────────────────────────────────────────────────────────────────────
 const DialectStep = ({ dialects, onSelect, userRegionKey }: { dialects: Dialect[]; onSelect: (d: Dialect) => void; userRegionKey?: string }) => {
   const nodes = useMemo(() => {
     const sorted = [...dialects].sort((a, b) => {
@@ -217,40 +193,48 @@ const DialectStep = ({ dialects, onSelect, userRegionKey }: { dialects: Dialect[
   }, [dialects])
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-6 lg:p-8">
-      {/* Header */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-full border border-purple-100 mb-4">
-          <Globe size={14} className="text-purple-600" />
-          <span className="text-purple-700 text-xs font-black uppercase tracking-widest">Chọn vùng miền</span>
-        </div>
-        <h1 className="text-4xl lg:text-5xl font-black text-gray-800 leading-tight mb-3">
-          Chinh Phục <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500">Tiếng Việt</span>
-        </h1>
-        <p className="text-gray-400 font-medium text-base max-w-md mx-auto">
-          Chọn giọng địa phương để bắt đầu hành trình học tiếng Việt của bạn
-        </p>
-      </div>
+    <div className="w-full max-w-[2400px] mx-auto px-6 pt-6 pb-4 lg:pt-8 lg:pb-6 overflow-hidden h-[calc(100vh-120px)]">
+      <div className="grid h-full grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(460px,0.9fr)] gap-8 xl:gap-12 items-center">
+        <div className="min-w-0">
+          <div className="mb-6 text-center lg:text-center">
+            <div className="space-y-1 max-w-3xl mx-auto lg:translate-x-[18%]">
+              <h1 className="text-3xl lg:text-[2.4rem] font-black text-slate-900 leading-tight font-nunito uppercase tracking-tight">
+                Chinh Phục <span className="text-[#49B6E5]">Tiếng Việt</span>
+              </h1>
+              <p className="text-slate-400 font-black text-xs lg:text-sm uppercase tracking-widest">
+                Chọn giọng địa phương để bắt đầu hành trình của bạn
+              </p>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {nodes.map(({ dialect, meta }, index) => (
-          <RegionCard
-            key={meta.key}
-            dialect={dialect}
-            meta={meta}
-            index={index}
-            onSelect={onSelect}
-            isMyRegion={userRegionKey ? meta.key === userRegionKey : false}
-          />
-        ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch justify-items-stretch">
+            {nodes.map(({ dialect, meta }, index) => (
+              <RegionCard
+                key={meta.key}
+                dialect={dialect}
+                meta={meta}
+                index={index}
+                onSelect={onSelect}
+                isMyRegion={userRegionKey ? meta.key === userRegionKey : false}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden lg:flex items-center justify-center h-full min-h-0 overflow-hidden">
+          <div className="relative w-[500px] h-[620px] flex items-center justify-center overflow-hidden">
+            <img
+              src={vietnamMapImg}
+              alt="Bản đồ Việt Nam"
+              className="max-w-full max-h-full w-auto h-auto object-contain object-center scale-95 drop-shadow-[30px_30px_0_rgba(73,182,229,0.08)]"
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Step 2: Chapter List
-// ─────────────────────────────────────────────────────────────────────
 const ChapterStep = ({
   dialect,
   chapters,
@@ -275,7 +259,6 @@ const ChapterStep = ({
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
-  // Reset pagination if dialect changes
   useEffect(() => { setCurrentPage(1) }, [dialect.id])
 
   const paginatedChapters = useMemo(() => {
@@ -285,34 +268,32 @@ const ChapterStep = ({
 
   return (
     <div className="w-full max-w-3xl mx-auto p-6 lg:p-8 pb-20">
-
-      {/* ── Region Banner (replaces breadcrumb header) ── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative mb-6 rounded-3xl overflow-hidden shadow-lg"
+        className="relative mb-8 rounded-[2rem] overflow-hidden border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] bg-white"
       >
         <div className="absolute inset-0">
           <img src={meta.photo} className="w-full h-full object-cover" />
-          <div className={`absolute inset-0 bg-gradient-to-r ${meta.gradient}`}></div>
         </div>
-        <div className="relative px-6 py-5 flex items-center gap-4">
-          {/* Back button integrated into banner */}
+        <div className="relative px-8 py-6 flex items-center gap-6">
           <button
             onClick={onBack}
-            className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/25 hover:bg-white/30 transition-all flex-shrink-0"
+            className="w-12 h-12 rounded-2xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:-translate-y-0.5 transition-all active:translate-y-0.5 active:shadow-none"
           >
-            <ArrowLeftOutlined className="text-white" />
+            <ArrowLeftOutlined className="text-slate-900 font-black" />
           </button>
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white border border-white/20 flex-shrink-0">
-            <meta.icon size={24} strokeWidth={2.5} />
+          <div className="w-14 h-14 rounded-2xl bg-[#49B6E5] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center text-white flex-shrink-0">
+            <meta.icon size={28} strokeWidth={2.5} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-black text-white leading-tight">{meta.viName}</h2>
-            <p className="text-white/70 text-xs font-bold">{meta.tagline}</p>
+            <h2 className="text-2xl font-black text-slate-900 leading-tight font-nunito">{meta.viName}</h2>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">{meta.tagline}</p>
           </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-white/60 text-xs font-bold">{approvedChapters.length} chương</p>
+          <div className="text-right hidden md:block">
+            <div className="bg-white border-[2px] border-slate-900 rounded-xl px-4 py-2 shadow-[2px_2px_0_#1f2937]">
+              <p className="text-slate-900 text-sm font-black">{approvedChapters.length} Chương</p>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -337,105 +318,65 @@ const ChapterStep = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, type: 'spring', stiffness: 100, damping: 15 }}
-                whileHover={!ch.isLocked ? { y: -4, scale: 1.01 } : {}}
                 className={clsx(
-                  "relative bg-white rounded-2xl border transition-all duration-400 overflow-hidden",
+                  'relative bg-white rounded-2xl border-[2.5px] border-slate-900 transition-all duration-400 overflow-hidden',
                   ch.isLocked
-                    ? "opacity-75 cursor-not-allowed border-gray-100 bg-gray-50/30"
-                    : "cursor-pointer group hover:shadow-lg hover:border-purple-200 border-gray-100"
+                    ? 'opacity-60 cursor-not-allowed bg-slate-50'
+                    : 'cursor-pointer group hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] shadow-[4px_4px_0_#1f2937]'
                 )}
                 onClick={() => !ch.isLocked && onSelect(ch)}
               >
-                {/* Left accent stripe */}
-                <div
-                  className={clsx(
-                    "absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl transition-all duration-300",
-                    !ch.isLocked && "group-hover:w-2"
-                  )}
-                  style={{
-                    background: ch.isLocked
-                      ? '#d1d5db'
-                      : `linear-gradient(to bottom, ${meta.color}, ${meta.accent})`
-                  }}
-                />
-
                 <div className="flex items-center gap-5 p-5 pl-6">
-                  {/* Number badge */}
                   <div className="relative flex-shrink-0">
                     <div
                       className={clsx(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg transition-all duration-300",
-                        !ch.isLocked && "group-hover:scale-110 group-hover:rotate-3"
+                        'w-14 h-14 rounded-2xl border-[2.5px] border-slate-900 flex items-center justify-center text-white font-black text-xl transition-all duration-300 shadow-[3px_3px_0_#1f2937]',
+                        ch.isLocked ? 'bg-slate-300' : 'bg-[#49B6E5] group-hover:rotate-3'
                       )}
-                      style={{
-                        background: ch.isLocked
-                          ? '#9ca3af'
-                          : `linear-gradient(135deg, ${meta.color}, ${meta.accent})`
-                      }}
                     >
                       {ch.isLocked ? <LockFilled className="text-white/80 text-lg" /> : seqNum}
                     </div>
-                    {isCompleted && !ch.isLocked && (
-                      <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-md border-2 border-white">
-                        <CheckCircleFilled className="text-white text-[10px]" />
-                      </div>
-                    )}
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md"
-                        style={{
-                          color: ch.isLocked ? '#6b7280' : meta.color,
-                          backgroundColor: ch.isLocked ? '#f3f4f6' : `${meta.color}15`
-                        }}
-                      >
+                      <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-lg border-[1.5px] border-slate-900 bg-white">
                         Chương {seqNum}
                       </span>
                       {isCompleted && !ch.isLocked && (
-                        <span className="text-[10px] font-black tracking-wider uppercase text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">
+                        <span className="text-[10px] font-black tracking-wider uppercase text-green-600 bg-green-50 px-2 py-0.5 rounded-lg border-[1.5px] border-green-600">
                           ✓ Hoàn thành
-                        </span>
-                      )}
-                      {ch.isLocked && (
-                        <span className="text-[10px] font-black tracking-wider uppercase text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
-                          🔒 Đang khóa
                         </span>
                       )}
                     </div>
                     <h4 className={clsx(
-                      "font-black text-base truncate transition-colors",
-                      ch.isLocked ? "text-gray-400" : "text-gray-800 group-hover:text-purple-700"
+                      'font-black text-lg truncate transition-colors font-nunito',
+                      ch.isLocked ? 'text-slate-400' : 'text-slate-900 group-hover:text-[#49B6E5]'
                     )}>
                       {ch.name}
                     </h4>
-                    <p className="text-sm text-gray-400 mt-0.5 truncate font-medium">
-                      {ch.isLocked ? "Hoàn thành chương trước để mở khóa" : desc}
+                    <p className="text-sm text-slate-500 mt-0.5 truncate font-bold">
+                      {ch.isLocked ? 'Hoàn thành bài học trước để mở khóa' : desc}
                     </p>
                   </div>
 
-                  {/* Right side: Stars + Arrow */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-4 flex-shrink-0">
                     {isCompleted && stars > 0 && !ch.isLocked && (
-                      <div className="flex gap-0.5">
+                      <div className="flex gap-1">
                         {[...Array(3)].map((_, i) => (
-                          <StarFilled key={i} className={clsx('text-sm', i < stars ? 'text-yellow-400' : 'text-gray-200')} />
+                          <div key={i} className={clsx('w-6 h-6 rounded-lg border-[1.5px] border-slate-900 flex items-center justify-center shadow-[1px_1px_0_#1f2937]', i < stars ? 'bg-yellow-400' : 'bg-white')}>
+                            <Star size={12} className="fill-slate-900 text-slate-900" />
+                          </div>
                         ))}
                       </div>
                     )}
                     <div
                       className={clsx(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm transition-all duration-300",
-                        !ch.isLocked && "group-hover:shadow-md group-hover:translate-x-1"
+                        'w-10 h-10 rounded-xl border-[2px] border-slate-900 flex items-center justify-center shadow-[2px_2px_0_#1f2937] transition-all duration-300',
+                        ch.isLocked ? 'bg-slate-100 text-slate-400' : 'bg-[#7dd3fc] text-slate-900 group-hover:translate-x-1'
                       )}
-                      style={{
-                        backgroundColor: ch.isLocked ? '#f3f4f6' : `${meta.color}12`,
-                        color: ch.isLocked ? '#9ca3af' : meta.color
-                      }}
                     >
-                      {ch.isLocked ? <LockFilled size={18} /> : <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />}
+                      {ch.isLocked ? <LockFilled size={16} /> : <ChevronRight size={18} strokeWidth={3} />}
                     </div>
                   </div>
                 </div>
@@ -462,9 +403,6 @@ const ChapterStep = ({
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Step 3: Quiz Roadmap (kept same logic, modernized visuals)
-// ─────────────────────────────────────────────────────────────────────
 const SKILL_META: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   LISTENING: { icon: Headphones, color: '#6366f1', bg: 'bg-indigo-100', label: 'Luyện nghe' },
   SPEAKING: { icon: Mic, color: '#f59e0b', bg: 'bg-amber-100', label: 'Luyện nói' },
@@ -486,74 +424,61 @@ const RoadmapNode = ({ node, index, onClick }: { node: any; index: number; onCli
       onMouseLeave={() => setIsHovered(false)}
     >
       <motion.div
-        whileHover={{ scale: isClickable ? 1.12 : 1.05 }}
-        whileTap={{ scale: isClickable ? 0.92 : 1 }}
+        whileHover={{ scale: isClickable ? 1.1 : 1.05, rotate: isClickable ? 3 : 0 }}
+        whileTap={{ scale: isClickable ? 0.95 : 1 }}
         initial={{ scale: 0, rotate: -15 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ delay: index * 0.08, type: 'spring', bounce: 0.4 }}
         onClick={isClickable ? onClick : undefined}
         className={clsx(
-          'relative w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-lg border-b-4 transition-all duration-300 backdrop-blur-md',
-          node.type === 'completed' && 'bg-white/90 border-b-gray-200 border border-gray-100',
-          node.type === 'active' && 'bg-white border-b-purple-400 ring-4 ring-purple-100 scale-110 shadow-purple-200',
-          node.type === 'locked' && 'bg-white/40 border-b-gray-300/30 border border-white/50 grayscale opacity-80 shadow-none',
-          isClickable ? 'cursor-pointer hover:rotate-3' : 'cursor-not-allowed',
+          'relative w-20 h-20 rounded-[2.2rem] flex items-center justify-center border-[2.5px] border-slate-900 transition-all duration-300',
+          node.type === 'completed' && 'bg-white shadow-[4px_4px_0_#1f2937]',
+          node.type === 'active' && 'bg-[#49B6E5] shadow-[6px_6px_0_#1f2937] ring-4 ring-[#49B6E5]/20',
+          node.type === 'locked' && 'bg-slate-100 border-slate-400 shadow-none grayscale opacity-60',
+          isClickable ? 'cursor-pointer' : 'cursor-not-allowed',
         )}
       >
         {node.type === 'locked'
           ? (
-            <div className="w-12 h-12 rounded-2xl bg-gray-200/50 flex items-center justify-center">
-              <LockFilled className="text-gray-400/60 text-xl" />
-            </div>
+            <LockFilled size={20} className="text-slate-400" />
           )
           : (
-            <div className={clsx("w-13 h-13 rounded-2xl flex items-center justify-center shadow-inner", skill.bg)}>
+            <div className={clsx('w-12 h-12 rounded-2xl flex items-center justify-center', node.type === 'active' ? 'bg-white/20' : skill.bg)}>
               <SkillIcon
-                size={24}
-                strokeWidth={2.5}
-                style={{ color: skill.color }}
-                className={node.type === 'active' ? 'animate-pulse' : ''}
+                size={22}
+                strokeWidth={3}
+                className={node.type === 'active' ? 'text-white' : ''}
+                style={node.type !== 'active' ? { color: skill.color } : {}}
               />
             </div>
           )
         }
 
         {node.type === 'completed' && (
-          <>
-            <div className="absolute -top-2 -right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-md z-20">
-              <CheckCircleFilled className="text-white text-xs" />
-            </div>
-            <div className="absolute -bottom-5 flex gap-0.5 bg-white px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
-              {[...Array(3)].map((_, i) => (
-                <StarFilled key={i} className={clsx('text-[9px]', i < node.stars ? 'text-yellow-400' : 'text-gray-200')} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {node.type === 'active' && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full border-2 border-white shadow-md animate-bounce" />
+          <div className="absolute -top-1 -right-1 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] z-20">
+            <CheckCircleFilled className="text-white text-[10px]" />
+          </div>
         )}
 
         {isHovered && isClickable && (
           <motion.div
             initial={{ opacity: 0, y: 8, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="absolute -top-14 bg-gray-800 text-white px-3 py-1.5 rounded-xl shadow-xl whitespace-nowrap z-50 font-bold text-xs"
+            className="absolute -top-14 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-[4px_4px_0_rgba(0,0,0,0.1)] whitespace-nowrap z-50 font-black text-[11px] border-[1.5px] border-white/20"
           >
-            {node.type === 'completed' ? 'Thử thách lại' : 'Bắt đầu ngay'}
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45" />
+            {node.type === 'completed' ? 'Ôn tập lại' : 'Bắt đầu học'}
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
           </motion.div>
         )}
       </motion.div>
 
-      <h3 className={clsx('mt-6 font-bold text-sm text-center leading-tight max-w-[130px]',
-        node.type === 'locked' ? 'text-gray-300' : 'text-gray-700'
+      <h3 className={clsx('mt-6 font-black text-[13px] text-center leading-tight max-w-[130px] font-nunito',
+        node.type === 'locked' ? 'text-slate-300' : 'text-slate-900'
       )}>
         {node.title}
       </h3>
       {node.type !== 'locked' && (
-        <div className={clsx('text-[10px] font-bold mt-0.5', node.type === 'active' ? 'text-purple-500' : 'text-gray-400')}>
+        <div className={clsx('text-[10px] font-black uppercase tracking-widest mt-1 bg-white px-2 py-0.5 rounded-lg border-[1.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]', node.type === 'active' ? 'text-[#49B6E5]' : 'text-slate-400')}>
           {skill.label}
         </div>
       )}
@@ -577,7 +502,6 @@ const QuizRoadmapStep = ({
   const navigate = useNavigate()
 
   const roadmapNodes = useMemo(() => {
-    // SORT QUIZZES BY ORDERINDEX TO FIX SEQUENTIAL LOAD BUGS
     const sortedQuizzes = [...quizzes].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
 
     return sortedQuizzes.map((quiz, index) => {
@@ -611,11 +535,7 @@ const QuizRoadmapStep = ({
     })
   }, [quizzes])
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-64">
-      <Spin size="large" />
-    </div>
-  )
+  if (loading) return <DoodleLoading message="Đang tải các bài học..." />
 
   if (quizzes.length === 0) return (
     <div className="flex justify-center items-center h-40 bg-white rounded-2xl border border-gray-100 mx-6 lg:mx-8 mb-10">
@@ -625,34 +545,32 @@ const QuizRoadmapStep = ({
 
   return (
     <div className="w-full mx-auto pb-20 fade-in">
-
-      {/* ── Bắt mắt: Hiện thông tin Vùng Miền thật mượt nhưng nhỏ gọn hơn ── */}
       {dialectMeta && (
-        <div className="max-w-4xl mx-auto px-6 mb-4 mt-2">
-          <div className="relative bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex items-center p-3 md:p-5 gap-4 md:gap-6">
-            <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl overflow-hidden relative flex-shrink-0 shadow-inner">
+        <div className="max-w-4xl mx-auto px-6 mb-8 mt-4">
+          <div className="relative bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] overflow-hidden flex flex-col md:flex-row items-center p-6 md:p-8 gap-6 md:gap-10">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] overflow-hidden relative flex-shrink-0">
               <img src={dialectMeta.photo} className="w-full h-full object-cover" />
-              <div className={`absolute inset-0 bg-gradient-to-t ${dialectMeta.gradient} opacity-60`}></div>
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-black tracking-widest uppercase border border-purple-100">
-                  Vùng Đất Khám Phá
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                <span className="inline-block px-3 py-1 bg-white border-[2px] border-slate-900 text-slate-900 rounded-xl text-[11px] font-black tracking-widest uppercase shadow-[2px_2px_0_#1f2937]">
+                  Lộ trình học tập
+                </span>
+                <span className="text-[#49B6E5] hidden md:block">
+                  <dialectMeta.icon size={28} strokeWidth={3} />
                 </span>
               </div>
-              <h3 className="text-xl md:text-2xl font-black text-gray-800 mb-0.5 flex items-center gap-2">
-                {dialectMeta.viName}
-                <span className="text-purple-500"><dialectMeta.icon size={24} strokeWidth={2.5} /></span>
+              <h3 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 font-nunito">
+                Hành Trình {dialectMeta.viName}
               </h3>
-              <p className="text-gray-500 font-medium text-xs md:text-sm line-clamp-2 max-w-xl">
-                {chapter.description || 'Hoàn thành các thử thách phát âm, đọc và nói để tích luỹ sao và mở khoá hành trình mới.'}
+              <p className="text-slate-500 font-bold text-sm md:text-base leading-relaxed max-w-2xl">
+                {chapter.description || 'Chinh phục từng thử thách để làm chủ giọng nói địa phương đặc trưng. Mỗi vì sao đạt được là một bước tiến gần hơn đến sự hoàn hảo.'}
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Roadmap Ngang ── */}
       <style dangerouslySetInnerHTML={{
         __html: `
          .roadmap-scroll { overflow-x: auto; overflow-y: hidden; }
@@ -661,13 +579,12 @@ const QuizRoadmapStep = ({
          .roadmap-scroll::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 8px; border: 2px solid #f3e8ff; }
          .roadmap-scroll::-webkit-scrollbar-thumb:hover { background: #a855f7; }
       `}} />
-      <div className="roadmap-scroll w-full pt-10 pb-14 px-6 mt-4">
-        <div className="relative h-[260px] inline-flex" style={{ width: `${roadmapNodes.length * 200 + 200}px`, minWidth: '100%' }}>
-          {/* SVG Path */}
+      <div className="roadmap-scroll w-full pt-16 pb-20 px-6 mt-4">
+        <div className="relative h-[300px] inline-flex items-center" style={{ width: `${roadmapNodes.length * 200 + 200}px`, minWidth: '100%' }}>
           <svg
             className="absolute top-0 left-0 pointer-events-none z-0"
-            style={{ width: `${roadmapNodes.length * 200 + 200}px`, height: '260px' }}
-            viewBox={`0 0 ${roadmapNodes.length * 200 + 200} 260`}
+            style={{ width: `${roadmapNodes.length * 200 + 200}px`, height: '300px' }}
+            viewBox={`0 0 ${roadmapNodes.length * 200 + 200} 300`}
             preserveAspectRatio="xMidYMid meet"
           >
             {roadmapNodes.map((node, i) => {
@@ -675,20 +592,31 @@ const QuizRoadmapStep = ({
               const prev = roadmapNodes[i - 1]
 
               const prevX = prev.position.x * 200 + 100
-              const prevY = prev.position.y * 2.5
+              const prevY = prev.position.y * 3
               const nextX = node.position.x * 200 + 100
-              const nextY = node.position.y * 2.5
+              const nextY = node.position.y * 3
 
               return (
-                <path
-                  key={`path-${i}`}
-                  d={`M ${prevX} ${prevY} C ${prevX + 70} ${prevY}, ${nextX - 70} ${nextY}, ${nextX} ${nextY}`}
-                  fill="none"
-                  stroke={prev.type === 'completed' ? '#a855f7' : '#e5e7eb'}
-                  strokeWidth="5"
-                  strokeDasharray="14 10"
-                  strokeLinecap="round"
-                />
+                <g key={`path-group-${i}`}>
+                  <path
+                    d={`M ${prevX} ${prevY} C ${prevX + 80} ${prevY}, ${nextX - 80} ${nextY}, ${nextX} ${nextY}`}
+                    fill="none"
+                    stroke="#1f2937"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    className="opacity-10 translate-y-1 translate-x-1"
+                  />
+                  <path
+                    d={`M ${prevX} ${prevY} C ${prevX + 80} ${prevY}, ${nextX - 80} ${nextY}, ${nextX} ${nextY}`}
+                    fill="none"
+                    stroke={prev.type === 'completed' ? '#49B6E5' : '#cbd5e1'}
+                    strokeWidth="4"
+                    strokeDasharray="1 8"
+                    strokeLinecap="round"
+                  />
+                  <circle cx={prevX + (nextX - prevX) * 0.3} cy={prevY + (nextY - prevY) * 0.3} r="3" fill="#cbd5e1" className="opacity-40" />
+                  <circle cx={prevX + (nextX - prevX) * 0.7} cy={prevY + (nextY - prevY) * 0.7} r="4" fill="#cbd5e1" className="opacity-40" />
+                </g>
               )
             })}
           </svg>
@@ -713,16 +641,12 @@ const QuizRoadmapStep = ({
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Main RoadmapPage
-// ─────────────────────────────────────────────────────────────────────
 type Step = 'dialect' | 'chapters' | 'quizzes'
 
 const RoadmapPage: React.FC = () => {
   const { session } = useAuth()
   const location = useLocation()
   const userRegion = (session?.user as any)?.region?.toUpperCase?.() || ''
-  // Map user's region string → NORTH / CENTRAL / SOUTH
   const userRegionKey = useMemo(() => {
     if (!userRegion) return ''
     if (userRegion.includes('NORTH') || userRegion.includes('BẮC')) return 'NORTH'
@@ -734,7 +658,6 @@ const RoadmapPage: React.FC = () => {
     return ''
   }, [userRegion])
 
-  // ─── Detect if returning from quiz (read state BEFORE first render) ───────
   const navState = (location.state as any) || {}
   const isReturning = !!(navState.fromRoadmap && navState.dialectId && navState.chapterId)
 
@@ -749,10 +672,8 @@ const RoadmapPage: React.FC = () => {
   const [chaptersLoading, setChaptersLoading] = useState(isReturning)
   const [quizzesLoading, setQuizzesLoading] = useState(isReturning)
 
-  // ─── Single unified data-fetch effect ────────────────────────────────────
   useEffect(() => {
     if (isReturning) {
-      // Returning from quiz: load everything and restore state without flash
       learnerService.getDialects().then(async (allDialects) => {
         setDialects(allDialects)
         setDialectsLoading(false)
@@ -780,7 +701,6 @@ const RoadmapPage: React.FC = () => {
         } catch { setStep('dialect'); setChaptersLoading(false) }
       }).catch(() => { setDialectsLoading(false); setStep('dialect') })
     } else {
-      // Normal entry: just load dialects
       learnerService.getDialects().then(setDialects).finally(() => setDialectsLoading(false))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -829,39 +749,49 @@ const RoadmapPage: React.FC = () => {
     }
   }
 
-  // Breadcrumb header — only shows for quizzes step (chapters step uses the integrated banner)
   const renderHeader = () => {
     if (step === 'dialect' || step === 'chapters') return null
 
     return (
-      <div className="sticky top-0 z-20 bg-[#f8f7ff]/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="flex items-center gap-4 px-6 lg:px-8 py-4">
+      <div className="sticky top-0 z-20 bg-[#fbf6ef]/90 backdrop-blur-md border-b-[1.5px] border-slate-900/10">
+        <div className="flex items-center gap-6 px-6 lg:px-12 py-3">
           <button
             onClick={goBack}
-            className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-purple-50 hover:border-purple-200 transition-all flex-shrink-0"
+            className="w-10 h-10 rounded-xl bg-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center hover:-translate-y-0.5 transition-all active:translate-y-0 active:shadow-none"
           >
-            <ArrowLeftOutlined className="text-gray-600" />
+            <ArrowLeftOutlined className="text-slate-900 font-black" />
           </button>
 
           <div className="flex-1 min-w-0">
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs text-gray-400 font-semibold mb-0.5">
-              <span className="hover:text-purple-600 cursor-pointer" onClick={() => { setStep('dialect'); setSelectedDialect(null); setChapters([]) }}>Vùng miền</span>
-              <ChevronRight size={12} />
-              <span className="hover:text-purple-600 cursor-pointer" onClick={goBack}>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5">
+              <span className="hover:text-[#49B6E5] cursor-pointer" onClick={() => { setStep('dialect'); setSelectedDialect(null); setChapters([]) }}>Vùng miền</span>
+              <ChevronRight size={10} strokeWidth={3} />
+              <span className="hover:text-[#49B6E5] cursor-pointer" onClick={goBack}>
                 {dialectMeta?.viName}
               </span>
               {selectedChapter && (
                 <>
-                  <ChevronRight size={12} />
-                  <span className="text-gray-700 font-bold truncate">{selectedChapter.name}</span>
+                  <ChevronRight size={10} strokeWidth={3} />
+                  <span className="text-slate-900 truncate">Hành trình học</span>
                 </>
               )}
             </div>
-            {/* Title */}
-            <h2 className="text-lg font-black text-gray-800 truncate">
+            <h2 className="text-lg font-black text-slate-900 truncate font-serif">
               {selectedChapter?.name}
             </h2>
+          </div>
+
+          <div className="hidden sm:block">
+            <div className="bg-white border-[2px] border-slate-900 rounded-xl px-4 py-2 shadow-[2px_2px_0_#1f2937] flex items-center gap-3">
+              <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
+                <Flame size={14} className="text-orange-500 fill-orange-500" />
+                <span className="text-slate-700 font-black text-xs">{(session?.user as any)?.currentStreakDays || 0}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                <span className="text-slate-700 font-black text-xs">{(session?.user as any)?.totalStars || 0}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -869,8 +799,7 @@ const RoadmapPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f7ff]">
-      {/* Sticky Breadcrumb Header */}
+    <div className="min-h-full bg-[#fbf6ef] overflow-x-hidden">
       {renderHeader()}
 
       <AnimatePresence mode="wait">
@@ -883,9 +812,7 @@ const RoadmapPage: React.FC = () => {
             transition={{ duration: 0.35 }}
           >
             {dialectsLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <Spin size="large" />
-              </div>
+              <DoodleLoading message="Đang tải các vùng miền..." />
             ) : (
               <DialectStep dialects={dialects} onSelect={handleSelectDialect} userRegionKey={userRegionKey} />
             )}
@@ -901,9 +828,7 @@ const RoadmapPage: React.FC = () => {
             transition={{ duration: 0.35 }}
           >
             {chaptersLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <Spin size="large" />
-              </div>
+              <DoodleLoading message="Đang chuẩn bị các chương..." />
             ) : (
               <ChapterStep
                 dialect={selectedDialect!}

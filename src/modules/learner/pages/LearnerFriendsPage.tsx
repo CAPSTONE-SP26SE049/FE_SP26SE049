@@ -1,24 +1,35 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Avatar, Input, Spin, Popconfirm, Tooltip, message, Modal } from 'antd';
-import {
-    UserOutlined,
-    SearchOutlined,
-    UserAddOutlined,
-    CheckOutlined,
-    CloseOutlined,
-    DeleteOutlined,
-    StopOutlined,
-    TeamOutlined,
-    SendOutlined,
-    EyeOutlined,
-} from '@ant-design/icons';
+import { Avatar, Input, Popconfirm, Tooltip, message, Modal } from 'antd';
 import apiClient, { getUnreadCounts } from '../../../services/apiClient';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuth } from '../../../core/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { Users, UserPlus, Clock, UserSearch, RefreshCw, MessageCircle, Star, MapPin, Calendar } from '../../../lib/icons';
+import {
+    Users,
+    UserPlus,
+    Clock,
+    UserSearch,
+    RefreshCw,
+    MessageCircle,
+    Star,
+    MapPin,
+    Calendar,
+    Trophy,
+    Flame,
+    Trash2,
+    ShieldAlert,
+    UserCheck,
+    Search,
+    ChevronRight,
+    Eye,
+    CheckCircle2,
+    XCircle,
+    Send,
+    Play
+} from '../../../lib/icons';
+import { DoodleLoading } from '../../../components/ui/DoodleLoading';
 import ChatBox from '../components/ChatBox';
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -101,49 +112,76 @@ const FriendProfileModal = ({
             footer={null}
             width={400}
             centered
-            styles={{ body: { padding: 0 } }}
+            styles={{
+                body: { padding: 0 }
+            }}
+            className="doodle-modal"
         >
+            <style>{`
+                .doodle-modal .ant-modal-content {
+                    border-radius: 2.5rem !important;
+                    border: 3px solid #1f2937 !important;
+                    box-shadow: 8px 8px 0 #1f2937 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                }
+            `}</style>
             {loading || !profile ? (
                 <div className="flex justify-center items-center py-20">
-                    <Spin size="large" />
+                    <DoodleLoading message="Đang xem hồ sơ..." />
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl">
-                    {/* Banner */}
-                    <div className="h-24 bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-500 relative">
-                        <div className="absolute inset-0 opacity-20"
-                            style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                <div className="overflow-hidden bg-[#fbf6ef] font-nunito">
+                    {/* Header with Pattern */}
+                    <div className="h-32 bg-[#49B6E5] border-b-[2.5px] border-slate-900 relative">
+                        <div className="absolute inset-0 opacity-10"
+                            style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #1f2937 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
+                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
+                            <div className="p-1 bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                <Avatar
+                                    src={profile.avatar_url || profile.avatarUrl}
+                                    size={90}
+                                    className="bg-sky-100 rounded-[1.4rem]"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex flex-col items-center -mt-12 px-6 pb-6">
-                        <Avatar
-                            src={profile.avatar_url || profile.avatarUrl}
-                            icon={!(profile.avatar_url || profile.avatarUrl) && <UserOutlined />}
-                            size={80}
-                            className="border-4 border-white shadow-xl bg-purple-100 text-purple-600"
-                        />
-                        <h3 className="mt-3 text-xl font-black text-gray-800 text-center">
+
+                    <div className="flex flex-col items-center pt-14 px-8 pb-10">
+                        <h3 className="text-2xl font-black text-slate-900 text-center font-nunito uppercase tracking-tight">
                             {profile.fullName || 'Người dùng'}
                         </h3>
-                        <div className="flex items-center gap-1.5 mt-1 text-gray-400 text-sm">
-                            <MapPin size={13} />
-                            <span>{regionLabel(profile.region)}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1 text-gray-400 text-xs">
-                            <Calendar size={12} />
-                            <span>Tham gia {new Date(profile.memberSince).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 w-full mt-5">
-                            <div className="flex flex-col items-center p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                                <Star size={18} className="text-amber-500 mb-1" />
-                                <span className="font-black text-lg text-amber-600">{profile.totalStars ?? 0}</span>
-                                <span className="text-xs text-amber-400 font-medium">Sao</span>
+
+                        <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                                <MapPin size={13} className="text-[#49B6E5]" />
+                                <span className="text-slate-900 text-xs font-black">{regionLabel(profile.region)}</span>
                             </div>
-                            <div className="flex flex-col items-center p-3 bg-orange-50 rounded-2xl border border-orange-100">
-                                <span className="text-lg mb-1">🔥</span>
-                                <span className="font-black text-lg text-orange-600">{profile.currentStreakDays ?? 0}</span>
-                                <span className="text-xs text-orange-400 font-medium">Streak</span>
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                                <Calendar size={12} className="text-slate-400" />
+                                <span className="text-slate-900 text-[11px] font-black">{new Date(profile.memberSince).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}</span>
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4 w-full mt-8">
+                            <div className="flex flex-col items-center p-4 bg-yellow-50 rounded-[2rem] border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                <Trophy size={24} className="text-yellow-600 mb-1" />
+                                <span className="font-black text-xl text-slate-900 leading-none">{profile.totalStars ?? 0}</span>
+                                <span className="text-[10px] text-yellow-600 font-black uppercase tracking-widest mt-1">Sao đạt</span>
+                            </div>
+                            <div className="flex flex-col items-center p-4 bg-orange-50 rounded-[2rem] border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                <Flame size={24} className="text-orange-500 mb-1" />
+                                <span className="font-black text-xl text-slate-900 leading-none">{profile.currentStreakDays ?? 0}</span>
+                                <span className="text-[10px] text-orange-600 font-black uppercase tracking-widest mt-1">Chuỗi nổ</span>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={onClose}
+                            className="w-full h-14 mt-8 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] font-black text-slate-900 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+                        >
+                            Đóng
+                        </button>
                     </div>
                 </div>
             )}
@@ -154,12 +192,12 @@ const FriendProfileModal = ({
 
 /* ─── Empty State ─────────────────────────────────────── */
 const EmptyState = ({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) => (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 border border-purple-100">
-            <Icon size={28} className="text-purple-300" />
+    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] text-center px-10">
+        <div className="w-20 h-20 bg-sky-50 rounded-3xl flex items-center justify-center mb-6 border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+            <Icon size={32} className="text-[#49B6E5]" />
         </div>
-        <div className="font-bold text-gray-500 text-base">{title}</div>
-        <p className="text-gray-400 text-sm mt-1 max-w-xs">{desc}</p>
+        <div className="font-black text-slate-900 text-lg uppercase tracking-tight font-nunito">{title}</div>
+        <p className="text-slate-400 font-bold text-sm mt-3 max-w-xs">{desc}</p>
     </div>
 );
 
@@ -180,75 +218,90 @@ const FriendCard = ({
     unreadCount?: number;
 }) => (
     <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 hover:border-purple-200 hover:shadow-md shadow-sm transition-all group"
+        whileHover={{ y: -4 }}
+        className="flex flex-col sm:flex-row sm:items-center gap-5 p-6 bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] transition-all group relative overflow-hidden"
     >
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+        {/* Hand-drawn decoration */}
+        <div className="absolute top-0 right-0 w-16 h-16 bg-[#49B6E5]/10 rounded-bl-full pointer-events-none" />
+
+        <div className="flex items-center gap-5 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-                <Avatar
-                    src={item.avatar_url || item.avatarUrl}
-                    icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
-                    size={56}
-                    className="bg-purple-100 text-purple-600 border-2 border-purple-100"
-                />
+                <div className="p-0.5 bg-white rounded-2xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]">
+                    <Avatar
+                        src={item.avatar_url || item.avatarUrl}
+                        size={64}
+                        className="bg-sky-50 rounded-[0.9rem]"
+                    />
+                </div>
                 {unreadCount != null && unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[11px] font-black min-w-[1.5rem] h-6 px-1 flex items-center justify-center rounded-full border-2 border-white z-10 shadow-sm animate-bounce">
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black min-w-[1.6rem] h-7 px-1 flex items-center justify-center rounded-full border-[2.5px] border-slate-900 z-10 shadow-[2px_2px_0_#1f2937] animate-bounce">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </div>
                 )}
-                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-sm" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-[2.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]" />
             </div>
             <div className="flex-1 min-w-0">
-                <div className="font-black text-gray-800 text-base truncate">{item.fullName || 'Người dùng'}</div>
-                <div className="text-xs text-gray-400 font-medium mt-1 bg-gray-50 flex max-w-max items-center px-2 py-0.5 rounded-lg border border-gray-100">
-                    Kết bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
+                <div className="font-black text-slate-900 text-lg lg:text-xl font-nunito truncate uppercase tracking-tight">
+                    {item.fullName || 'Người dùng'}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-lg border-[1.5px] border-slate-200">
+                        Bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
+                    </div>
                 </div>
             </div>
         </div>
-        <div className="flex items-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-50 flex-shrink-0 w-full sm:w-auto justify-end">
+
+        <div className="flex items-center gap-3 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0 w-full sm:w-auto justify-end">
             <Tooltip title="Xem hồ sơ">
                 <button
                     onClick={() => onViewProfile(item)}
-                    className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all text-indigo-400"
+                    className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all text-slate-900 active:translate-y-0.5 active:shadow-none"
                 >
-                    <EyeOutlined className="text-sm" />
+                    <Eye size={18} strokeWidth={2.5} />
                 </button>
             </Tooltip>
+
             <button
                 onClick={() => onOpenChat(item)}
-                className="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 text-sm font-black flex items-center justify-center gap-2 hover:bg-purple-600 hover:text-white hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all"
+                className="flex-1 sm:flex-none h-11 px-6 rounded-xl bg-[#49B6E5] text-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
             >
-                <MessageCircle size={16} /> Nhắn tin
+                <MessageCircle size={16} fill="white" />
+                <span className="mt-0.5">Nhắn tin</span>
             </button>
-            <Popconfirm
-                title="Hủy kết bạn?"
-                description="Bạn có chắc muốn hủy kết bạn với người này?"
-                onConfirm={() => onUnfriend(item.friendshipId)}
-                okText="Hủy"
-                cancelText="Đóng"
-                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
-            >
-                <Tooltip title="Hủy kết bạn">
-                    <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
-                        <DeleteOutlined className="text-sm" />
-                    </button>
-                </Tooltip>
-            </Popconfirm>
-            <Popconfirm
-                title="Chặn người này?"
-                description="Họ sẽ không thể gửi lời mời kết bạn cho bạn nữa."
-                onConfirm={() => onBlock(item.friendshipId)}
-                okText="Chặn"
-                cancelText="Hủy"
-                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
-            >
-                <Tooltip title="Chặn">
-                    <button className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all text-gray-400">
-                        <StopOutlined className="text-sm" />
-                    </button>
-                </Tooltip>
-            </Popconfirm>
+
+            <div className="flex gap-2">
+                <Popconfirm
+                    title="Hủy kết bạn?"
+                    description="Bạn chắc chứ?"
+                    onConfirm={() => onUnfriend(item.friendshipId)}
+                    okText="Hủy"
+                    cancelText="Hủy bỏ"
+                    okButtonProps={{ danger: true }}
+                >
+                    <Tooltip title="Hủy kết bạn">
+                        <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
+                            <Trash2 size={18} strokeWidth={2.5} />
+                        </button>
+                    </Tooltip>
+                </Popconfirm>
+
+                <Popconfirm
+                    title="Chặn?"
+                    onConfirm={() => onBlock(item.friendshipId)}
+                    okText="Chặn"
+                    cancelText="Thôi"
+                    okButtonProps={{ danger: true }}
+                >
+                    <Tooltip title="Chặn">
+                        <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
+                            <ShieldAlert size={18} strokeWidth={2.5} />
+                        </button>
+                    </Tooltip>
+                </Popconfirm>
+            </div>
         </div>
     </motion.div>
 );
@@ -272,42 +325,43 @@ const RequestCard = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className={clsx(
-            "flex items-center gap-4 p-4 rounded-2xl border transition-all",
+            "flex items-center gap-4 p-5 rounded-3xl border-[2px] transition-all",
             type === 'received'
-                ? "bg-purple-50 border-purple-100"
-                : "bg-white border-gray-100"
+                ? "bg-sky-50 border-slate-900 shadow-[4px_4px_0_#1f2937]"
+                : "bg-white border-slate-200"
         )}
     >
-        <Avatar
-            src={item.avatar_url || item.avatarUrl}
-            icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
-            size={48}
-            className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
-        />
+        <div className="p-0.5 bg-white rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+            <Avatar
+                src={item.avatar_url || item.avatarUrl}
+                size={48}
+                className="bg-sky-100 rounded-lg flex-shrink-0"
+            />
+        </div>
         <div className="flex-1 min-w-0">
-            <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
-            <div className="text-xs text-gray-400 font-medium mt-0.5">
-                {type === 'received' ? '✉️ Đã gửi lời mời kết bạn cho bạn' : '⏳ Đang chờ phản hồi'}
+            <div className="font-black text-slate-900 text-sm truncate uppercase tracking-tight font-nunito">{item.fullName || 'Người dùng'}</div>
+            <div className="text-[10px] text-slate-400 font-bold mt-0.5">
+                {type === 'received' ? '✉️ Muốn kết bạn với bạn' : '⏳ Chờ phản hồi...'}
             </div>
         </div>
         {type === 'received' && onAccept && onDecline ? (
             <div className="flex gap-2 flex-shrink-0">
                 <Popconfirm
-                    title="Từ chối lời mời?"
+                    title="Từ chối?"
                     onConfirm={() => onDecline(item.friendshipId)}
                     okText="Từ chối"
-                    cancelText="Hủy"
-                    okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
+                    cancelText="Thôi"
+                    okButtonProps={{ danger: true }}
                 >
-                    <button className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-all">
-                        <CloseOutlined className="text-gray-400 text-sm" />
+                    <button className="w-10 h-10 rounded-xl bg-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
+                        <XCircle size={18} strokeWidth={2.5} />
                     </button>
                 </Popconfirm>
                 <button
                     onClick={() => onAccept(item.friendshipId)}
-                    className="h-9 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white text-sm font-bold flex items-center gap-1.5 hover:shadow-md hover:shadow-purple-500/20 transition-all"
+                    className="h-10 px-5 rounded-xl bg-orange-400 text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black text-[11px] uppercase tracking-widest flex items-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
                 >
-                    <CheckOutlined className="text-xs" /> Đồng ý
+                    <UserCheck size={14} /> Chấp nhận
                 </button>
             </div>
         ) : (
@@ -316,9 +370,9 @@ const RequestCard = ({
                 onConfirm={() => onCancel?.(item.friendshipId)}
                 okText="Hủy"
                 cancelText="Đóng"
-                okButtonProps={{ danger: true, style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600 } }}
+                okButtonProps={{ danger: true }}
             >
-                <button className="h-8 px-3 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-all">
+                <button className="h-9 px-4 rounded-xl bg-white border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
                     Hủy lời mời
                 </button>
             </Popconfirm>
@@ -335,20 +389,20 @@ const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) =
             return (
                 <button
                     onClick={() => onSend(item.userId)}
-                    className="h-9 px-4 rounded-xl bg-purple-600 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-purple-700 transition-all shadow-sm shadow-purple-500/20"
+                    className="h-10 px-5 rounded-xl bg-orange-400 text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black text-[11px] uppercase tracking-widest flex items-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
                 >
-                    <UserAddOutlined className="text-xs" /> Kết bạn
+                    <UserPlus size={14} /> Kết bạn
                 </button>
             );
         }
         if (status === 'PENDING') {
-            return <span className="px-3 py-1.5 bg-yellow-50 text-yellow-600 font-bold text-xs rounded-xl border border-yellow-100">Đã gửi lời mời</span>;
+            return <div className="px-4 py-2 bg-yellow-50 text-yellow-600 font-black text-[10px] uppercase tracking-widest rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">Đã gửi</div>;
         }
         if (status === 'ACCEPTED') {
-            return <span className="px-3 py-1.5 bg-green-50 text-green-600 font-bold text-xs rounded-xl border border-green-100 flex items-center gap-1"><CheckOutlined /> Bạn bè</span>;
+            return <div className="px-4 py-2 bg-green-50 text-green-600 font-black text-[10px] uppercase tracking-widest rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center gap-1.5"><UserCheck size={12} /> Bạn bè</div>;
         }
         if (status === 'BLOCKED') {
-            return <span className="px-3 py-1.5 bg-red-50 text-red-500 font-bold text-xs rounded-xl border border-red-100">Đã chặn</span>;
+            return <div className="px-4 py-2 bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">Đã chặn</div>;
         }
         return null;
     };
@@ -357,17 +411,18 @@ const SearchCard = ({ item, onSend }: { item: SearchUser; onSend: (id: string) =
         <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-purple-100 hover:shadow-sm transition-all"
+            className="flex items-center gap-4 p-5 bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] transition-all group overflow-hidden"
         >
-            <Avatar
-                src={item.avatar_url || item.avatarUrl}
-                icon={!(item.avatar_url || item.avatarUrl) && <UserOutlined />}
-                size={48}
-                className="bg-purple-100 text-purple-600 border-2 border-purple-100 flex-shrink-0"
-            />
+            <div className="p-0.5 bg-white rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                <Avatar
+                    src={item.avatar_url || item.avatarUrl}
+                    size={52}
+                    className="bg-sky-50 rounded-lg flex-shrink-0"
+                />
+            </div>
             <div className="flex-1 min-w-0">
-                <div className="font-bold text-gray-800 text-sm truncate">{item.fullName || 'Người dùng'}</div>
-                <div className="text-xs text-gray-400 font-medium mt-0.5">Học viên SpeakVN</div>
+                <div className="font-black text-slate-900 text-sm truncate uppercase tracking-tight font-nunito">{item.fullName || 'Người dùng'}</div>
+                <div className="text-[10px] text-slate-400 font-bold mt-1">Học viên SpeakVN</div>
             </div>
             <div className="flex-shrink-0">{renderAction()}</div>
         </motion.div>
@@ -417,7 +472,7 @@ export default function LearnerFriendsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
 
-    // Normalize API response (handles data.data, data.data.data wrapping)
+    // Normalize API response
     const unwrap = (res: any): any[] => {
         const d = res?.data;
         if (Array.isArray(d)) return d;
@@ -546,7 +601,7 @@ export default function LearnerFriendsPage() {
 
     useEffect(() => {
         if (activeTab === 'sent') fetchSent();
-    }, [activeTab]);
+    }, [activeTab, fetchSent]);
 
     const handleSearch = async (q: string) => {
         const query = q || searchQuery;
@@ -633,7 +688,7 @@ export default function LearnerFriendsPage() {
     const TABS = [
         { id: 'friends' as Tab, label: 'Bạn bè', icon: Users, count: friends.length },
         { id: 'requests' as Tab, label: 'Lời mời', icon: UserPlus, count: pendingRequests.length, badge: true },
-        { id: 'sent' as Tab, label: 'Đã gửi', icon: SendOutlined, count: 0 },
+        { id: 'sent' as Tab, label: 'Đã gửi', icon: Send, count: 0 },
         { id: 'search' as Tab, label: 'Tìm kiếm', icon: UserSearch, count: 0 },
     ];
 
@@ -644,227 +699,229 @@ export default function LearnerFriendsPage() {
     };
 
     return (
-        <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
+        <div className="bg-[#fbf6ef] min-h-screen">
+            <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-8 font-nunito">
 
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-400 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                        <TeamOutlined className="text-white text-xl" />
+                {/* ── Header ── */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-white border-[3px] border-slate-900 rounded-[1.5rem] flex items-center justify-center shadow-[4px_4px_0_#1f2937]">
+                            <Users size={32} className="text-[#49B6E5]" />
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 font-nunito uppercase tracking-tight">Cộng Đồng</h2>
+                            <p className="text-sm text-slate-400 font-black uppercase tracking-widest">Gặp gỡ và học tập cùng nhau</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-black text-gray-800">Bạn Bè</h2>
-                        <p className="text-sm text-gray-400 font-medium">Kết nối và học cùng cộng đồng SpeakVN</p>
-                    </div>
-                </div>
-                {activeTab !== 'search' && (
-                    <button
-                        onClick={refreshCurrentTab}
-                        disabled={loading}
-                        className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-purple-50 hover:border-purple-200 transition-all disabled:opacity-50"
-                    >
-                        <RefreshCw size={15} className={clsx("text-gray-500", loading && "animate-spin")} />
-                    </button>
-                )}
-            </div>
-
-            {/* ── Tab Bar ── */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1 flex gap-1">
-                {TABS.map(({ id, label, icon: Icon, count, badge }) => {
-                    const I = Icon as any;
-                    return (
+                    {activeTab !== 'search' && (
                         <button
-                            key={id}
-                            onClick={() => setActiveTab(id)}
-                            className={clsx(
-                                "flex-1 h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 relative",
-                                activeTab === id
-                                    ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-md shadow-purple-500/20"
-                                    : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
-                            )}
+                            onClick={refreshCurrentTab}
+                            disabled={loading}
+                            className="w-12 h-12 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all disabled:opacity-50 active:translate-y-0.5 active:shadow-none"
                         >
-                            <I size={13} />
-                            <span className="hidden sm:inline">{label}</span>
-                            {badge && count > 0 && (
-                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                                    {count}
-                                </span>
-                            )}
-                            {!badge && count > 0 && activeTab === id && (
-                                <span className="text-white/70 text-[10px]">({count})</span>
-                            )}
+                            <RefreshCw size={20} className={clsx("text-slate-900", loading && "animate-spin")} />
                         </button>
-                    );
-                })}
-            </div>
+                    )}
+                </div>
 
-            {/* ── Content ── */}
-            <div className="min-h-80">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={activeTab}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                        {/* Friends List */}
-                        {activeTab === 'friends' && (
-                            loading ? (
-                                <div className="flex justify-center py-12"><Spin size="large" /></div>
-                            ) : friends.length === 0 ? (
-                                <EmptyState
-                                    icon={Users}
-                                    title="Chưa có bạn bè nào"
-                                    desc="Hãy tìm kiếm và kết bạn với các học viên khác trong cộng đồng!"
-                                />
-                            ) : (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {friends.map(item => (
-                                        <FriendCard
-                                            key={item.friendshipId}
-                                            item={item}
-                                            onOpenChat={handleOpenChat}
-                                            onViewProfile={handleViewProfile}
-                                            onUnfriend={handleUnfriend}
-                                            onBlock={handleBlock}
-                                            unreadCount={unreadCounts[item.userId]}
-                                        />
-                                    ))}
-                                </div>
-                            )
-                        )}
+                {/* ── Segmented Control (Tabs) ── */}
+                <div className="bg-white rounded-[2rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] p-2 flex flex-wrap md:flex-nowrap gap-2">
+                    {TABS.map(({ id, label, icon: Icon, count, badge }) => {
+                        const I = Icon as any;
+                        const isActive = activeTab === id;
+                        return (
+                            <button
+                                key={id}
+                                onClick={() => setActiveTab(id)}
+                                className={clsx(
+                                    "flex-1 h-12 rounded-[1.2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all duration-300 relative",
+                                    isActive
+                                        ? "bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]"
+                                        : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                                )}
+                            >
+                                <I size={16} strokeWidth={isActive ? 3 : 2} />
+                                <span className="hidden sm:inline">{label}</span>
+                                {badge && count > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-[1.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]">
+                                        {count}
+                                    </span>
+                                )}
+                                {!badge && count > 0 && isActive && (
+                                    <span className="text-white/80 text-[10px]">({count})</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
 
-                        {/* Received Requests */}
-                        {activeTab === 'requests' && (
-                            loading ? (
-                                <div className="flex justify-center py-12"><Spin size="large" /></div>
-                            ) : pendingRequests.length === 0 ? (
-                                <EmptyState
-                                    icon={UserPlus}
-                                    title="Không có lời mời nào"
-                                    desc="Khi ai đó gửi lời mời kết bạn, bạn sẽ thấy ở đây."
-                                />
-                            ) : (
-                                <div className="space-y-3">
-                                    <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
-                                        {pendingRequests.length} lời mời đang chờ
-                                    </div>
-                                    <AnimatePresence>
-                                        {pendingRequests.map(item => (
-                                            <RequestCard
+                {/* ── Content ── */}
+                <div className="min-h-[400px]">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {/* Friends List */}
+                            {activeTab === 'friends' && (
+                                loading ? (
+                                    <div className="flex justify-center py-20"><DoodleLoading message="Đang tìm bạn bè..." /></div>
+                                ) : friends.length === 0 ? (
+                                    <EmptyState
+                                        icon={Users}
+                                        title="Chưa có bạn bè nào"
+                                        desc="Hãy tìm kiếm và kết bạn với các học viên khác trong cộng đồng!"
+                                    />
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-5">
+                                        {friends.map(item => (
+                                            <FriendCard
                                                 key={item.friendshipId}
                                                 item={item}
-                                                type="received"
-                                                onAccept={handleAccept}
-                                                onDecline={handleDecline}
+                                                onOpenChat={handleOpenChat}
+                                                onViewProfile={handleViewProfile}
+                                                onUnfriend={handleUnfriend}
+                                                onBlock={handleBlock}
+                                                unreadCount={unreadCounts[item.userId]}
                                             />
                                         ))}
-                                    </AnimatePresence>
-                                </div>
-                            )
-                        )}
-
-                        {/* Sent Requests */}
-                        {activeTab === 'sent' && (
-                            loading ? (
-                                <div className="flex justify-center py-12"><Spin size="large" /></div>
-                            ) : sentRequests.length === 0 ? (
-                                <EmptyState
-                                    icon={Clock}
-                                    title="Chưa gửi lời mời nào"
-                                    desc="Các lời mời kết bạn bạn đã gửi sẽ xuất hiện tại đây."
-                                />
-                            ) : (
-                                <div className="space-y-3">
-                                    <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
-                                        {sentRequests.length} lời mời đã gửi
                                     </div>
-                                    {sentRequests.map(item => (
-                                        <RequestCard
-                                            key={item.friendshipId}
-                                            item={item}
-                                            type="sent"
-                                            onCancel={handleCancelSent}
-                                        />
-                                    ))}
-                                </div>
-                            )
-                        )}
+                                )
+                            )}
 
-                        {/* Search */}
-                        {activeTab === 'search' && (
-                            <div className="space-y-5">
-                                {/* Search Input */}
-                                <div className="flex gap-3">
-                                    <Input
-                                        placeholder="Tìm kiếm theo tên hoặc email..."
-                                        size="large"
-                                        allowClear
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onPressEnter={() => handleSearch(searchQuery)}
-                                        prefix={<SearchOutlined className="text-gray-400" />}
-                                        className="rounded-2xl border-gray-200 hover:border-purple-300 focus-within:border-purple-400 h-12"
-                                    />
-                                    <button
-                                        onClick={() => handleSearch(searchQuery)}
-                                        disabled={loading}
-                                        className="h-12 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold text-sm flex items-center gap-2 hover:shadow-md hover:shadow-purple-500/20 transition-all disabled:opacity-60 flex-shrink-0"
-                                    >
-                                        {loading ? <Spin size="small" /> : <><SearchOutlined /> Tìm</>}
-                                    </button>
-                                </div>
-
-                                {/* Results */}
-                                {loading && (
-                                    <div className="flex justify-center py-8"><Spin size="large" /></div>
-                                )}
-
-                                {!loading && hasSearched && searchResults.length === 0 && (
+                            {/* Received Requests */}
+                            {activeTab === 'requests' && (
+                                loading ? (
+                                    <div className="flex justify-center py-20"><DoodleLoading message="Đang kiểm tra lời mời..." /></div>
+                                ) : pendingRequests.length === 0 ? (
                                     <EmptyState
-                                        icon={UserSearch}
-                                        title="Không tìm thấy kết quả"
-                                        desc={`Không có học viên nào phù hợp với "${searchQuery}".`}
+                                        icon={UserPlus}
+                                        title="Không có lời mời nào"
+                                        desc="Khi ai đó gửi lời mời kết bạn, bạn sẽ thấy ở đây."
                                     />
-                                )}
-
-                                {!loading && !hasSearched && !searchQuery && (
-                                    <div className="flex flex-col items-center py-12 text-center">
-                                        <div className="text-5xl mb-4">🔍</div>
-                                        <div className="font-bold text-gray-500 text-sm">Tìm kiếm học viên SpeakVN</div>
-                                        <p className="text-gray-400 text-xs mt-1">Nhập tên hoặc email để tìm kiếm</p>
-                                    </div>
-                                )}
-
-                                {!loading && searchResults.length > 0 && (
-                                    <div className="space-y-3">
-                                        <div className="text-xs text-gray-400 font-bold uppercase tracking-widest px-1">
-                                            {searchResults.length} kết quả
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-10 px-4 rounded-xl bg-orange-50 border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+                                                <span className="text-[10px] text-slate-900 font-black uppercase tracking-widest">{pendingRequests.length} Lời mời mới</span>
+                                            </div>
                                         </div>
-                                        {searchResults.map(item => (
-                                            <SearchCard key={item.userId} item={item} onSend={handleSendRequest} />
-                                        ))}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <AnimatePresence>
+                                                {pendingRequests.map(item => (
+                                                    <RequestCard
+                                                        key={item.friendshipId}
+                                                        item={item}
+                                                        type="received"
+                                                        onAccept={handleAccept}
+                                                        onDecline={handleDecline}
+                                                    />
+                                                ))}
+                                            </AnimatePresence>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </motion.div>
-                </AnimatePresence>
+                                )
+                            )}
+
+                            {/* Sent Requests */}
+                            {activeTab === 'sent' && (
+                                loading ? (
+                                    <div className="flex justify-center py-20"><DoodleLoading message="Đang tải lời mời..." /></div>
+                                ) : sentRequests.length === 0 ? (
+                                    <EmptyState
+                                        icon={Clock}
+                                        title="Chưa gửi lời mời nào"
+                                        desc="Các lời mời kết bạn bạn đã gửi sẽ xuất hiện tại đây."
+                                    />
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-10 px-4 rounded-xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center gap-2">
+                                                <span className="text-[10px] text-slate-900 font-black uppercase tracking-widest">{sentRequests.length} Lời mời đã gửi</span>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {sentRequests.map(item => (
+                                                <RequestCard
+                                                    key={item.friendshipId}
+                                                    item={item}
+                                                    type="sent"
+                                                    onCancel={handleCancelSent}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            )}
+
+                            {/* Search */}
+                            {activeTab === 'search' && (
+                                <div className="space-y-8">
+                                    {/* Search Input */}
+                                    <div className="flex gap-4 p-2 bg-white rounded-[1.8rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937]">
+                                        <div className="flex-1 relative">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <Search size={20} />
+                                            </div>
+                                            <Input
+                                                placeholder="Tìm theo tên học viên..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onPressEnter={() => handleSearch(searchQuery)}
+                                                className="w-full h-14 pl-12 pr-4 border-none bg-transparent text-lg font-black font-nunito placeholder:text-slate-300 focus:shadow-none"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => handleSearch(searchQuery)}
+                                            className="h-14 px-8 rounded-[1.2rem] bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+                                        >
+                                            Tìm kiếm
+                                        </button>
+                                    </div>
+
+                                    {/* Results */}
+                                    <div className="space-y-4">
+                                        {loading ? (
+                                            <div className="flex justify-center py-20"><DoodleLoading message="Đang tìm kiếm..." /></div>
+                                        ) : hasSearched && searchResults.length === 0 ? (
+                                            <div className="py-12 bg-white rounded-[2rem] border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937] text-center border-dashed">
+                                                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Không tìm thấy ai phù hợp</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {searchResults.map((item) => (
+                                                    <SearchCard key={item.userId} item={item} onSend={handleSendRequest} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </div>
 
-            {activeChatFriend && (
-                <ChatBox
-                    friend={activeChatFriend}
-                    onClose={() => setActiveChatFriend(null)}
-                />
-            )}
-
+            {/* Profile Modal */}
             <FriendProfileModal
                 open={profileModalOpen}
                 onClose={() => setProfileModalOpen(false)}
                 friend={profileTarget}
             />
+
+            {/* Chat Box Integration */}
+            {activeChatFriend && (
+                <div className="fixed bottom-0 right-0 z-50 p-6">
+                    <ChatBox
+                        friend={activeChatFriend}
+                        onClose={() => setActiveChatFriend(null)}
+                    />
+                </div>
+            )}
         </div>
     );
 }
