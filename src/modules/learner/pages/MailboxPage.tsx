@@ -194,7 +194,7 @@ const MailboxPage = () => {
 
     return (
         <div className="min-h-screen bg-[#fbf6ef] font-nunito p-6 lg:p-10 pb-24">
-            <div className="max-w-[1200px] mx-auto space-y-10">
+            <div className="max-w-none mx-auto space-y-10 px-4 lg:px-8">
 
                 {/* Header Doodle Section */}
                 <header className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">

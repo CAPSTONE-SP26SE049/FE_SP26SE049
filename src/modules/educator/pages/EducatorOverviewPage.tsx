@@ -1,339 +1,230 @@
-import { useNavigate } from 'react-router-dom'
-import React, { useEffect, useMemo, useState } from 'react'
-import { Card, Col, Row, Typography, Progress, Table, Tag, Button, message, Empty, Avatar, Skeleton } from 'antd'
-import { educatorService, type StudentAccount, type ProgressOverview, type LessonPlan, type FeedbackItem, type AnalyticsReport } from '../services/educatorService'
-import { ArrowUpRight, MessageSquareMore, Users, BrainCircuit, Sparkles, Trophy, Activity, TrendingUp } from 'lucide-react'
-import { motion } from 'framer-motion'
-import clsx from 'clsx'
+import { useState, useEffect } from 'react';
+import { Card, Progress, List, Avatar } from 'antd';
+import { Users, CheckCircle, MessageSquare, Target, Zap, Clock, TrendingUp, ChevronRight } from 'lucide-react';
+import { educatorService } from '../services/educatorService';
+import { motion } from 'framer-motion';
+import clsx from 'clsx';
 
-const { Title, Text } = Typography
+const EducatorOverviewPage = () => {
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
 
-const EducatorOverviewPage: React.FC = () => {
-  const navigate = useNavigate()
-  const [students, setStudents] = useState<StudentAccount[]>([])
-  const [overview, setOverview] = useState<ProgressOverview | null>(null)
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([])
-  const [messages, setMessages] = useState<FeedbackItem[]>([])
-  const [reports, setReports] = useState<AnalyticsReport[]>([])
-  const [loading, setLoading] = useState(false)
-
+  const getAvatarUrl = (s: any) => {
+    if (avatarErrors[s.id]) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;
+    return s.avatar_url || s.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;
+  };
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true)
       try {
-        const [studentsRes, overviewRes, lessonsRes, messagesRes, reportsRes] = await Promise.all([
-          educatorService.getStudentAccounts(),
-          educatorService.getProgressOverview(),
-          educatorService.getLessonPlans(),
-          educatorService.getMessages(),
-          educatorService.getAnalyticsReports(),
-        ])
-
-        // Robust data extraction Handle both direct arrays and { data: [...] } wrappers
-        const extractData = (res: any) => {
-          if (!res) return null;
-          if (Array.isArray(res)) return res;
-          if (res.data && Array.isArray(res.data)) return res.data;
-          if (res.data) return res.data;
-          return null;
-        }
-
-        setStudents(extractData(studentsRes) || [])
-        setOverview(extractData(overviewRes) || null)
-        setLessonPlans(extractData(lessonsRes) || [])
-        setMessages(extractData(messagesRes) || [])
-        setReports(extractData(reportsRes) || [])
-      } catch (err) {
-        console.error('Fetch error:', err);
-        message.error('Không thể tải dữ liệu Educator')
+        const response = await educatorService.getDashboardSummary();
+        setSummary(response.data);
+      } catch (error) {
+        console.error('Lỗi tải dữ liệu tổng quan:', error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    load()
-  }, [])
-
-  const topStudents = useMemo(() =>
-    [...students].sort((a, b) => (b.progressPercent || 0) - (a.progressPercent || 0)).slice(0, 5),
-    [students]
-  )
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Chào buổi sáng';
-    if (hour < 14) return 'Chào buổi trưa';
-    if (hour < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
+    };
+    load();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 rounded-3xl border-[4px] border-slate-900 border-t-[#49B6E5] shadow-[6px_6px_0_#1f2937]"
+        />
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 animate-pulse">Đang nạp dữ liệu hệ thống...</p>
+      </div>
+    );
+  }
+
+  const stats = [
+    { title: 'Tổng học viên', value: summary?.totalStudents || 0, icon: Users, color: '#49B6E5', bg: 'bg-blue-50' },
+    { title: 'Học viên online', value: summary?.activeStudents || 0, icon: Clock, color: '#10b981', bg: 'bg-emerald-50' },
+    { title: 'Độ chính xác TB', value: `${summary?.averagePronunciationScore || 0}%`, icon: Target, color: '#f59e0b', bg: 'bg-amber-50' },
+    { title: 'Yêu cầu hỗ trợ', value: summary?.pendingFeedbackCount || 0, icon: Zap, color: '#ef4444', bg: 'bg-rose-50' },
+  ];
+
   return (
-    <div className="flex flex-col gap-4 -mt-2">
-      {/* ─── Hero Section ─── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-700 via-purple-600 to-orange-500 p-6 shadow-xl shadow-purple-500/10">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-orange-400/20 rounded-full blur-3xl" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
-          <div className="flex-1">
-            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-              <div className="flex items-center gap-2 text-white/80 text-[11px] font-bold uppercase tracking-widest mb-2">
-                <Sparkles size={12} className="text-orange-300" /> Executive Overview
-              </div>
-              <Title level={3} className="!text-white !m-0 !font-black tracking-tight mb-2">{greeting}, Giáo viên! 👋</Title>
-              <p className="text-white/80 text-[13px] font-medium max-w-lg leading-relaxed">
-                Hệ thống đã sẵn sàng. Hôm nay có <span className="text-orange-200 font-black decoration-orange-200/30 underline decoration-2 underline-offset-4">{overview?.pendingFeedbackCount || 0} yêu cầu</span> mới cần bạn xử lý.
-              </p>
-            </motion.div>
+    <div className="space-y-8 pb-10">
+      {/* Welcome Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-[8px_8px_0_#49B6E5]"
+      >
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-black uppercase tracking-tight">Chào mừng quay lại, <span className="text-[#49B6E5]">Giáo viên</span></h1>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Hệ thống đã sẵn sàng hỗ trợ bạn quản lý và cải thiện kỹ năng phát âm của học viên.</p>
           </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
-            {[
-              { icon: <Users size={16} />, label: 'Học viên', val: students.length, color: 'text-white' },
-              { icon: <Activity size={16} />, label: 'Active', val: overview?.activeStudents || 0, color: 'text-green-300' },
-              { icon: <TrendingUp size={16} />, label: 'Điểm TB', val: `${(overview?.averagePronunciationScore || 0).toFixed(1)}`, color: 'text-orange-300' },
-              { icon: <MessageSquareMore size={16} />, label: 'Phản hồi', val: overview?.pendingFeedbackCount || 0, color: 'text-amber-300' },
-            ].map((stat, i) => (
-              <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
-                className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 flex flex-col items-center min-w-[100px] shadow-lg">
-                <div className={clsx("mb-2 opacity-90", stat.color)}>{stat.icon}</div>
-                <div className="text-xl font-black leading-none mb-1">{loading ? '...' : stat.val}</div>
-                <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest leading-none">{stat.label}</div>
-              </motion.div>
-            ))}
+          <div className="flex gap-4">
+            <div className="px-6 py-3 bg-white/10 rounded-2xl border-[2px] border-white/20 backdrop-blur-md">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hiệu suất tuần</div>
+              <div className="text-xl font-black text-emerald-400">+{summary?.weeklyProgressRate || 0}%</div>
+            </div>
           </div>
         </div>
+        {/* Abstract background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#49B6E5] opacity-10 blur-[100px] -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500 opacity-10 blur-[80px] -ml-24 -mb-24" />
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((item, idx) => {
+          const Icon = item.icon;
+          return (
+            <motion.div
+              key={item.title}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.1 }}
+              whileHover={{ y: -5, rotate: 1 }}
+              className="group bg-white p-6 rounded-[2rem] border-[3px] border-slate-900 shadow-[6px_6px_0_#1f2937] transition-all"
+            >
+              <div className={clsx("w-14 h-14 rounded-2xl border-[3px] border-slate-900 flex items-center justify-center mb-6 shadow-[4px_4px_0_#1f2937] transition-transform group-hover:-rotate-6", item.bg)}>
+                <Icon size={24} style={{ color: item.color }} strokeWidth={3} />
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{item.title}</div>
+              <div className="text-3xl font-black text-slate-900 tracking-tight">{item.value}</div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      <Row gutter={[24, 24]}>
-        <Col xs={24} xl={15}>
-          <Card
-            title={<div className="flex items-center gap-2"><Trophy size={16} className="text-amber-500" /> <span className="font-black text-gray-800 text-sm">Học viên tiêu biểu</span></div>}
-            className="rounded-2xl border-none shadow-sm h-full"
-            loading={loading}
-          >
-            <Table
-              rowKey="id"
-              pagination={false}
-              dataSource={topStudents}
-              columns={[
-                {
-                  title: 'Học viên',
-                  render: (_, row: StudentAccount) => (
-                    <div className="flex items-center gap-3 py-1">
-                      <Avatar src={row.avatar_url || row.avatar} className="border border-purple-50 shadow-sm" size={36} />
-                      <div>
-                        <div className="font-bold text-slate-800 text-xs leading-none">{row.fullName || 'N/A'}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold tracking-wide italic mt-1">{row.email}</div>
-                      </div>
-                    </div>
-                  )
-                },
-                {
-                  title: 'Lộ trình',
-                  render: (_, row: StudentAccount) => (
-                    <Tag color="purple" bordered={false} className="font-bold rounded-lg px-2 text-[10px] uppercase tracking-wide">
-                      {row.learningPath?.title || 'Chưa gán'}
-                    </Tag>
-                  )
-                },
-                {
-                  title: 'Tiến độ',
-                  render: (_, row: StudentAccount) => (
-                    <div className="min-w-[100px] flex flex-col gap-1">
-                      <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                        <span>Progress</span>
-                        <span className="text-purple-600">{row.progressPercent || 0}%</span>
-                      </div>
-                      <Progress percent={row.progressPercent || 0} size="small" strokeLinecap="round" strokeColor={{ '0%': '#9333ea', '100%': '#7e22ce' }} showInfo={false} strokeWidth={4} />
-                    </div>
-                  )
-                },
-
-              ]}
-              className="custom-dashboard-table compact-table"
-            />
-          </Card>
-        </Col>
-
-        <Col xs={24} xl={9}>
-          <Card
-            title={<div className="flex items-center gap-2"><Activity size={16} className="text-purple-500" /> <span className="font-black text-gray-800 text-sm">Chỉ số phát âm TB</span></div>}
-            className="rounded-2xl border-none shadow-sm h-full"
-          >
-            <div className="space-y-4">
-              {(overview?.pronunciationMetrics || []).map((metric: any, idx) => (
-                <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={metric.label} className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-bold text-gray-600">{metric.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-gray-800">{metric.value}%</span>
-                      <Tag bordered={false} color={metric.trend === 'UP' ? 'success' : metric.trend === 'DOWN' ? 'error' : 'default'} className="rounded-full text-[8px] font-black px-1 leading-tight">
-                        {metric.trend === 'UP' ? '↑' : metric.trend === 'DOWN' ? '↓' : '→'}
-                      </Tag>
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Progress Chart & New Students */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden" bodyStyle={{ padding: '2rem' }}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-slate-900 rounded-full" />
+                <h3 className="text-xl font-black uppercase tracking-tight">Kỹ năng mục tiêu</h3>
+              </div>
+              <button className="text-[10px] font-black uppercase tracking-widest text-[#49B6E5] hover:underline flex items-center gap-1">Chi tiết <ChevronRight size={14} /></button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {(summary?.pronunciationMetrics || []).map((m: any) => (
+                <div key={m.label} className="p-5 rounded-2xl border-[2px] border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-900 transition-all">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-600">{m.label}</span>
+                    <span className={clsx("text-[10px] font-black uppercase px-2 py-0.5 rounded-full", m.trend === 'UP' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
+                      {m.trend === 'UP' ? 'Improving' : 'Stable'}
+                    </span>
                   </div>
                   <Progress
-                    percent={metric.value}
-                    showInfo={false}
-                    strokeColor={metric.value > 70 ? '#10b981' : metric.value > 40 ? '#f59e0b' : '#ef4444'}
-                    strokeWidth={5}
-                    trailColor="#f1f5f9"
+                    percent={m.value}
+                    strokeColor="#49B6E5"
+                    trailColor="#e2e8f0"
+                    strokeWidth={12}
+                    className="doodle-progress"
+                    format={p => <span className="font-black text-slate-900">{p}%</span>}
                   />
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
-        </Col>
-      </Row>
 
-      <Row gutter={[24, 24]}>
-        <Col xs={24} xl={12}>
-          <Card
-            title={<div className="flex items-center gap-2"><BrainCircuit size={16} className="text-orange-500" /> <span className="font-black text-gray-800 text-sm">Giáo án & Mục tiêu</span></div>}
-            className="rounded-2xl border-none shadow-sm h-full overflow-hidden"
-            bodyStyle={{ padding: 0 }}
-          >
-            <div className="p-1 space-y-0.5 overflow-y-auto max-h-[320px]">
-              {lessonPlans.length ? lessonPlans.map((plan: LessonPlan, idx) => (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.05 }}
-                  key={plan.id} className="p-3 border-b border-gray-50 last:border-none group hover:bg-orange-50/30 transition-colors">
-                  <div className="flex justify-between items-start mb-1">
-                    <Title level={5} className="!m-0 !font-black !text-xs group-hover:text-orange-600 transition-colors">{plan.title}</Title>
-                    <Tag color={plan.status === 'PUBLISHED' ? 'success' : 'default'} bordered={false} className="font-bold text-[8px] rounded-full uppercase leading-none px-1.5">{plan.status}</Tag>
-                  </div>
-                  <Text className="text-[11px] text-gray-400 block mb-2 leading-tight line-clamp-1">{plan.objective}</Text>
-                  <div className="flex flex-wrap gap-1">
-                    {(plan.achievementGoals || []).slice(0, 3).map(goal => (
-                      <div key={goal} className="px-1.5 py-0.5 bg-gray-50 text-[9px] font-bold text-gray-400 rounded-md border border-gray-100">
-                        {goal}
-                      </div>
-                    ))}
-                    {(plan.achievementGoals || []).length > 3 && (
-                      <div className="px-1.5 py-0.5 text-[9px] font-bold text-gray-300">
-                        +{(plan.achievementGoals || []).length - 3}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )) : (
-                <div className="py-12"><Empty description={<span className="text-gray-400 font-bold italic">Chưa có giáo án tùy chỉnh</span>} /></div>
-              )}
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} xl={12}>
-          <Card
-            title={<div className="flex items-center gap-2"><MessageSquareMore size={16} className="text-purple-500" /> <span className="font-black text-gray-800 text-sm">Phản hồi & Tương tác</span></div>}
-            className="rounded-2xl border-none shadow-sm h-full overflow-hidden"
-            bodyStyle={{ padding: 0 }}
-          >
-            <div className="p-1 space-y-0.5 overflow-y-auto max-h-[320px]">
-              {messages.length ? messages.map((item: FeedbackItem, idx) => (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.05 }}
-                  key={item.id} className="p-3 border-b border-gray-50 last:border-none hover:bg-purple-50/30 transition-colors relative">
-                  <div className="flex justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                      <span className="font-bold text-gray-800 text-[11px]">{item.studentName}</span>
-                    </div>
-                    <span className="text-[8px] text-gray-300 font-bold uppercase">{item.channel}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 font-medium leading-tight bg-gray-50/50 p-2 rounded-xl border border-gray-100/50 line-clamp-2">
-                    {item.content}
-                  </p>
-                  <div className="flex justify-between items-center mt-2">
-                    <Tag color={item.priority === 'HIGH' ? 'red' : item.priority === 'MEDIUM' ? 'orange' : 'blue'} bordered={false} className="rounded-full text-[8px] font-black px-1.5 leading-none h-4 flex items-center">
-                      {item.priority}
-                    </Tag>
-                    <Button
-                      type="link"
-                      size="small"
-                      className="text-purple-600 font-bold text-[10px] h-auto p-0"
-                      onClick={() => navigate('/educator/messages', { state: { studentId: item.studentId } })}
-                    >
-                      Trả lời 💬
-                    </Button>
-                  </div>
-                </motion.div>
-              )) : (
-                <div className="py-12"><Empty description={<span className="text-gray-400 font-bold italic">Không có tin nhắn mới</span>} /></div>
-              )}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card
-        title={
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2"><Activity size={16} className="text-rose-500" /> <span className="font-black text-gray-800 text-sm">Phân tích lỗi phát âm</span></div>
-            <Button type="link" className="text-gray-400 font-bold text-[9px] uppercase">Xem tất cả</Button>
-          </div>
-        }
-        className="rounded-2xl border-none shadow-sm"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {reports.length ? reports.map((report, idx) => (
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.05 }}
-              key={report.studentId} className="p-3 rounded-xl border border-gray-50 bg-slate-50/30 hover:border-rose-100 group transition-all">
-              <div className="font-bold text-slate-700 text-xs mb-3 group-hover:text-rose-600 transition-colors flex items-center justify-between">
-                {report.studentName}
-                <ArrowUpRight size={12} className="text-slate-300" />
+          <Card className="rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden" bodyStyle={{ padding: '2rem' }}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-emerald-400 rounded-full" />
+                <h3 className="text-xl font-black uppercase tracking-tight">Học viên mới (24h)</h3>
               </div>
-              <div className="space-y-3">
-                {report.pronunciationErrors?.map((err: any) => (
-                  <div key={err.phoneme} className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                      <span>/{err.phoneme}/</span>
-                      <span className="text-rose-500 font-black">{err.accuracy}%</span>
+              <TrendingUp className="text-emerald-500" />
+            </div>
+            <List
+              dataSource={summary?.recentStudents || []}
+              renderItem={(item: any) => (
+                <List.Item className="border-none px-0 py-4 group">
+                  <div className="w-full flex items-center justify-between p-4 rounded-2xl border-[2.5px] border-transparent hover:border-slate-900 hover:bg-white transition-all">
+                    <div className="flex items-center gap-4">
+                      <Avatar
+                        src={getAvatarUrl(item)}
+                        size={52}
+                        onError={() => { setAvatarErrors(prev => ({ ...prev, [item.id]: true })); return true; }}
+                        className="border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] group-hover:rotate-6 transition-transform"
+                      />
+                      <div>
+                        <div className="text-[14px] font-black text-slate-900 uppercase tracking-tight">{item.fullName}</div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{item.email}</div>
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full bg-white rounded-full overflow-hidden border border-slate-100">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${err.accuracy}%` }} transition={{ duration: 1, delay: 0.5 }}
-                        className="h-full bg-gradient-to-r from-rose-400 to-rose-300 shadow-[0_0_8px_rgba(251,113,133,0.3)]" />
+                    <div className="text-right">
+                      <div className="text-xs font-black text-slate-900">{item.level}</div>
+                      <div className="text-[8px] font-black uppercase tracking-widest text-[#49B6E5]">Level</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          )) : [...Array(4)].map((_, i) => (
-            <div key={i} className="p-4 rounded-2xl border border-gray-50"><Skeleton active paragraph={{ rows: 2 }} /></div>
-          ))}
+                </List.Item>
+              )}
+            />
+          </Card>
         </div>
-      </Card>
 
+        {/* Right Column: Actions & Notifications */}
+        <div className="space-y-8">
+          <Card className="rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] bg-[#49B6E5] text-white" bodyStyle={{ padding: '2rem' }}>
+            <h4 className="text-lg font-black uppercase tracking-tight mb-6">Phản hồi nhanh</h4>
+            <div className="space-y-4">
+              {[
+                { text: 'Thiết kế lộ trình cho newbie', icon: Target },
+                { text: 'Kiểm tra log của Gemini AI', icon: MessageSquare },
+                { text: 'Cập nhật tài liệu luyện âm', icon: Users },
+              ].map(action => (
+                <button key={action.text} className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white hover:text-[#49B6E5] rounded-2xl border-[2px] border-white/20 transition-all group font-black text-[10px] uppercase tracking-widest">
+                  <span className="flex items-center gap-3"><action.icon size={16} /> {action.text}</span>
+                  <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" />
+                </button>
+              ))}
+            </div>
+          </Card>
 
+          <Card className="rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden" bodyStyle={{ padding: '2rem' }}>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1.5 h-6 bg-rose-400 rounded-full" />
+              <h3 className="text-xl font-black uppercase tracking-tight">Cần hỗ trợ</h3>
+            </div>
+            <div className="space-y-6">
+              {(summary?.pendingFeedbacks || []).map((fb: any) => (
+                <div key={fb.id} className="relative p-4 rounded-2xl border-[2.5px] border-slate-100 bg-slate-50/30 group hover:border-slate-900 hover:bg-white transition-all">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar
+                      src={getAvatarUrl({ id: fb.studentId, fullName: fb.studentName })}
+                      size={32}
+                      className="border-[1.5px] border-slate-900"
+                    />
+                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{fb.studentName}</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic truncate">"{fb.content || 'Yêu cầu kiểm tra tiến độ...'}"</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">2 giờ trước</span>
+                    <button className="text-[9px] font-black uppercase text-[#49B6E5] hover:underline">Xử lý ngay</button>
+                  </div>
+                </div>
+              ))}
+              {(summary?.pendingFeedbacks || []).length === 0 && (
+                <div className="py-10 text-center">
+                  <CheckCircle className="mx-auto text-emerald-400 mb-4" size={32} />
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-300">Mọi thứ đã gọn gàng!</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
 
-      <style>{`
-                .custom-dashboard-table .ant-table-thead > tr > th {
-                    background: #f8fafc;
-                    color: #94a3b8;
-                    font-size: 9px;
-                    padding: 8px 16px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.1em;
-                    font-weight: 900;
-                    border-bottom: 1px solid #f1f5f9;
-                }
-                .custom-dashboard-table .ant-table-tbody > tr > td {
-                    padding: 4px 16px;
-                    border-bottom: 1px solid #f8fafc;
-                }
-                .ant-statistic-title {
-                    font-size: 10px;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    color: #94a3b8;
-                    letter-spacing: 0.05em;
-                }
-                .ant-statistic-content-value {
-                    font-weight: 900;
-                    color: #1e293b;
-                }
-            `}</style>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .doodle-progress .ant-progress-text { font-family: 'Nunito' !important; }
+        .ant-card { font-family: 'Nunito' !important; }
+      `}} />
     </div>
-  )
-}
+  );
+};
 
 export default EducatorOverviewPage;

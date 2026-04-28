@@ -2,39 +2,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Slider } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { Volume2, Play, RotateCcw, Lightbulb, MousePointer2, AlertTriangle, ChevronRight, Sparkles } from 'lucide-react';
+import { Volume2, Play, RotateCcw, Lightbulb, MousePointer2, AlertTriangle, Sparkles } from 'lucide-react';
 import '@google/model-viewer';
 import { DoodleLoading } from '../../../components/ui/DoodleLoading';
 
 /* ─── Types ─────────────────────────────────────────── */
-declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            'model-viewer': React.DetailedHTMLProps<
-                React.HTMLAttributes<HTMLElement> & {
-                    src?: string;
-                    alt?: string;
-                    'camera-controls'?: boolean | string;
-                    'auto-rotate'?: boolean | string;
-                    'shadow-intensity'?: string;
-                    'environment-image'?: string;
-                    exposure?: string;
-                    'camera-orbit'?: string;
-                    'field-of-view'?: string;
-                    'min-camera-orbit'?: string;
-                    'max-camera-orbit'?: string;
-                    'interaction-prompt'?: string;
-                    poster?: string;
-                    loading?: string;
-                    reveal?: string;
-                    ar?: boolean | string;
-                    style?: React.CSSProperties;
-                },
-                HTMLElement
-            >;
-        }
-    }
-}
+
 
 /* ─── Helpers ─────────────────────────────────────────── */
 function findMorphTargetsInViewer(viewer: any): { meshes: any[]; sceneObj: any } {
@@ -191,7 +164,7 @@ export default function PronunciationModelPage() {
 
     return (
         <div className="min-h-screen bg-[#fbf6ef] font-nunito p-6 lg:p-10 pb-24">
-            <div className="max-w-[1200px] mx-auto">
+            <div className="max-w-none mx-auto px-4 lg:px-8">
 
                 {/* ── Header Doodle ── */}
                 <header className="relative mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -330,9 +303,14 @@ export default function PronunciationModelPage() {
 
                                 <model-viewer
                                     ref={(el: any) => {
-                                        if (el && el !== modelRef.current) {
-                                            modelRef.current = el;
-                                            el.addEventListener('load', handleModelLoad);
+                                        if (el) {
+                                            if (el !== modelRef.current) {
+                                                modelRef.current = el;
+                                                el.addEventListener('load', handleModelLoad);
+                                            }
+                                        } else if (modelRef.current) {
+                                            modelRef.current.removeEventListener('load', handleModelLoad);
+                                            modelRef.current = null;
                                         }
                                     }}
                                     src="/3D/Pronunciation.glb"

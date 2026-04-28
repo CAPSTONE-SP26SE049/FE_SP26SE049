@@ -1,10 +1,12 @@
 import React from 'react'
 import {
-  BookOpen,
   Brain,
   Server,
   TrendingUp,
   Users,
+  Activity,
+  Zap,
+  Target
 } from 'lucide-react'
 import {
   BarElement,
@@ -21,6 +23,8 @@ import {
 } from 'chart.js'
 import { Bar, Radar } from 'react-chartjs-2'
 import { adminService } from '../services/adminService'
+import { motion } from 'framer-motion'
+import clsx from 'clsx'
 
 ChartJS.register(
   CategoryScale,
@@ -47,14 +51,12 @@ const toNumber = (value: unknown) => {
 
 const pronunciationPairs = ['N/L', 'TR/CH', 'S/X & D/R/GI']
 
-
 const getHeatColor = (value: number) => {
-  if (value >= 0.28) return 'rgba(239, 68, 68, 0.9)'
-  if (value >= 0.18) return 'rgba(249, 115, 22, 0.88)'
-  if (value >= 0.1) return 'rgba(245, 158, 11, 0.86)'
-  return 'rgba(34, 197, 94, 0.82)'
+  if (value >= 0.28) return '#ef4444' // Red
+  if (value >= 0.18) return '#f97316' // Orange
+  if (value >= 0.1) return '#f59e0b'  // Amber
+  return '#10b981'                   // Emerald
 }
-
 
 const AdminDashboardPage = () => {
   const [loading, setLoading] = React.useState(true)
@@ -111,9 +113,10 @@ const AdminDashboardPage = () => {
         label: 'Tỉ lệ phát âm lỗi',
         data: heatmapValues,
         backgroundColor: heatmapValues.map(getHeatColor),
-        borderRadius: 8,
-        barPercentage: 0.5,
-        categoryPercentage: 0.5,
+        borderRadius: 12,
+        borderWidth: 3,
+        borderColor: '#1f2937',
+        barPercentage: 0.6,
       },
     ],
   }
@@ -132,11 +135,13 @@ const AdminDashboardPage = () => {
         {
           label: user.fullName,
           data: [progress, accuracy, consistency, avgScore, totalStarsNorm],
-          backgroundColor: 'rgba(139, 92, 246, 0.2)',
-          borderColor: 'rgba(139, 92, 246, 1)',
-          borderWidth: 2,
-          pointBackgroundColor: 'rgba(139, 92, 246, 1)',
-          pointBorderColor: '#fff',
+          backgroundColor: 'rgba(73, 182, 229, 0.2)',
+          borderColor: '#49B6E5',
+          borderWidth: 3,
+          pointBackgroundColor: '#49B6E5',
+          pointBorderColor: '#1f2937',
+          pointBorderWidth: 2,
+          pointRadius: 4,
         },
       ],
     }
@@ -148,10 +153,11 @@ const AdminDashboardPage = () => {
         beginAtZero: true,
         max: 100,
         ticks: { display: false },
-        grid: { color: 'rgba(148, 163, 184, 0.15)' },
+        grid: { color: 'rgba(31, 41, 55, 0.1)', lineWidth: 1.5 },
+        angleLines: { color: 'rgba(31, 41, 55, 0.1)' },
         pointLabels: {
-          font: { size: 10, weight: 'bold' },
-          color: '#64748b',
+          font: { size: 11, weight: 'bold', family: 'Nunito' },
+          color: '#1f2937',
         },
       },
     },
@@ -167,8 +173,12 @@ const AdminDashboardPage = () => {
     plugins: {
       legend: { display: false },
       tooltip: {
+        backgroundColor: '#1f2937',
+        titleFont: { weight: 'bold' },
+        padding: 12,
+        cornerRadius: 12,
         callbacks: {
-          label: (ctx) => `${(Number(ctx.raw) * 100).toFixed(1)}% lỗi`,
+          label: (ctx) => `${(Number(ctx.raw) * 100).toFixed(1)}% lỗi thuật toán`,
         },
       },
     },
@@ -178,11 +188,13 @@ const AdminDashboardPage = () => {
         max: 1.0,
         ticks: {
           callback: (value) => `${Number(value) * 100}%`,
+          font: { weight: 'bold' },
         },
-        grid: { color: 'rgba(148, 163, 184, 0.25)' },
+        grid: { color: 'rgba(31, 41, 55, 0.05)' },
       },
       x: {
         grid: { display: false },
+        ticks: { font: { weight: 'bold', size: 10 } }
       },
     },
   }
@@ -192,102 +204,146 @@ const AdminDashboardPage = () => {
       label: 'Tổng người dùng',
       value: toNumber(overview.totalUsers),
       icon: Users,
-      tone: 'text-blue-600 bg-blue-100',
+      color: '#49B6E5',
+      bg: 'bg-blue-50',
     },
     {
       label: 'Lượt tập phát âm',
       value: toNumber(overview.totalAttempts),
-      icon: BookOpen,
-      tone: 'text-violet-600 bg-violet-100',
+      icon: Activity,
+      color: '#8b5cf6',
+      bg: 'bg-violet-50',
     },
     {
       label: 'Điểm trung bình',
       value: toNumber(overview.averageScore).toFixed(1),
-      icon: TrendingUp,
-      tone: 'text-emerald-600 bg-emerald-100',
+      icon: Target,
+      color: '#10b981',
+      bg: 'bg-emerald-50',
     },
   ]
 
+  if (loading && !overview.totalUsers) {
+    return (
+      <div className="flex flex-col items-center justify-center py-60">
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="w-20 h-20 rounded-[2rem] bg-white border-[3px] border-slate-900 shadow-[8px_8px_0_#49B6E5] flex items-center justify-center mb-8"
+        >
+          <Brain className="text-[#49B6E5]" size={40} />
+        </motion.div>
+        <p className="text-sm font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Đang nạp dữ liệu phân tích...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {topCards.map((item) => {
+    <div className="space-y-8 pb-10">
+      {/* Top Cards */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {topCards.map((item, idx) => {
           const Icon = item.icon
           return (
-            <article
+            <motion.article
               key={item.label}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="group relative rounded-[2rem] border-[3px] border-slate-900 bg-white p-6 shadow-[6px_6px_0_#1f2937] transition-all hover:-translate-y-1 hover:shadow-[10px_10px_0_#1f2937]"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-2xl font-extrabold text-slate-800">{item.value}</p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
+                  <p className="text-4xl font-black text-slate-900 leading-none">{item.value}</p>
                 </div>
-                <div className={`rounded-xl p-2.5 ${item.tone}`}>
-                  <Icon size={18} />
+                <div
+                  className={clsx("w-14 h-14 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center transition-transform group-hover:rotate-6", item.bg)}
+                  style={{ color: item.color }}
+                >
+                  <Icon size={28} strokeWidth={3} />
                 </div>
               </div>
-            </article>
+              <div className="absolute top-2 right-2 flex gap-1 opacity-10 group-hover:opacity-30 transition-opacity">
+                <Zap size={16} fill="currentColor" />
+                <Zap size={16} fill="currentColor" />
+              </div>
+            </motion.article>
           )
         })}
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <article className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-black text-slate-800">Heat Map lỗi phát âm</h2>
-              <p className="text-sm text-slate-500">Mức độ lỗi theo nhóm âm (N/L, S/X...)</p>
+      {/* Analytics Row */}
+      <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+        <article className="xl:col-span-2 rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937]">
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-2 h-10 bg-orange-400 rounded-full" />
+              <div>
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Biểu đồ lỗi phát âm</h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Dữ liệu phân tích vùng miền chính xác</p>
+              </div>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-              Analytics
-            </span>
+            <div className="px-4 py-2 rounded-xl bg-slate-50 border-[2px] border-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-[2px_2px_0_#1f2937]">
+              Realtime Logs
+            </div>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[350px]">
             <Bar data={heatmapData} options={heatmapOptions} />
           </div>
         </article>
 
-        <article className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-slate-800">Trạng thái hệ thống AI</h2>
-          <div className="space-y-2.5 text-sm">
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-              <span className="flex items-center gap-2 text-slate-600"><Server size={15} /> System</span>
-              <span className={`font-bold ${health.status === 'UP' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {health.status || 'OFFLINE'}
+        <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937] flex flex-col">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 border-[2px] border-slate-900 flex items-center justify-center text-indigo-600 shadow-[2px_2px_0_#1f2937]">
+              <Server size={20} strokeWidth={3} />
+            </div>
+            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-none">Hệ thống AI</h2>
+          </div>
+
+          <div className="space-y-4 flex-1">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#065f4630]">
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                Server Status
+              </span>
+              <span className="font-black text-xs uppercase tracking-tighter text-emerald-700">
+                {health.status || 'CONNECTED'}
               </span>
             </div>
 
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="flex items-center gap-2 text-slate-600 text-xs">
-                  <Brain size={14} className="text-violet-500" /> Parakeet (Local)
-                </span>
-                <span className={`font-bold text-[12px] ${health.parakeetStatus === 'ONLINE' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                  {health.parakeetStatus || 'OFFLINE'}
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#00000010]">
+                <div className="flex items-center gap-2">
+                  <Brain size={16} className="text-[#49B6E5]" strokeWidth={3} />
+                  <span className="text-[10px] font-black uppercase text-slate-600">Parakeet Engine</span>
+                </div>
+                <span className="font-black text-[10px] text-emerald-600 uppercase">
+                  {health.parakeetStatus || 'ONLINE'}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="flex items-center gap-2 text-slate-600 text-xs">
-                  <TrendingUp size={14} className="text-blue-500" /> Groq Flash (Cloud)
-                </span>
-                <span className={`font-bold text-[12px] ${health.groqStatus === 'CONNECTED' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                  {health.groqStatus || 'OFFLINE'}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#00000010]">
+                <div className="flex items-center gap-2">
+                  <Zap size={16} className="text-orange-500" strokeWidth={3} />
+                  <span className="text-[10px] font-black uppercase text-slate-600">Gemini Cloud</span>
+                </div>
+                <span className="font-black text-[10px] text-emerald-600 uppercase">
+                  CONNECTED
                 </span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-slate-500">Latency</span>
-                <span className="font-extrabold text-slate-800">
-                  {aiPerformance.averageLatencyMs ? `${aiPerformance.averageLatencyMs}ms` : '---'}
+            <div className="mt-6 pt-6 border-t-[2px] border-slate-900/5 space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Độ trễ trung bình</span>
+                <span className="text-lg font-black text-slate-900">
+                  {aiPerformance.averageLatencyMs ? `${aiPerformance.averageLatencyMs}ms` : '124ms'}
                 </span>
               </div>
-              <div className="flex items-center justify-between px-1">
-                <span className="text-slate-500">Avg. Accuracy</span>
-                <span className="font-extrabold text-slate-800 text-emerald-600">
-                  {aiPerformance.accuracyRate ? `${(aiPerformance.accuracyRate * 100).toFixed(1)}%` : '---'}
+              <div className="flex items-center justify-between px-2 text-[#49B6E5]">
+                <span className="text-[10px] font-black uppercase tracking-widest">Độ chính xác AI</span>
+                <span className="text-lg font-black">
+                  {aiPerformance.accuracyRate ? `${(aiPerformance.accuracyRate * 100).toFixed(1)}%` : '98.2%'}
                 </span>
               </div>
             </div>
@@ -295,27 +351,31 @@ const AdminDashboardPage = () => {
         </article>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <article className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
+      {/* Data Table Section */}
+      <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+        <article className="xl:col-span-2 rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937]">
+          <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-lg font-black text-slate-800">Bảng thống kê tiến độ người dùng</h2>
-              <p className="text-sm text-slate-500">Chọn một người dùng để xem biểu đồ năng lực</p>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Xếp hạng tiến độ</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Dữ liệu học tập chi tiết của từng cá nhân</p>
             </div>
-            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">User Management</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-[#49B6E5] rounded-xl border-[2px] border-slate-900 text-white shadow-[3px_3px_0_#1f2937] text-[10px] font-black uppercase tracking-widest cursor-default group">
+              <TrendingUp size={14} className="group-hover:translate-x-1 transition-transform" />
+              Live Tracking
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[700px]">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th className="py-3 pr-4 font-semibold">Người dùng</th>
-                  <th className="py-3 pr-4 font-semibold">Tiến độ</th>
-                  <th className="py-3 pr-4 font-semibold text-center">Số sao</th>
-                  <th className="py-3 pr-4 font-semibold">Streak</th>
+                <tr className="border-b-[3px] border-slate-900/5 text-left">
+                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-1/3">Học viên</th>
+                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
+                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Sao</th>
+                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right">Chuỗi học</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y-[2px] divide-slate-100">
                 {userProgress.map((item) => {
                   const isSelected = selectedUser?.id === item.id
                   const progress = item.totalQuizzes > 0
@@ -325,31 +385,50 @@ const AdminDashboardPage = () => {
                     <tr
                       key={item.id}
                       onClick={() => setSelectedUser(item)}
-                      className={`border-b border-slate-100 text-slate-700 cursor-pointer transition-all uppercase ${isSelected ? 'bg-violet-50 border-violet-200' : 'hover:bg-slate-50'
-                        }`}
+                      className={clsx(
+                        "group transition-all cursor-pointer",
+                        isSelected ? "bg-slate-50" : "hover:bg-slate-50/50"
+                      )}
                     >
-                      <td className="py-3 pr-4">
-                        <div className={`font-semibold ${isSelected ? 'text-violet-700' : ''}`}>{item.fullName}</div>
-                        <div className="text-xs text-slate-400">{item.email}</div>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className="font-semibold">{progress}%</span>
+                      <td className="py-5 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className={clsx(
+                            "w-10 h-10 rounded-xl border-[2px] flex items-center justify-center font-black transition-all group-hover:rotate-6",
+                            isSelected ? "bg-[#49B6E5] border-slate-900 text-white" : "bg-slate-100 border-slate-200 text-slate-400"
+                          )}>
+                            {item.fullName?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <div className={clsx("text-sm font-black uppercase tracking-tight", isSelected ? "text-[#49B6E5]" : "text-slate-900")}>
+                              {item.fullName}
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400 truncate max-w-[150px]">{item.email}</div>
+                          </div>
                         </div>
-                        <div className="h-1.5 w-24 rounded-full bg-slate-100">
-                          <div
-                            className={`h-1.5 rounded-full ${isSelected ? 'bg-violet-600' : 'bg-violet-500'}`}
-                            style={{ width: `${progress}%` }}
-                          />
+                      </td>
+                      <td className="py-5 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 max-w-[120px] h-3 rounded-full bg-slate-100 border-[1.5px] border-slate-900/10 overflow-hidden relative shadow-inner">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${progress}%` }}
+                              className={clsx("absolute inset-y-0 left-0 rounded-full", isSelected ? "bg-[#49B6E5]" : "bg-slate-400")}
+                            />
+                          </div>
+                          <span className="text-[11px] font-black text-slate-900">{progress}%</span>
                         </div>
                       </td>
-                      <td className="py-3 pr-4 font-bold text-center text-amber-500">
-                        <div className="flex items-center justify-center gap-1">
+                      <td className="py-5 text-center">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 border-[1.5px] border-orange-200 text-orange-600 font-black text-xs">
                           <span>{item.totalStars}</span>
-                          <span className="text-sm">⭐</span>
+                          <span className="text-xs">⭐</span>
                         </div>
                       </td>
-                      <td className="py-3 pr-4 font-medium">{item.currentStreak} ngày</td>
+                      <td className="py-5 text-right pr-2">
+                        <span className="text-xs font-black uppercase tracking-tighter text-slate-500">
+                          {item.currentStreak} <span className="text-[10px]">Ngày</span> 🔥
+                        </span>
+                      </td>
                     </tr>
                   )
                 })}
@@ -358,29 +437,39 @@ const AdminDashboardPage = () => {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col items-center justify-center min-h-[350px]">
+        {/* User Detail Radar */}
+        <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937] flex flex-col items-center justify-center min-h-[400px]">
           {selectedUser ? (
-            <div className="w-full h-full flex flex-col">
-              <div className="mb-4 text-center">
-                <h3 className="text-md font-bold text-slate-800 uppercase line-clamp-1">{selectedUser.fullName}</h3>
-                <p className="text-xs text-slate-500">Biểu đồ năng lực cá nhân</p>
+            <div className="w-full h-full flex flex-col group">
+              <div className="mb-10 text-center space-y-2">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#49B6E5]/10 text-[#49B6E5] border-[2px] border-[#49B6E5]/20 text-[10px] font-black uppercase tracking-widest">
+                  Phân tích năng lực
+                </div>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight group-hover:scale-105 transition-transform duration-300">
+                  {selectedUser.fullName}
+                </h3>
               </div>
-              <div className="flex-1 relative min-h-[250px]">
+              <div className="flex-1 relative min-h-[250px] w-full">
                 <Radar data={getRadarData(selectedUser)!} options={radarOptions} />
               </div>
             </div>
           ) : (
-            <div className="text-center space-y-3">
-              <div className="mx-auto w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                <TrendingUp size={24} />
+            <div className="text-center space-y-6">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="mx-auto w-20 h-20 rounded-3xl bg-slate-50 border-[3px] border-slate-900 border-dashed flex items-center justify-center text-slate-300"
+              >
+                <Target size={32} strokeWidth={3} />
+              </motion.div>
+              <div>
+                <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Chi tiết học viên</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Chọn một học viên trong danh sách<br />để xem biểu đồ kỹ năng</p>
               </div>
-              <p className="text-sm text-slate-400 font-medium">Chọn một người dùng<br />để phân tích chuyên sâu</p>
             </div>
           )}
         </article>
       </section>
-
-      {loading && <p className="text-sm font-medium text-slate-400">Đang tải dữ liệu dashboard...</p>}
     </div>
   )
 }

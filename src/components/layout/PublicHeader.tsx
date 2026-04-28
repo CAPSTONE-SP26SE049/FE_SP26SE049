@@ -2,12 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import logoImg from '../../assets/logoSpeakVN.png';
 
-const navItems = [
-    { label: 'Features', href: '#features' },
-    { label: 'Components', href: '#components' },
-    { label: 'Pricing', href: '#pricing' },
-];
-
 const PublicHeader = () => {
     const navigate = useNavigate();
     const { scrollY } = useScroll();
@@ -44,18 +38,9 @@ const PublicHeader = () => {
                         />
                     </button>
 
-                    {/* Navigation - Hidden on mobile */}
+                    {/* Navigation - Hidden for now as requested */}
                     <nav className="hidden xl:flex items-center gap-8">
-                        {navItems.map((item) => (
-                            <a
-                                key={item.label}
-                                href={item.href}
-                                className="relative text-[15px] font-black text-slate-900 transition-colors hover:text-[#263D5B] group"
-                            >
-                                {item.label}
-                                <span className="absolute -bottom-1 left-0 h-1 w-0 rounded-full bg-[#7dd3fc] transition-all duration-200 group-hover:w-full" />
-                            </a>
-                        ))}
+                        {/* Nav items removed as per user request */}
                     </nav>
 
                     {/* Actions */}
@@ -63,16 +48,16 @@ const PublicHeader = () => {
                         <button
                             type="button"
                             onClick={() => navigate('/login')}
-                            className="hidden md:block px-4 py-2 text-sm font-black text-slate-600 hover:text-slate-900 transition-colors"
+                            className="hidden md:block px-4 py-2 text-sm font-black text-slate-600 hover:text-slate-900 transition-colors uppercase tracking-widest"
                         >
-                            Log in
+                            Đăng nhập
                         </button>
                         <button
                             type="button"
                             onClick={() => navigate('/register')}
-                            className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_rgba(0,0,0,0.2)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none"
+                            className="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-[4px_4px_0_#49B6E5] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none uppercase tracking-widest"
                         >
-                            Sign up
+                            Đăng ký
                         </button>
 
                         <button

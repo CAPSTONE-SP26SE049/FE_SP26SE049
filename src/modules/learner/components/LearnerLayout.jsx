@@ -239,7 +239,7 @@ export default function LearnerLayout() {
     ],
   };
 
-  const menuItems = [
+  const menuItems = React.useMemo(() => [
     { key: "/learner/dashboard", icon: LayoutDashboard, label: "Trang chủ" },
     { key: "/learner/mailbox", icon: Mail, label: "Hộp thư" },
     { key: "/learner/roadmap", icon: Map, label: "Hành trình" },
@@ -248,13 +248,15 @@ export default function LearnerLayout() {
     { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
     { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
     { key: "/learner/friends", icon: Users, label: "Bạn bè" },
-  ];
+  ], []);
 
-  const selectedKey = menuItems.find(
-    (item) =>
-      location.pathname === item.key ||
-      location.pathname.startsWith(`${item.key}/`)
-  )?.key || "/learner/dashboard";
+  const selectedKey = React.useMemo(() => {
+    return menuItems.find(
+      (item) =>
+        location.pathname === item.key ||
+        location.pathname.startsWith(`${item.key}/`)
+    )?.key || "/learner/dashboard";
+  }, [location.pathname, menuItems]);
 
   return (
     <div className="flex flex-col h-screen bg-[#fbfaff] font-nunito overflow-hidden">
@@ -267,8 +269,8 @@ export default function LearnerLayout() {
       {/* ══════════════════════════════════════════════════════
           TOP NAVIGATION BAR (Doodle Minimalist Style)
           ══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-[100] bg-[#fbf6ef]/95 backdrop-blur-md px-6 py-4">
-        <div className="mx-auto max-w-[1400px]">
+      <header className="sticky top-0 z-[100] bg-[#fbf6ef]/95 backdrop-blur-md px-6 lg:px-8 py-4">
+        <div className="mx-auto max-w-none">
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
             <Link to="/learner/dashboard" className="group flex items-center text-left">
@@ -425,18 +427,7 @@ export default function LearnerLayout() {
       {/* ── CONTENT AREA ── */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="h-full">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <Outlet />
         </div>
       </main>
 

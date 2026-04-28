@@ -223,7 +223,7 @@ export default function LearnerLeaderboardPage() {
         <div className="flex flex-col min-h-screen bg-[#fbf6ef] font-nunito pb-20">
             {/* ── Header Strip ── */}
             <div className="sticky top-0 z-[50] bg-[#fbf6ef]/95 backdrop-blur-md px-6 py-6 transition-all duration-300 border-b-[2.5px] border-slate-900/10">
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="max-w-none mx-auto flex flex-col md:flex-row items-center justify-between gap-6 px-4">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center -rotate-2">
                             <Trophy size={28} className="text-yellow-500 fill-yellow-500 stroke-[2.5px]" />
@@ -287,7 +287,7 @@ export default function LearnerLeaderboardPage() {
 
             {/* ── Content ── */}
             <div className="flex-1 px-6 py-8 overflow-y-auto">
-                <div className="max-w-6xl mx-auto">
+                <div className="max-w-none mx-auto px-4">
                     {loading ? (
                         <div className="flex justify-center items-center py-40">
                             <DoodleLoading message="Đang tải bảng vàng..." />

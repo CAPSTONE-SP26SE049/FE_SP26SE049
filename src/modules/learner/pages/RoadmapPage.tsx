@@ -10,7 +10,7 @@ import { Empty, Pagination } from 'antd'
 import clsx from 'clsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { learnerService, type Level, type Dialect, type Quiz } from '../services/learnerService'
-import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe, Landmark, Castle, Building2, Star, Flame } from 'lucide-react'
+import { Headphones, Mic, PenTool, BookOpen, Play, ChevronRight, Globe, Landmark, Castle, Building2, Star } from 'lucide-react'
 import { DoodleLoading } from '../../../components/ui/DoodleLoading'
 import mienbacImg from '../../../assets/mienbac.png'
 import mientrungImg from '../../../assets/mientrung.png'
@@ -275,6 +275,7 @@ const ChapterStep = ({
       >
         <div className="absolute inset-0">
           <img src={meta.photo} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/40" />
         </div>
         <div className="relative px-8 py-6 flex items-center gap-6">
           <button
@@ -287,8 +288,8 @@ const ChapterStep = ({
             <meta.icon size={28} strokeWidth={2.5} />
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-black text-slate-900 leading-tight font-nunito">{meta.viName}</h2>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">{meta.tagline}</p>
+            <h2 className="text-2xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] leading-tight font-nunito">{meta.viName}</h2>
+            <p className="text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] text-sm font-bold uppercase tracking-wider">{meta.tagline}</p>
           </div>
           <div className="text-right hidden md:block">
             <div className="bg-white border-[2px] border-slate-900 rounded-xl px-4 py-2 shadow-[2px_2px_0_#1f2937]">
@@ -781,18 +782,7 @@ const RoadmapPage: React.FC = () => {
             </h2>
           </div>
 
-          <div className="hidden sm:block">
-            <div className="bg-white border-[2px] border-slate-900 rounded-xl px-4 py-2 shadow-[2px_2px_0_#1f2937] flex items-center gap-3">
-              <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
-                <Flame size={14} className="text-orange-500 fill-orange-500" />
-                <span className="text-slate-700 font-black text-xs">{(session?.user as any)?.currentStreakDays || 0}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-slate-700 font-black text-xs">{(session?.user as any)?.totalStars || 0}</span>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
     )

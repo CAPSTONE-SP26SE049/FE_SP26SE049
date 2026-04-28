@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { Card, Button, Modal, Input, message, Typography, Avatar, Empty, Tabs, Tag } from 'antd';
-import { MessageSquare, Star, Send, Users, MessageCircle, History, Sparkles, MessageCircleMore, Bot, Info } from '../../../lib/icons';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Avatar, message, Modal, Skeleton } from 'antd';
+import { Search, MessageSquare, Star, Send, Users as UsersIcon, MessageCircle, History, Sparkles, MessageCircleMore, Bot, ChevronRight, Zap, X } from 'lucide-react';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { feedbackService, type SpeakingAttempt, type Feedback } from '../services/feedbackService';
 import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 
-const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
-
+// Interaction Area
 const InteractionsPage = () => {
     const [students, setStudents] = useState<StudentAccount[]>([]);
     const [loading, setLoading] = useState(true);
@@ -19,15 +18,21 @@ const InteractionsPage = () => {
     const [selectedAttempt, setSelectedAttempt] = useState<SpeakingAttempt | null>(null);
     const [comment, setComment] = useState('');
     const [searchText, setSearchText] = useState('');
+    const [activeTab, setActiveTab] = useState<'chat' | 'feedback'>('chat');
 
-    // Chat states
     const [messages, setMessages] = useState<any[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
     const [messageInput, setMessageInput] = useState('');
     const chatEndRef = useRef<HTMLDivElement>(null);
-
-    // Avatar state management
     const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
+
+    const getAvatarUrl = (s: any) => {
+        if (!s) return '';
+        if (avatarErrors[s.id]) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;
+        return s.avatar_url || s.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;
+    };
+
+    const overallFeedbacks = useMemo(() => feedbacks.filter(f => !f.attemptId), [feedbacks]);
 
     useEffect(() => {
         fetchStudents();
@@ -38,8 +43,8 @@ const InteractionsPage = () => {
     const fetchStudents = async () => {
         try {
             const response = await educatorService.getStudentAccounts();
-            const studentData = Array.isArray(response.data) ? response.data : [];
-            setStudents(studentData);
+            const studentData = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
+            setStudents(studentData.filter((u: any) => (u.roleCode || '').toUpperCase() !== 'ADMIN'));
 
             if (selectedStudent) {
                 const current = studentData.find((s: any) => s.id === selectedStudent.id);
@@ -101,7 +106,6 @@ const InteractionsPage = () => {
 
     const handleSendMessage = async () => {
         if (!messageInput.trim() || !selectedStudent) return;
-
         try {
             const res = await educatorService.sendMessage({
                 studentId: selectedStudent.id,
@@ -129,109 +133,91 @@ const InteractionsPage = () => {
         }
     };
 
-    const filteredStudents = students.filter(s =>
+    const filteredStudents = (students || []).filter(s =>
         s.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
         s.email?.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const formatTimeShort = (time: any) => {
-        if (!time) return '';
-        const date = new Date(time);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
     const highlightErrors = (original: string, asr: string) => {
-        const cleanOriginal = original || '';
-        const cleanAsr = asr || '';
-        const oWords = cleanOriginal.split(' ');
-        const aWords = cleanAsr.split(' ');
-
+        const oWords = (original || '').split(' ');
+        const aWords = (asr || '').split(' ');
         return oWords.map((word, i) => {
             const isWrong = aWords[i]?.toLowerCase().replace(/[.,!?;:]/g, '') !== word.toLowerCase().replace(/[.,!?;:]/g, '');
             return (
-                <span key={i} className={`${isWrong ? 'text-rose-500 font-bold underline decoration-rose-300 underline-offset-2' : 'text-slate-700'} mr-1`}>
+                <span key={i} className={clsx(isWrong ? 'text-rose-500 font-black underline underline-offset-2' : 'text-slate-700', 'mr-1')}>
                     {word}
                 </span>
             );
         });
     };
 
-    const getScoreColor = (score: number) => {
-        if (score >= 80) return '#22c55e'; // Green
-        if (score >= 50) return '#f59e0b'; // Amber
-        return '#ef4444'; // Red
-    };
-
-    const getStudentAvatar = (student: StudentAccount) => {
-        if (avatarErrors[student.id]) {
-            return `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.fullName || student.id}`;
-        }
-        return student.avatar_url || student.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.fullName || student.id}`;
-    };
-
-    const overallFeedbacks = feedbacks.filter(f => !f.attemptId);
-
     return (
-        <div className="h-[calc(100vh-100px)] flex flex-col lg:flex-row gap-3 overflow-hidden -mt-4">
-            {/* Student Sidebar */}
-            <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-3 pb-2 border-b border-slate-50">
-                    <div className="flex items-center justify-between mb-2">
-                        <Title level={5} className="!m-0 !font-black !text-gray-800 tracking-tight text-[10px] uppercase">Học viên</Title>
-                        <Users size={14} className="text-purple-400" />
+        <div className="h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 overflow-hidden -mt-2">
+            {/* Sidebar Section */}
+            <aside className="w-full lg:w-[320px] flex flex-col bg-white rounded-[2rem] border-[3px] border-slate-900 shadow-[6px_6px_0_#1f2937] overflow-hidden">
+                <div className="p-5 border-b-[3px] border-slate-900/5">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Hội thoại</h3>
+                        <UsersIcon size={18} className="text-[#49B6E5]" strokeWidth={3} />
                     </div>
-                    <Input.Search
-                        placeholder="Tìm tên..."
-                        className="rounded-lg border border-slate-100"
-                        size="small"
-                        value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
-                    />
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} strokeWidth={3} />
+                        <input
+                            type="text"
+                            placeholder="Tìm học viên..."
+                            className="w-full h-10 pl-9 pr-4 rounded-xl border-[2px] border-slate-900 bg-slate-50 font-black text-[10px] uppercase tracking-wider focus:outline-none focus:ring-4 focus:ring-[#49B6E5]/10"
+                            value={searchText}
+                            onChange={e => setSearchText(e.target.value)}
+                        />
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-slate-50/30">
                     {loading && students.length === 0 ? (
-                        <div className="p-10 text-center"><Star className="animate-spin text-purple-200 inline" size={24} /></div>
-                    ) : (
-                        (filteredStudents || []).map(student => {
-                            const isSelected = selectedStudent?.id === student.id;
-                            const hasUnread = student.unreadCount && student.unreadCount > 0;
-                            return (
-                                <motion.div
-                                    key={student.id}
-                                    whileHover={{ x: 2 }}
-                                    onClick={() => handleSelectStudent(student)}
-                                    className={`relative flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-purple-50 shadow-sm' : 'hover:bg-slate-50'}`}
-                                >
+                        [...Array(6)].map((_, i) => <div key={i} className="p-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm"><Skeleton active avatar paragraph={{ rows: 1 }} title={false} /></div>)
+                    ) : filteredStudents.map(student => {
+                        const isSelected = selectedStudent?.id === student.id;
+                        const hasUnread = (student as any).unreadCount && (student as any).unreadCount > 0;
+                        return (
+                            <motion.div
+                                key={student.id}
+                                whileHover={{ scale: 1.02, x: 4 }}
+                                onClick={() => handleSelectStudent(student)}
+                                className={clsx(
+                                    "group relative flex items-center gap-3 p-3 rounded-2xl cursor-pointer border-[2.5px] transition-all",
+                                    isSelected
+                                        ? "bg-white border-slate-900 shadow-[4px_4px_0_#1f2937] z-10"
+                                        : "bg-white/50 border-transparent hover:border-slate-900/10 hover:bg-white text-slate-500"
+                                )}
+                            >
+                                <div className="relative flex-shrink-0">
                                     <Avatar
-                                        size={32}
-                                        src={getStudentAvatar(student)}
+                                        size={40}
+                                        src={getAvatarUrl(student)}
                                         onError={() => { setAvatarErrors(prev => ({ ...prev, [student.id]: true })); return true; }}
-                                        className="border-2 border-white shadow-sm bg-slate-100"
+                                        className="border-[2px] border-slate-900 shadow-[2px_2px_0_#00000010] bg-slate-100"
                                     />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center">
-                                            <div className={`text-[11px] font-bold truncate ${hasUnread ? 'text-slate-900' : 'text-slate-600'}`}>{student.fullName}</div>
-                                            <div className="text-[7px] text-slate-300 font-bold ml-1 uppercase">
-                                                {formatTimeShort(student.lastMessageAt)}
-                                            </div>
-                                        </div>
-                                        <div className={`text-[9px] truncate ${hasUnread ? 'text-purple-600 font-black' : 'text-slate-400 font-medium'}`}>
-                                            {student.lastMessage || 'Chưa có tin nhắn'}
+                                    {hasUnread && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full border-[2px] border-white shadow-sm animate-pulse" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center">
+                                        <div className={clsx("text-[11px] font-black uppercase truncate", isSelected ? "text-[#49B6E5]" : (hasUnread ? "text-slate-900" : "text-slate-600"))}>
+                                            {student.fullName}
                                         </div>
                                     </div>
-                                    {hasUnread && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                                    )}
-                                </motion.div>
-                            );
-                        })
-                    )}
+                                    <div className={clsx("text-[9px] truncate mt-1", hasUnread ? "text-slate-900 font-bold" : "text-slate-400 font-medium")}>
+                                        {student.lastMessage || 'Chưa có tin nhắn'}
+                                    </div>
+                                </div>
+                                {isSelected && <ChevronRight size={14} className="text-[#49B6E5]" strokeWidth={3} />}
+                            </motion.div>
+                        );
+                    })}
                 </div>
-            </div>
+            </aside>
 
-            {/* --- Main Content Area --- */}
-            <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col h-full overflow-hidden">
                 <AnimatePresence mode="wait">
                     {!selectedStudent ? (
                         <motion.div
@@ -239,290 +225,314 @@ const InteractionsPage = () => {
                             initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.98 }}
-                            className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center"
+                            className="h-full flex flex-col items-center justify-center bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] p-10 text-center"
                         >
-                            <div className="relative mb-6">
-                                <div className="absolute inset-0 bg-purple-200 blur-3xl opacity-10 rounded-full scale-150 animate-pulse" />
-                                <div className="relative w-32 h-32 bg-gradient-to-br from-purple-50 to-orange-50 rounded-3xl flex items-center justify-center shadow-inner">
-                                    <MessageCircleMore size={60} className="text-purple-500 opacity-60" />
+                            <div className="relative mb-8">
+                                <div className="absolute inset-0 bg-[#49B6E5] blur-3xl opacity-10 rounded-full scale-150 animate-pulse" />
+                                <div className="relative w-28 h-28 bg-blue-50 rounded-[2rem] border-[3px] border-dashed border-slate-300 flex items-center justify-center">
+                                    <MessageCircleMore size={56} className="text-slate-300" strokeWidth={1.5} />
                                 </div>
                             </div>
-                            <Title level={4} className="!font-black text-gray-800 mb-2">Kết nối để phát triển</Title>
-                            <Paragraph className="text-slate-400 text-sm max-w-xs mx-auto font-medium">Chọn một học viên từ danh sách bên trái để bắt đầu thảo luận và gửi những nhận xét quý báu giúp họ cải thiện kỹ năng.</Paragraph>
+                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-3">Hỗ trợ & Kết nối</h2>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest max-w-sm leading-relaxed">
+                                Chọn một học viên để bắt đầu hành trình <span className="text-[#49B6E5]">thay đổi kỹ năng phát âm</span> của họ ngay hôm nay.
+                            </p>
                         </motion.div>
                     ) : (
                         <motion.div
                             key={selectedStudent.id}
-                            initial={{ opacity: 0, scale: 0.99 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
                             className="flex flex-col h-full gap-4 overflow-hidden"
                         >
-                            {/* Student Header Card */}
-                            <Card className="rounded-xl border-none shadow-sm bg-white" bodyStyle={{ padding: '8px 16px' }}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar
-                                            size={40}
-                                            src={getStudentAvatar(selectedStudent)}
-                                            onError={() => { setAvatarErrors(prev => ({ ...prev, [selectedStudent.id]: true })); return true; }}
-                                            className="bg-slate-50 ring-2 ring-white"
-                                        />
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-black text-slate-800 text-xs leading-tight">{selectedStudent.fullName}</div>
-                                                <Tag color="purple" bordered={false} className="rounded-full text-[8px] font-black uppercase px-1.5 h-3.5 flex items-center m-0">Level {selectedStudent.level || 'A1'}</Tag>
-                                            </div>
-                                            <div className="text-[9px] text-slate-400 font-bold">{selectedStudent.email}</div>
+                            {/* Student Info Bar */}
+                            <header className="flex items-center justify-between p-4 bg-white rounded-2xl border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                <div className="flex items-center gap-4">
+                                    <Avatar
+                                        size={48}
+                                        src={getAvatarUrl(selectedStudent)}
+                                        onError={() => { setAvatarErrors(prev => ({ ...prev, [selectedStudent.id]: true })); return true; }}
+                                        className="border-[2.5px] border-slate-900 shadow-[2px_2px_0_#00000010] bg-slate-50"
+                                    />
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">{selectedStudent.fullName}</h2>
+                                            <div className="px-3 py-1 bg-purple-100 text-purple-700 border-[2px] border-purple-900/10 rounded-xl text-[9px] font-black uppercase tracking-wider">Level {(selectedStudent as any).level || 'A1'}</div>
                                         </div>
+                                        <div className="text-[10px] font-bold text-slate-400 mt-1">{selectedStudent.email}</div>
                                     </div>
-                                    <Button size="small" className="rounded-lg font-black text-[9px] h-7 px-3 flex items-center gap-1.5 border-purple-100 text-purple-600 bg-purple-50/30 uppercase border hover:bg-purple-600 hover:text-white transition-all">BÁO CÁO</Button>
                                 </div>
-                            </Card>
+                                <div className="flex gap-2">
+                                    <button className="px-4 py-2 bg-slate-50 border-[2px] border-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 transition-all">Lịch sử học</button>
+                                    <button className="px-4 py-2 bg-[#49B6E5] border-[2px] border-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 transition-all">Thiết kế lộ trình</button>
+                                </div>
+                            </header>
 
-                            {/* Tabs Area */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-0 flex-1 overflow-hidden flex flex-col">
-                                <Tabs
-                                    defaultActiveKey="chat"
-                                    className="premium-tabs-compact flex-1 flex flex-col"
-                                    items={[
-                                        {
-                                            key: 'chat',
-                                            label: (<span className="flex items-center gap-2 font-black px-6 py-3 text-[10px] uppercase tracking-wider"><MessageCircle size={14} /> THẢO LUẬN</span>),
-                                            children: (
-                                                <div className="flex flex-col h-full bg-slate-50/30">
-                                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                                                        {chatLoading && messages.length === 0 ? (
-                                                            <div className="h-full flex items-center justify-center"><Star className="animate-spin text-purple-300" size={32} /></div>
-                                                        ) : messages.length === 0 ? (
-                                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có tin nhắn nào." className="mt-10" />
-                                                        ) : (
-                                                            messages.map((msg: any) => {
-                                                                const isStudent = msg.senderId === selectedStudent.id;
-                                                                return (
-                                                                    <div key={msg.id || msg.timestamp} className={`flex ${isStudent ? 'justify-start' : 'justify-end'}`}>
-                                                                        <div className={`max-w-[85%] rounded-xl p-2 shadow-sm ${isStudent ? 'bg-white border border-slate-100 text-slate-700 rounded-bl-none' : 'bg-purple-600 text-white rounded-br-none'}`}>
-                                                                            <div className="font-bold text-[10px] leading-relaxed italic">"{msg.content}"</div>
-                                                                            <div className={`text-[7px] mt-1 text-right opacity-50 font-black uppercase`}>
-                                                                                {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                            </div>
-                                                                        </div>
+                            {/* Interaction Area */}
+                            <div className="flex-1 bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937] flex flex-col overflow-hidden">
+                                {/* Custom Tabs */}
+                                <div className="flex border-b-[3px] border-slate-900 bg-slate-50/50">
+                                    <button
+                                        onClick={() => setActiveTab('chat')}
+                                        className={clsx(
+                                            "flex-1 flex items-center justify-center gap-2 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                                            activeTab === 'chat' ? "bg-white border-r-[3px] border-slate-900 text-[#49B6E5]" : "text-slate-400 hover:text-slate-600 border-r-[3px] border-slate-900/5"
+                                        )}
+                                    >
+                                        <MessageCircle size={14} strokeWidth={3} /> Thảo luận
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('feedback')}
+                                        className={clsx(
+                                            "flex-1 flex items-center justify-center gap-2 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                                            activeTab === 'feedback' ? "bg-white text-emerald-500" : "text-slate-400 hover:text-slate-600 border-l-[3px] border-slate-900/5 text-slate-400"
+                                        )}
+                                    >
+                                        <History size={14} strokeWidth={3} /> Lịch sử phát âm
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-hidden">
+                                    <AnimatePresence mode="wait">
+                                        {activeTab === 'chat' ? (
+                                            <motion.div
+                                                key="chat"
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: 10 }}
+                                                className="h-full flex flex-col"
+                                            >
+                                                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/20">
+                                                    {chatLoading && messages.length === 0 ? (
+                                                        <div className="h-full flex items-center justify-center text-slate-300"><Sparkles className="animate-spin" size={32} /></div>
+                                                    ) : messages.length === 0 ? (
+                                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40">
+                                                            <Bot size={48} strokeWidth={1} className="mb-4" />
+                                                            <p className="text-[10px] font-black uppercase tracking-widest">Bắt đầu cuộc trò chuyện với {selectedStudent.fullName}</p>
+                                                        </div>
+                                                    ) : (
+                                                        messages.map((msg: any, idx) => {
+                                                            const isStudent = msg.senderId === selectedStudent.id;
+                                                            return (
+                                                                <motion.div
+                                                                    key={msg.id || idx}
+                                                                    initial={{ opacity: 0, y: 10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    className={clsx("flex flex-col", isStudent ? "items-start" : "items-end")}
+                                                                >
+                                                                    <div className={clsx(
+                                                                        "max-w-[80%] px-5 py-3 rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] font-bold text-xs leading-relaxed",
+                                                                        isStudent ? "bg-white text-slate-700 rounded-bl-none" : "bg-purple-100/30 text-slate-900 rounded-br-none"
+                                                                    )}>
+                                                                        {msg.content}
                                                                     </div>
-                                                                );
-                                                            })
-                                                        )}
-                                                        <div ref={chatEndRef} />
-                                                    </div>
+                                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2 px-1">
+                                                                        {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </motion.div>
+                                                            );
+                                                        })
+                                                    )}
+                                                    <div ref={chatEndRef} />
+                                                </div>
 
-                                                    {/* Input Area */}
-                                                    <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
-                                                        <Input
-                                                            placeholder="Lời khuyên cho học viên..."
-                                                            className="flex-1 h-8 rounded-lg border-slate-100 bg-slate-50 font-bold text-[10px]"
+                                                <div className="p-5 border-t-[3px] border-slate-900 bg-white">
+                                                    <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border-[2px] border-slate-900 shadow-inner">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Nhập lời khuyên hoặc hướng dẫn cho học viên..."
+                                                            className="flex-1 h-10 px-4 bg-transparent font-black text-[11px] uppercase tracking-wider focus:outline-none placeholder:text-slate-300"
                                                             value={messageInput}
                                                             onChange={e => setMessageInput(e.target.value)}
-                                                            onPressEnter={handleSendMessage}
+                                                            onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                                                         />
-                                                        <Button
-                                                            type="primary"
-                                                            className="h-8 px-3 rounded-lg font-black bg-purple-600 border-none shadow-sm flex items-center gap-1.5 text-[9px] uppercase"
-                                                            icon={<Send size={10} />}
+                                                        <button
                                                             onClick={handleSendMessage}
                                                             disabled={!messageInput.trim()}
+                                                            className="w-12 h-10 rounded-xl bg-[#49B6E5] border-[2px] border-slate-900 flex items-center justify-center text-white shadow-[3px_3px_0_#1f2937] hover:bg-blue-600 disabled:bg-slate-200 disabled:shadow-none disabled:border-slate-300 transition-all active:translate-y-0.5 active:shadow-sm"
                                                         >
-                                                            GỬI
-                                                        </Button>
+                                                            <Send size={18} strokeWidth={3} />
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            )
-                                        },
-                                        {
-                                            key: 'feedback',
-                                            label: (<span className="flex items-center gap-2 font-black px-6 py-3 text-[10px] uppercase tracking-wider"><History size={14} /> LỊCH SỬ</span>),
-                                            children: (
-                                                <div className="flex-1 flex flex-col h-full bg-slate-50/30 overflow-hidden">
-                                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                                                        {overallFeedbacks.length > 0 && (
-                                                            <div className="bg-amber-50 rounded-xl p-3 border border-amber-100/50 mb-3">
-                                                                <div className="flex items-center gap-1.5 mb-2">
-                                                                    <Star size={12} fill="currentColor" className="text-amber-500" />
-                                                                    <div className="font-black text-amber-800 text-[9px] uppercase">Nhận xét tổng thể ({overallFeedbacks.length})</div>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="feedback"
+                                                initial={{ opacity: 0, x: 10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -10 }}
+                                                className="h-full overflow-y-auto p-6 custom-scrollbar bg-slate-50/20 space-y-6"
+                                            >
+                                                {overallFeedbacks.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-1.5 h-4 bg-amber-400 rounded-full" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Lời khuyên định hướng ({overallFeedbacks.length})</h3>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {overallFeedbacks.map((f: any) => (
+                                                                <div key={f.id} className="p-4 bg-amber-50/50 rounded-2xl border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                                                    <p className="text-xs font-bold text-amber-900 italic leading-relaxed">"{f.comment}"</p>
+                                                                    <div className="mt-3 flex justify-between items-center text-[8px] font-black uppercase text-amber-700/50">
+                                                                        <span>By Teacher {f.educatorName}</span>
+                                                                        <span>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="space-y-1.5">
-                                                                    {overallFeedbacks.map((f) => (
-                                                                        <div key={f.id} className="bg-white/80 p-2 rounded-lg border border-white">
-                                                                            <Paragraph className="m-0 text-amber-900 font-bold italic text-[10px]">"{f.comment}"</Paragraph>
-                                                                            <div className="mt-1 flex justify-between items-center text-[7px] text-amber-700/40 font-black uppercase">
-                                                                                <span>By {f.educatorName}</span>
-                                                                                <span>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1.5 h-4 bg-purple-400 rounded-full" />
+                                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Nhật ký luyện tập chi tiết</h3>
+                                                    </div>
+                                                    {attemptsLoading ? (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-white rounded-2xl border-2 border-slate-100 animate-pulse" />)}
+                                                        </div>
+                                                    ) : attempts.length === 0 ? (
+                                                        <div className="py-20 text-center opacity-30 italic font-bold text-slate-400">Học viên chưa tham gia luyện tập nào</div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            {attempts.map((attempt, idx) => {
+                                                                const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
+                                                                const score = (attempt as any).groqScore || (attempt as any).geminiScore || (attempt as any).score || 0;
+                                                                return (
+                                                                    <motion.div
+                                                                        key={attempt.id}
+                                                                        initial={{ opacity: 0, y: 10 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        transition={{ delay: idx * 0.05 }}
+                                                                        className="group p-5 bg-white rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                                                                    >
+                                                                        <div className="flex justify-between items-start mb-4">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div
+                                                                                    className="w-10 h-10 rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center text-white font-black text-sm"
+                                                                                    style={{ backgroundColor: score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444' }}
+                                                                                >
+                                                                                    {score}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{new Date(attempt.createdAt).toLocaleDateString()}</div>
+                                                                                    <div className="text-[9px] font-bold text-slate-400">{new Date(attempt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                                                                </div>
                                                                             </div>
+                                                                            <button
+                                                                                onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }}
+                                                                                className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 border-[1.5px] border-slate-900 flex items-center justify-center hover:bg-purple-100 transition-all shadow-[2px_2px_0_#1f2937]"
+                                                                            >
+                                                                                <MessageSquare size={14} strokeWidth={3} />
+                                                                            </button>
                                                                         </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
 
-                                                        {attemptsLoading ? (
-                                                            <div className="py-20 text-center"><Sparkles className="animate-bounce text-purple-400 inline" size={24} /></div>
-                                                        ) : attempts.length === 0 ? (
-                                                            <Empty description="Chưa có lịch sử phát âm" className="mt-10" />
-                                                        ) : (
-                                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                                {(attempts || []).map((attempt, idx) => {
-                                                                    const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
-                                                                    const score = attempt.groqScore || attempt.geminiScore || (attempt as any).score || 0;
-                                                                    const feedbackText = attempt.groqFeedback || attempt.geminiFeedback || (attempt as any).feedback || "";
-
-                                                                    return (
-                                                                        <motion.div key={attempt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
-                                                                            <Card className="rounded-xl border border-slate-200 shadow-none hover:shadow-sm transition-all duration-300 bg-white group" bodyStyle={{ padding: '12px' }}>
-                                                                                <div className="flex justify-between items-center mb-2">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black shadow-sm text-xs`} style={{ backgroundColor: getScoreColor(score) }}>
-                                                                                            {score}
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <div className="text-[7px] font-black text-slate-300 uppercase leading-none">{new Date(attempt.createdAt).toLocaleDateString()}</div>
-                                                                                            <div className="text-[8px] font-bold text-slate-400 leading-none">{new Date(attempt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                                                                        </div>
+                                                                        <div className="space-y-3">
+                                                                            <div className="p-3 bg-slate-50 rounded-xl border-[1.5px] border-slate-900/10">
+                                                                                <div className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Mục tiêu âm đọc</div>
+                                                                                <div className="text-xs font-black text-slate-800 leading-relaxed italic">"{attempt.targetText}"</div>
+                                                                            </div>
+                                                                            <div className="p-3 bg-slate-50/50 rounded-xl border-[1.5px] border-slate-900/10">
+                                                                                <div className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Thực tế học viên đọc</div>
+                                                                                <div className="text-xs font-bold leading-relaxed">{highlightErrors(attempt.targetText, attempt.asrTranscription)}</div>
+                                                                            </div>
+                                                                            {educatorComment && (
+                                                                                <div className="p-3 bg-emerald-50/30 rounded-xl border-[1.5px] border-slate-900 border-dashed">
+                                                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                                                        <Zap size={10} className="text-emerald-500" fill="currentColor" />
+                                                                                        <span className="text-[8px] font-black text-emerald-700 uppercase tracking-widest">Lời khuyên của bạn</span>
                                                                                     </div>
-                                                                                    <Button shape="circle" size="small" icon={<MessageSquare size={10} />} className="text-purple-600 bg-purple-50 border-none h-6 w-6" onClick={() => { setSelectedAttempt(attempt); setFeedbackModalVisible(true); }} />
+                                                                                    <p className="text-xs font-black text-slate-900 italic leading-relaxed">"{educatorComment.comment}"</p>
                                                                                 </div>
-
-                                                                                <div className="space-y-1.5">
-                                                                                    <div className="text-[10px] font-bold text-slate-400 italic">Mục tiêu: "{attempt.targetText}"</div>
-                                                                                    <div className="text-[10px] font-black text-slate-700 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                                                                                        {highlightErrors(attempt.targetText, attempt.asrTranscription)}
-                                                                                    </div>
-
-                                                                                    {feedbackText && (
-                                                                                        <div className="flex items-start gap-1.5 p-1.5 bg-purple-50/30 rounded-lg border border-purple-50/50">
-                                                                                            <Bot size={12} className="text-purple-400 flex-shrink-0 mt-0.5" />
-                                                                                            <Paragraph className="text-[9px] text-slate-500 font-bold leading-tight m-0 italic line-clamp-1">"{feedbackText}"</Paragraph>
-                                                                                        </div>
-                                                                                    )}
-
-                                                                                    {educatorComment && (
-                                                                                        <div className="p-1.5 bg-orange-50/30 rounded-lg border border-orange-100/50 border-dashed">
-                                                                                            <Paragraph className="text-[10px] text-purple-900 font-black m-0 line-clamp-1 italic">"{educatorComment.comment}"</Paragraph>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </Card>
-                                                                        </motion.div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </motion.div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )
-                                        }
-                                    ]}
-                                />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
+            </main>
 
-            {/* Modal Gửi Nhận Xét */}
+            {/* Doodle Feedback Modal */}
             <Modal
                 title={null}
                 open={feedbackModalVisible}
                 onCancel={() => { setFeedbackModalVisible(false); setSelectedAttempt(null); }}
                 footer={null}
                 centered
-                width={450}
-                className="premium-modal-compact"
-                bodyStyle={{ padding: 0 }}
+                width={480}
+                className="doodle-modal"
+                styles={{ body: { padding: 0 } }}
             >
-                <div className="overflow-hidden rounded-2xl">
-                    <div className="bg-gradient-to-br from-purple-700 to-indigo-800 p-6 text-white">
-                        <Title level={5} className="!text-white !m-0 !font-black !text-sm uppercase tracking-widest">Gửi nhận xét giáo viên</Title>
-                    </div>
-                    <div className="p-6 space-y-4">
+                <div className="bg-white rounded-[2rem] border-[4px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden">
+                    <header className="bg-[#8b5cf6] p-6 border-b-[4px] border-slate-900 flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-white">
+                            <Sparkles size={24} strokeWidth={3} />
+                            <h3 className="text-lg font-black uppercase tracking-widest">Gửi lời tư vấn</h3>
+                        </div>
+                        <button onClick={() => setFeedbackModalVisible(false)} className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all">
+                            <X size={20} strokeWidth={3} />
+                        </button>
+                    </header>
+
+                    <div className="p-8 space-y-6">
                         {selectedAttempt ? (
-                            <div className="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-100">
-                                <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Mục tiêu luyện tập</Text>
-                                <div className="text-sm font-bold text-slate-700 italic">"{selectedAttempt.targetText}"</div>
-                                <div className="flex items-center gap-2 pt-1">
-                                    <div className="px-3 py-1 bg-white rounded-full border border-purple-50 shadow-sm text-[10px] font-black text-purple-600">
-                                        {selectedAttempt.geminiScore || selectedAttempt.groqScore} Điểm AI
-                                    </div>
+                            <div className="p-5 bg-slate-50 rounded-2xl border-[2.5px] border-slate-900 border-dashed space-y-3 shadow-inner">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phân tích lỗi sai</div>
+                                <div className="text-base font-black text-slate-800 italic leading-snug">"{selectedAttempt.targetText}"</div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border-[2px] border-slate-900 rounded-xl text-[10px] font-black text-[#49B6E5]">
+                                    {(selectedAttempt as any).geminiScore || (selectedAttempt as any).groqScore || 0}% Accuracy
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-center gap-2">
-                                <Star className="text-amber-500" size={14} />
-                                <Text className="font-bold text-amber-800 text-[10px]">Nhận xét định hướng học tập dài hạn.</Text>
+                            <div className="p-4 bg-amber-50 rounded-2xl border-[2px] border-slate-900 flex items-center gap-3">
+                                <Star className="text-amber-500 fill-amber-500" size={18} />
+                                <span className="font-black text-amber-900 text-xs uppercase tracking-tight leading-none">Lời khuyên chiến lược dài hạn</span>
                             </div>
                         )}
 
-                        <div className="space-y-2">
-                            <Text className="text-[9px] font-black text-slate-700 uppercase tracking-wide">Lời khuyên của chuyên gia</Text>
-                            <TextArea
-                                placeholder="Nhập nhận xét chi tiết giúp học viên tiến bộ..."
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                <Bot size={16} className="text-[#49B6E5]" strokeWidth={3} /> Lời nhắn gửi đến học viên
+                            </label>
+                            <textarea
+                                placeholder="Hãy cho học viên biết họ cần cải thiện điều gì cụ thể..."
                                 rows={4}
                                 value={comment}
                                 onChange={e => setComment(e.target.value)}
-                                className="rounded-xl p-3 text-xs bg-slate-50 border-slate-200 focus:bg-white transition-all font-bold"
+                                className="w-full p-5 rounded-2xl border-[3px] border-slate-900 bg-slate-50 font-bold text-xs leading-relaxed focus:bg-white focus:outline-none focus:ring-8 focus:ring-[#8b5cf6]/10 transition-all placeholder:text-slate-300"
                             />
                         </div>
 
-                        <Button
-                            type="primary"
-                            block
-                            size="middle"
-                            className="rounded-xl h-10 font-black shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-[11px] uppercase tracking-widest"
+                        <button
                             onClick={handleSendFeedback}
                             disabled={!comment.trim()}
+                            className="w-full py-4 rounded-2xl bg-[#8b5cf6] border-[3px] border-slate-900 text-white font-black text-sm uppercase tracking-[0.2em] shadow-[6px_6px_0_#1f2937] hover:-translate-y-1 hover:shadow-[10px_10px_0_#1f2937] active:translate-y-0.5 active:shadow-sm transition-all disabled:bg-slate-200 disabled:border-slate-300 disabled:shadow-none"
                         >
-                            XÁC NHẬN GỬI
-                        </Button>
+                            Xác nhận gửi lời nhắn
+                        </button>
                     </div>
                 </div>
             </Modal>
-            <style>{`
-                /* Ensure Tabs component fills container */
-                .premium-tabs-compact {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                }
-                .premium-tabs-compact .ant-tabs-content-holder {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 0;
-                }
-                .premium-tabs-compact .ant-tabs-content {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                }
-                .premium-tabs-compact .ant-tabs-tabpane-hidden {
-                    display: none !important;
-                }
-                .premium-tabs-compact .ant-tabs-tabpane {
-                    display: flex !important;
-                    flex-direction: column;
-                    height: 100%;
-                    min-height: 0;
-                }
-                .premium-tabs-compact .ant-tabs-tabpane.ant-tabs-tabpane-hidden {
-                    display: none !important;
-                }
-                .premium-tabs-compact .ant-tabs-nav {
-                    margin-bottom: 0 !important;
-                    background: white;
-                    border-bottom: 1px solid #f1f5f9;
-                }
-                .premium-tabs-compact .ant-tabs-nav .ant-tabs-tab {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                }
-            `}</style>
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            `}} />
         </div>
     );
 };

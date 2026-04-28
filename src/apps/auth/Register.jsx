@@ -1,11 +1,5 @@
 import React, { useState } from 'react'
-import {
-  Steps,
-  Form,
-  Input,
-  Button,
-  message,
-} from 'antd'
+import { Steps, Form, Input, Button, message } from 'antd'
 import { useNavigate, Link } from 'react-router-dom'
 import { registerAPI } from '../../services/authService'
 import {
@@ -20,6 +14,8 @@ import {
   ShieldCheck,
   Home,
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DoodleLoading } from '../../components/ui/DoodleLoading'
 
 const passwordRules = [
   { required: true, message: 'Vui lòng nhập mật khẩu' },
@@ -34,15 +30,9 @@ const passwordRules = [
 ]
 
 const steps = [
-  {
-    title: 'Tài Khoản',
-  },
-  {
-    title: 'Thông Tin',
-  },
-  {
-    title: 'Xác Nhận',
-  },
+  { title: 'Tài Khoản' },
+  { title: 'Thông Tin' },
+  { title: 'Hoàn Tất' },
 ]
 
 export default function Register() {
@@ -62,7 +52,6 @@ export default function Register() {
       await form.validateFields(fields)
       setCurrent(current + 1)
     } catch {
-      // validation errors are already shown by antd
     }
   }
 
@@ -100,7 +89,6 @@ export default function Register() {
         }
         return
       }
-      // Check for backend errors (e.g., email/phone already exists)
       const backendMsg = err?.response?.data?.message
       message.error(backendMsg ?? err?.message ?? 'Đăng ký thất bại. Vui lòng thử lại.')
     } finally {
@@ -108,260 +96,258 @@ export default function Register() {
     }
   }
 
-  const values = current === 2 ? form.getFieldsValue(true) : {}
+  const currentValues = current === 2 ? form.getFieldsValue(true) : {}
 
   const renderStepContent = () => {
-    if (current === 0) {
-      return (
-        <div className="animate-fadeIn space-y-3">
-          <Form.Item
-            name="email"
-            rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
-            ]}
-          >
-            <Input
-              prefix={<Mail className="text-purple-600/60 w-5 h-5 mr-1" />}
-              placeholder="Địa chỉ Email"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
-            />
-          </Form.Item>
-
-          <Form.Item name="password" rules={passwordRules}>
-            <Input.Password
-              prefix={<Lock className="text-purple-600/60 w-5 h-5 mr-1" />}
-              placeholder="Mật khẩu"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="confirmPassword"
-            dependencies={['password']}
-            rules={[
-              { required: true, message: 'Vui lòng xác nhận mật khẩu' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve()
-                  }
-                  return Promise.reject(new Error('Mật khẩu không khớp!'))
-                },
-              }),
-            ]}
-          >
-            <Input.Password
-              prefix={<ShieldCheck className="text-purple-600/60 w-5 h-5 mr-1" />}
-              placeholder="Nhập lại mật khẩu"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
-            />
-          </Form.Item>
-        </div>
-      )
-    }
-
-    if (current === 1) {
-      return (
-        <div className="animate-fadeIn space-y-3">
-          <Form.Item
-            name="fullName"
-            rules={[
-              { required: true, message: 'Vui lòng nhập họ tên' },
-              { min: 2, message: 'Họ tên tối thiểu 2 ký tự' },
-              { max: 50, message: 'Họ tên tối đa 50 ký tự' }
-            ]}
-          >
-            <Input
-              prefix={<User className="text-purple-600/60 w-5 h-5 mr-1" />}
-              placeholder="Họ và Tên"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="phone"
-            rules={[
-              { required: true, message: 'Vui lòng nhập số điện thoại' },
-              { pattern: /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])\d{7}$/, message: 'Số điện thoại Việt Nam không hợp lệ (VD: 0912345678)' },
-            ]}
-          >
-            <Input
-              prefix={<Phone className="text-purple-600/60 w-5 h-5 mr-1" />}
-              placeholder="Số điện thoại"
-              className="rounded-2xl py-2.5 px-3 bg-gray-50/50 border-gray-200 hover:bg-white focus:bg-white focus:border-purple-600 focus:shadow-[0_0_0_4px_rgba(168,85,247,0.1)] transition-all text-base"
-            />
-          </Form.Item>
-        </div>
-      )
-    }
-
     return (
-      <div className="animate-fadeIn">
-        <div className="bg-gradient-to-br from-purple-50 to-orange-50/30 p-5 rounded-[1.5rem] border border-purple-100 mb-4 shadow-inner relative overflow-hidden">
-          <div className="absolute -top-6 -right-6 w-24 h-24 bg-purple-600/10 rounded-full blur-2xl"></div>
-          <h3 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-600 mb-4 flex items-center gap-2">
-            <CheckCircle className="text-purple-600" size={20} /> Xác nhận thông tin
-          </h3>
-          <ul className="space-y-3 text-sm relative z-10">
-            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
-              <span className="text-gray-500 font-medium flex items-center gap-2">
-                <Mail size={16} className="text-orange-500" /> Email
-              </span>
-              <span className="font-bold text-gray-800">{values.email}</span>
-            </li>
-            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
-              <span className="text-gray-500 font-medium flex items-center gap-2">
-                <User size={16} className="text-orange-500" /> Họ tên
-              </span>
-              <span className="font-bold text-gray-800">{values.fullName}</span>
-            </li>
-            <li className="flex justify-between items-center bg-white/60 p-2.5 rounded-xl">
-              <span className="text-gray-500 font-medium flex items-center gap-2">
-                <Phone size={16} className="text-orange-500" /> SĐT
-              </span>
-              <span className="font-bold text-gray-800">{values.phone}</span>
-            </li>
-          </ul>
-        </div>
-        <div className="text-center text-xs text-gray-400 font-medium">
-          Bằng việc nhấn "Đăng Ký", bạn đồng ý với{' '}
-          <a href="#" className="text-purple-600 font-bold hover:underline">
-            điều khoản sử dụng
-          </a>{' '}
-          của SpeakVN.
-        </div>
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-4"
+        >
+          {current === 0 && (
+            <>
+              <Form.Item
+                name="email"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập email' },
+                  { type: 'email', message: 'Email không hợp lệ' },
+                ]}
+              >
+                <Input
+                  prefix={<Mail size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+                  placeholder="Địa chỉ Email"
+                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+                />
+              </Form.Item>
+
+              <Form.Item name="password" rules={passwordRules}>
+                <Input.Password
+                  prefix={<Lock size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+                  placeholder="Mật khẩu"
+                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                dependencies={['password']}
+                rules={[
+                  { required: true, message: 'Vui lòng xác nhận mật khẩu' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('password') === value) {
+                        return Promise.resolve()
+                      }
+                      return Promise.reject(new Error('Mật khẩu không khớp!'))
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  prefix={<ShieldCheck size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+                  placeholder="Nhập lại mật khẩu"
+                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+                />
+              </Form.Item>
+            </>
+          )}
+
+          {current === 1 && (
+            <>
+              <Form.Item
+                name="fullName"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập họ tên' },
+                  { min: 2, message: 'Họ tên tối thiểu 2 ký tự' },
+                  { max: 50, message: 'Họ tên tối đa 50 ký tự' }
+                ]}
+              >
+                <Input
+                  prefix={<User size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+                  placeholder="Họ và Tên"
+                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="phone"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập số điện thoại' },
+                  { pattern: /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])\d{7}$/, message: 'Số điện thoại Việt Nam không hợp lệ' },
+                ]}
+              >
+                <Input
+                  prefix={<Phone size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+                  placeholder="Số điện thoại"
+                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+                />
+              </Form.Item>
+            </>
+          )}
+
+          {current === 2 && (
+            <div className="bg-orange-50 p-6 rounded-[2rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] mb-4">
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
+                <CheckCircle className="text-green-500" size={20} strokeWidth={3} /> Xác nhận
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Email</span>
+                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.email}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Họ tên</span>
+                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.fullName}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">SĐT</span>
+                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.phone}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     )
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-purple-50 via-orange-50/50 to-pink-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
-      {/* Back to Home Button */}
+    <div className="h-screen w-full bg-[#fbf6ef] flex items-center justify-center p-4 sm:p-2 font-nunito relative overflow-hidden">
+
+      {/* Decorative Doodles */}
+      <div className="absolute top-10 right-10 pointer-events-none opacity-20">
+        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" stroke="currentColor" className="text-slate-900 animate-float">
+          <path d="M20,20 L80,80 M80,20 L20,80" strokeWidth="3" fill="none" />
+        </svg>
+      </div>
+
       <Link
         to="/"
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-md border border-gray-200/50 rounded-full shadow-sm text-gray-500 hover:text-purple-600 hover:bg-white hover:shadow-md transition-all group font-bold text-sm"
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-5 py-2.5 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-slate-900 hover:bg-sky-50 transition-all font-black text-xs uppercase tracking-widest active:translate-y-0.5 active:shadow-none"
       >
-        <Home size={16} className="group-hover:-translate-x-1 transition-transform" />
+        <Home size={16} strokeWidth={2.5} />
         Về Trang Chủ
       </Link>
 
-      {/* Decorative background blur elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[25rem] h-[25rem] bg-purple-600/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob"></div>
-      <div className="absolute top-[-10%] right-[-10%] w-[25rem] h-[25rem] bg-orange-500/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{ animationDelay: '2s' }}></div>
-      <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-pink-300/20 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob" style={{ animationDelay: '4s' }}></div>
-
-      {/* Main Card Container */}
-      <div className="w-full max-w-xl bg-white/80 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60 relative z-10 flex flex-col transition-all duration-500 max-h-[95dvh] overflow-y-auto custom-scrollbar">
-
-        {/* Header Section */}
-        <div className="text-center pt-6 pb-2 px-6 md:px-10 shrink-0">
-          <div className="mx-auto inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-orange-500 text-white shadow-lg shadow-teal-500/30 mb-2">
-            <Sparkles size={24} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-[550px] h-full max-h-[620px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] p-6 md:p-8 relative z-10"
+      >
+        <div className="text-center mb-6">
+          <div className="mx-auto w-10 h-10 rounded-2xl bg-orange-400 border-[2.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center mb-3">
+            <Sparkles size={20} className="text-white" strokeWidth={3} />
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-600 mb-1">
-            SpeakVN Journey
-          </h1>
-          <p className="text-gray-500 font-medium text-sm md:text-base">
-            Khởi tạo hồ sơ để cá nhân hóa lộ trình của bạn.
-          </p>
+          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight font-nunito">Đăng Ký</h1>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Bắt đầu hành trình của bạn</p>
         </div>
 
-        {/* Form Section */}
-        <div className="px-6 pb-6 md:px-10 pt-2 flex-1 flex flex-col">
-          <div className="px-2 mb-4 shrink-0">
-            <Steps
-              current={current}
-              size="small"
-              className="site-navigation-steps custom-steps font-medium"
-              items={steps}
-            />
+        <div className="mb-6 px-4">
+          <Steps
+            current={current}
+            size="small"
+            items={steps}
+            className="doodle-steps"
+          />
+        </div>
+
+        <Form layout="vertical" form={form} className="doodle-form">
+          <div className="min-h-[220px]">
+            {renderStepContent()}
           </div>
 
-          <style>{`
-            .custom-steps .ant-steps-item-process .ant-steps-item-icon {
-              background: linear-gradient(to right, #a855f7, #f97316) !important;
-              border: none !important;
-            }
-            .custom-steps .ant-steps-item-finish .ant-steps-item-icon {
-              border-color: #a855f7 !important;
-            }
-            .custom-steps .ant-steps-item-finish .ant-steps-icon {
-              color: #a855f7 !important;
-            }
-            .custom-steps .ant-steps-item-title {
-              font-weight: 600 !important;
-              font-size: 13px !important;
-            }
-            .custom-scrollbar::-webkit-scrollbar {
-              width: 6px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-              background-color: rgba(20, 184, 166, 0.2);
-              border-radius: 20px;
-            }
-          `}</style>
-
-          <Form
-            layout="vertical"
-            form={form}
-            size="middle"
-            className="flex-1 flex flex-col justify-between"
-          >
-            <div className="min-h-[200px]">
-              {renderStepContent()}
-            </div>
-
-            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100/80 shrink-0">
-              {current > 0 ? (
-                <Button
-                  onClick={prev}
-                  className="rounded-xl h-11 px-5 border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 flex items-center gap-2 font-bold text-sm transition-all"
-                >
-                  <ArrowLeft size={18} /> Quay lại
-                </Button>
-              ) : (
-                <div />
-              )}
-
-              {current < steps.length - 1 ? (
-                <Button
-                  type="primary"
-                  onClick={next}
-                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 border-none shadow-[0_8px_15px_rgb(168,85,247,0.2)] hover:shadow-[0_12px_20px_rgb(168,85,247,0.3)] flex items-center gap-2 font-bold text-sm transition-all transform hover:-translate-y-0.5"
-                >
-                  Tiếp tục <ArrowRight size={18} />
-                </Button>
-              ) : (
-                <Button
-                  type="primary"
-                  onClick={onSubmit}
-                  loading={submitting}
-                  className="rounded-xl h-11 px-6 bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-700 hover:to-orange-600 border-none shadow-[0_8px_15px_rgb(168,85,247,0.2)] hover:shadow-[0_12px_20px_rgb(168,85,247,0.3)] font-bold text-sm flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
-                >
-                  Khởi Tạo Tài Khoản <CheckCircle size={18} />
-                </Button>
-              )}
-            </div>
-          </Form>
-
-          <div className="mt-4 text-center pt-4 relative shrink-0">
-            <div className="absolute inset-0 top-4 border-t border-gray-100/80 pointer-events-none"></div>
-            <p className="text-gray-500 text-sm relative z-10 bg-white/80 inline-block px-4 font-medium backdrop-blur-md rounded-full">
-              Đã có tài khoản?{' '}
-              <Link
-                to="/login"
-                className="text-purple-600 font-extrabold hover:text-purple-800 transition-colors hover:underline ml-1"
+          <div className="flex justify-between items-center mt-6">
+            {current > 0 ? (
+              <Button
+                onClick={prev}
+                className="h-10 px-5 rounded-xl border-[2.5px] border-slate-900 bg-white shadow-[2px_2px_0_#1f2937] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all active:translate-y-0.5 active:shadow-none"
               >
-                Đăng nhập ngay
-              </Link>
-            </p>
+                <ArrowLeft size={14} strokeWidth={3} /> Quay lại
+              </Button>
+            ) : <div />}
+
+            {current < steps.length - 1 ? (
+              <Button
+                type="primary"
+                onClick={next}
+                className="h-10 px-6 rounded-xl bg-[#49B6E5] text-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+              >
+                Tiếp tục <ArrowRight size={14} strokeWidth={3} />
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                onClick={onSubmit}
+                loading={submitting}
+                className="h-10 px-6 rounded-xl bg-green-500 text-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+              >
+                Hoàn Tất <CheckCircle size={14} strokeWidth={3} />
+              </Button>
+            )}
           </div>
+        </Form>
+
+        <div className="mt-8 text-center border-t-[2px] border-slate-100 pt-4">
+          <Link to="/login" className="text-slate-400 hover:text-slate-600 font-black text-[9px] uppercase tracking-widest transition-colors flex flex-col items-center group">
+            Đã có tài khoản?
+            <span className="text-[#49B6E5] text-xs tracking-wider group-hover:underline">Đăng nhập ngay</span>
+          </Link>
         </div>
-      </div>
+      </motion.div>
+
+      <style>{`
+        .doodle-form .ant-input-affix-wrapper {
+          border: 2.5px solid #1f2937 !important;
+          border-radius: 1rem !important;
+          padding: 0 16px !important;
+          box-shadow: 2px 2px 0 #1f2937 !important;
+          transition: all 0.2s ease !important;
+          background-color: #f8fafc !important;
+        }
+        .doodle-form .ant-input-affix-wrapper:hover {
+          box-shadow: 4px 4px 0 #1f2937 !important;
+          transform: translate(-1px, -1px);
+        }
+        .doodle-form .ant-input-affix-wrapper-focused {
+          box-shadow: 4px 4px 0 #1f2937 !important;
+          border-color: #49B6E5 !important;
+          background-color: white !important;
+        }
+        .doodle-form .ant-form-item-explain-error {
+          font-size: 9px;
+          text-transform: uppercase;
+          font-weight: 900;
+          margin-top: 4px;
+          color: #ef4444;
+        }
+        .doodle-steps .ant-steps-item-process .ant-steps-item-icon {
+          background-color: #49B6E5 !important;
+          border: 2px solid #1f2937 !important;
+          box-shadow: 2px 2px 0 #1f2937 !important;
+        }
+        .doodle-steps .ant-steps-item-finish .ant-steps-item-icon {
+          background-color: #white !important;
+          border: 2px solid #1f2937 !important;
+          color: #49B6E5 !important;
+        }
+        .doodle-steps .ant-steps-item-title {
+          font-family: 'Nunito', sans-serif !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          font-size: 10px !important;
+          letter-spacing: 0.05em !important;
+          color: #1f2937 !important;
+        }
+        .doodle-steps .ant-steps-item-finish .ant-steps-item-title::after {
+            background-color: #1f2937 !important;
+            height: 2px !important;
+        }
+      `}</style>
     </div>
   )
 }

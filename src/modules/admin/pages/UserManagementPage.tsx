@@ -1,23 +1,23 @@
 import React, { useMemo, useState, useRef } from 'react'
 import {
-    Table, Input, Tag, Space, Button, Tooltip, Avatar,
-    Modal, Form, message, Select, Upload, Alert, Badge, Segmented
+    Table, Modal, Form, Input, Select, message, Upload, Spin
 } from 'antd'
 import {
-    SearchOutlined, UserOutlined, PlusOutlined,
-    UploadOutlined, DownloadOutlined, CheckCircleOutlined,
-    StopOutlined, EditOutlined, LockOutlined, UnlockOutlined,
-    UserAddOutlined, TeamOutlined
-} from '@ant-design/icons'
-import { motion } from 'framer-motion'
+    Search, UserPlus, Upload as UploadIcon, Download,
+    CheckCircle2, ShieldAlert, Edit3, Lock, Unlock,
+    Users, LayoutGrid, FileSpreadsheet, XCircle,
+    User, Mail, Phone, MapPin, Zap, ChevronRight
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { adminService } from '../services/adminService'
 import { adminExcelService } from '../services/adminExcelService'
 import { downloadBlob } from '../../educator/services/excelService'
+import clsx from 'clsx'
 
-const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    EDUCATOR: { label: 'Giáo viên', color: '#7c3aed', bg: '#f5f3ff' },
-    USER: { label: 'Học viên', color: '#0ea5e9', bg: '#f0f9ff' },
-    ADMIN: { label: 'Quản trị', color: '#dc2626', bg: '#fef2f2' },
+const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+    EDUCATOR: { label: 'Giáo viên', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+    USER: { label: 'Học viên', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+    ADMIN: { label: 'Quản trị', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
 }
 
 const UserManagementPage = () => {
@@ -77,13 +77,12 @@ const UserManagementPage = () => {
     const handleCreateUser = async (values: any) => {
         try {
             setSubmitting(true)
-            const res: any = await adminService.createUser({
+            await adminService.createUser({
                 email: values.email,
                 fullName: values.fullName,
                 role: values.role,
             })
-            const roleName = ROLE_CONFIG[values.role]?.label || values.role
-            message.success(`Tạo tài khoản ${roleName} thành công! Mật khẩu đã gửi qua email.`)
+            message.success(`Tạo tài khoản thành công! Mật khẩu đã gửi qua email.`)
             setIsCreateOpen(false)
             createForm.resetFields()
             fetchUsers()
@@ -146,7 +145,8 @@ const UserManagementPage = () => {
 
     const handleImport = async () => {
         if (!importFile) { message.warning('Vui lòng chọn file Excel'); return }
-        setImporting(true); setImportResult(null)
+        setImporting(true)
+        setImportResult(null)
         try {
             const res: any = await adminExcelService.importTeachers(importFile)
             setImportResult(res?.data || res)
@@ -162,7 +162,6 @@ const UserManagementPage = () => {
     const totalUser = users.filter(u => (u.roleCode || '').toUpperCase() === 'USER').length
     const totalActive = users.filter(u => u.isActive).length
     const totalBanned = users.filter(u => !u.isActive).length
-    const totalUsers = users.length
 
     /* ── Filter ── */
     const filtered = useMemo(() => users.filter(u => {
@@ -179,338 +178,502 @@ const UserManagementPage = () => {
     /* ── Columns ── */
     const columns = [
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">STT</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-4">ID</span>,
             key: 'stt',
-            width: 60,
+            width: 80,
             align: 'center' as const,
             render: (_: any, __: any, idx: number) => (
-                <span className="font-bold text-gray-400 text-sm">{idx + 1}</span>
+                <div className="w-8 h-8 rounded-lg bg-slate-50 border-[2px] border-slate-900 shadow-[2px_2px_0_#1f293705] flex items-center justify-center font-black text-slate-400 text-xs italic">
+                    {idx + 1}
+                </div>
             ),
         },
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Người dùng</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Người dùng</span>,
             dataIndex: 'fullName',
             key: 'fullName',
             render: (name: string, record: any) => (
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Avatar
-                            src={record.avatar_url || record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
-                            icon={<UserOutlined />}
-                            className="w-10 h-10 rounded-xl"
-                            style={{ borderRadius: 10 }}
-                        />
-                        {record.isActive
-                            ? <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
-                            : <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-red-400 rounded-full border-2 border-white" />
-                        }
+                <div className="flex items-center gap-3 py-2">
+                    <div className="relative group/avatar">
+                        <div className="w-11 h-11 rounded-2xl border-[2.5px] border-slate-900 bg-white shadow-[3px_3px_0_#1f2937] overflow-hidden group-hover/avatar:rotate-3 transition-transform">
+                            <img
+                                src={record.avatar_url || record.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.id}`}
+                                alt={name}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                        <div className={clsx(
+                            "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2px] border-white shadow-sm",
+                            record.isActive ? "bg-emerald-500" : "bg-rose-500"
+                        )} />
                     </div>
                     <div>
-                        <div className="font-bold text-gray-800 text-sm leading-tight">{name}</div>
-                        <div className="text-xs text-gray-400">{record.email}</div>
+                        <div className="text-sm font-black text-slate-900 uppercase tracking-tight">{name}</div>
+                        <div className="text-[10px] font-bold text-slate-400 italic leading-none mt-0.5">{record.email}</div>
                     </div>
                 </div>
             ),
         },
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Vai trò</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vai trò</span>,
             dataIndex: 'roleCode',
             key: 'roleCode',
             render: (role: string) => {
                 const key = (role || '').toUpperCase()
-                const cfg = ROLE_CONFIG[key] || { label: key, color: '#64748b', bg: '#f1f5f9' }
+                const cfg = ROLE_CONFIG[key] || { label: key, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' }
                 return (
-                    <span
-                        className="text-xs font-black px-2.5 py-1 rounded-lg"
-                        style={{ color: cfg.color, backgroundColor: cfg.bg }}
-                    >
+                    <div className={clsx("inline-flex items-center px-3 py-1 rounded-full border-[2px] font-black text-[9px] uppercase tracking-widest", cfg.bg, cfg.color, cfg.border)}>
                         {cfg.label}
-                    </span>
+                    </div>
                 )
             },
         },
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Trạng thái</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái</span>,
             dataIndex: 'isActive',
             key: 'isActive',
             render: (_: any, record: any) => record.isActive ? (
-                <Tag icon={<CheckCircleOutlined />} color="success" className="font-bold rounded-lg">Hoạt động</Tag>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border-[2px] border-emerald-200 text-emerald-600 font-black text-[9px] uppercase tracking-widest">
+                    <CheckCircle2 size={10} strokeWidth={4} />
+                    Hoạt động
+                </div>
             ) : (
-                <Tag icon={<StopOutlined />} color="error" className="font-bold rounded-lg">Đã khóa</Tag>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 border-[2px] border-rose-200 text-rose-600 font-black text-[9px] uppercase tracking-widest">
+                    <ShieldAlert size={10} strokeWidth={4} />
+                    Đã khóa
+                </div>
             ),
         },
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tham gia</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tham gia</span>,
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (date: string) => (
-                <span className="text-sm text-gray-500 font-medium">
-                    {date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A'}
-                </span>
+                <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
+                    {date ? new Date(date).toLocaleDateString('vi-VN') : '—'}
+                </div>
             ),
         },
         {
-            title: <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Thao tác</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Thao tác</span>,
             key: 'action',
-            align: 'center' as const,
+            align: 'right' as const,
             render: (_: any, record: any) => (
-                <Space size={4}>
-                    <Tooltip title="Chỉnh sửa">
-                        <Button
-                            type="text" shape="circle"
-                            icon={<EditOutlined style={{ color: '#f59e0b' }} />}
-                            onClick={() => handleOpenEdit(record)}
-                        />
-                    </Tooltip>
+                <div className="flex items-center justify-end gap-2 pr-4">
+                    <button
+                        onClick={() => handleOpenEdit(record)}
+                        className="p-2.5 rounded-xl border-[2px] border-transparent hover:border-slate-900/10 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all"
+                    >
+                        <Edit3 size={18} strokeWidth={3} />
+                    </button>
                     {record.isActive ? (
-                        <Tooltip title="Khóa tài khoản">
-                            <Button
-                                type="text" shape="circle" danger
-                                icon={<LockOutlined />}
-                                onClick={() => handleToggleStatus(record)}
-                            />
-                        </Tooltip>
+                        <button
+                            onClick={() => handleToggleStatus(record)}
+                            className="p-2.5 rounded-xl border-[2px] border-transparent hover:border-rose-500/10 hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-all"
+                        >
+                            <Lock size={18} strokeWidth={3} />
+                        </button>
                     ) : (
-                        <Tooltip title="Mở khóa tài khoản">
-                            <Button
-                                type="text" shape="circle"
-                                icon={<UnlockOutlined style={{ color: '#16a34a' }} />}
-                                onClick={() => handleToggleStatus(record)}
-                            />
-                        </Tooltip>
+                        <button
+                            onClick={() => handleToggleStatus(record)}
+                            className="p-2.5 rounded-xl border-[2px] border-transparent hover:border-emerald-500/10 hover:bg-emerald-50 text-slate-400 hover:text-emerald-500 transition-all"
+                        >
+                            <Unlock size={18} strokeWidth={3} />
+                        </button>
                     )}
-                </Space>
+                </div>
             ),
         },
     ]
 
     return (
-        <div className="p-6 min-h-screen bg-gray-50">
-
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <div>
-                    <p className="text-sm text-gray-400 font-medium mt-0.5">Thống kê và quản lý tài khoản học viên, giáo viên</p>
+        <div className="min-h-screen bg-[#fbf6ef] font-nunito p-8 space-y-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý Tài khoản</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Phân quyền và giám sát trạng thái học viên & cộng tác viên</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <Button icon={<DownloadOutlined />} loading={templateDownloading} onClick={downloadTemplate}
-                        className="rounded-xl h-10 font-semibold border-gray-200">
-                        Template
-                    </Button>
-                    <Button icon={<UploadOutlined />}
-                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportOpen(true) }}
-                        className="rounded-xl h-10 font-semibold border-gray-200">
-                        Import
-                    </Button>
-                    <Button icon={<DownloadOutlined />} onClick={handleExport}
-                        className="rounded-xl h-10 font-semibold border-gray-200">
-                        Export
-                    </Button>
-                    <Button
-                        type="primary" icon={<UserAddOutlined />}
-                        onClick={() => setIsCreateOpen(true)}
-                        className="rounded-xl h-10 font-bold border-none"
-                        style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', boxShadow: '0 4px 12px rgba(147,51,234,0.35)' }}
+
+                <div className="flex items-center gap-4">
+                    <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={downloadTemplate}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all"
                     >
+                        <FileSpreadsheet size={16} strokeWidth={3} />
+                        Template
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportOpen(true) }}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
+                    >
+                        <UploadIcon size={16} strokeWidth={3} />
+                        Import
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setIsCreateOpen(true)}
+                        className="flex items-center gap-2 h-12 px-8 bg-[#49B6E5] border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-xs font-black uppercase tracking-widest text-white transition-all"
+                    >
+                        <UserPlus size={18} strokeWidth={4} />
                         Thêm người dùng
-                    </Button>
+                    </motion.button>
                 </div>
             </div>
 
-            {/* ── Stats ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Tổng người dùng', val: totalUsers, icon: <TeamOutlined />, color: '#9333ea', bg: '#faf5ff' },
-                    { label: 'Đang hoạt động', val: totalActive, icon: <CheckCircleOutlined />, color: '#0ea5e9', bg: '#f0f9ff' },
-                    { label: 'Giáo viên', val: totalEducator, icon: <UserAddOutlined />, color: '#10b981', bg: '#f0fdf4' },
-                    { label: 'Đã khóa', val: totalBanned, icon: <LockOutlined />, color: '#ef4444', bg: '#fef2f2' },
-                ].map(({ label, val, icon, color, bg }, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                            style={{ backgroundColor: bg, color }}>
-                            {icon}
+                    { label: 'Tổng người dùng', value: users.length, icon: Users, color: '#8b5cf6', bg: 'bg-violet-50' },
+                    { label: 'Đang hoạt động', value: totalActive, icon: CheckCircle2, color: '#10b981', bg: 'bg-emerald-50' },
+                    { label: 'Giáo viên', value: totalEducator, icon: UserPlus, color: '#49B6E5', bg: 'bg-blue-50' },
+                    { label: 'Tài khoản khóa', value: totalBanned, icon: Lock, color: '#ef4444', bg: 'bg-rose-50' },
+                ].map((card) => {
+                    const Icon = card.icon
+                    return (
+                        <motion.article
+                            key={card.label}
+                            whileHover={{ y: -5 }}
+                            className="relative group h-full"
+                        >
+                            <div className="h-full rounded-2xl border-[3px] border-slate-900 bg-white p-6 shadow-[6px_6px_0_#1f2937] transition-all hover:shadow-[10px_10px_0_#1f2937] flex flex-col justify-between overflow-hidden">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">{card.label}</p>
+                                    <p className="text-3xl font-black text-slate-900">{card.value}</p>
+                                </div>
+                                <div className={clsx("mt-6 w-12 h-12 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center transition-transform group-hover:rotate-6", card.bg)}>
+                                    <Icon size={24} style={{ color: card.color }} strokeWidth={2.5} />
+                                </div>
+                                <div className="absolute -bottom-6 -right-6 opacity-5 pointer-events-none group-hover:scale-125 transition-transform">
+                                    <Icon size={120} strokeWidth={3} />
+                                </div>
+                            </div>
+                        </motion.article>
+                    )
+                })}
+            </div>
+
+            {/* Filters Area */}
+            <div className="space-y-6">
+                <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-[2rem] border-[3px] border-slate-900 shadow-[4px_4px_0_#1f293705]">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={3} />
+                        <input
+                            type="text"
+                            placeholder="Tên, email người dùng..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            className="w-full h-12 pl-12 pr-4 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] focus:outline-none text-xs font-black uppercase tracking-wider transition-all placeholder:text-slate-300"
+                        />
+                    </div>
+
+                    <div className="relative w-56">
+                        <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} strokeWidth={3} />
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="w-full h-12 pl-12 pr-4 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                        >
+                            <option value="ALL">Tất cả vai trò</option>
+                            <option value="USER">Học viên</option>
+                            <option value="EDUCATOR">Giáo viên</option>
+                            <option value="ADMIN">Quản trị viên</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <ChevronRight className="rotate-90" size={12} strokeWidth={4} />
                         </div>
-                        <div>
-                            <div className="text-2xl font-black" style={{ color }}>{val}</div>
-                            <div className="text-xs text-gray-400 font-bold mt-0.5">{label}</div>
+                    </div>
+
+                    <div className="ml-auto hidden lg:flex items-center gap-3 px-6 py-2 bg-slate-50 border-[2px] border-slate-900/10 rounded-2xl italic">
+                        <div className="w-2 h-2 rounded-full bg-[#49B6E5] animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Records: {filtered.length}</span>
+                    </div>
+                </div>
+
+                {/* Table Area */}
+                <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white shadow-[8px_8px_0_#1f2937] overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between px-8 py-6 border-b-[3px] border-slate-900 bg-slate-50/10">
+                        <div className="flex items-center gap-3">
+                            <Users size={20} className="text-[#49B6E5]" strokeWidth={3} />
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Danh sách người dùng</h2>
                         </div>
-                    </motion.div>
-                ))}
+                        <div className="flex items-center gap-4">
+                            <button onClick={handleExport} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">
+                                <FileSpreadsheet size={14} /> Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto min-h-[400px]">
+                        <Table
+                            columns={columns}
+                            dataSource={filtered}
+                            rowKey="id"
+                            loading={{
+                                spinning: loading,
+                                indicator: (
+                                    <div className="flex flex-col items-center justify-center">
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                            className="w-12 h-12 rounded-2xl bg-white border-[3px] border-slate-900 shadow-[4px_4px_0_#49B6E5] flex items-center justify-center mb-4"
+                                        >
+                                            <Zap className="text-[#49B6E5]" size={24} fill="#49B6E5" fillOpacity={0.2} />
+                                        </motion.div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">Đang nạp người dùng...</p>
+                                    </div>
+                                )
+                            }}
+                            pagination={{
+                                pageSize: 8,
+                                className: "px-8 py-6 !m-0 border-t-[2px] border-slate-50"
+                            }}
+                            className="doodle-table"
+                            rowClassName="group"
+                        />
+                    </div>
+                </article>
             </div>
 
-            {/* ── Filters ── */}
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <Input
-                    prefix={<SearchOutlined className="text-gray-300" />}
-                    placeholder="Tìm theo tên hoặc email..."
-                    value={searchText}
-                    onChange={e => setSearchText(e.target.value)}
-                    allowClear
-                    className="rounded-xl h-10 w-72 border-gray-200"
-                />
-                <Select
-                    value={roleFilter}
-                    onChange={setRoleFilter}
-                    className="h-10 w-44 rounded-xl"
-                    options={[
-                        { value: 'ALL', label: 'Tất cả vai trò' },
-                        { value: 'USER', label: 'Học viên' },
-                        { value: 'EDUCATOR', label: 'Giáo viên' },
-                    ]}
-                />
-                <span className="text-sm text-gray-400 font-medium ml-auto">
-                    {filtered.length} / {users.length} kết quả
-                </span>
-            </div>
-
-            {/* ── Table ── */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <Table
-                    columns={columns}
-                    dataSource={filtered}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['5', '10', '20', '50'], showTotal: t => `Tổng ${t} người dùng`, style: { padding: '16px 24px' } }}
-                    locale={{ emptyText: 'Chưa có người dùng' }}
-                    rowClassName="hover:bg-purple-50/30 transition-colors"
-                    size="middle"
-                    scroll={{ x: 'max-content' }}
-                />
-            </div>
-
-            {/* ── Modal: Thêm người dùng ── */}
+            {/* Modals */}
             <Modal
+                title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Thêm người dùng mới</div>}
                 open={isCreateOpen}
                 onCancel={() => { setIsCreateOpen(false); createForm.resetFields() }}
                 footer={null}
                 centered
                 width={500}
-                title={
-                    <div className="flex items-center gap-3 pb-2">
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                            <UserAddOutlined className="text-purple-600 text-lg" />
-                        </div>
-                        <div>
-                            <div className="font-extrabold text-gray-800 text-lg">Thêm người dùng</div>
-                            <div className="text-xs text-gray-400">Tạo tài khoản mới và gửi mật khẩu qua email</div>
-                        </div>
-                    </div>
-                }
+                className="doodle-modal"
             >
-                <Form form={createForm} layout="vertical" onFinish={handleCreateUser} className="mt-4">
-                    <Form.Item name="role" label={<span className="font-bold text-gray-600">Vai trò</span>}
-                        rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
-                        initialValue="USER">
-                        <Select className="h-12 rounded-xl">
-                            <Select.Option value="USER">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
-                                    Học viên (USER)
-                                </div>
-                            </Select.Option>
-                            <Select.Option value="EDUCATOR">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-                                    Giáo viên (EDUCATOR)
-                                </div>
-                            </Select.Option>
+                <Form form={createForm} layout="vertical" onFinish={handleCreateUser} className="mt-8 space-y-5">
+                    <Form.Item
+                        name="fullName"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
+                        rules={[{ required: true, message: 'Nhập họ tên' }]}
+                    >
+                        <div className="relative group">
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                            <Input className="doodle-input pl-12" placeholder="Ví dụ: Nguyễn Văn A" />
+                        </div>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="email"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Email xác thực</span>}
+                        rules={[{ required: true, message: 'Nhập email' }, { type: 'email' }]}
+                    >
+                        <div className="relative group">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                            <Input className="doodle-input pl-12" placeholder="name@domain.com" />
+                        </div>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="role"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Vai trò hệ thống</span>}
+                        initialValue="USER"
+                    >
+                        <Select className="doodle-select">
+                            <Select.Option value="USER">Học viên (User)</Select.Option>
+                            <Select.Option value="EDUCATOR">Giáo viên (Educator)</Select.Option>
+                            <Select.Option value="ADMIN">Quản trị viên (Admin)</Select.Option>
                         </Select>
                     </Form.Item>
 
-                    <Form.Item name="fullName" label={<span className="font-bold text-gray-600">Họ và tên</span>}
-                        rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { min: 3 }, { max: 50 }]}>
-                        <Input prefix={<UserOutlined className="text-gray-300" />} placeholder="Nguyễn Văn A" className="h-12 rounded-xl" />
-                    </Form.Item>
-
-                    <Form.Item name="email" label={<span className="font-bold text-gray-600">Email</span>}
-                        rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 100 }]}>
-                        <Input placeholder="example@email.com" className="h-12 rounded-xl" />
-                    </Form.Item>
-
-                    <div className="flex gap-3 justify-end mt-6">
-                        <Button onClick={() => { setIsCreateOpen(false); createForm.resetFields() }} className="h-11 px-6 rounded-xl font-bold">Hủy</Button>
-                        <Button type="primary" htmlType="submit" loading={submitting}
-                            className="h-11 px-8 rounded-xl font-bold border-none"
-                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}>
-                            Tạo tài khoản
-                        </Button>
+                    <div className="flex gap-4 pt-6">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={() => { setIsCreateOpen(false); createForm.resetFields() }}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705]"
+                        >
+                            Hủy bỏ
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={submitting}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937]"
+                        >
+                            {submitting ? 'Đang tạo...' : 'Xác nhận tạo'}
+                        </motion.button>
                     </div>
                 </Form>
             </Modal>
 
-            {/* ── Modal: Import Excel ── */}
+            {/* Edit User Modal */}
             <Modal
-                title="Import người dùng từ Excel"
-                open={isImportOpen}
-                onCancel={() => { setIsImportOpen(false); setImportFile(null); setImportResult(null) }}
-                onOk={handleImport}
-                confirmLoading={importing}
-                okText="Import"
-                cancelText="Hủy"
-                okButtonProps={{ disabled: !importFile }}
-                centered
-                width={560}
-            >
-                <div className="mt-3 flex flex-col gap-4">
-                    <Button icon={<DownloadOutlined />} loading={templateDownloading} onClick={downloadTemplate} className="rounded-xl w-fit">
-                        Tải template mẫu
-                    </Button>
-                    <Alert type="info" showIcon
-                        message="File Excel cần có 2 cột: Email, Họ và tên"
-                        description="Mỗi dòng sẽ tạo một tài khoản giáo viên." />
-                    <Upload.Dragger accept=".xlsx,.xls" maxCount={1}
-                        beforeUpload={f => { setImportFile(f); return false }}
-                        onRemove={() => setImportFile(null)}
-                        fileList={importFile ? [{ uid: '-1', name: importFile.name, status: 'done' } as any] : []}
-                        className="rounded-xl">
-                        <p className="font-bold">Kéo thả file hoặc click để chọn</p>
-                        <p className="text-gray-400 text-xs mt-1">Chỉ hỗ trợ .xlsx/.xls</p>
-                    </Upload.Dragger>
-                    {importResult && (
-                        <Alert
-                            type={importResult?.errorCount > 0 ? 'warning' : 'success'} showIcon
-                            message={`Thành công: ${importResult.successCount} | Bỏ qua: ${importResult.skipCount} | Lỗi: ${importResult.errorCount}`}
-                        />
-                    )}
-                </div>
-            </Modal>
-
-            {/* ── Modal: Chỉnh sửa ── */}
-            <Modal
-                title="Chỉnh sửa người dùng"
+                title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Cập nhật thông tin</div>}
                 open={isEditOpen}
                 onCancel={() => { setIsEditOpen(false); setEditingUser(null); editForm.resetFields() }}
                 footer={null}
                 centered
-                width={460}
+                width={500}
+                className="doodle-modal"
             >
-                <Form form={editForm} layout="vertical" onFinish={handleUpdateUser} className="mt-4">
-                    <Form.Item name="fullName" label={<span className="font-bold text-gray-600">Họ và tên</span>}
-                        rules={[{ required: true }, { min: 3 }, { max: 50 }]}>
-                        <Input className="h-12 rounded-xl" />
+                <Form form={editForm} layout="vertical" onFinish={handleUpdateUser} className="mt-8 space-y-5">
+                    <Form.Item
+                        name="fullName"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
+                    >
+                        <div className="relative">
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
+                            <Input className="doodle-input pl-12" />
+                        </div>
                     </Form.Item>
-                    <Form.Item name="phone" label={<span className="font-bold text-gray-600">Số điện thoại</span>}
-                        rules={[{ pattern: /^(0[3|5|7|8|9])[0-9]{8}$/, message: 'Số điện thoại không hợp lệ' }]}>
-                        <Input placeholder="0901234567" className="h-12 rounded-xl" />
+
+                    <Form.Item
+                        name="phone"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
+                    >
+                        <div className="relative">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
+                            <Input className="doodle-input pl-12" />
+                        </div>
                     </Form.Item>
-                    <Form.Item name="region" label={<span className="font-bold text-gray-600">Vùng miền</span>}>
-                        <Select placeholder="Chọn vùng miền" className="h-12">
-                            {dialects.map(d => (
-                                <Select.Option key={d.id} value={d.name}>{d.description || d.name}</Select.Option>
-                            ))}
-                        </Select>
+
+                    <Form.Item
+                        name="region"
+                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Vùng miền</span>}
+                    >
+                        <div className="relative">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
+                            <Select placeholder="Chọn vùng miền" className="doodle-select pl-8">
+                                {dialects.map(d => (
+                                    <Select.Option key={d.id} value={d.name}>{d.description || d.name}</Select.Option>
+                                ))}
+                            </Select>
+                        </div>
                     </Form.Item>
-                    <div className="flex gap-3 justify-end mt-4">
-                        <Button onClick={() => { setIsEditOpen(false); editForm.resetFields() }} className="h-11 px-6 rounded-xl font-bold">Hủy</Button>
-                        <Button type="primary" htmlType="submit" loading={submitting}
-                            className="h-11 px-8 rounded-xl font-bold border-none"
-                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)' }}>
-                            Lưu thay đổi
-                        </Button>
+
+                    <div className="flex gap-4 pt-6">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={() => { setIsEditOpen(false); editForm.resetFields() }}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705]"
+                        >
+                            Hủy
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={submitting}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937]"
+                        >
+                            {submitting ? 'Đang lưu...' : 'Lưu cập nhật'}
+                        </motion.button>
                     </div>
                 </Form>
             </Modal>
+
+            {/* Import Excel Modal */}
+            <Modal
+                title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Import người dùng Excel</div>}
+                open={isImportOpen}
+                onCancel={() => { setIsImportOpen(false); setImportFile(null); setImportResult(null) }}
+                onOk={handleImport}
+                footer={null}
+                centered
+                width={560}
+                className="doodle-modal"
+            >
+                <div className="mt-8 space-y-6">
+                    <div className="bg-blue-50 p-4 rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f293705]">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-black uppercase tracking-widest text-[#49B6E5]">Cấu trúc tệp</span>
+                            <button onClick={downloadTemplate} className="text-[10px] font-black uppercase underline text-slate-400 hover:text-slate-900">Tải tệp mẫu</button>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-500 italic">File cần có cột 'Email' và 'Họ và tên'. Hệ thống sẽ tự động tạo tài khoản EDUCATOR.</p>
+                    </div>
+
+                    <div className="relative group p-10 border-[3px] border-dashed border-slate-900/10 rounded-[2.5rem] bg-slate-50 hover:bg-white hover:border-[#49B6E5] transition-all text-center">
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className="flex flex-col items-center gap-4">
+                            <div className={clsx("w-16 h-16 rounded-2xl border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center transition-transform group-hover:rotate-6", importFile ? "bg-emerald-400 text-white" : "bg-white text-slate-300")}>
+                                <FileSpreadsheet size={32} />
+                            </div>
+                            <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                                {importFile ? importFile.name : 'Nhấn để chọn hoặc kéo thả tệp Excel'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {importResult && (
+                        <div className={clsx("p-4 rounded-2xl border-[2.5px]", importResult.errorCount > 0 ? "bg-orange-50 border-orange-200 text-orange-600" : "bg-emerald-50 border-emerald-200 text-emerald-600")}>
+                            <div className="text-[10px] font-black uppercase tracking-widest mb-1">Kết quả xử lý:</div>
+                            <div className="text-xs font-bold italic">
+                                Thành công: {importResult.successCount} | Bỏ qua: {importResult.skipCount} | Lỗi: {importResult.errorCount}
+                            </div>
+                        </div>
+                    )}
+
+                    <motion.button
+                        whileHover={importFile ? { scale: 1.02, y: -2 } : {}}
+                        whileTap={importFile ? { scale: 0.98 } : {}}
+                        onClick={handleImport}
+                        disabled={!importFile || importing}
+                        className={clsx(
+                            "w-full h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937] transition-all",
+                            (!importFile || importing) && "opacity-50 grayscale"
+                        )}
+                    >
+                        {importing ? "Đang xử lý..." : "Xác nhận Import"}
+                    </motion.button>
+                </div>
+            </Modal>
+
+            {/* Custom Styles */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .doodle-table .ant-table-thead > tr > th {
+                    background: transparent !important;
+                    border-bottom: 3px solid #1f2937 !important;
+                    padding: 1.5rem !important;
+                    font-family: 'Nunito' !important;
+                }
+                .doodle-table .ant-table-tbody > tr > td { padding: 1.25rem 1.5rem !important; border-bottom: 2px solid #1f293708 !important; }
+                
+                .doodle-modal .ant-modal-content {
+                    border: 4px solid #1f2937 !important; border-radius: 3rem !important;
+                    box-shadow: 12px 12px 0 #1f2937 !important; background: #fbf6ef !important;
+                    padding: 2.5rem !important;
+                }
+                .doodle-modal .ant-modal-header { background: transparent !important; border: none !important; margin-bottom: 1rem !important; }
+                
+                .doodle-input {
+                    height: 54px; border: 2.5px solid #1f293720 !important; border-radius: 1.25rem !important;
+                    font-weight: 700 !important; font-family: 'Nunito' !important;
+                    transition: all 0.2s ease !important;
+                }
+                .doodle-input:focus { border-color: #49B6E5 !important; box-shadow: none !important; }
+                
+                .doodle-select .ant-select-selector {
+                    height: 54px !important; border: 2.5px solid #1f293720 !important; border-radius: 1.25rem !important;
+                    display: flex !important; align-items: center !important;
+                    font-weight: 700 !important;
+                }
+                .doodle-select:focus .ant-select-selector { border-color: #49B6E5 !important; }
+            `}} />
         </div>
     )
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { LockOutlined, PlayCircleFilled, RightOutlined, TrophyOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, Diamond, Leaf, Map, Sparkles, Target, Trophy, Zap } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Leaf, Map, Target, Trophy, Zap } from 'lucide-react'
 
 import { useAuth } from '../../../core/auth/AuthContext'
 import apiClient from '../../../services/apiClient'
@@ -63,7 +63,7 @@ export default function Dashboard() {
                 const list = res?.data?.data ?? res?.data ?? res ?? []
                 setAllBadges(Array.isArray(list) ? list : [])
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setBadgesLoading(false))
     }, [])
 
@@ -84,7 +84,7 @@ export default function Dashboard() {
                             })
                         }
                     })
-                    .catch(() => {})
+                    .catch(() => { })
 
                 const dialects = await learnerService.getDialects().catch(() => [])
                 if (!dialects.length) return
@@ -151,7 +151,7 @@ export default function Dashboard() {
                 <div className="absolute bottom-[-10%] left-[-6%] h-96 w-96 rounded-full bg-[#f1c46f]/20 blur-3xl" />
             </div>
 
-            <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-5 lg:px-8">
+            <div className="relative z-10 mx-auto flex w-full max-w-none flex-col gap-6 px-6 lg:px-12 py-5">
                 <section className="relative overflow-hidden rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] shadow-[10px_10px_0_#1f2937]">
                     <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(38,61,91,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(38,61,91,0.05) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
                     <div className="absolute left-6 top-6 h-5 w-5 rounded-full border-[3px] border-slate-900 bg-[#49B6E5]" />

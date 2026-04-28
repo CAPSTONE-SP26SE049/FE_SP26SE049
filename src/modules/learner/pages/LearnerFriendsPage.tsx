@@ -13,7 +13,6 @@ import {
     UserSearch,
     RefreshCw,
     MessageCircle,
-    Star,
     MapPin,
     Calendar,
     Trophy,
@@ -22,12 +21,9 @@ import {
     ShieldAlert,
     UserCheck,
     Search,
-    ChevronRight,
     Eye,
-    CheckCircle2,
     XCircle,
-    Send,
-    Play
+    Send
 } from '../../../lib/icons';
 import { DoodleLoading } from '../../../components/ui/DoodleLoading';
 import ChatBox from '../components/ChatBox';
@@ -700,7 +696,7 @@ export default function LearnerFriendsPage() {
 
     return (
         <div className="bg-[#fbf6ef] min-h-screen">
-            <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-8 font-nunito">
+            <div className="p-6 lg:p-10 max-w-none mx-auto space-y-8 font-nunito px-6 lg:px-12">
 
                 {/* ── Header ── */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">

@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Empty, Progress, Tag, Typography, message, Skeleton } from 'antd';
+import { Skeleton, message } from 'antd';
 import { educatorService, type ProgressOverview } from '../services/educatorService';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Sparkles } from '../../../lib/icons';
+import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Sparkles, Zap, TrendingDown, Target, Brain, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
-
-const { Title, Paragraph } = Typography;
 
 const ChapterManagementPage: React.FC = () => {
   const [overview, setOverview] = useState<ProgressOverview | null>(null);
@@ -16,123 +14,166 @@ const ChapterManagementPage: React.FC = () => {
       setLoading(true);
       try {
         const res = await educatorService.getProgressOverview();
-        setOverview(res?.data ?? null);
+        setOverview(res?.data ?? (res?.status?.toString() === 'success' ? res.data : null));
       } catch {
         message.error('Không thể tải dữ liệu tiến độ');
       } finally {
         setLoading(false);
       }
     };
-
     load();
   }, []);
 
   const metrics = useMemo(() => overview?.pronunciationMetrics ?? [], [overview]);
 
+  const statsCards = [
+    { label: 'Tổng học viên', value: overview?.totalStudents ?? 0, icon: Users, color: '#49B6E5', bg: 'bg-blue-50' },
+    { label: 'Đang hoạt động', value: overview?.activeStudents ?? 0, icon: Activity, color: '#10b981', bg: 'bg-emerald-50' },
+    { label: 'Phát âm TB', value: `${overview?.averagePronunciationScore ?? 0}%`, icon: Target, color: '#f59e0b', bg: 'bg-amber-50' },
+    { label: 'Feedbacks chờ', value: overview?.pendingFeedbackCount ?? 0, icon: MessageSquare, color: '#ef4444', bg: 'bg-rose-50' },
+  ];
+
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col gap-4 overflow-hidden -mt-2">
-      {/* ── Header ── */}
-      <div className="flex-shrink-0">
-        <div className="flex items-center gap-2 text-purple-600 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-          <BarChart3 size={14} /> Analytics & Tracking
+    <div className="space-y-8 pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-6 bg-[#49B6E5] rounded-full" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#49B6E5]">Analytics & Tracking</span>
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Phân tích tiến độ</h1>
+          <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
+            Theo dõi <span className="text-slate-900">từng bước đi nhỏ</span> hướng tới mục tiêu quốc tế
+          </p>
         </div>
-        <Title level={4} className="!m-0 !font-black !text-gray-800 tracking-tight">Phân tích tiến độ học tập</Title>
-        <Paragraph className="!mb-0 text-gray-400 font-semibold text-[11px] mt-0.5 max-w-2xl uppercase tracking-wide line-clamp-1 italic">
-          Số liệu chi tiết về khả năng phát âm và mức độ tương tác của toàn bộ lớp học.
-        </Paragraph>
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] text-[10px] font-black uppercase tracking-widest text-slate-600">
+          <Zap size={16} fill="currentColor" className="text-amber-400" /> Live Monitoring
+        </div>
       </div>
 
-      {/* ── Stats Hero ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
-        {[
-          { label: 'Tổng học viên', value: overview?.totalStudents ?? 0, icon: <Users size={20} />, color: 'bg-purple-600' },
-          { label: 'Đang hoạt động', value: overview?.activeStudents ?? 0, icon: <Activity size={20} />, color: 'bg-emerald-500' },
-          { label: 'Điểm phát âm TB', value: overview?.averagePronunciationScore ?? 0, icon: <Sparkles size={20} />, color: 'bg-orange-500' },
-          { label: 'Phản hồi chờ', value: overview?.pendingFeedbackCount ?? 0, icon: <MessageSquare size={20} />, color: 'bg-rose-500' },
-        ].map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 group hover:shadow-md transition-all flex items-center gap-4"
-          >
-            <div className={clsx("w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform", item.color)}>
-              {item.icon}
-            </div>
+      {/* Stats Hero Section */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        {statsCards.map((item, idx) => {
+          const Icon = item.icon
+          return (
+            <motion.article
+              key={item.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="group relative rounded-[2rem] border-[3px] border-slate-900 bg-white p-5 shadow-[6px_6px_0_#1f2937] transition-all hover:-translate-y-1 hover:shadow-[10px_10px_0_#1f2937]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
+                  <p className="text-3xl font-black text-slate-900 leading-none">{loading ? '...' : item.value}</p>
+                </div>
+                <div
+                  className={clsx("w-12 h-12 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center transition-transform group-hover:rotate-6", item.bg)}
+                  style={{ color: item.color }}
+                >
+                  <Icon size={24} strokeWidth={3} />
+                </div>
+              </div>
+            </motion.article>
+          )
+        })}
+      </section>
+
+      {/* Main Analytics Card */}
+      <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[10px_10px_0_#1f2937] overflow-hidden min-h-[400px]">
+        <div className="mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-2 h-10 bg-[#8b5cf6] rounded-full" />
             <div>
-              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.label}</div>
-              <div className="text-xl font-black text-slate-800 leading-none">{loading ? '...' : item.value}</div>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Xu hướng phát âm</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 italic">Chi tiết kỹ năng phát âm của toàn bộ hệ thống</p>
             </div>
-          </motion.div>
-        ))}
-      </div>
+          </div>
+          <TrendingUp size={24} className="text-slate-200" />
+        </div>
 
-      <Card
-        className="rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex-1 flex flex-col"
-        bodyStyle={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}
-        title={<div className="flex items-center gap-2 py-1"><TrendingUp size={16} className="text-purple-600" /> <span className="font-extrabold text-gray-800 text-sm uppercase tracking-wider">Xu hướng phát âm chi tiết</span></div>}
-      >
-        {loading && !overview ? (
-          <div className="space-y-6">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} active paragraph={{ rows: 1 }} />)}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} active paragraph={{ rows: 2 }} title={false} />)}
           </div>
         ) : metrics.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8 custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
             {metrics.map((metric, idx) => (
               <motion.div
                 key={metric.label}
-                initial={{ opacity: 0, x: -15 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="group"
+                className="space-y-4"
               >
-                <div className="flex justify-between items-end mb-2">
+                <div className="flex justify-between items-end">
                   <div>
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{metric.label}</div>
-                    <div className="text-xl font-black text-gray-800 group-hover:text-purple-600 transition-colors">{metric.value}%</div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{metric.label}</div>
+                    <div className="text-2xl font-black text-slate-900 leading-none">{metric.value}%</div>
                   </div>
-                  <Tag
-                    color={metric.trend === 'UP' ? 'success' : metric.trend === 'DOWN' ? 'error' : 'default'}
-                    bordered={false}
-                    className="rounded-full px-2 font-black text-[9px] uppercase mb-1 flex items-center gap-1"
-                  >
-                    {metric.trend === 'UP' ? 'TREND: UP ↑' : metric.trend === 'DOWN' ? 'TREND: DOWN ↓' : 'TREND: STABLE →'}
-                  </Tag>
+                  <div className={clsx(
+                    "px-3 py-1 rounded-xl border-[2px] border-slate-900 font-black text-[9px] uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_0_#1f2937]",
+                    metric.trend === 'UP' ? 'bg-emerald-100 text-emerald-700' : metric.trend === 'DOWN' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+                  )}>
+                    {metric.trend === 'UP' ? <TrendingUp size={12} strokeWidth={3} /> : metric.trend === 'DOWN' ? <TrendingDown size={12} strokeWidth={3} /> : <Activity size={12} strokeWidth={3} />}
+                    {metric.trend === 'UP' ? 'Improving' : metric.trend === 'DOWN' ? 'Attention' : 'Stable'}
+                  </div>
                 </div>
-                <Progress
-                  percent={metric.value}
-                  showInfo={false}
-                  strokeColor={{ '0%': '#9333ea', '100%': '#f97316' }}
-                  strokeWidth={6}
-                  className="m-0"
-                  trailColor="#f8fafc"
-                />
+                <div className="h-4 w-full rounded-lg bg-slate-100 border-[2.5px] border-slate-900/10 overflow-hidden relative shadow-inner">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${metric.value}%` }}
+                    className={clsx(
+                      "absolute inset-y-0 left-0 rounded-[2px]",
+                      metric.value >= 80 ? 'bg-emerald-500' : metric.value >= 50 ? 'bg-[#49B6E5]' : 'bg-rose-500'
+                    )}
+                  />
+                </div>
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center opacity-60">
-            <Empty description={<span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Chưa có dữ liệu phân tích</span>} />
+          <div className="py-20 flex flex-col items-center justify-center opacity-60">
+            <BarChart3 size={64} strokeWidth={1} className="text-slate-300 mb-4" />
+            <span className="text-sm font-black uppercase tracking-widest text-slate-400">Chưa có dữ liệu thống kê</span>
           </div>
         )}
-      </Card>
+      </article>
 
-      {/* ── Advice Card ── */}
-      <div className="bg-gradient-to-r from-purple-50 to-orange-50 border border-purple-100 rounded-2xl p-4 flex items-center gap-4 flex-shrink-0">
-        <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-purple-600 flex-shrink-0">
-          <Sparkles size={24} />
+      {/* Advice Section */}
+      <article className="relative rounded-[2rem] border-[3px] border-slate-900 bg-gradient-to-r from-amber-50 to-orange-50 p-6 shadow-[6px_6px_0_#1f2937] overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+          <Brain size={120} strokeWidth={3} />
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">Gợi ý từ AI Hệ Thống</span>
-            <Tag color="purple" bordered={false} className="text-[8px] font-black m-0 px-1.5 h-4 flex items-center">BETA</Tag>
+        <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
+          <div className="w-16 h-16 rounded-[1.25rem] bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center text-amber-500 flex-shrink-0 animate-float">
+            <Sparkles size={32} strokeWidth={3} fill="currentColor" />
           </div>
-          <Paragraph className="!m-0 text-slate-500 font-semibold text-[11px] leading-tight line-clamp-1 italic">
-            Điểm ngữ điệu đang có xu hướng giảm ở nhóm cấp độ A1. Bạn nên xem xét giao thêm các bài tập shadow-reading trong tuần tới.
-          </Paragraph>
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">AI Smart Coaching Tips</h3>
+              <span className="px-2 py-0.5 rounded-lg border-[2px] border-slate-900 bg-amber-400 text-slate-900 text-[8px] font-black uppercase shadow-[2px_2px_0_#1f2937]">Beta</span>
+            </div>
+            <p className="text-sm font-bold text-slate-600 leading-relaxed italic max-w-3xl">
+              "Dựa trên dữ liệu tuần này, nhóm âm tiết <span className="text-slate-900 underline decoration-amber-400 decoration-2">/ng/ và /nh/</span> đang có tỉ lệ sai sót cao (tăng 12%). Hãy tập trung vào các bài phát âm luyện lưỡi cho học viên cấp độ A2."
+            </p>
+          </div>
+          <button className="flex items-center gap-2 px-6 py-3 rounded-2xl border-[2.5px] border-slate-900 bg-white text-slate-900 font-black text-[11px] uppercase tracking-wider shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all whitespace-nowrap">
+            Xem báo cáo chi tiết <ArrowRight size={16} strokeWidth={3} />
+          </button>
         </div>
-      </div>
+      </article>
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(5deg); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+      `}} />
     </div>
   );
 };

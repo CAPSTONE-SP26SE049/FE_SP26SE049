@@ -218,7 +218,7 @@ const AchievementsPage: React.FC = () => {
 
     return (
         // Height is calc(100vh-80px) to subtract the 80px header from LearnerLayout
-        <div className="min-h-screen flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-20 bg-[#fbf6ef] font-nunito">
+        <div className="min-h-screen flex flex-col w-full max-w-none px-6 lg:px-8 pt-10 pb-20 bg-[#fbf6ef] font-nunito">
 
             {/* ── Fixed Header Section (Does not scroll) ───────────────────────── */}
             <div className="flex-shrink-0 flex flex-col lg:flex-row gap-8 mb-12">

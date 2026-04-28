@@ -147,7 +147,7 @@ export default function ProfilePage() {
 
             {/* ══════ BODY — Balanced grid layout ══════ */}
             <div className="p-4">
-                <div className="max-w-5xl mx-auto space-y-3 flex flex-col">
+                <div className="max-w-none mx-auto space-y-3 flex flex-col px-4 lg:px-8">
 
                     {/* ── ROW 1: User card + Account Info + Stats (full width, horizontal) ── */}
                     <div className="flex gap-3 flex-shrink-0 flex-wrap lg:flex-nowrap">

@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Form, Input, Button, Upload, message, Spin, Alert } from 'antd'
 import {
-    UserOutlined, LockOutlined, SaveOutlined,
-    MailOutlined, PhoneOutlined, CameraOutlined, SafetyCertificateOutlined,
-    LoadingOutlined
-} from '@ant-design/icons'
+    User, Lock, Save, Mail, Phone,
+    Camera, ShieldCheck, Loader2, Info,
+    UserCircle, Key, ChevronRight, Zap
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { fetchProfileAPI, updateProfileAPI, changePasswordAPI } from '../../../services/userService'
-
-const BRAND_PURPLE = 'linear-gradient(135deg, #9333ea, #7e22ce)'
-const BRAND_ORANGE = 'linear-gradient(135deg, #f97316, #ea580c)'
+import clsx from 'clsx'
 
 const AdminSettingsPage: React.FC = () => {
     const { session, updateSessionItem } = useAuth()
@@ -33,7 +32,6 @@ const AdminSettingsPage: React.FC = () => {
         fetchProfileAPI()
             .then((res: any) => {
                 if (cancelled) return
-                // Handle { data: { data: {...} } } or { data: {...} } wrapping
                 const profile = res?.data?.data ?? res?.data ?? {}
                 setLiveProfile(profile)
                 profileForm.setFieldsValue({
@@ -46,7 +44,6 @@ const AdminSettingsPage: React.FC = () => {
                 if (cancelled) return
                 const msg = err?.response?.data?.message || 'Không thể tải thông tin hồ sơ.'
                 setProfileError(msg)
-                // Fallback to session cache
                 const user = session?.user as any || {}
                 profileForm.setFieldsValue({
                     fullName: user.fullName || user.name || '',
@@ -97,11 +94,9 @@ const AdminSettingsPage: React.FC = () => {
     }
 
     const tabs = [
-        { key: 'profile' as const, icon: <UserOutlined />, label: 'Hồ sơ cá nhân', color: '#9333ea', bg: '#faf5ff' },
-        { key: 'security' as const, icon: <LockOutlined />, label: 'Bảo mật', color: '#f97316', bg: '#fff7ed' },
+        { key: 'profile' as const, icon: UserCircle, label: 'Thông tin cá nhân', color: '#8b5cf6', bg: 'bg-violet-50' },
+        { key: 'security' as const, icon: ShieldCheck, label: 'Bảo mật & MK', color: '#f97316', bg: 'bg-orange-50' },
     ]
-
-    const inputStyle = { borderRadius: 12, height: 44, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }
 
     const avatarUrl = liveProfile?.avatar_url || liveProfile?.avatarUrl || liveProfile?.avatar
         || (session?.user as any)?.avatar_url
@@ -109,274 +104,305 @@ const AdminSettingsPage: React.FC = () => {
         || (session?.user as any)?.avatar
 
     return (
-        <div className="flex flex-col overflow-hidden rounded-2xl" style={{ height: 'calc(100vh - 110px)', background: '#f8f5ff' }}>
-
-            {/* ── Header Strip ── */}
-            <div className="flex-shrink-0 px-6 py-4 flex items-center gap-4 border-b border-gray-100 bg-white"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0"
-                    style={{ background: BRAND_PURPLE }}>
-                    <UserOutlined style={{ fontSize: 18 }} />
-                </div>
-                <div>
-                    <h1 className="text-lg font-black text-gray-800 leading-tight">Cài đặt hệ thống</h1>
-                    <p className="text-xs text-gray-400 font-medium">Quản lý thông tin cá nhân và bảo mật</p>
+        <div className="min-h-screen bg-[#fbf6ef] font-nunito p-8 space-y-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Cài đặt hệ thống</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Tùy chỉnh thông tin cá nhân và quản lý an toàn bảo mật</p>
+                    </div>
                 </div>
             </div>
 
-            {/* ── Body ── */}
-            <div className="flex-1 flex min-h-0 p-4 gap-4">
+            <div className="flex flex-col lg:flex-row gap-10 items-start">
+                {/* Sidebar Navigation */}
+                <div className="w-full lg:w-72 flex flex-col gap-4">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon
+                        const isActive = activeTab === tab.key
+                        return (
+                            <motion.button
+                                key={tab.key}
+                                whileHover={{ x: isActive ? 0 : 5 }}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={clsx(
+                                    "w-full px-6 py-4 rounded-2xl border-[3px] transition-all flex items-center justify-between group",
+                                    isActive
+                                        ? "bg-white border-slate-900 shadow-[5px_5px_0_#1f2937]"
+                                        : "bg-transparent border-transparent hover:bg-white/50 text-slate-400"
+                                )}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={clsx(
+                                        "w-10 h-10 rounded-xl border-[2px] border-slate-900 flex items-center justify-center transition-transform group-hover:rotate-3",
+                                        isActive ? tab.bg : "bg-slate-50"
+                                    )}>
+                                        <Icon size={20} style={{ color: isActive ? tab.color : '#94a3b8' }} strokeWidth={3} />
+                                    </div>
+                                    <span className={clsx("text-xs font-black uppercase tracking-widest", isActive ? "text-slate-900" : "text-slate-400")}>
+                                        {tab.label}
+                                    </span>
+                                </div>
+                                {isActive && <ChevronRight size={14} className="text-slate-900" strokeWidth={4} />}
+                            </motion.button>
+                        )
+                    })}
 
-                {/* Sidebar */}
-                <div className="w-48 flex-shrink-0 flex flex-col gap-2">
-                    {tabs.map(tab => (
-                        <button key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-bold text-sm ${activeTab === tab.key
-                                ? 'shadow-sm border'
-                                : 'text-gray-500 hover:bg-white hover:shadow-sm border border-transparent'
-                                }`}
-                            style={activeTab === tab.key ? { color: tab.color, backgroundColor: tab.bg, borderColor: `${tab.color}30` } : {}}
-                        >
-                            <span style={{ color: activeTab === tab.key ? tab.color : '#9ca3af', fontSize: 16 }}>{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
+                    <div className="mt-10 p-6 bg-[#49B6E5]/10 border-[3px] border-slate-900 border-dashed rounded-[2rem]">
+                        <div className="flex items-center gap-3 mb-3">
+                            <Zap size={18} className="text-[#49B6E5]" fill="currentColor" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Mẹo quản trị</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-500 italic leading-relaxed">
+                            Đảm bảo bạn luôn cập nhật mật khẩu ít nhất 3 tháng một lần để bảo vệ dữ liệu hệ thống.
+                        </p>
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 bg-white rounded-2xl border border-gray-100 overflow-auto p-6"
-                    style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-
-                    {/* ── Profile Tab ── */}
-                    {activeTab === 'profile' && (
-                        <div className="max-w-2xl">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-1 h-5 rounded-full" style={{ background: '#9333ea' }} />
-                                <h2 className="font-black text-gray-800">Thông tin chung</h2>
-                            </div>
-
-                            {profileError && (
-                                <Alert
-                                    type="warning"
-                                    message="Không thể tải dữ liệu mới nhất từ server"
-                                    description="Đang hiển thị thông tin từ phiên đăng nhập. Kiểm tra kết nối và thử lại."
-                                    className="mb-4 rounded-xl"
-                                    showIcon
-                                    closable
-                                />
-                            )}
-
-                            <div className="flex gap-8">
-                                {/* Avatar */}
-                                <div className="flex-shrink-0">
-                                    <div className="relative group">
-                                        <div className="w-24 h-24 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-purple-300 transition-all">
-                                            {loadingProfile ? (
-                                                <Spin indicator={<LoadingOutlined style={{ fontSize: 24, color: '#9333ea' }} spin />} />
-                                            ) : avatarUrl ? (
-                                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <UserOutlined className="text-3xl text-gray-300" />
-                                            )}
-                                            <div className="absolute inset-0 bg-purple-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px] rounded-2xl">
-                                                <Upload showUploadList={false}>
-                                                    <div className="flex flex-col items-center text-white">
-                                                        <CameraOutlined className="text-xl" />
-                                                        <span className="text-[10px] font-bold mt-0.5">Thay ảnh</span>
-                                                    </div>
-                                                </Upload>
-                                            </div>
+                {/* Content Area */}
+                <article className="flex-1 w-full bg-white rounded-[2.5rem] border-[3.5px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden">
+                    <div className="p-8 lg:p-12">
+                        <AnimatePresence mode="wait">
+                            {activeTab === 'profile' ? (
+                                <motion.div
+                                    key="profile"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-10"
+                                >
+                                    <div className="flex items-center gap-4 border-b-[2px] border-slate-50 pb-6">
+                                        <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-500">
+                                            <User size={24} strokeWidth={3} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Hồ sơ cá nhân</h2>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cập nhật danh tính và thông tin liên lạc của bạn</p>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Form */}
-                                <div className="flex-1">
-                                    {loadingProfile ? (
-                                        <div className="flex flex-col gap-4 mt-2">
-                                            {[1, 2, 3].map(i => (
-                                                <div key={i} className="h-11 rounded-xl bg-gray-100 animate-pulse" />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Form
-                                            form={profileForm}
-                                            layout="vertical"
-                                            onFinish={handleUpdateProfile}
-                                            requiredMark={false}
-                                            scrollToFirstError
-                                        >
-                                            {/* Họ và tên */}
-                                            <Form.Item
-                                                name="fullName"
-                                                label={<span className="font-bold text-gray-600 text-sm">Họ và tên</span>}
-                                                rules={[
-                                                    { required: true, message: 'Vui lòng nhập họ và tên' },
-                                                    { min: 2, message: 'Họ và tên phải có ít nhất 2 ký tự' },
-                                                    { max: 100, message: 'Họ và tên không vượt quá 100 ký tự' },
-                                                    {
-                                                        pattern: /^[\p{L}\s'-]+$/u,
-                                                        message: 'Họ và tên chỉ được chứa chữ cái, khoảng trắng, dấu gạch ngang và dấu nháy đơn'
-                                                    },
-                                                    {
-                                                        validator: (_, val) => {
-                                                            if (val && val.trim().length < 2) return Promise.reject('Họ và tên không được chỉ là khoảng trắng')
-                                                            return Promise.resolve()
-                                                        }
-                                                    }
-                                                ]}
-                                            >
-                                                <Input
-                                                    prefix={<UserOutlined className="text-gray-300" />}
-                                                    style={inputStyle}
-                                                    placeholder="Nguyễn Văn A"
-                                                    maxLength={100}
-                                                    showCount
-                                                />
-                                            </Form.Item>
-
-                                            {/* Email — read-only */}
-                                            <Form.Item
-                                                name="email"
-                                                label={<span className="font-bold text-gray-600 text-sm">Email</span>}
-                                                extra={<span className="text-gray-400 text-[11px]">Email dùng để đăng nhập và nhận thông báo — không thể thay đổi</span>}
-                                            >
-                                                <Input
-                                                    disabled
-                                                    prefix={<MailOutlined className="text-gray-300" />}
-                                                    style={{ ...inputStyle, backgroundColor: '#f1f5f9', color: '#64748b' }}
-                                                />
-                                            </Form.Item>
-
-                                            {/* Số điện thoại */}
-                                            <Form.Item
-                                                name="phone"
-                                                label={<span className="font-bold text-gray-600 text-sm">Số điện thoại</span>}
-                                                rules={[
-                                                    {
-                                                        pattern: /^(0|\+84)[3-9]\d{8}$/,
-                                                        message: 'Số điện thoại không hợp lệ (VD: 0912345678 hoặc +84912345678)'
-                                                    },
-                                                    { max: 15, message: 'Số điện thoại không vượt quá 15 ký tự' }
-                                                ]}
-                                            >
-                                                <Input
-                                                    prefix={<PhoneOutlined className="text-gray-300" />}
-                                                    style={inputStyle}
-                                                    placeholder="0912 345 678"
-                                                    maxLength={15}
-                                                />
-                                            </Form.Item>
-
-                                            <div className="flex justify-end mt-2">
-                                                <Button
-                                                    type="primary"
-                                                    htmlType="submit"
-                                                    loading={savingProfile}
-                                                    icon={<SaveOutlined />}
-                                                    className="h-11 px-7 rounded-xl font-bold border-none"
-                                                    style={{ background: BRAND_PURPLE, boxShadow: '0 4px 14px rgba(147,51,234,0.3)' }}
-                                                >
-                                                    Lưu thay đổi
-                                                </Button>
-                                            </div>
-                                        </Form>
+                                    {profileError && (
+                                        <Alert
+                                            message={<span className="text-xs font-black uppercase tracking-widest">Sự cố đồng bộ</span>}
+                                            description={<span className="text-[10px] font-bold italic">Không thể tải dữ liệu mới nhất. Đang sử dụng dữ liệu tạm thời.</span>}
+                                            type="warning"
+                                            showIcon
+                                            className="rounded-2xl border-[2px] border-orange-200"
+                                        />
                                     )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* ── Security Tab ── */}
-                    {activeTab === 'security' && (
-                        <div className="max-w-lg">
-                            <div className="flex items-center gap-3 mb-5">
-                                <div className="w-1 h-5 rounded-full" style={{ background: '#f97316' }} />
-                                <h2 className="font-black text-gray-800">Bảo mật tài khoản</h2>
-                            </div>
+                                    <div className="flex flex-col md:flex-row gap-12">
+                                        {/* Avatar Section */}
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="relative group">
+                                                <div className="w-32 h-32 rounded-[2.5rem] border-[4px] border-slate-900 bg-white shadow-[6px_6px_0_#1f2937] overflow-hidden transition-transform group-hover:-rotate-2">
+                                                    {loadingProfile ? (
+                                                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
+                                                            <motion.div
+                                                                animate={{ rotate: 360 }}
+                                                                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                                                className="w-10 h-10 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#49B6E5] flex items-center justify-center mb-2"
+                                                            >
+                                                                <Zap className="text-[#49B6E5]" size={20} fill="#49B6E5" fillOpacity={0.2} />
+                                                            </motion.div>
+                                                            <span className="text-[8px] font-black uppercase text-slate-300 animate-pulse">Syncing...</span>
+                                                        </div>
+                                                    ) : avatarUrl ? (
+                                                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-200">
+                                                            <UserCircle size={64} strokeWidth={1} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <Upload showUploadList={false}>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg transition-colors"
+                                                    >
+                                                        <Camera size={20} strokeWidth={3} />
+                                                    </motion.button>
+                                                </Upload>
+                                            </div>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ảnh đại diện</span>
+                                        </div>
 
-                            {/* Tip */}
-                            <div className="flex gap-3 p-3.5 rounded-2xl mb-5 border border-orange-100" style={{ background: '#fff7ed' }}>
-                                <SafetyCertificateOutlined className="text-orange-500 text-base mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p className="text-sm font-bold text-orange-800 mb-0.5">Mẹo bảo mật</p>
-                                    <p className="text-xs text-orange-600/80">Dùng mật khẩu ≥ 8 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.</p>
-                                </div>
-                            </div>
+                                        {/* Form Section */}
+                                        <div className="flex-1">
+                                            <Form
+                                                form={profileForm}
+                                                layout="vertical"
+                                                onFinish={handleUpdateProfile}
+                                                className="space-y-6"
+                                            >
+                                                <Form.Item
+                                                    name="fullName"
+                                                    label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
+                                                    rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+                                                >
+                                                    <div className="relative group">
+                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                                                        <Input className="doodle-input pl-12" placeholder="Ví dụ: Nguyễn Văn A" />
+                                                    </div>
+                                                </Form.Item>
 
-                            <Form
-                                form={passwordForm}
-                                layout="vertical"
-                                onFinish={handleChangePassword}
-                                requiredMark={false}
-                                scrollToFirstError
-                            >
-                                <Form.Item
-                                    name="oldPassword"
-                                    label={<span className="font-bold text-gray-600 text-sm">Mật khẩu hiện tại</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
+                                                <Form.Item
+                                                    name="email"
+                                                    label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Email xác thực</span>}
+                                                >
+                                                    <div className="relative">
+                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={3} />
+                                                        <Input className="doodle-input pl-12 bg-slate-50 cursor-not-allowed opacity-70" disabled />
+                                                    </div>
+                                                </Form.Item>
+
+                                                <Form.Item
+                                                    name="phone"
+                                                    label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
+                                                    rules={[{ pattern: /^(0|\+84)[3-9]\d{8}$/, message: 'Số điện thoại không hợp lệ' }]}
+                                                >
+                                                    <div className="relative group">
+                                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                                                        <Input className="doodle-input pl-12" placeholder="09xx xxx xxx" />
+                                                    </div>
+                                                </Form.Item>
+
+                                                <div className="pt-4">
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.02, y: -2 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        type="submit"
+                                                        disabled={savingProfile}
+                                                        className="h-14 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#49B6E5] text-xs font-black uppercase tracking-widest text-white transition-all flex items-center gap-3"
+                                                    >
+                                                        {savingProfile ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                                        Lưu hồ sơ
+                                                    </motion.button>
+                                                </div>
+                                            </Form>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="security"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-10"
                                 >
-                                    <Input.Password style={inputStyle} placeholder="••••••••" />
-                                </Form.Item>
+                                    <div className="flex items-center gap-4 border-b-[2px] border-slate-50 pb-6">
+                                        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500">
+                                            <Lock size={24} strokeWidth={3} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">An toàn & Bảo mật</h2>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Thay đổi mật khẩu và quản lý quyền truy cập</p>
+                                        </div>
+                                    </div>
 
-                                <Form.Item
-                                    name="newPassword"
-                                    label={<span className="font-bold text-gray-600 text-sm">Mật khẩu mới</span>}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                                        { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự' },
-                                        { max: 72, message: 'Mật khẩu không vượt quá 72 ký tự' },
-                                        {
-                                            pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-                                            message: 'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số'
-                                        },
-                                        ({ getFieldValue }) => ({
-                                            validator(_, value) {
-                                                if (value && value === getFieldValue('oldPassword'))
-                                                    return Promise.reject(new Error('Mật khẩu mới phải khác mật khẩu hiện tại!'))
-                                                return Promise.resolve()
-                                            }
-                                        })
-                                    ]}
-                                >
-                                    <Input.Password style={inputStyle} placeholder="••••••••" />
-                                </Form.Item>
+                                    <div className="p-6 bg-blue-50 border-[2.5px] border-slate-900/5 rounded-[2rem] flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-white border-[2px] border-slate-900 flex items-center justify-center text-[#49B6E5] shrink-0">
+                                            <Info size={20} strokeWidth={3} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-black uppercase tracking-widest text-slate-600">Lời khuyên an toàn</p>
+                                            <p className="text-[11px] font-bold text-slate-500 italic leading-relaxed">
+                                                Mật khẩu nên chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số để đảm bảo an toàn tuyệt đối.
+                                            </p>
+                                        </div>
+                                    </div>
 
-                                <Form.Item
-                                    name="confirmPassword"
-                                    label={<span className="font-bold text-gray-600 text-sm">Xác nhận mật khẩu mới</span>}
-                                    dependencies={['newPassword']}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
-                                        ({ getFieldValue }) => ({
-                                            validator(_, value) {
-                                                if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
-                                                return Promise.reject(new Error('Mật khẩu không khớp!'))
-                                            }
-                                        })
-                                    ]}
-                                >
-                                    <Input.Password style={inputStyle} placeholder="••••••••" />
-                                </Form.Item>
-
-                                <div className="flex justify-end mt-2">
-                                    <Button
-                                        type="primary"
-                                        htmlType="submit"
-                                        loading={savingPassword}
-                                        icon={<LockOutlined />}
-                                        className="h-11 px-7 rounded-xl font-bold border-none"
-                                        style={{ background: BRAND_ORANGE, boxShadow: '0 4px 14px rgba(249,115,22,0.3)' }}
+                                    <Form
+                                        form={passwordForm}
+                                        layout="vertical"
+                                        onFinish={handleChangePassword}
+                                        className="max-w-md space-y-6"
                                     >
-                                        Cập nhật mật khẩu
-                                    </Button>
-                                </div>
-                            </Form>
-                        </div>
-                    )}
-                </div>
+                                        <Form.Item
+                                            name="oldPassword"
+                                            label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Mật khẩu hiện tại</span>}
+                                            rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}
+                                        >
+                                            <div className="relative group">
+                                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
+                                            </div>
+                                        </Form.Item>
+
+                                        <Form.Item
+                                            name="newPassword"
+                                            label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Mật khẩu mới</span>}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập mật khẩu mới' },
+                                                { min: 8, message: 'Tối thiểu 8 ký tự' }
+                                            ]}
+                                        >
+                                            <div className="relative group">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
+                                            </div>
+                                        </Form.Item>
+
+                                        <Form.Item
+                                            name="confirmPassword"
+                                            label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Xác nhận mật khẩu mới</span>}
+                                            dependencies={['newPassword']}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng xác nhận mật khẩu' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
+                                                        return Promise.reject(new Error('Mật khẩu không khớp!'))
+                                                    }
+                                                })
+                                            ]}
+                                        >
+                                            <div className="relative group">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
+                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
+                                            </div>
+                                        </Form.Item>
+
+                                        <div className="pt-4">
+                                            <motion.button
+                                                whileHover={{ scale: 1.02, y: -2 }}
+                                                whileTap={{ scale: 0.98 }}
+                                                type="submit"
+                                                disabled={savingPassword}
+                                                className="h-14 px-10 bg-orange-500 border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-xs font-black uppercase tracking-widest text-white transition-all flex items-center gap-3"
+                                            >
+                                                {savingPassword ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                                Cập nhật mật khẩu
+                                            </motion.button>
+                                        </div>
+                                    </Form>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </article>
             </div>
+
+            {/* Custom Styles */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .doodle-input {
+                    height: 54px; border: 2.5px solid #1f293720 !important; border-radius: 1.25rem !important;
+                    font-weight: 700 !important; font-family: 'Nunito' !important;
+                    transition: all 0.2s ease !important;
+                }
+                .doodle-input:focus, .doodle-input:hover { border-color: #49B6E5 !important; box-shadow: none !important; }
+                
+                .ant-input-password .ant-input-suffix { font-size: 18px; color: #94a3b8; }
+                .ant-input-password-icon { color: #94a3b8 !important; }
+                
+                .ant-form-item-label label { margin-bottom: 4px !important; }
+                .ant-form-item-explain-error { font-size: 10px; font-weight: 800; text-transform: uppercase; margin-top: 4px; }
+            `}} />
         </div>
     )
 }
