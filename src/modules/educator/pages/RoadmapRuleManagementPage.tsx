@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, InputNumber, Button, Table, Space, Popconfirm, message, Modal, Tag, Card, Select } from 'antd';
-import { Plus, Trash2, Edit3, Save, RotateCcw, Map, Award, TrendingUp, ChevronLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Form, InputNumber, Table, Space, Popconfirm, message, Modal, Tag, Card, Select } from 'antd';
+import type { TableProps } from 'antd';
+import { Plus, Trash2, Edit3, Save, RotateCcw, Map, Award, TrendingUp } from 'lucide-react';
 import { roadmapRuleService, type RoadmapRule } from '../services/roadmapRuleService';
-import { useNavigate } from 'react-router-dom';
-import clsx from 'clsx';
+
+const DIFFICULTY_LABELS = {
+    'BEGINNER': 'Cơ bản',
+    'INTERMEDIATE': 'Trung bình',
+    'ADVANCED': 'Nâng cao'
+};
 
 const RoadmapRuleManagementPage: React.FC = () => {
-    const navigate = useNavigate();
     const [rules, setRules] = useState<RoadmapRule[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -18,7 +21,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
         setLoading(true);
         try {
             const res = await roadmapRuleService.getAllRules();
-            setRules(res.data?.data || []);
+            setRules(res.data || []);
         } catch (err) {
             message.error('Không thể tải danh sách quy tắc');
         } finally {
@@ -67,7 +70,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
         }
     };
 
-    const columns = [
+    const columns: TableProps<RoadmapRule>['columns'] = [
         {
             title: 'KHOẢNG ĐIỂM (%)',
             key: 'range',
@@ -94,7 +97,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
                             key={i} 
                             className="m-0 px-3 py-1 rounded-lg border-[2px] border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest text-slate-700 shadow-[2px_2px_0_#1f293710]"
                         >
-                            {diff.trim()}
+                            {DIFFICULTY_LABELS[diff as keyof typeof DIFFICULTY_LABELS] || diff}
                         </Tag>
                     ))}
                 </div>
@@ -212,7 +215,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
                         dataSource={rules} 
                         columns={columns} 
                         loading={loading}
-                        rowKey="id"
+                        rowKey={(record, index) => record.id || `rule-${index}`}
                         pagination={false}
                         className="custom-premium-table"
                     />
@@ -270,13 +273,12 @@ const RoadmapRuleManagementPage: React.FC = () => {
                             <Select 
                                 mode="multiple"
                                 className="premium-select"
-                                placeholder="Chọn các cấp độ"
-                                options={[
-                                    { label: 'BEGINNER', value: 'BEGINNER' },
-                                    { label: 'INTERMEDIATE', value: 'INTERMEDIATE' },
-                                    { label: 'ADVANCED', value: 'ADVANCED' },
-                                ]}
-                            />
+                                placeholder="Chọn các cấp độ áp dụng"
+                            >
+                                <Select.Option value="BEGINNER">Sơ cấp</Select.Option>
+                                <Select.Option value="INTERMEDIATE">Trung cấp</Select.Option>
+                                <Select.Option value="ADVANCED">Cao cấp</Select.Option>
+                            </Select>
                         </Form.Item>
 
                         <div className="pt-4 flex gap-4">
