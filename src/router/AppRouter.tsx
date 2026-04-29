@@ -83,6 +83,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/educator" element={<EducatorLayout />}>
           <Route index element={<EducatorOverviewPage />} />
           <Route path="students" element={<StudentsPage />} />
+          <Route path="students/profile/:studentId" element={<ProfilePage />} />
           <Route path="design-path" element={<CustomPathSelectionPage />} />
           <Route path="design-path/:studentId" element={<CustomPathDesignerPage />} />
           <Route path="progress" element={<ChapterManagementPage />} />

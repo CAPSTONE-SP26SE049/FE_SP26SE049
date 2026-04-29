@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Avatar, Tooltip, message } from 'antd';
-import { Search, LayoutGrid, List, UserCheck, ShieldCheck, Zap, Users } from 'lucide-react';
+import { Search, LayoutGrid, List, UserCheck, ShieldCheck, Users } from 'lucide-react';
 import { educatorService, type StudentAccount } from '../services/educatorService';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+import { useNavigate } from 'react-router-dom';
 
 const StudentsPage = () => {
   const [students, setStudents] = useState<StudentAccount[]>([]);
@@ -12,6 +13,10 @@ const StudentsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [levelFilter, setLevelFilter] = useState<string>('ALL');
   const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
+  const navigate = useNavigate();
+
+  // Modal state
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null);
 
   const getAvatarUrl = (s: any) => {
     if (avatarErrors[s.id]) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;
@@ -42,10 +47,11 @@ const StudentsPage = () => {
     });
   }, [students, searchText, levelFilter]);
 
+
   const stats = [
     { label: 'Tổng số', value: students.length, color: '#49B6E5', icon: Users },
     { label: 'Hoạt động', value: students.filter(s => (s.pronunciationScore || 0) > 0).length, color: '#10b981', icon: UserCheck },
-    { label: 'Cần hỗ trợ', value: students.filter(s => (s.pronunciationScore || 0) < 50 && (s.pronunciationScore || 0) > 0).length, color: '#f59e0b', icon: Zap },
+    { label: 'Cần hỗ trợ', value: students.filter(s => (s.pronunciationScore || 0) < 50 && (s.pronunciationScore || 0) > 0).length, color: '#f59e0b', icon: ShieldCheck },
   ];
 
   return (
@@ -59,7 +65,7 @@ const StudentsPage = () => {
           </div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Quản lý học viên</h1>
           <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
-            Theo dõi tiến độ và <span className="text-slate-900">chăm sóc lộ trình</span> của từng thành viên
+            Theo dõi tiến độ và <span className="text-slate-900">kỹ năng phát âm</span> của từng thành viên
           </p>
         </div>
 
@@ -141,7 +147,7 @@ const StudentsPage = () => {
 
         {loading ? (
           <div className="h-40 flex items-center justify-center">
-            <Zap className="animate-bounce text-[#49B6E5]" size={32} />
+            <div className="w-8 h-8 border-4 border-[#49B6E5] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : viewMode === 'list' ? (
           <div className="overflow-x-auto">
@@ -152,7 +158,6 @@ const StudentsPage = () => {
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Dialect</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Độ chính xác</th>
-                  <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Lộ trình</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-10">Hành động</th>
                 </tr>
               </thead>
@@ -208,15 +213,6 @@ const StudentsPage = () => {
                           <span className="text-[8px] font-black uppercase text-slate-300 tracking-widest mt-1">Score</span>
                         </div>
                       </td>
-                      <td className="px-6 py-6 text-center font-black">
-                        {s.hasCustomPath ? (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-[2.2px] border-slate-900 text-amber-500 rounded-lg text-[9px] uppercase shadow-[2px_2px_0_#1f2937]">
-                            <Zap size={10} fill="currentColor" /> Custom
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 text-[10px] uppercase tracking-widest">Standard</span>
-                        )}
-                      </td>
                       <td className="px-6 py-6 text-right pr-10">
                         <div className="flex justify-end gap-2">
                           <Tooltip title="Gửi lời khuyên">
@@ -224,7 +220,10 @@ const StudentsPage = () => {
                               <ShieldCheck size={18} strokeWidth={3} />
                             </button>
                           </Tooltip>
-                          <button className="h-10 px-5 rounded-xl border-[2.5px] border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all active:translate-y-0 text-slate-900">
+                          <button
+                            onClick={() => navigate(`/educator/students/profile/${s.id}`)}
+                            className="h-10 px-5 rounded-xl border-[2.5px] border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all active:translate-y-0 text-slate-900"
+                          >
                             Profile
                           </button>
                         </div>
@@ -252,9 +251,9 @@ const StudentsPage = () => {
                     size={64}
                     className="border-[3px] border-slate-900 shadow-[4px_4px_0_#1f293705] group-hover:rotate-6 transition-transform"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-base font-black text-slate-900 uppercase tracking-tight truncate">{s.fullName}</h3>
-                    <p className="text-[10px] font-bold text-slate-400 truncate italic">{s.email}</p>
+                    <p className="text-[10px] font-bold text-slate-400 truncate italic mb-2">{s.email}</p>
                   </div>
                 </div>
 
@@ -282,10 +281,15 @@ const StudentsPage = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <button className="flex-1 py-3.5 rounded-2xl border-[2.5px] border-slate-900 bg-[#49B6E5] text-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all">Profile</button>
-                  <Tooltip title="Nhắn tin">
+                  <button
+                    onClick={() => navigate(`/educator/students/profile/${s.id}`)}
+                    className="flex-1 py-3.5 rounded-2xl border-[2.5px] border-slate-900 bg-[#49B6E5] text-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                  >
+                    Profile
+                  </button>
+                  <Tooltip title="Gửi lời khuyên">
                     <button className="w-12 rounded-2xl border-[2.5px] border-slate-900 bg-white text-slate-400 hover:text-blue-500 shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all flex items-center justify-center">
-                      <Zap size={18} />
+                      <ShieldCheck size={18} />
                     </button>
                   </Tooltip>
                 </div>
