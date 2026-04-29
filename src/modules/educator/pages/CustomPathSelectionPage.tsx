@@ -57,10 +57,10 @@ const CustomPathSelectionPage = () => {
         const matchesSearch = name.includes(search) || email.includes(search);
 
         let matchesStatus = true;
-        if (statusFilter === 'SET') matchesStatus = s.hasCustomPath;
+        if (statusFilter === 'SET') matchesStatus = !!s.hasCustomPath;
         else if (statusFilter === 'NOT_SET') matchesStatus = !s.hasCustomPath;
-        else if (statusFilter === 'AI') matchesStatus = s.hasCustomPath && s.customPathType === 'AI';
-        else if (statusFilter === 'MANUAL') matchesStatus = s.hasCustomPath && s.customPathType === 'MANUAL';
+        else if (statusFilter === 'AI') matchesStatus = !!(s.hasCustomPath && s.customPathType === 'AI');
+        else if (statusFilter === 'MANUAL') matchesStatus = !!(s.hasCustomPath && s.customPathType === 'MANUAL');
 
         return matchesSearch && matchesStatus;
     });

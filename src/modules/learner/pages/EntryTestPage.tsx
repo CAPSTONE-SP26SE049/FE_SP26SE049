@@ -316,7 +316,7 @@ const EntryTestPage: React.FC = () => {
             if (updateSessionItem) {
                 updateSessionItem({ 
                     hasDoneEntryTest: true,
-                    region: finalResult?.detectedRegion || 'NORTH'
+                    region: data?.detectedRegion || 'NORTH'
                 })
             }
         } catch (err) {
