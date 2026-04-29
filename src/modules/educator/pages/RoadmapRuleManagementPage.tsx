@@ -93,8 +93,8 @@ const RoadmapRuleManagementPage: React.FC = () => {
             render: (text: string) => (
                 <div className="flex flex-wrap gap-2">
                     {text.split(',').map((diff, i) => (
-                        <Tag 
-                            key={i} 
+                        <Tag
+                            key={i}
                             className="m-0 px-3 py-1 rounded-lg border-[2px] border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest text-slate-700 shadow-[2px_2px_0_#1f293710]"
                         >
                             {DIFFICULTY_LABELS[diff as keyof typeof DIFFICULTY_LABELS] || diff}
@@ -179,13 +179,13 @@ const RoadmapRuleManagementPage: React.FC = () => {
                                 <h3 className="text-xl font-black uppercase tracking-tight">Thuật toán phân bổ</h3>
                             </div>
                             <p className="text-[11px] font-bold text-slate-500 italic leading-relaxed">
-                                Hệ thống sẽ tính toán độ chính xác phát âm của từng "nhóm lỗi" (L/N, TR/CH,...) 
+                                Hệ thống sẽ tính toán độ chính xác phát âm của từng "nhóm lỗi" (L/N, TR/CH,...)
                                 và đối chiếu với các quy tắc bên cạnh để chọn ra các cấp độ học phù hợp.
                             </p>
                             <div className="space-y-3">
                                 <div className="p-4 rounded-2xl bg-slate-50 border-[2px] border-slate-900/5">
                                     <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Cấp độ ưu tiên</div>
-                                    <div className="text-sm font-black text-slate-800">Beginner → Advanced</div>
+                                    <div className="text-sm font-black text-slate-800">Cơ bản → Nâng cao</div>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border-[2px] border-slate-900/5">
                                     <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Đơn vị đo lường</div>
@@ -195,13 +195,13 @@ const RoadmapRuleManagementPage: React.FC = () => {
                         </div>
                     </Card>
 
-                    <Card 
+                    <Card
                         styles={{ body: { padding: '32px' } }}
                         className="border-[3px] border-slate-900 rounded-[2.5rem] shadow-[10px_10px_0_#1f2937] overflow-hidden bg-[#49B6E5] text-white relative"
                     >
                         <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
                         <h3 className="text-xl font-black uppercase tracking-tight mb-4 flex items-center gap-3">
-                             <Map size={24} strokeWidth={3} /> Roadmap Tips
+                            <Map size={24} strokeWidth={3} /> Roadmap Tips
                         </h3>
                         <p className="text-white/80 text-[11px] font-bold italic leading-relaxed">
                             Nên thiết lập các khoảng điểm bao phủ từ 0 đến 100% để đảm bảo tất cả học viên đều nhận được lộ trình phù hợp.
@@ -211,9 +211,9 @@ const RoadmapRuleManagementPage: React.FC = () => {
 
                 {/* Main Table Area */}
                 <div className="lg:col-span-8 bg-white rounded-[3rem] border-[3px] border-slate-900 shadow-[12px_12px_0_#1f293710] overflow-hidden">
-                    <Table 
-                        dataSource={rules} 
-                        columns={columns} 
+                    <Table
+                        dataSource={rules}
+                        columns={columns}
                         loading={loading}
                         rowKey={(record, index) => record.id || `rule-${index}`}
                         pagination={false}
@@ -249,15 +249,15 @@ const RoadmapRuleManagementPage: React.FC = () => {
 
                     <Form form={form} layout="vertical" onFinish={handleSave} className="space-y-6">
                         <div className="grid grid-cols-2 gap-6">
-                            <Form.Item 
-                                name="minPercent" 
+                            <Form.Item
+                                name="minPercent"
                                 label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">% Tối thiểu</span>}
                                 rules={[{ required: true }]}
                             >
                                 <InputNumber min={0} max={100} className="w-full premium-input-number" placeholder="0" />
                             </Form.Item>
-                            <Form.Item 
-                                name="maxPercent" 
+                            <Form.Item
+                                name="maxPercent"
                                 label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">% Tối đa</span>}
                                 rules={[{ required: true }]}
                             >
@@ -265,12 +265,12 @@ const RoadmapRuleManagementPage: React.FC = () => {
                             </Form.Item>
                         </div>
 
-                        <Form.Item 
-                            name="difficulties" 
+                        <Form.Item
+                            name="difficulties"
                             label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Danh sách cấp độ</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn ít nhất một cấp độ' }]}
                         >
-                            <Select 
+                            <Select
                                 mode="multiple"
                                 className="premium-select"
                                 placeholder="Chọn các cấp độ áp dụng"
@@ -300,7 +300,8 @@ const RoadmapRuleManagementPage: React.FC = () => {
                 </div>
             </Modal>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .custom-premium-table .ant-table-thead > tr > th {
                     background: #f8fafc !important;
                     font-family: 'Nunito', sans-serif !important;
