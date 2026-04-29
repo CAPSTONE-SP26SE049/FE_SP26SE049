@@ -192,7 +192,10 @@ const RoadmapRuleManagementPage: React.FC = () => {
                         </div>
                     </Card>
 
-                    <div className="bg-[#49B6E5] rounded-[2.5rem] border-[3px] border-slate-900 p-8 text-white shadow-[10px_10px_0_#1f2937] relative overflow-hidden">
+                    <Card 
+                        styles={{ body: { padding: '32px' } }}
+                        className="border-[3px] border-slate-900 rounded-[2.5rem] shadow-[10px_10px_0_#1f2937] overflow-hidden bg-[#49B6E5] text-white relative"
+                    >
                         <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
                         <h3 className="text-xl font-black uppercase tracking-tight mb-4 flex items-center gap-3">
                              <Map size={24} strokeWidth={3} /> Roadmap Tips
@@ -200,7 +203,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
                         <p className="text-white/80 text-[11px] font-bold italic leading-relaxed">
                             Nên thiết lập các khoảng điểm bao phủ từ 0 đến 100% để đảm bảo tất cả học viên đều nhận được lộ trình phù hợp.
                         </p>
-                    </div>
+                    </Card>
                 </div>
 
                 {/* Main Table Area */}
