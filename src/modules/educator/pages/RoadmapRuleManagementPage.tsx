@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, InputNumber, Button, Table, Space, Popconfirm, message, Modal, Tag, Card } from 'antd';
+import { Form, Input, InputNumber, Button, Table, Space, Popconfirm, message, Modal, Tag, Card, Select } from 'antd';
 import { Plus, Trash2, Edit3, Save, RotateCcw, Map, Award, TrendingUp, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { roadmapRuleService, type RoadmapRule } from '../services/roadmapRuleService';
@@ -35,6 +35,7 @@ const RoadmapRuleManagementPage: React.FC = () => {
             const payload: RoadmapRule = {
                 ...editingRule,
                 ...values,
+                difficulties: values.difficulties.join(','),
                 isActive: true
             };
             await roadmapRuleService.saveRule(payload);
@@ -107,7 +108,10 @@ const RoadmapRuleManagementPage: React.FC = () => {
                     <button
                         onClick={() => {
                             setEditingRule(record);
-                            form.setFieldsValue(record);
+                            form.setFieldsValue({
+                                ...record,
+                                difficulties: record.difficulties.split(',').map(d => d.trim())
+                            });
                             setModalVisible(true);
                         }}
                         className="p-2 rounded-xl border-[2px] border-slate-900 bg-white text-slate-600 hover:text-[#49B6E5] hover:bg-slate-50 transition-all shadow-[2px_2px_0_#1f293710] hover:shadow-[3px_3px_0_#49B6E5]"
@@ -257,10 +261,19 @@ const RoadmapRuleManagementPage: React.FC = () => {
 
                         <Form.Item 
                             name="difficulties" 
-                            label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Danh sách cấp độ (Phân cách bằng dấu phẩy)</span>}
-                            rules={[{ required: true }]}
+                            label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Danh sách cấp độ</span>}
+                            rules={[{ required: true, message: 'Vui lòng chọn ít nhất một cấp độ' }]}
                         >
-                            <Input className="premium-input" placeholder="Vd: BEGINNER, INTERMEDIATE" />
+                            <Select 
+                                mode="multiple"
+                                className="premium-select"
+                                placeholder="Chọn các cấp độ"
+                                options={[
+                                    { label: 'BEGINNER', value: 'BEGINNER' },
+                                    { label: 'INTERMEDIATE', value: 'INTERMEDIATE' },
+                                    { label: 'ADVANCED', value: 'ADVANCED' },
+                                ]}
+                            />
                         </Form.Item>
 
                         <div className="pt-4 flex gap-4">
