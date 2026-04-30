@@ -3,9 +3,9 @@ import { Button, Form, Input, Select, Modal, message, Tooltip, Progress } from '
 import {
     CameraOutlined, TrophyOutlined, CheckCircleOutlined,
 } from '@ant-design/icons'
-import { 
-    Flame, Star, Shield, BookOpen, ArrowRight, Landmark, Castle, Building2, 
-    Mail, Phone, Calendar, Edit, MessageSquare, Target, Activity, 
+import {
+    Flame, Star, Shield, BookOpen, ArrowRight, Landmark, Castle, Building2,
+    Mail, Phone, Calendar, Edit, MessageSquare, Target, Activity,
     TrendingUp, TrendingDown, Minus, ChevronRight, Layout, Zap
 } from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
@@ -30,20 +30,20 @@ export default function ProfilePage() {
     const navigate = useNavigate()
     const { session, updateSessionItem } = useAuth()
     const isEducatorView = !!studentId
-    
+
     // For Learner view
     const user = session?.user
     const [badges, setBadges] = useState<any[]>([])
     const [progress, setProgress] = useState<Record<string, number>>({})
     const [badgesLoading, setBadgesLoading] = useState(true)
     const [progressLoading, setProgressLoading] = useState(true)
-    
+
     // For Educator view
     const [studentData, setStudentData] = useState<any>(null)
     const [analytics, setAnalytics] = useState<any>(null)
     const [pronunciationData, setPronunciationData] = useState<any>(null)
     const [loading, setLoading] = useState(isEducatorView)
-    
+
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     const [avatarErr, setAvatarErr] = useState(false)
@@ -52,7 +52,7 @@ export default function ProfilePage() {
     // ══════ DATA FETCHING (EDUCATOR) ══════
     useEffect(() => {
         if (!isEducatorView) return
-        
+
         const fetchStudentData = async () => {
             setLoading(true)
             try {
@@ -61,7 +61,7 @@ export default function ProfilePage() {
                     educatorService.getAnalyticsReportByStudent(studentId!),
                     educatorService.getPronunciationAnalytics(studentId!)
                 ])
-                
+
                 // apiClient unwraps data already if configured, but let's be safe
                 setStudentData(accRes?.data || accRes)
                 setAnalytics(analyticsRes?.data || analyticsRes)
@@ -73,14 +73,14 @@ export default function ProfilePage() {
                 setLoading(false)
             }
         }
-        
+
         fetchStudentData()
     }, [studentId, isEducatorView])
 
     // ══════ DATA FETCHING (LEARNER) ══════
     useEffect(() => {
         if (isEducatorView) return
-        
+
         apiClient.get('/learner/my-badges')
             .then((res: any) => {
                 const l = res?.data?.data ?? res?.data ?? []
@@ -162,20 +162,20 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 font-nunito animate-in fade-in duration-500">
-            
+
             {/* Header / Profile Info */}
             <div className="relative bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937] overflow-hidden">
                 {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-BRAND_BLUE/5 rounded-bl-full -z-0" />
                 <div className="absolute bottom-10 left-10 w-20 h-20 border-[3px] border-BRAND_ORANGE/10 rounded-full -z-0" />
-                
+
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                     {/* Avatar */}
                     <div className="relative">
                         <div className="w-32 h-32 rounded-3xl border-[4px] border-slate-900 bg-slate-50 overflow-hidden shadow-[6px_6px_0_#1f2937]">
-                            <img 
-                                src={activeData?.avatarUrl || activeData?.avatar || (activeData as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeData?.fullName || 'User'}`} 
-                                alt="Profile" 
+                            <img
+                                src={activeData?.avatarUrl || activeData?.avatar || (activeData as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeData?.fullName || 'User'}`}
+                                alt="Profile"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                     (e.target as any).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeData?.fullName || 'User'}`
@@ -197,7 +197,7 @@ export default function ProfilePage() {
                                 Level: {activeData?.level || 'Bắt đầu'}
                             </span>
                         </div>
-                        
+
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-slate-500 mb-6">
                             <div className="flex items-center gap-1.5">
                                 <Mail size={14} className="text-slate-400" />
@@ -217,13 +217,13 @@ export default function ProfilePage() {
                         <div className="flex flex-wrap justify-center md:justify-start gap-3">
                             {isEducatorView ? (
                                 <>
-                                    <Button 
+                                    <Button
                                         className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                                         icon={<MessageSquare size={16} />}
                                     >
                                         Nhắn tin
                                     </Button>
-                                    <Button 
+                                    <Button
                                         onClick={() => navigate('/educator/students')}
                                         className="h-12 px-6 bg-white border-[3px] border-slate-900 text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                                     >
@@ -231,7 +231,7 @@ export default function ProfilePage() {
                                     </Button>
                                 </>
                             ) : (
-                                <Button 
+                                <Button
                                     onClick={handleEdit}
                                     className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                                     icon={<Edit size={16} />}
@@ -254,7 +254,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left Column: Analytics & Progress */}
                 <div className="lg:col-span-8 space-y-8">
-                    
+
                     {/* Educator Analytics Section */}
                     {isEducatorView ? (
                         <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
@@ -271,7 +271,7 @@ export default function ProfilePage() {
                                         <div className="text-2xl font-black text-BRAND_BLUE">{activeData?.pronunciationScore || 0}%</div>
                                     </div>
                                     <div className="h-4 bg-white border-[2.5px] border-slate-900 rounded-full overflow-hidden mb-4">
-                                        <motion.div 
+                                        <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${activeData?.pronunciationScore || 0}%` }}
                                             className="h-full bg-BRAND_BLUE"
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                                 <div className="w-1.5 h-8 bg-BRAND_BLUE rounded-full" />
                                 <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Tiến độ ngôn ngữ</h2>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {Object.entries(progress).length > 0 ? (
                                     Object.entries(progress).map(([key, pct], idx) => (
@@ -335,10 +335,10 @@ export default function ProfilePage() {
                                                 <span className="text-sm font-black uppercase tracking-widest text-slate-600">{key}</span>
                                                 <span className="text-lg font-black text-BRAND_BLUE">{pct}%</span>
                                             </div>
-                                            <Progress 
-                                                percent={pct} 
-                                                strokeColor={BRAND_BLUE} 
-                                                trailColor="white"
+                                            <Progress
+                                                percent={pct}
+                                                strokeColor={BRAND_BLUE}
+                                                railColor="white"
                                                 strokeWidth={12}
                                                 showInfo={false}
                                                 className="mb-2"
@@ -352,7 +352,7 @@ export default function ProfilePage() {
                                             <BookOpen size={32} className="text-slate-300" />
                                         </div>
                                         <p className="font-black text-slate-400 uppercase tracking-widest text-sm">Chưa có tiến độ ghi nhận</p>
-                                        <Button 
+                                        <Button
                                             onClick={() => navigate('/learner/journey')}
                                             className="mt-4 border-none text-BRAND_BLUE font-black uppercase text-[10px] tracking-widest hover:bg-BRAND_BLUE/5 px-4 h-8 rounded-lg"
                                         >
@@ -367,18 +367,18 @@ export default function ProfilePage() {
 
                 {/* Right Column: Achievements & Recent Activity */}
                 <div className="lg:col-span-4 space-y-8">
-                    
+
                     {/* Achievements */}
                     <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-1.5 h-6 bg-yellow-400 rounded-full" />
                             <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Thành tích</h2>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-3">
                             {(isEducatorView ? [] : badges).slice(0, 9).map((b, i) => (
                                 <Tooltip title={b?.badge?.name || b?.name} key={i}>
-                                    <motion.div 
+                                    <motion.div
                                         whileHover={{ scale: 1.1, rotate: 5 }}
                                         className="aspect-square rounded-2xl border-[2.5px] border-slate-900 bg-[#fefce8] flex items-center justify-center shadow-[3px_3px_0_#1f2937] cursor-help"
                                     >
@@ -402,7 +402,7 @@ export default function ProfilePage() {
                                 <div className="w-1.5 h-6 bg-green-400 rounded-full" />
                                 <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Phiên học gần đây</h2>
                             </div>
-                            
+
                             <div className="space-y-4">
                                 {(analytics?.recentSessions || [
                                     { id: '1', score: 92, createdAt: '2026-04-28T10:00:00Z' },
@@ -472,16 +472,16 @@ export default function ProfilePage() {
                     </Form.Item>
 
                     <div className="flex gap-4 justify-end mt-8">
-                        <button 
+                        <button
                             type="button"
-                            onClick={() => setIsModalOpen(false)} 
+                            onClick={() => setIsModalOpen(false)}
                             className="h-12 px-6 rounded-xl border-[3px] border-slate-900 bg-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                         >
                             Hủy
                         </button>
-                        <button 
+                        <button
                             type="button"
-                            disabled={saving} 
+                            disabled={saving}
                             onClick={handleSave}
                             className="h-12 px-8 rounded-xl border-[3px] border-slate-900 bg-BRAND_ORANGE text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all disabled:opacity-50"
                         >
@@ -491,7 +491,8 @@ export default function ProfilePage() {
                 </Form>
             </Modal>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .neobrutalist-modal .ant-modal-content {
                     border: 4px solid #1f2937;
                     box-shadow: 12px 12px 0 #1f2937;

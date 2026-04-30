@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Spin } from 'antd';
-import { customPathService, CustomPath } from '../services/customPathService';
-import { Book, CheckCircle, Map, FileText, X, Rocket, Zap, ShieldCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Modal } from 'antd';
+import { customPathService, type CustomPath } from '../services/customPathService';
+import { CheckCircle, Map, FileText, X, Rocket, Zap, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
 interface RoadmapPreviewModalProps {

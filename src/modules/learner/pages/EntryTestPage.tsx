@@ -250,7 +250,7 @@ const EntryTestPage: React.FC = () => {
             })
 
             const result = res.data?.data || res.data
-            
+
             // Extract values from unified BE response
             const finalScore = Number(result?.accuracy ?? result?.score ?? 0)
             const transcribedText = result?.azureTranscript || result?.rawText || result?.text || ''
@@ -314,7 +314,7 @@ const EntryTestPage: React.FC = () => {
 
             // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
             if (updateSessionItem) {
-                updateSessionItem({ 
+                updateSessionItem({
                     hasDoneEntryTest: true,
                     region: data?.detectedRegion || 'NORTH'
                 })
@@ -425,10 +425,10 @@ const EntryTestPage: React.FC = () => {
                                 {Math.round(finalData?.overallScore ?? 0)}<span className="text-2xl opacity-50">%</span>
                             </div>
                             <div className="h-2 w-24 bg-white border-[2px] border-slate-900 rounded-full overflow-hidden">
-                                <motion.div 
+                                <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${finalData?.overallScore ?? 0}%` }}
-                                    className="h-full bg-[#49B6E5]" 
+                                    className="h-full bg-[#49B6E5]"
                                 />
                             </div>
                         </div>
@@ -436,8 +436,8 @@ const EntryTestPage: React.FC = () => {
                         <div className="bg-[#fffaf2] border-[3px] border-slate-900 rounded-[2rem] p-6 shadow-[6px_6px_0_#1f2937] flex flex-col items-center justify-center text-center">
                             <span className="text-[10px] font-black uppercase tracking-widest text-[#D97706] mb-2">Miền chẩn đoán</span>
                             <div className="text-2xl font-black text-slate-900 mb-2">
-                                {finalData?.detectedRegion === 'NORTH' ? 'Miền Bắc' : 
-                                 finalData?.detectedRegion === 'CENTRAL' ? 'Miền Trung' : 'Miền Nam'}
+                                {finalData?.detectedRegion === 'NORTH' ? 'Miền Bắc' :
+                                    finalData?.detectedRegion === 'CENTRAL' ? 'Miền Trung' : 'Miền Nam'}
                             </div>
                             <div className="inline-flex items-center gap-2 bg-white border-[2px] border-slate-900 rounded-full px-3 py-1 text-[10px] font-black text-slate-600">
                                 <MapPin size={12} />
@@ -461,7 +461,7 @@ const EntryTestPage: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4">
-                        <button 
+                        <button
                             onClick={() => navigate('/learner/custom-journey')}
                             className="flex-[1.5] group relative bg-[#49B6E5] border-[3px] border-slate-900 rounded-2xl py-5 px-6 shadow-[6px_6px_0_#1f2937] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_#1f2937] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
                         >
@@ -474,7 +474,7 @@ const EntryTestPage: React.FC = () => {
                             </div>
                         </button>
 
-                        <button 
+                        <button
                             onClick={() => navigate('/learner/roadmap')}
                             className="flex-1 bg-white border-[3px] border-slate-900 rounded-2xl py-5 px-6 shadow-[6px_6px_0_#1f2937] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_#1f2937] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
                         >
@@ -487,7 +487,7 @@ const EntryTestPage: React.FC = () => {
 
                     {/* Exploration Link */}
                     <div className="mt-8 text-center">
-                        <button 
+                        <button
                             onClick={() => navigate('/learner/dashboard')}
                             className="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
                         >

@@ -15,8 +15,6 @@ const StudentsPage = () => {
   const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
-  // Modal state
-  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null);
 
   const getAvatarUrl = (s: any) => {
     if (avatarErrors[s.id]) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName || s.id}`;

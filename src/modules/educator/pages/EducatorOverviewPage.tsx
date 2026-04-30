@@ -120,7 +120,7 @@ const EducatorOverviewPage = () => {
                   <Progress
                     percent={m.value}
                     strokeColor="#49B6E5"
-                    trailColor="#e2e8f0"
+                    railColor="#e2e8f0"
                     strokeWidth={12}
                     className="doodle-progress"
                     format={p => <span className="font-black text-slate-900">{p}%</span>}
