@@ -126,48 +126,64 @@ const CustomJourneyPage: React.FC = () => {
 
     const roadmapNodes = useMemo(() => {
         if (!path) return [];
-        const allQuizzes: (PathQuiz & { levelName: string; region: string })[] = [];
-        path.levels.forEach(level => {
-            level.quizzes.forEach(quiz => {
-                allQuizzes.push({ ...quiz, levelName: level.levelName, region: level.region });
+
+        // Nếu level có quizzes con → dùng quizzes con (flow cũ)
+        // Nếu không có quizzes → dùng chính level làm node bài học (AI roadmap flow)
+        const hasQuizzes = path.levels.some(l => l.quizzes && l.quizzes.length > 0);
+
+        if (hasQuizzes) {
+            // Flow cũ: flatten quizzes từ levels
+            const allQuizzes: (PathQuiz & { levelName: string; region: string })[] = [];
+            path.levels.forEach(level => {
+                level.quizzes.forEach(quiz => {
+                    allQuizzes.push({ ...quiz, levelName: level.levelName, region: level.region });
+                });
             });
-        });
+            return allQuizzes.map((quiz, index) => {
+                let type: 'completed' | 'active' | 'locked' = 'locked';
+                let stars = 0;
+                if (quiz.score >= 80) stars = 3;
+                else if (quiz.score >= 60) stars = 2;
+                else if (quiz.score >= 40) stars = 1;
 
-        return allQuizzes.map((quiz, index) => {
-            let type: 'completed' | 'active' | 'locked' = 'locked';
-            let stars = 0;
-            if (quiz.score >= 80) stars = 3;
-            else if (quiz.score >= 60) stars = 2;
-            else if (quiz.score >= 40) stars = 1;
-
-            let allPreviousCompleted = true;
-            for (let j = 0; j < index; j++) {
-                if (!allQuizzes[j].isCompleted) {
-                    allPreviousCompleted = false;
-                    break;
+                let allPreviousCompleted = true;
+                for (let j = 0; j < index; j++) {
+                    if (!allQuizzes[j].isCompleted) { allPreviousCompleted = false; break; }
                 }
-            }
+                if (allPreviousCompleted && quiz.isCompleted) type = 'completed';
+                else if (allPreviousCompleted && !quiz.isCompleted) type = 'active';
+                else { type = 'locked'; stars = 0; }
 
-            if (allPreviousCompleted && quiz.isCompleted) {
-                type = 'completed';
-            } else if (allPreviousCompleted && !quiz.isCompleted) {
-                type = 'active';
-            } else {
-                type = 'locked';
-                stars = 0;
-            }
+                return {
+                    id: quiz.quizId,
+                    title: quiz.title,
+                    type, stars,
+                    skillType: (quiz.skillType || 'MIXED').toString().toUpperCase(),
+                    quiz,
+                    position: { x: index, y: index % 2 === 0 ? 50 : (index % 4 === 1 ? 25 : 75) },
+                };
+            });
+        }
 
+        // Flow AI roadmap: dùng chính mỗi level là 1 node bài học
+        return path.levels.map((level, index) => {
+            const type: 'completed' | 'active' | 'locked' =
+                index === 0 ? 'active' : 'locked';
             return {
-                id: quiz.quizId,
-                title: quiz.title,
+                id: level.levelId,
+                title: level.levelName,
                 type,
-                stars,
-                skillType: (quiz.skillType || 'MIXED').toString().toUpperCase(),
-                quiz,
-                position: {
-                    x: index,
-                    y: index % 2 === 0 ? 50 : (index % 4 === 1 ? 25 : 75),
-                },
+                stars: 0,
+                skillType: 'MIXED',
+                quiz: {
+                    quizId: level.levelId,
+                    title: level.levelName,
+                    orderIndex: level.orderIndex ?? index,
+                    skillType: 'MIXED',
+                    score: 0,
+                    isCompleted: false,
+                } as PathQuiz & { levelName: string; region: string },
+                position: { x: index, y: index % 2 === 0 ? 50 : (index % 4 === 1 ? 25 : 75) },
             };
         });
     }, [path]);

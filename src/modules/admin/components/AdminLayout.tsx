@@ -15,13 +15,15 @@ import {
   FlaskConical,
   LogOut,
   User,
-  MoreVertical
+  MoreVertical,
+  Tag
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
   { key: '/admin', icon: LayoutDashboard, label: 'Tổng quan' },
   { key: '/admin/chapters', icon: BookOpen, label: 'Quản lý bài tập' },
+  { key: '/admin/error-tags', icon: Tag, label: 'Lỗi vùng miền' },
   { key: '/admin/ai-monitor', icon: Bot, label: 'Giám sát AI' },
   { key: '/admin/entry-test', icon: FlaskConical, label: 'Quản lý Entry Test' },
   { key: '/admin/users', icon: Users, label: 'Người dùng' },

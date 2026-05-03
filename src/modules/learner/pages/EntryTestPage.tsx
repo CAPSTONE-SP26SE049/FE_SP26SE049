@@ -15,8 +15,8 @@ import { Spin, Button, Progress, message } from 'antd'
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
-import { ASR_BASE_URL } from '../../../config'
-import { Globe, Play, ChevronRight, MapPin } from 'lucide-react'
+import { ASR_BASE_URL, ASR_MODEL, ASR_LANGUAGE, ASR_SAMPLING_RATE } from '../../../config'
+import { Globe, Play, ChevronRight, MapPin, Trophy, ArrowRight, Zap } from 'lucide-react'
 import mienbacImg from '../../../assets/mienbac.png'
 import mientrungImg from '../../../assets/mientrung.png'
 import miennamImg from '../../../assets/miennam.png'
@@ -138,6 +138,7 @@ interface StepResult {
     feedback?: string
     errorDetail?: string
     wordDetails?: any[] // Thêm chi tiết từng từ
+    audioUrl?: string
 }
 
 const EntryTestPage: React.FC = () => {
@@ -219,83 +220,58 @@ const EntryTestPage: React.FC = () => {
         return new Blob([buffer], { type: 'audio/wav' })
     }
 
-    // 2. Handle Recording Stop & Analyze — COPY ĐÚNG LUỒNG từ QuizPage.evaluateSpeaking
+    // 2. Handle Recording Stop & Analyze — Use centralized BE endpoint
     const handleRecordStop = async (blob: Blob) => {
         if (!blob || blob.size < 100) return
         setAnalyzing(true)
 
         try {
-            // Bước 1: convert audio sang WAV
-            let audioForAsr = blob
-            let uploadFileName = 'recording.webm'
-            try {
-                const mime = (blob.type || '').toLowerCase()
-                if (!mime.includes('wav')) {
-                    audioForAsr = await convertWebmToWav(blob)
-                    uploadFileName = 'recording.wav'
-                } else {
-                    uploadFileName = 'recording.wav'
+            // convert audio to WAV for better compatibility if needed, but BE usually handles it
+            let audioFile = blob
+            let fileName = 'recording.webm'
+            const mime = (blob.type || '').toLowerCase()
+            if (!mime.includes('wav')) {
+                try {
+                    audioFile = await convertWebmToWav(blob)
+                    fileName = 'recording.wav'
+                } catch (e) {
+                    console.warn("WAV conversion failed, using original blob", e)
                 }
-            } catch {
-                audioForAsr = blob
-                uploadFileName = 'recording.webm'
+            } else {
+                fileName = 'recording.wav'
             }
 
-            // Bước 2: gọi Local ASR (Sử dụng ASR_URL từ env, đo latency)
-            const asrStartTime = Date.now()
-            const asrFormData = new FormData()
-            asrFormData.append('audio', audioForAsr, uploadFileName)
-            const targetText = questions[idx]?.targetText || ''
-            asrFormData.append('target', targetText)
+            const formData = new FormData()
+            formData.append('file', audioFile, fileName)
+            formData.append('questionId', questions[idx]?.id)
 
-            const asrResponse = await fetch(ASR_BASE_URL, {
-                method: 'POST',
-                body: asrFormData,
-            })
-            if (!asrResponse.ok) throw new Error(`ASR Server error: ${asrResponse.status}`)
-
-            const asrData = await asrResponse.json()
-            const asrProcessingTimeMs = Date.now() - asrStartTime
-
-            // Format mới: { success: true, data: { transcribed, score, word_details, record_id } }
-            const apiResult = asrData.success ? asrData.data : null
-            if (!apiResult) throw new Error("Server trả về lỗi logic")
-
-            const transcribedText = apiResult.transcribed || ''
-            const normalizedScore = apiResult.score || 0
-            const wordDetails = apiResult.word_details || []
-
-            // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
-            const feedbackResponse = await apiClient.post('/ai/feedback', {
-                transcribedText,
-                targetText,
-                challengeId: questions[idx]?.id || null,
-                dialect: questions[idx]?.regionCategory || '',
-                consentGiven: false,
-                asrProcessingTimeMs
+            const res = await apiClient.post('/test/analyze-step', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             })
 
-            // Fix: Unwrap data if needed
-            const result = feedbackResponse.data?.data || feedbackResponse.data || feedbackResponse
-            // Ưu tiên điểm từ model ASR custom
-            const finalScore = normalizedScore || Number(result?.score ?? result?.accuracy ?? 0)
-            const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || '')
-            const detectedError = result?.detectedError || result?.errorType || ''
+            const result = res.data?.data || res.data
+
+            // Extract values from unified BE response
+            const finalScore = Number(result?.accuracy ?? result?.score ?? 0)
+            const transcribedText = result?.azureTranscript || result?.rawText || result?.text || ''
+            const wordDetails = result?.word_details || []
+            const isRegional = result?.isRegional === true || detectRegionalError(result?.detectedError || result?.errorType || '')
 
             setCurrentStepResult({
                 accuracy: finalScore,
-                detectedError: detectedError,
+                detectedError: result?.detectedError || result?.errorType || '',
                 isRegional,
                 rawText: transcribedText || '(Không nhận diện được)',
-                targetText,
+                targetText: questions[idx]?.targetText || '',
                 regionCategory: questions[idx]?.regionCategory || '',
                 feedback: result?.feedback || result?.suggestion || '',
                 errorDetail: result?.errorDetail || '',
-                wordDetails: wordDetails // Lưu thêm chi tiết từ
+                wordDetails: wordDetails,
+                audioUrl: result?.audioUrl // Store the Firebase URL from BE
             })
         } catch (err: any) {
             console.error('[EntryTest] Analyze failed:', err)
-            message.error('Lỗi khi phân tích giọng nói: ' + (err?.message || 'Không rõ'))
+            message.error('Lỗi khi phân tích giọng nói: ' + (err?.response?.data?.message || err?.message || 'Không rõ'))
         } finally {
             setAnalyzing(false)
         }
@@ -338,7 +314,10 @@ const EntryTestPage: React.FC = () => {
 
             // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
             if (updateSessionItem) {
-                updateSessionItem({ hasDoneEntryTest: true })
+                updateSessionItem({
+                    hasDoneEntryTest: true,
+                    region: data?.detectedRegion || 'NORTH'
+                })
             }
         } catch (err) {
             message.error('Lỗi khi lưu kết quả bài test')
@@ -412,40 +391,109 @@ const EntryTestPage: React.FC = () => {
 
     if (finished) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-[#f8f5ff] p-6 text-center">
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white p-10 rounded-[3rem] shadow-2xl max-w-lg w-full border border-purple-100"
-                >
-                    <div className="text-7xl mb-6">🎉</div>
-                    <h1 className="text-3xl font-black text-gray-800 mb-4">Hoàn thành chẩn đoán!</h1>
-                    <p className="text-gray-500 mb-8 font-medium">
-                        Chúng tôi đã phân tích giọng nói của bạn và chuẩn bị một lộ trình học tập tối ưu.
-                    </p>
+            <div className="min-h-screen bg-[#f8f3ea] flex items-center justify-center p-6 relative overflow-hidden">
+                {/* Neobrutalist Background Patterns */}
+                <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#e6dccb 2px, transparent 2px)', backgroundSize: '32px 32px' }} />
+                <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-[#49B6E5]/10 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-[#f1c46f]/10 rounded-full blur-[100px] pointer-events-none" />
 
-                    <div className="bg-purple-50 rounded-3xl p-6 mb-8 text-left border border-purple-100">
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="font-bold text-purple-700">Độ chính xác:</span>
-                            <span className="font-black text-2xl text-purple-900">{Math.round(finalData?.overallScore ?? 0)}%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="font-bold text-purple-700">Miền chẩn đoán:</span>
-                            <span className="bg-purple-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                {finalData?.detectedRegion}
-                            </span>
+                <motion.div
+                    initial={{ y: 50, opacity: 0, rotate: -1 }}
+                    animate={{ y: 0, opacity: 1, rotate: 0 }}
+                    className="relative z-10 w-full max-w-2xl bg-white border-[4px] border-slate-900 rounded-[3rem] p-8 md:p-12 shadow-[12px_12px_0_#1f2937]"
+                >
+                    {/* Header Badge */}
+                    <div className="flex justify-center mb-8">
+                        <div className="inline-flex items-center gap-3 bg-[#f1c46f] border-[3px] border-slate-900 rounded-full px-6 py-2 shadow-[4px_4px_0_#1f2937]">
+                            <Trophy size={20} className="text-slate-900" />
+                            <span className="font-black uppercase tracking-widest text-xs text-slate-900">Kết quả chẩn đoán AI</span>
                         </div>
                     </div>
 
-                    <Button
-                        type="primary"
-                        size="large"
-                        block
-                        className="h-16 rounded-2xl text-lg font-bold bg-purple-600 hover:bg-purple-700 border-none shadow-lg shadow-purple-200"
-                        onClick={() => navigate('/learner/dashboard')}
-                    >
-                        Bắt đầu lộ trình ngay
-                    </Button>
+                    <h1 className="text-4xl md:text-5xl font-black text-slate-900 text-center mb-4 leading-tight">
+                        Chúc mừng bạn đã <span className="text-[#49B6E5]">hoàn thành!</span>
+                    </h1>
+                    <p className="text-slate-600 font-bold text-center mb-10 max-w-md mx-auto">
+                        AI đã phân tích giọng nói của bạn. Dưới đây là đánh giá tổng quát về khả năng phát âm của bạn.
+                    </p>
+
+                    {/* Score Card Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                        <div className="bg-[#eef9fe] border-[3px] border-slate-900 rounded-[2rem] p-6 shadow-[6px_6px_0_#1f2937] flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#263D5B] mb-2">Độ chính xác tổng quát</span>
+                            <div className="text-6xl font-black text-[#263D5B] mb-1">
+                                {Math.round(finalData?.overallScore ?? 0)}<span className="text-2xl opacity-50">%</span>
+                            </div>
+                            <div className="h-2 w-24 bg-white border-[2px] border-slate-900 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${finalData?.overallScore ?? 0}%` }}
+                                    className="h-full bg-[#49B6E5]"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-[#fffaf2] border-[3px] border-slate-900 rounded-[2rem] p-6 shadow-[6px_6px_0_#1f2937] flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#D97706] mb-2">Miền chẩn đoán</span>
+                            <div className="text-2xl font-black text-slate-900 mb-2">
+                                {finalData?.detectedRegion === 'NORTH' ? 'Miền Bắc' :
+                                    finalData?.detectedRegion === 'CENTRAL' ? 'Miền Trung' : 'Miền Nam'}
+                            </div>
+                            <div className="inline-flex items-center gap-2 bg-white border-[2px] border-slate-900 rounded-full px-3 py-1 text-[10px] font-black text-slate-600">
+                                <MapPin size={12} />
+                                {finalData?.detectedRegion || 'SOUTH'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* AI Feedback Summary */}
+                    <div className="bg-slate-50 border-[3px] border-slate-900 rounded-[2rem] p-6 mb-10 relative overflow-hidden">
+                        <div className="absolute top-4 right-4 text-slate-200">
+                            <Zap size={48} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                            <StarFilled className="text-[#f1c46f]" /> Nhận xét từ AI
+                        </h3>
+                        <p className="text-slate-700 font-bold leading-relaxed relative z-10">
+                            {finalData?.feedback || "Bạn có khả năng phát âm khá tốt. Tuy nhiên, AI phát hiện một số điểm cần cải thiện ở các âm đặc trưng vùng miền để giọng nói tự nhiên hơn."}
+                        </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                            onClick={() => navigate('/learner/custom-journey')}
+                            className="flex-[1.5] group relative bg-[#49B6E5] border-[3px] border-slate-900 rounded-2xl py-5 px-6 shadow-[6px_6px_0_#1f2937] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_#1f2937] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+                        >
+                            <div className="flex items-center justify-center gap-3">
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-[#263D5B] opacity-70">Gợi ý từ AI</span>
+                                    <span className="text-lg font-black text-slate-900">Lộ trình đề xuất</span>
+                                </div>
+                                <ArrowRight size={24} className="text-slate-900 transition-transform group-hover:translate-x-1" />
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => navigate('/learner/roadmap')}
+                            className="flex-1 bg-white border-[3px] border-slate-900 rounded-2xl py-5 px-6 shadow-[6px_6px_0_#1f2937] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_#1f2937] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+                        >
+                            <div className="flex flex-col items-center">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tiêu chuẩn</span>
+                                <span className="text-lg font-black text-slate-900">Lộ trình mặc định</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    {/* Exploration Link */}
+                    <div className="mt-8 text-center">
+                        <button
+                            onClick={() => navigate('/learner/dashboard')}
+                            className="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+                        >
+                            Khám phá tự do trên Dashboard
+                        </button>
+                    </div>
                 </motion.div>
             </div>
         )
@@ -464,8 +512,8 @@ const EntryTestPage: React.FC = () => {
                             <ThunderboltFilled className="text-2xl text-yellow-500" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-gray-800 leading-none">Entry Test</h2>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Diagnostic Mode</p>
+                            <h2 className="text-xl font-black text-gray-800 leading-none">Kiểm Tra Đầu Vào</h2>
+                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Chế độ chẩn đoán</p>
                         </div>
                     </div>
                     <div className="w-48">
@@ -641,6 +689,21 @@ const EntryTestPage: React.FC = () => {
                 <p className="text-center text-gray-400 text-xs font-medium">
                     Dữ liệu của bạn sẽ được bảo mật và dùng vào mục đích cải thiện lộ trình học tập.
                 </p>
+                {/* Loading Overlay khi đang phân tích kết quả cuối cùng */}
+                {analyzing && !finished && (
+                    <div className="fixed inset-0 z-[100] bg-white/70 backdrop-blur-md flex flex-col items-center justify-center">
+                        <div className="relative">
+                            <div className="w-24 h-24 border-[6px] border-purple-100 border-t-purple-600 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <ThunderboltFilled className="text-3xl text-yellow-500 animate-bounce" />
+                            </div>
+                        </div>
+                        <h2 className="mt-8 text-2xl font-black text-slate-900 uppercase tracking-tight">AI Đang Phân Tích</h2>
+                        <p className="mt-2 text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] animate-pulse">
+                            Vui lòng đợi trong giây lát...
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     )

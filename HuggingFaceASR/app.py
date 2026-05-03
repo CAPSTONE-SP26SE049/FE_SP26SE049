@@ -33,12 +33,18 @@ def health():
 @app.post("/api/v1/transcribe")
 async def transcribe(
     audio: UploadFile = File(...), 
-    target: str = Form("")
+    target: str = Form(""),
+    model: str = Form(None),
+    language: str = Form(None),
+    sampling_rate: str = Form(None)
 ):
     try:
         # Chuyển tiếp request lên HF Space
         files = {"audio": (audio.filename, await audio.read(), audio.content_type)}
         data = {"target": target}
+        if model: data["model"] = model
+        if language: data["language"] = language
+        if sampling_rate: data["sampling_rate"] = sampling_rate
         
         response = requests.post(REMOTE_API_URL, files=files, data=data)
         
@@ -56,9 +62,15 @@ async def transcribe(
         return {"success": False, "error": str(e)}
 
 @app.post("/predict-pronunciation")
-async def predict_pronunciation(file: UploadFile = File(...), target: str = Form("")):
+async def predict_pronunciation(
+    file: UploadFile = File(...), 
+    target: str = Form(""),
+    model: str = Form(None),
+    language: str = Form(None),
+    sampling_rate: str = Form(None)
+):
     # Hỗ trợ cả key 'file' và 'audio' để tương thích ngược
-    return await transcribe(file, target)
+    return await transcribe(file, target, model, language, sampling_rate)
 
 if __name__ == "__main__":
     import uvicorn

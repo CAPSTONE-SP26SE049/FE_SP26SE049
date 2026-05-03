@@ -22,6 +22,7 @@ export interface StudentAccount {
   unreadCount?: number;
   isActive?: boolean;
   hasCustomPath?: boolean;
+  customPathType: 'MANUAL' | 'AI' | 'NONE';
   progressPercent: number;
   pronunciationScore: number;
   weakPhonemes: string[];

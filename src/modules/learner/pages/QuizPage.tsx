@@ -29,7 +29,7 @@ import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
 import characterImg from '../../../assets/sprite-max-px-36.gif'
-import { ASR_BASE_URL } from '../../../config'
+import { ASR_BASE_URL, ASR_MODEL, ASR_LANGUAGE, ASR_SAMPLING_RATE } from '../../../config'
 import { DoodleLoading } from '../../../components/ui/DoodleLoading'
 
 const PAGE_STYLES = `
@@ -618,6 +618,10 @@ const QuizPage: React.FC = () => {
       const asrFormData = new FormData()
       asrFormData.append('audio', audioForAsr, uploadFileName)
       asrFormData.append('target', targetText)
+      // Send custom model parameters
+      asrFormData.append('model', ASR_MODEL)
+      asrFormData.append('language', ASR_LANGUAGE)
+      asrFormData.append('sampling_rate', ASR_SAMPLING_RATE)
 
       const asrStartTime = performance.now()
       const asrResponse = await fetch(ASR_BASE_URL, {

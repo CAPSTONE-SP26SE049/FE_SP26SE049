@@ -26,7 +26,8 @@ const AdminChapterManagementPage: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingLevel, setEditingLevel] = useState<any | null>(null);
-    const [errorTags, setErrorTags] = useState<any[]>([]);
+    const [errorTags, setErrorTags] = useState<any[]>([]); // Tags for current dialect (dropdown)
+    const [allErrorTags, setAllErrorTags] = useState<any[]>([]); // Global list for name lookup
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
@@ -119,7 +120,30 @@ const AdminChapterManagementPage: React.FC = () => {
     useEffect(() => {
         fetchLevels();
         fetchDialects();
+        fetchAllErrorTags();
     }, []);
+
+    const fetchAllErrorTags = async () => {
+        try {
+            const response: any = await adminService.getErrorTags();
+            if (response && (response.status === 'success' || response.data)) {
+                setAllErrorTags(response.data || response);
+            } else {
+                setAllErrorTags(Array.isArray(response) ? response : []);
+            }
+        } catch (error) {
+            console.error('Error fetching all error tags:', error);
+        }
+    };
+
+    const getErrorTagName = (tagRef: any) => {
+        if (!tagRef) return null;
+        if (typeof tagRef === 'object' && tagRef.name) return tagRef.name;
+        
+        // Lookup by tagCode or id
+        const tag = allErrorTags.find(t => t.tagCode === tagRef || t.id === tagRef);
+        return tag ? tag.name : tagRef;
+    };
 
     const handleCreateLevel = async (values: any) => {
         setCreating(true);
@@ -131,6 +155,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 description: values.description || '',
                 minStarsRequired: values.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || null,
+                difficultyLevel: values.difficultyLevel || null,
                 aiThreshold: values.aiThreshold || 75,
             });
             message.success('Tạo chương học thành công');
@@ -154,7 +179,8 @@ const AdminChapterManagementPage: React.FC = () => {
             levelOrder: record.levelOrder,
             minStarsRequired: record.minStarsRequired,
             aiThreshold: record.aiThreshold,
-            errorTagId: record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
+            difficultyLevel: record.difficulty_level || record.difficultyLevel,
+            errorTagId: record.error_tag || record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
             description: record.description || '',
             comment: record.rejectionReason || '',
         });
@@ -172,6 +198,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 levelOrder: values.levelOrder || editingLevel.levelOrder || 1,
                 minStarsRequired: values.minStarsRequired ?? editingLevel.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || (editingLevel.errorTag && typeof editingLevel.errorTag === 'object' ? editingLevel.errorTag.id : editingLevel.errorTag) || null,
+                difficultyLevel: values.difficultyLevel || editingLevel.difficultyLevel || null,
                 aiThreshold: values.aiThreshold || editingLevel.aiThreshold || 75,
                 status: editingLevel.status || 'APPROVED',
                 rejectionReason: editingLevel.rejectionReason ?? null,
@@ -355,6 +382,9 @@ const AdminChapterManagementPage: React.FC = () => {
                 levelOrder: meta.level_order ?? item.levelOrder ?? null,
                 minStarsRequired: meta.min_stars_required ?? item.minStarsRequired ?? null,
                 aiThreshold: meta.ai_threshold ?? item.aiThreshold ?? null,
+                difficultyLevel: meta.difficulty_level ?? item.difficultyLevel ?? null,
+                errorTag: meta.error_tag ?? item.errorTag ?? null,
+                errorTagId: meta.error_tag_id ?? item.errorTagId ?? (item.errorTag && typeof item.errorTag === 'object' ? item.errorTag.id : item.errorTag) ?? null,
                 status: meta.status || item.status || 'APPROVED',
                 createdAt: item.createdAt,
                 dueDate: item.dueDate,
@@ -652,14 +682,23 @@ const AdminChapterManagementPage: React.FC = () => {
                                                                     </p>
                                                                 </div>
 
-                                                                <div className="mt-4 pt-4 border-t-[2px] border-slate-900/5 flex items-center justify-between">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-black uppercase text-slate-500">
-                                                                            Mã: {level.id.slice(0, 8)}
-                                                                        </div>
+                                                                <div className="mt-4 pt-4 border-t-[2px] border-slate-900/5 flex flex-col gap-3">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        {(level.difficulty_level || level.difficultyLevel) && (
+                                                                            <div className="px-2 py-1 rounded-md bg-[#49B6E5]/10 text-[#49B6E5] text-[9px] font-black uppercase tracking-widest border border-[#49B6E5]/20">
+                                                                                {(level.difficulty_level || level.difficultyLevel) === 'BEGINNER' ? 'Cơ bản' : (level.difficulty_level || level.difficultyLevel) === 'INTERMEDIATE' ? 'Trung bình' : 'Nâng cao'}
+                                                                            </div>
+                                                                        )}
+                                                                        {(level.error_tag || level.errorTag) && (
+                                                                            <div className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 text-[9px] font-black uppercase tracking-widest border border-purple-500/20">
+                                                                                {getErrorTagName(level.error_tag || level.errorTag)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                    <div className="flex items-center gap-1 text-[#49B6E5] font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                        Chi tiết <ChevronRight size={14} strokeWidth={4} />
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-1 text-[#49B6E5] font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            Chi tiết <ChevronRight size={14} strokeWidth={4} />
+                                                                        </div>
                                                                     </div>
                                                                 </div>
 
@@ -728,6 +767,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         <Select
                             placeholder="Chọn vùng miền"
                             className="doodle-select"
+                            onChange={(val) => fetchErrorTags(val)}
                             options={dialects.map((dialect: any) => {
                                 const regionKey = (dialect.name || '').toUpperCase();
                                 const info = REGION_LABEL[regionKey];
@@ -736,6 +776,38 @@ const AdminChapterManagementPage: React.FC = () => {
                                     label: dialect.description || info?.label || dialect.name,
                                 };
                             })}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Độ khó</span>}
+                        name="difficultyLevel"
+                        rules={[{ required: true, message: 'Vui lòng chọn độ khó' }]}
+                    >
+                        <Select
+                            placeholder="Chọn độ khó"
+                            className="doodle-select"
+                            options={[
+                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
+                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        name="errorTagId"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
+                    >
+                        <Select
+                            placeholder="Chọn loại lỗi"
+                            className="doodle-select"
+                            options={errorTags.map((tag: any) => ({
+                                value: tag.id,
+                                label: tag.name
+                            }))}
+                            disabled={errorTags.length === 0}
                         />
                     </Form.Item>
 
@@ -776,6 +848,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         <Select
                             placeholder="Chọn vùng miền"
                             className="doodle-select"
+                            onChange={(val) => { fetchErrorTags(val); editForm.setFieldValue('errorTagId', undefined); }}
                             options={dialects.map((dialect: any) => {
                                 const regionKey = (dialect.name || '').toUpperCase();
                                 const info = REGION_LABEL[regionKey];
@@ -784,6 +857,38 @@ const AdminChapterManagementPage: React.FC = () => {
                                     label: dialect.description || info?.label || dialect.name,
                                 };
                             })}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Độ khó</span>}
+                        name="difficultyLevel"
+                        rules={[{ required: true, message: 'Vui lòng chọn độ khó' }]}
+                    >
+                        <Select
+                            placeholder="Chọn độ khó"
+                            className="doodle-select"
+                            options={[
+                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
+                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        name="errorTagId"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
+                    >
+                        <Select
+                            placeholder="Chọn loại lỗi"
+                            className="doodle-select"
+                            options={errorTags.map((tag: any) => ({
+                                value: tag.id,
+                                label: tag.name
+                            }))}
+                            disabled={errorTags.length === 0}
                         />
                     </Form.Item>
 

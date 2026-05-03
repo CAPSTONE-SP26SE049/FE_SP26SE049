@@ -18,6 +18,7 @@ import InteractionsPage from '../modules/educator/pages/InteractionsPage'
 import ChallengeBankPage from '../modules/educator/pages/ChallengeBankPage'
 import ChapterManagementPage from '../modules/educator/pages/ChapterManagementPage'
 import QuizManagementPage from '../modules/educator/pages/QuizManagementPage'
+import RoadmapRuleManagementPage from '../modules/educator/pages/RoadmapRuleManagementPage'
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
@@ -27,6 +28,7 @@ import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagement
 import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
 import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementPage'
+import ErrorTagManagementPage from '../modules/admin/pages/ErrorTagManagementPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -72,6 +74,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="ai-monitor" element={<AiMonitorPage />} />
           <Route path="entry-test" element={<EntryTestManagementPage />} />
+          <Route path="error-tags" element={<ErrorTagManagementPage />} />
         </Route>
       </Route>
 
@@ -80,6 +83,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/educator" element={<EducatorLayout />}>
           <Route index element={<EducatorOverviewPage />} />
           <Route path="students" element={<StudentsPage />} />
+          <Route path="students/profile/:studentId" element={<ProfilePage />} />
           <Route path="design-path" element={<CustomPathSelectionPage />} />
           <Route path="design-path/:studentId" element={<CustomPathDesignerPage />} />
           <Route path="progress" element={<ChapterManagementPage />} />
@@ -90,6 +94,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />
           <Route path="quizzes" element={<QuizManagementPage />} />
+          <Route path="roadmap-rules" element={<RoadmapRuleManagementPage />} />
         </Route>
       </Route>
 

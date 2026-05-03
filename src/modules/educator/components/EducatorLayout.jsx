@@ -4,7 +4,7 @@ import { useAuth } from '../../../core/auth/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen, ChartNoAxesCombined, MessageSquareMore, Sparkles, ChevronLeft, ChevronRight, Users,
-  LogOut, User, MoreVertical, Settings
+  LogOut, User, MoreVertical, Settings, Map
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { key: '/educator/design-path', icon: Sparkles, label: 'Thiết kế lộ trình' },
   { key: '/educator/progress', icon: ChartNoAxesCombined, label: 'Theo dõi tiến độ' },
   { key: '/educator/messages', icon: MessageSquareMore, label: 'Tương tác & phản hồi' },
+  { key: '/educator/roadmap-rules', icon: Map, label: 'Quy tắc lộ trình' },
   { key: '/educator/settings', icon: Settings, label: 'Cài đặt' },
 ]
 
