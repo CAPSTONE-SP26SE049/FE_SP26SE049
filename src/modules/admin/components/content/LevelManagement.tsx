@@ -110,6 +110,7 @@ const LevelManagement: React.FC = () => {
                 columns={columns}
                 dataSource={levels}
                 rowKey="id"
+                scroll={{ y: 'calc(100vh - 300px)' }}
                 loading={loading}
                 pagination={{ pageSize: 8 }}
                 rowClassName={(record) =>

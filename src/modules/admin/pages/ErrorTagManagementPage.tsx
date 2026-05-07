@@ -241,13 +241,14 @@ const ErrorTagManagementPage = () => {
                     columns={columns}
                     dataSource={filteredTags}
                     rowKey="id"
+                    scroll={{ y: 'calc(100vh - 350px)' }}
                     loading={loading}
                     pagination={{
                         pageSize: 10,
                         showSizeChanger: true,
                         showTotal: (total) => `Tổng ${total} mục`
                     }}
-                    className="[&_.ant-table-thead>tr>th]:bg-slate-50/80 [&_.ant-table-thead>tr>th]:text-slate-500 [&_.ant-table-thead>tr>th]:font-medium [&_.ant-table-thead>tr>th]:border-b-slate-200"
+                    className="[&_.ant-table-thead>tr>th]:bg-white [&_.ant-table-thead>tr>th]:text-slate-500 [&_.ant-table-thead>tr>th]:font-medium [&_.ant-table-thead>tr>th]:border-b-slate-200"
                 />
             </motion.div>
 

@@ -385,6 +385,7 @@ const EntryTestManagementPage: React.FC = () => {
                                 columns={questionColumns}
                                 dataSource={questions}
                                 rowKey="id"
+                                scroll={{ y: 'calc(100vh - 400px)' }}
                                 loading={{
                                     spinning: loadingQ,
                                     indicator: (
@@ -425,6 +426,7 @@ const EntryTestManagementPage: React.FC = () => {
                                 columns={resultColumns}
                                 dataSource={results}
                                 rowKey="id"
+                                scroll={{ y: 'calc(100vh - 400px)' }}
                                 loading={loadingR}
                                 pagination={{
                                     pageSize: 6,
@@ -602,7 +604,7 @@ const EntryTestManagementPage: React.FC = () => {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .doodle-table .ant-table-thead > tr > th {
-                    background: transparent !important;
+                    background: #fff !important;
                     border-bottom: 3px solid #1f2937 !important;
                     padding: 1.5rem !important;
                 }

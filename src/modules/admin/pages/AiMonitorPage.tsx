@@ -393,10 +393,10 @@ const AiMonitorPage = () => {
                         </span>
                     </div>
 
-                    <div className="flex-1 overflow-x-auto max-h-[700px] custom-scrollbar">
-                        <table className="w-full border-collapse">
-                            <thead className="sticky top-0 bg-white z-10">
-                                <tr className="border-b-[2px] border-slate-100 text-left">
+                    <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar pr-2">
+                        <table className="w-full border-collapse relative">
+                            <thead className="sticky top-0 bg-white z-10 shadow-[0_2px_0_#f1f5f9]">
+                                <tr className="text-left">
                                     <th className="py-5 px-8 text-[11px] font-black uppercase tracking-widest text-slate-400">Người dùng</th>
                                     <th className="py-5 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400">Hoạt động</th>
                                     <th className="py-5 px-6 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">Cloud AI</th>

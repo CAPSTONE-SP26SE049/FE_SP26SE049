@@ -51,7 +51,6 @@ export interface ChallengeBank {
     id: string;
     contentText: string;
     skillType: string;
-    difficultyTag: string;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
     createdAt: string;
@@ -61,7 +60,6 @@ export interface ChallengeBank {
 export interface ChallengeBankRequest {
     contentText: string;
     skillType: string;
-    difficultyTag: string;
     region?: string; // BAC, TRUNG, NAM
     metadataJson: Record<string, any>;
 }

@@ -365,14 +365,14 @@ const AdminDashboardPage = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="overflow-x-auto overflow-y-auto max-h-[400px] custom-scrollbar">
             <table className="w-full min-w-[700px]">
-              <thead>
-                <tr className="border-b-[3px] border-slate-900/5 text-left">
-                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-1/3">Học viên</th>
-                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
-                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Sao</th>
-                  <th className="pb-4 pt-2 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right">Chuỗi học</th>
+              <thead className="sticky top-0 z-10 bg-white">
+                <tr className="text-left shadow-[0_3px_0_rgba(15,23,42,0.05)]">
+                  <th className="pb-4 pt-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-1/3">Học viên</th>
+                  <th className="pb-4 pt-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
+                  <th className="pb-4 pt-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Sao</th>
+                  <th className="pb-4 pt-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right">Chuỗi học</th>
                 </tr>
               </thead>
               <tbody className="divide-y-[2px] divide-slate-100">

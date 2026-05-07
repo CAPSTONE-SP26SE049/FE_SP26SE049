@@ -163,22 +163,22 @@ export default function PronunciationModelPage() {
     }, [initMorphTargets]);
 
     return (
-        <div className="min-h-screen bg-[#fbf6ef] font-nunito p-6 lg:p-10 pb-24">
-            <div className="max-w-none mx-auto px-4 lg:px-8">
+        <div className="min-h-screen bg-[#fbf6ef] font-nunito p-4 lg:p-6 pb-12">
+            <div className="max-w-none mx-auto px-2 lg:px-6">
 
                 {/* ── Header Doodle ── */}
-                <header className="relative mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                    <div className="flex items-center gap-6">
+                <header className="relative mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
                         <motion.div
                             initial={{ rotate: -10, scale: 0.8 }}
                             animate={{ rotate: 0, scale: 1 }}
-                            className="w-20 h-20 bg-[#49B6E5] rounded-[2.5rem] border-[3px] border-slate-900 shadow-[6px_6px_0_#1f2937] flex items-center justify-center text-white"
+                            className="w-14 h-14 bg-[#49B6E5] rounded-[1.8rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center text-white"
                         >
-                            <Volume2 size={32} strokeWidth={2.5} />
+                            <Volume2 size={24} strokeWidth={2.5} />
                         </motion.div>
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">Mô Hình 3D</h1>
-                            <p className="text-slate-500 font-bold text-sm md:text-base mt-1 italic tracking-wide">Khám phá cơ chế tạo âm tiếng Việt sinh động</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 leading-tight">Mô Hình 3D</h1>
+                            <p className="text-slate-500 font-bold text-xs md:text-sm mt-0.5 italic tracking-wide">Khám phá cơ chế tạo âm tiếng Việt sinh động</p>
                         </div>
                     </div>
                 </header>
@@ -186,12 +186,12 @@ export default function PronunciationModelPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
 
                     {/* ── Left Column: Controls & Info ── */}
-                    <div className="lg:col-span-12 xl:col-span-5 space-y-10 order-2 xl:order-1">
+                    <div className="lg:col-span-12 xl:col-span-5 space-y-6 order-2 xl:order-1">
 
                         {/* ── Sound Selection Grid ── */}
                         <div className="space-y-4">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Chọn âm tiết</h3>
-                            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 xl:grid-cols-4 gap-4">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Chọn âm tiết</h3>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-4 gap-3">
                                 {SOUND_GROUPS.flat().map((sound) => (
                                     <button
                                         key={sound}
@@ -202,9 +202,9 @@ export default function PronunciationModelPage() {
                                             updateMorphTarget(0, sound);
                                         }}
                                         className={clsx(
-                                            "relative h-14 rounded-2xl font-black transition-all border-[2.5px] text-lg",
+                                            "relative h-12 rounded-xl font-black transition-all border-[2.5px] text-base",
                                             activeSound === sound
-                                                ? "bg-[#49B6E5] text-white border-slate-900 shadow-[4px_4px_0_#1f2937] -translate-y-1 rotate-2"
+                                                ? "bg-[#49B6E5] text-white border-slate-900 shadow-[3px_3px_0_#1f2937] -translate-y-0.5 rotate-2"
                                                 : "bg-white text-slate-500 border-slate-900 shadow-[2px_2px_0_#1f2937] hover:bg-slate-50 active:translate-y-0 active:shadow-none"
                                         )}
                                     >
@@ -215,7 +215,7 @@ export default function PronunciationModelPage() {
                         </div>
 
                         {/* ── Information Cards ── */}
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {/* Main Info Card */}
                             <AnimatePresence mode="wait">
                                 <motion.div
@@ -223,28 +223,28 @@ export default function PronunciationModelPage() {
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 20 }}
-                                    className="bg-white rounded-[2rem] border-[2.5px] border-slate-900 shadow-[8px_8px_0_#1f2937] p-8 space-y-6 relative overflow-hidden"
+                                    className="bg-white rounded-[1.5rem] border-[2px] border-slate-900 shadow-[6px_6px_0_#1f2937] p-6 space-y-4 relative overflow-hidden"
                                 >
-                                    <div className="absolute top-0 right-0 p-4 opacity-5">
-                                        <Volume2 size={80} />
+                                    <div className="absolute top-0 right-0 p-3 opacity-5">
+                                        <Volume2 size={60} />
                                     </div>
 
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-20 h-20 bg-[#fbf6ef] rounded-3xl border-[2.5px] border-slate-900 flex items-center justify-center -rotate-3">
-                                            <span className="text-4xl font-black text-[#49B6E5] italic tracking-tighter">{activeSound}</span>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-[#fbf6ef] rounded-2xl border-[2px] border-slate-900 flex items-center justify-center -rotate-3">
+                                            <span className="text-2xl font-black text-[#49B6E5] italic tracking-tighter">{activeSound}</span>
                                         </div>
                                         <div className="flex-1">
-                                            <h3 className="text-2xl font-black text-slate-900 leading-tight">{SOUND_INFO[activeSound].title}</h3>
-                                            <p className="text-slate-500 font-bold text-sm mt-1">{SOUND_INFO[activeSound].desc}</p>
+                                            <h3 className="text-xl font-black text-slate-900 leading-tight">{SOUND_INFO[activeSound].title}</h3>
+                                            <p className="text-slate-500 font-bold text-xs mt-0.5">{SOUND_INFO[activeSound].desc}</p>
                                         </div>
                                     </div>
 
-                                    <div className="bg-red-50 rounded-2xl border-[2px] border-slate-900 p-5 space-y-2 group">
+                                    <div className="bg-red-50 rounded-xl border-[1.5px] border-slate-900 p-4 space-y-1.5 group">
                                         <div className="flex items-center gap-2 text-red-600">
-                                            <AlertTriangle size={18} strokeWidth={3} />
-                                            <h4 className="font-black text-sm uppercase tracking-wider">Lưu ý lỗi {SOUND_INFO[activeSound].region}</h4>
+                                            <AlertTriangle size={16} strokeWidth={3} />
+                                            <h4 className="font-black text-xs uppercase tracking-wider">Lưu ý lỗi {SOUND_INFO[activeSound].region}</h4>
                                         </div>
-                                        <p className="text-red-700 font-bold text-sm leading-relaxed pl-7">
+                                        <p className="text-red-700 font-bold text-xs leading-relaxed pl-6">
                                             {SOUND_INFO[activeSound].regionError}
                                         </p>
                                     </div>
@@ -256,43 +256,43 @@ export default function PronunciationModelPage() {
                                 key={`tip-${activeSound}`}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-[#49B6E5]/10 rounded-[2rem] border-[2.5px] border-[#49B6E5] p-6 flex gap-5 items-start relative overflow-hidden"
+                                className="bg-[#49B6E5]/10 rounded-[1.5rem] border-[2px] border-[#49B6E5] p-5 flex gap-4 items-start relative overflow-hidden"
                             >
-                                <div className="absolute top-0 right-0 p-3 opacity-20">
-                                    <Sparkles className="text-[#49B6E5]" size={32} />
+                                <div className="absolute top-0 right-0 p-2 opacity-20">
+                                    <Sparkles className="text-[#49B6E5]" size={24} />
                                 </div>
-                                <div className="w-12 h-12 bg-white rounded-2xl border-[2px] border-[#49B6E5] flex items-center justify-center flex-shrink-0">
-                                    <Lightbulb size={24} className="text-[#49B6E5]" strokeWidth={2.5} />
+                                <div className="w-10 h-10 bg-white rounded-xl border-[1.5px] border-[#49B6E5] flex items-center justify-center flex-shrink-0">
+                                    <Lightbulb size={20} className="text-[#49B6E5]" strokeWidth={2.5} />
                                 </div>
-                                <div className="space-y-1 pt-1">
+                                <div className="space-y-1 pt-0.5">
                                     <div className="flex items-center gap-2">
-                                        <h4 className="font-black text-slate-900 text-sm uppercase tracking-widest">Mẹo phát âm</h4>
-                                        <span className="text-[9px] bg-white text-[#49B6E5] px-2 py-0.5 rounded-full border border-[#49B6E5] font-black uppercase">Chuyên gia</span>
+                                        <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest">Mẹo phát âm</h4>
+                                        <span className="text-[8px] bg-white text-[#49B6E5] px-2 py-0.5 rounded-full border border-[#49B6E5] font-black uppercase">Chuyên gia</span>
                                     </div>
-                                    <p className="text-slate-600 font-bold text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: SOUND_INFO[activeSound].tip.replace(`"${activeSound}"`, `<strong class="text-[#49B6E5]">"${activeSound}"</strong>`) }} />
+                                    <p className="text-slate-600 font-bold text-xs leading-relaxed" dangerouslySetInnerHTML={{ __html: SOUND_INFO[activeSound].tip.replace(`"${activeSound}"`, `<strong class="text-[#49B6E5]">"${activeSound}"</strong>`) }} />
                                 </div>
                             </motion.div>
                         </div>
                     </div>
 
                     {/* ── Right Column: 3D Viewport & Controls ── */}
-                    <div className="lg:col-span-12 xl:col-span-7 order-1 xl:order-2 space-y-6">
+                    <div className="lg:col-span-12 xl:col-span-7 order-1 xl:order-2 space-y-4">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden flex flex-col h-[600px] md:h-[750px]"
+                            className="bg-white rounded-[1.5rem] border-[2px] border-slate-900 shadow-[8px_8px_0_#1f2937] overflow-hidden flex flex-col h-[400px] md:h-[480px]"
                         >
                             {/* Sketchy Top Bar */}
-                            <div className="px-6 py-4 bg-slate-50 border-b-[2.5px] border-slate-900 flex items-center justify-between">
+                            <div className="px-5 py-3 bg-slate-50 border-b-[2px] border-slate-900 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex gap-1.5">
-                                        <div className="w-3 h-3 rounded-full border-[1.5px] border-slate-900 bg-red-400" />
-                                        <div className="w-3 h-3 rounded-full border-[1.5px] border-slate-900 bg-yellow-400" />
-                                        <div className="w-3 h-3 rounded-full border-[1.5px] border-slate-900 bg-green-400" />
+                                    <div className="flex gap-1">
+                                        <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-red-400" />
+                                        <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-yellow-400" />
+                                        <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-green-400" />
                                     </div>
-                                    <span className="ml-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">3D Pronunciation View</span>
+                                    <span className="ml-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">3D Pronunciation View</span>
                                 </div>
-                                <div className="px-4 py-1 bg-white border-[1.5px] border-slate-900 rounded-xl text-[9px] font-black text-[#49B6E5] shadow-[2px_2px_0_#1f2937]">
+                                <div className="px-3 py-1 bg-white border-[1.2px] border-slate-900 rounded-lg text-[8px] font-black text-[#49B6E5] shadow-[1.5px_1.5px_0_#1f2937]">
                                     SOUND: {activeSound}
                                 </div>
                             </div>
@@ -341,7 +341,7 @@ export default function PronunciationModelPage() {
                             </div>
 
                             {/* ── The Lab Controls ── */}
-                            <div className="p-6 md:p-8 bg-white border-t-[2.5px] border-slate-900 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                            <div className="p-4 md:p-5 bg-white border-t-[2px] border-slate-900 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
 
                                 {/* Guide Activation */}
                                 <div className="relative group">
@@ -350,24 +350,24 @@ export default function PronunciationModelPage() {
                                         onClick={handleGuideAnimation}
                                         disabled={isAnimating || !modelLoaded}
                                         className={clsx(
-                                            "relative w-full h-20 md:h-24 rounded-[1.5rem] border-[2.5px] border-slate-900 text-white font-black text-xl flex flex-col items-center justify-center gap-2 transition-all",
+                                            "relative w-full h-14 md:h-16 rounded-xl border-[2px] border-slate-900 text-white font-black text-lg flex flex-col items-center justify-center gap-1 transition-all",
                                             isAnimating || !modelLoaded
                                                 ? "bg-slate-400 cursor-not-allowed opacity-80"
                                                 : "bg-[#49B6E5] active:translate-y-1 active:shadow-none"
                                         )}
                                     >
                                         {isAnimating ? (
-                                            <div className="flex items-center gap-3">
-                                                <RotateCcw className="animate-spin" size={24} strokeWidth={3} />
-                                                <span>Đang mô phỏng...</span>
+                                            <div className="flex items-center gap-2">
+                                                <RotateCcw className="animate-spin" size={20} strokeWidth={3} />
+                                                <span className="text-sm">Đang mô phỏng...</span>
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="flex items-center gap-3">
-                                                    <Play size={24} strokeWidth={3} fill="currentColor" />
-                                                    <span>Bắt đầu hướng dẫn</span>
+                                                <div className="flex items-center gap-2">
+                                                    <Play size={20} strokeWidth={3} fill="currentColor" />
+                                                    <span className="text-sm">Bắt đầu hướng dẫn</span>
                                                 </div>
-                                                <span className="text-[10px] uppercase opacity-70 tracking-widest">Mô phỏng chuyển động lưỡi</span>
+                                                <span className="text-[8px] uppercase opacity-70 tracking-widest leading-none">Mô phỏng chuyển động lưỡi</span>
                                             </>
                                         )}
                                     </button>

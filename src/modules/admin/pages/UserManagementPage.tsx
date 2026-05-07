@@ -419,6 +419,7 @@ const UserManagementPage = () => {
                             columns={columns}
                             dataSource={filtered}
                             rowKey="id"
+                            scroll={{ y: 'calc(100vh - 400px)' }}
                             loading={{
                                 spinning: loading,
                                 indicator: (
@@ -438,7 +439,7 @@ const UserManagementPage = () => {
                                 pageSize: 8,
                                 className: "px-8 py-6 !m-0 border-t-[2px] border-slate-50"
                             }}
-                            className="doodle-table"
+                            className="doodle-table custom-scrollbar"
                             rowClassName="group"
                         />
                     </div>
@@ -645,8 +646,13 @@ const UserManagementPage = () => {
             {/* Custom Styles */}
             <style dangerouslySetInnerHTML={{
                 __html: `
+                .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #1f293720; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1f293740; }
+                
                 .doodle-table .ant-table-thead > tr > th {
-                    background: transparent !important;
+                    background: #fff !important;
                     border-bottom: 3px solid #1f2937 !important;
                     padding: 1.5rem !important;
                     font-family: 'Nunito' !important;

@@ -132,19 +132,19 @@ const FriendProfileModal = ({
                     <div className="h-32 bg-[#49B6E5] border-b-[2.5px] border-slate-900 relative">
                         <div className="absolute inset-0 opacity-10"
                             style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #1f2937 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
-                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
-                            <div className="p-1 bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+                            <div className="p-1 bg-white rounded-2xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]">
                                 <Avatar
                                     src={profile.avatar_url || profile.avatarUrl}
-                                    size={90}
-                                    className="bg-sky-100 rounded-[1.4rem]"
+                                    size={72}
+                                    className="bg-sky-100 rounded-[1.2rem]"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center pt-14 px-8 pb-10">
-                        <h3 className="text-2xl font-black text-slate-900 text-center font-nunito uppercase tracking-tight">
+                    <div className="flex flex-col items-center pt-10 px-6 pb-8">
+                        <h3 className="text-xl font-black text-slate-900 text-center font-nunito uppercase tracking-tight">
                             {profile.fullName || 'Người dùng'}
                         </h3>
 
@@ -216,19 +216,19 @@ const FriendCard = ({
     <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -4 }}
-        className="flex flex-col sm:flex-row sm:items-center gap-5 p-6 bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] transition-all group relative overflow-hidden"
+        whileHover={{ y: -2 }}
+        className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-white rounded-2xl border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937] transition-all group relative overflow-hidden"
     >
         {/* Hand-drawn decoration */}
         <div className="absolute top-0 right-0 w-16 h-16 bg-[#49B6E5]/10 rounded-bl-full pointer-events-none" />
 
-        <div className="flex items-center gap-5 flex-1 min-w-0">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-                <div className="p-0.5 bg-white rounded-2xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]">
+                <div className="p-0.5 bg-white rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
                     <Avatar
                         src={item.avatar_url || item.avatarUrl}
-                        size={64}
-                        className="bg-sky-50 rounded-[0.9rem]"
+                        size={48}
+                        className="bg-sky-50 rounded-[0.7rem]"
                     />
                 </div>
                 {unreadCount != null && unreadCount > 0 && (
@@ -239,7 +239,7 @@ const FriendCard = ({
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-[2.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]" />
             </div>
             <div className="flex-1 min-w-0">
-                <div className="font-black text-slate-900 text-lg lg:text-xl font-nunito truncate uppercase tracking-tight">
+                <div className="font-black text-slate-900 text-base lg:text-lg font-nunito truncate uppercase tracking-tight">
                     {item.fullName || 'Người dùng'}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2">
@@ -250,21 +250,21 @@ const FriendCard = ({
             </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0 w-full sm:w-auto justify-end">
             <Tooltip title="Xem hồ sơ">
                 <button
                     onClick={() => onViewProfile(item)}
-                    className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all text-slate-900 active:translate-y-0.5 active:shadow-none"
+                    className="w-10 h-10 rounded-lg bg-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all text-slate-900 active:translate-y-0.5 active:shadow-none"
                 >
-                    <Eye size={18} strokeWidth={2.5} />
+                    <Eye size={16} strokeWidth={2.5} />
                 </button>
             </Tooltip>
 
             <button
                 onClick={() => onOpenChat(item)}
-                className="flex-1 sm:flex-none h-11 px-6 rounded-xl bg-[#49B6E5] text-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+                className="flex-1 sm:flex-none h-10 px-4 rounded-lg bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
             >
-                <MessageCircle size={16} fill="white" />
+                <MessageCircle size={14} fill="white" />
                 <span className="mt-0.5">Nhắn tin</span>
             </button>
 
@@ -278,8 +278,8 @@ const FriendCard = ({
                     okButtonProps={{ danger: true }}
                 >
                     <Tooltip title="Hủy kết bạn">
-                        <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
-                            <Trash2 size={18} strokeWidth={2.5} />
+                        <button className="w-10 h-10 rounded-lg bg-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
+                            <Trash2 size={16} strokeWidth={2.5} />
                         </button>
                     </Tooltip>
                 </Popconfirm>
@@ -292,8 +292,8 @@ const FriendCard = ({
                     okButtonProps={{ danger: true }}
                 >
                     <Tooltip title="Chặn">
-                        <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
-                            <ShieldAlert size={18} strokeWidth={2.5} />
+                        <button className="w-10 h-10 rounded-lg bg-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
+                            <ShieldAlert size={16} strokeWidth={2.5} />
                         </button>
                     </Tooltip>
                 </Popconfirm>
@@ -321,17 +321,17 @@ const RequestCard = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className={clsx(
-            "flex items-center gap-4 p-5 rounded-3xl border-[2px] transition-all",
+            "flex items-center gap-3 p-4 rounded-2xl border-[2px] transition-all",
             type === 'received'
-                ? "bg-sky-50 border-slate-900 shadow-[4px_4px_0_#1f2937]"
+                ? "bg-sky-50 border-slate-900 shadow-[3px_3px_0_#1f2937]"
                 : "bg-white border-slate-200"
         )}
     >
-        <div className="p-0.5 bg-white rounded-xl border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+        <div className="p-0.5 bg-white rounded-lg border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937]">
             <Avatar
                 src={item.avatar_url || item.avatarUrl}
-                size={48}
-                className="bg-sky-100 rounded-lg flex-shrink-0"
+                size={40}
+                className="bg-sky-100 rounded-md flex-shrink-0"
             />
         </div>
         <div className="flex-1 min-w-0">
@@ -696,32 +696,32 @@ export default function LearnerFriendsPage() {
 
     return (
         <div className="bg-[#fbf6ef] min-h-screen">
-            <div className="p-6 lg:p-10 max-w-none mx-auto space-y-8 font-nunito px-6 lg:px-12">
+            <div className="p-4 lg:p-6 max-w-none mx-auto space-y-4 font-nunito px-4 lg:px-8">
 
                 {/* ── Header ── */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-white border-[3px] border-slate-900 rounded-[1.5rem] flex items-center justify-center shadow-[4px_4px_0_#1f2937]">
-                            <Users size={32} className="text-[#49B6E5]" />
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white border-[2.5px] border-slate-900 rounded-xl flex items-center justify-center shadow-[3px_3px_0_#1f2937]">
+                            <Users size={24} className="text-[#49B6E5]" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 font-nunito uppercase tracking-tight">Cộng Đồng</h2>
-                            <p className="text-sm text-slate-400 font-black uppercase tracking-widest">Gặp gỡ và học tập cùng nhau</p>
+                        <div className="space-y-0.5">
+                            <h2 className="text-2xl lg:text-3xl font-black text-slate-900 font-nunito uppercase tracking-tight">Cộng Đồng</h2>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Gặp gỡ và học tập cùng nhau</p>
                         </div>
                     </div>
                     {activeTab !== 'search' && (
                         <button
                             onClick={refreshCurrentTab}
                             disabled={loading}
-                            className="w-12 h-12 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all disabled:opacity-50 active:translate-y-0.5 active:shadow-none"
+                            className="w-10 h-10 rounded-xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-sky-50 transition-all disabled:opacity-50 active:translate-y-0.5 active:shadow-none"
                         >
-                            <RefreshCw size={20} className={clsx("text-slate-900", loading && "animate-spin")} />
+                            <RefreshCw size={18} className={clsx("text-slate-900", loading && "animate-spin")} />
                         </button>
                     )}
                 </div>
 
                 {/* ── Segmented Control (Tabs) ── */}
-                <div className="bg-white rounded-[2rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] p-2 flex flex-wrap md:flex-nowrap gap-2">
+                <div className="bg-white rounded-2xl border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937] p-1.5 flex flex-wrap md:flex-nowrap gap-1.5">
                     {TABS.map(({ id, label, icon: Icon, count, badge }) => {
                         const I = Icon as any;
                         const isActive = activeTab === id;
@@ -730,13 +730,13 @@ export default function LearnerFriendsPage() {
                                 key={id}
                                 onClick={() => setActiveTab(id)}
                                 className={clsx(
-                                    "flex-1 h-12 rounded-[1.2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all duration-300 relative",
+                                    "flex-1 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 relative",
                                     isActive
-                                        ? "bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]"
+                                        ? "bg-[#49B6E5] text-white border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
                                         : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
                                 )}
                             >
-                                <I size={16} strokeWidth={isActive ? 3 : 2} />
+                                <I size={14} strokeWidth={isActive ? 3 : 2} />
                                 <span className="hidden sm:inline">{label}</span>
                                 {badge && count > 0 && (
                                     <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-[1.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]">

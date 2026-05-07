@@ -21,6 +21,7 @@ const AdminSettingsPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile')
     const [loadingProfile, setLoadingProfile] = useState(true)
     const [profileError, setProfileError] = useState<string | null>(null)
+    const [isEditingProfile, setIsEditingProfile] = useState(false)
     const [liveProfile, setLiveProfile] = useState<any>(null)
 
     // ─── Fetch latest profile from server on mount ───────────────────
@@ -32,12 +33,13 @@ const AdminSettingsPage: React.FC = () => {
         fetchProfileAPI()
             .then((res: any) => {
                 if (cancelled) return
-                const profile = res?.data?.data ?? res?.data ?? {}
+                const profile = res?.data?.data ?? res?.data ?? res ?? {}
+                const user = session?.user as any || {}
                 setLiveProfile(profile)
                 profileForm.setFieldsValue({
-                    fullName: profile.fullName || '',
-                    email: profile.email || '',
-                    phone: profile.phone || '',
+                    fullName: profile.fullName || user.fullName || user.name || '',
+                    email: profile.email || user.email || '',
+                    phone: profile.phone || user.phone || user.phoneNumber || '',
                 })
             })
             .catch((err: any) => {
@@ -58,6 +60,18 @@ const AdminSettingsPage: React.FC = () => {
         return () => { cancelled = true }
     }, [])
 
+    // ─── Sync Form when liveProfile updates ──────────────────────────
+    useEffect(() => {
+        if (!loadingProfile) {
+            const user = session?.user as any || {}
+            profileForm.setFieldsValue({
+                fullName: liveProfile?.fullName || user.fullName || user.name || '',
+                email: liveProfile?.email || user.email || '',
+                phone: liveProfile?.phone || user.phone || user.phoneNumber || '',
+            })
+        }
+    }, [liveProfile, loadingProfile, profileForm, session?.user])
+
     // ─── Update Profile ──────────────────────────────────────────────
     const handleUpdateProfile = async (values: any) => {
         try {
@@ -68,6 +82,7 @@ const AdminSettingsPage: React.FC = () => {
             }
             await updateProfileAPI(payload)
             updateSessionItem({ fullName: payload.fullName, phone: payload.phone })
+            setIsEditingProfile(false) // Exit edit mode on success
             setLiveProfile((prev: any) => ({ ...prev, ...payload }))
             message.success('Cập nhật hồ sơ thành công!')
         } catch (error: any) {
@@ -104,17 +119,7 @@ const AdminSettingsPage: React.FC = () => {
         || (session?.user as any)?.avatar
 
     return (
-        <div className="min-h-screen bg-[#fbf6ef] font-nunito p-8 space-y-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Cài đặt hệ thống</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Tùy chỉnh thông tin cá nhân và quản lý an toàn bảo mật</p>
-                    </div>
-                </div>
-            </div>
+        <div className="font-nunito space-y-10">
 
             <div className="flex flex-col lg:flex-row gap-10 items-start">
                 {/* Sidebar Navigation */}
@@ -235,6 +240,11 @@ const AdminSettingsPage: React.FC = () => {
                                             <Form
                                                 form={profileForm}
                                                 layout="vertical"
+                                                initialValues={{
+                                                    fullName: liveProfile?.fullName || session?.user?.fullName || '',
+                                                    email: liveProfile?.email || session?.user?.email || '',
+                                                    phone: liveProfile?.phone || session?.user?.phone || ''
+                                                }}
                                                 onFinish={handleUpdateProfile}
                                                 className="space-y-6"
                                             >
@@ -243,20 +253,23 @@ const AdminSettingsPage: React.FC = () => {
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
                                                     rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
                                                 >
-                                                    <div className="relative group">
-                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="Ví dụ: Nguyễn Văn A" />
-                                                    </div>
+                                                    <Input
+                                                        className="doodle-input pl-4"
+                                                        placeholder="Ví dụ: Nguyễn Văn A"
+                                                        prefix={<User className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        disabled={!isEditingProfile}
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
                                                     name="email"
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Email xác thực</span>}
                                                 >
-                                                    <div className="relative">
-                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12 bg-slate-50 cursor-not-allowed opacity-70" disabled />
-                                                    </div>
+                                                    <Input
+                                                        className="doodle-input pl-4 bg-slate-50 cursor-not-allowed opacity-70"
+                                                        disabled
+                                                        prefix={<Mail className="text-slate-400 mr-2" size={18} strokeWidth={3} />}
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
@@ -264,23 +277,49 @@ const AdminSettingsPage: React.FC = () => {
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
                                                     rules={[{ pattern: /^(0|\+84)[3-9]\d{8}$/, message: 'Số điện thoại không hợp lệ' }]}
                                                 >
-                                                    <div className="relative group">
-                                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="09xx xxx xxx" />
-                                                    </div>
+                                                    <Input
+                                                        className="doodle-input pl-4"
+                                                        placeholder="09xx xxx xxx"
+                                                        prefix={<Phone className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        disabled={!isEditingProfile}
+                                                    />
                                                 </Form.Item>
 
-                                                <div className="pt-4">
-                                                    <motion.button
-                                                        whileHover={{ scale: 1.02, y: -2 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                        type="submit"
-                                                        disabled={savingProfile}
-                                                        className="h-14 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#49B6E5] text-xs font-black uppercase tracking-widest text-white transition-all flex items-center gap-3"
-                                                    >
-                                                        {savingProfile ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                                                        Lưu hồ sơ
-                                                    </motion.button>
+                                                <div className="pt-4 flex gap-4">
+                                                    {!isEditingProfile ? (
+                                                        <motion.button
+                                                            type="button"
+                                                            onClick={() => setIsEditingProfile(true)}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            whileTap={{ scale: 0.98 }}
+                                                            className="flex-1 h-14 bg-[#49B6E5] text-white border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-[#3ba1cc]"
+                                                        >
+                                                            <Edit3 size={18} strokeWidth={3} />
+                                                            Cập nhật hồ sơ
+                                                        </motion.button>
+                                                    ) : (
+                                                        <>
+                                                            <motion.button
+                                                                type="button"
+                                                                onClick={() => { setIsEditingProfile(false); profileForm.resetFields(); }}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                                className="flex-1 h-14 bg-white text-slate-500 border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-xs font-black uppercase tracking-widest flex items-center justify-center transition-all hover:bg-slate-50"
+                                                            >
+                                                                Hủy
+                                                            </motion.button>
+                                                            <motion.button
+                                                                type="submit"
+                                                                disabled={savingProfile}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                                className="flex-[2] h-14 bg-slate-900 text-white border-[3px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#49B6E5] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                                                            >
+                                                                {savingProfile ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                                                Lưu hồ sơ
+                                                            </motion.button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </Form>
                                         </div>

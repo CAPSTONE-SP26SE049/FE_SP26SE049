@@ -143,6 +143,7 @@ const DialectManagement: React.FC = () => {
                 columns={columns}
                 dataSource={dialects}
                 rowKey="id"
+                scroll={{ y: 'calc(100vh - 300px)' }}
                 loading={loading}
                 pagination={{ pageSize: 5 }}
                 locale={{ emptyText: 'Chưa có dữ liệu' }}

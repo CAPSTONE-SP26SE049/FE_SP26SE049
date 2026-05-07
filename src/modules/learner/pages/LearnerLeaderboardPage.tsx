@@ -36,22 +36,22 @@ const PAGE_SIZE = 10;
 /* ─── Compact Podium ─────────────────────────────────── */
 const podConfig = (rank: number) => {
     if (rank === 1) return {
-        badge: <Crown size={24} className="text-yellow-400 fill-yellow-400 drop-shadow-[2px_2px_0_rgba(0,0,0,0.2)]" />,
-        ring: 'border-[3px] border-yellow-400 shadow-[3px_3px_0_#1f2937]',
+        badge: <Crown size={20} className="text-yellow-400 fill-yellow-400 drop-shadow-[2px_2px_0_rgba(0,0,0,0.2)]" />,
+        ring: 'border-[2.5px] border-yellow-400 shadow-[2px_2px_0_#1f2937]',
         podBg: 'bg-yellow-100',
-        podH: 'h-32', size: 72, label: 'text-yellow-700',
+        podH: 'h-24', size: 64, label: 'text-yellow-700',
     };
     if (rank === 2) return {
-        badge: <Medal size={20} className="text-slate-400 fill-slate-400" />,
-        ring: 'border-[3px] border-slate-300 shadow-[3px_3px_0_#1f2937]',
+        badge: <Medal size={18} className="text-slate-400 fill-slate-400" />,
+        ring: 'border-[2.5px] border-slate-300 shadow-[2px_2px_0_#1f2937]',
         podBg: 'bg-slate-100',
-        podH: 'h-24', size: 60, label: 'text-slate-600',
+        podH: 'h-18', size: 52, label: 'text-slate-600',
     };
     return {
-        badge: <Award size={20} className="text-orange-400 fill-orange-400" />,
-        ring: 'border-[3px] border-orange-300 shadow-[3px_3px_0_#1f2937]',
+        badge: <Award size={18} className="text-orange-400 fill-orange-400" />,
+        ring: 'border-[2.5px] border-orange-300 shadow-[2px_2px_0_#1f2937]',
         podBg: 'bg-orange-50',
-        podH: 'h-16', size: 56, label: 'text-orange-600',
+        podH: 'h-12', size: 48, label: 'text-orange-600',
     };
 };
 
@@ -61,7 +61,7 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
     const ordered = top.length === 3 ? [top[1], top[0], top[2]] : top;
 
     return (
-        <div className="flex items-end justify-center gap-1 md:gap-4 pt-10 pb-4">
+        <div className="flex items-end justify-center gap-1 md:gap-3 pt-6 pb-2">
             {ordered.map((e, i) => {
                 const cfg = podConfig(e.rankPosition);
                 const isMe = e.accountId === userId;
@@ -69,10 +69,10 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                     <motion.div key={e.accountId}
                         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1, type: 'spring', bounce: 0.4 }}
-                        className="flex flex-col items-center flex-1 max-w-[140px]"
+                        className="flex flex-col items-center flex-1 max-w-[120px]"
                     >
-                        <div className="mb-2 relative">
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10 scale-110">
+                        <div className="mb-1.5 relative">
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10 scale-100">
                                 {cfg.badge}
                             </div>
                             <Avatar
@@ -81,27 +81,27 @@ const Podium = ({ entries, userId }: { entries: LeaderboardEntry[]; userId?: str
                                 className={clsx("bg-white", cfg.ring)}
                             />
                             {isMe && (
-                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-600 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center z-10">
-                                    <CheckCircle2 size={12} className="text-white" />
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-purple-600 rounded-full border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937] flex items-center justify-center z-10">
+                                    <CheckCircle2 size={10} className="text-white" />
                                 </div>
                             )}
                         </div>
-                        <div className="text-center mb-3">
-                            <p className="font-black text-slate-800 text-xs md:text-sm truncate max-w-[110px] leading-tight font-nunito">
+                        <div className="text-center mb-2">
+                            <p className="font-black text-slate-800 text-[10px] md:text-xs truncate max-w-[90px] leading-tight font-nunito">
                                 {e.fullName || 'Người học'}
                             </p>
-                            {isMe && <span className="text-purple-600 text-[10px] font-black uppercase tracking-tighter">Bạn</span>}
+                            {isMe && <span className="text-purple-600 text-[8px] font-black uppercase tracking-tighter">Bạn</span>}
                         </div>
 
                         <div className={clsx(
-                            "w-full rounded-t-3xl border-t-[2.5px] border-x-[2.5px] border-slate-900 flex flex-col items-center justify-center shadow-[4px_0_0_#1f2937,-4px_0_0_#1f2937] relative",
+                            "w-full rounded-t-2xl border-t-[2px] border-x-[2px] border-slate-900 flex flex-col items-center justify-center shadow-[2px_0_0_#1f2937,-2px_0_0_#1f2937] relative",
                             cfg.podBg,
                             cfg.podH
                         )}>
-                            <span className="font-black text-slate-900 text-2xl md:text-3xl leading-none">#{e.rankPosition}</span>
-                            <div className="flex items-center gap-1 mt-1">
-                                <Star size={12} className="text-yellow-600 fill-yellow-600" />
-                                <span className="text-slate-700 font-black text-xs">{e.totalStars}</span>
+                            <span className="font-black text-slate-900 text-xl md:text-2xl leading-none">#{e.rankPosition}</span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                                <Star size={10} className="text-yellow-600 fill-yellow-600" />
+                                <span className="text-slate-700 font-black text-[10px]">{e.totalStars}</span>
                             </div>
                         </div>
                     </motion.div>
@@ -119,12 +119,12 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
             initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
             transition={{ delay: Math.min(idx * 0.05, 0.5) }}
             className={clsx(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl border-[2.5px] border-slate-900 transition-all font-nunito bg-white group",
-                isMe ? "shadow-[4px_4px_0_#9333ea]" : "shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1f2937]"
+                "flex items-center gap-2.5 px-3 py-2 rounded-xl border-[2px] border-slate-900 transition-all font-nunito bg-white group",
+                isMe ? "shadow-[3px_3px_0_#9333ea]" : "shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#1f2937]"
             )}
         >
             <div className={clsx(
-                "w-8 h-8 rounded-xl border-[2px] border-slate-900 flex items-center justify-center font-black text-sm flex-shrink-0 shadow-[2px_2px_0_#1f2937]",
+                "w-7 h-7 rounded-lg border-[1.5px] border-slate-900 flex items-center justify-center font-black text-xs flex-shrink-0 shadow-[1.5px_1.5px_0_#1f2937]",
                 isMe ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-900"
             )}>
                 {e.rankPosition}
@@ -132,33 +132,33 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
             <div className="relative flex-shrink-0">
                 <Avatar
                     src={e.avatar_url || e.avatarUrl}
-                    size={40}
-                    className={clsx("border-[2px] border-slate-900", isMe ? "bg-purple-100" : "bg-white")}
+                    size={32}
+                    className={clsx("border-[1.5px] border-slate-900", isMe ? "bg-purple-100" : "bg-white")}
                 />
                 {isMe && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-purple-600 rounded-full border-[1.5px] border-slate-900 flex items-center justify-center z-10 shadow-[1px_1px_0_#1f2937]">
-                        <CheckCircle2 size={10} className="text-white" />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-purple-600 rounded-full border-[1px] border-slate-900 flex items-center justify-center z-10 shadow-[1px_1px_0_#1f2937]">
+                        <CheckCircle2 size={8} className="text-white" />
                     </div>
                 )}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-black text-slate-900 text-sm truncate">
+                <p className="font-black text-slate-900 text-[11px] truncate">
                     {e.fullName || 'Người học'}
                 </p>
-                <div className="flex items-center gap-3 mt-1">
-                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
-                        <Flame size={10} className="text-orange-500 fill-orange-500" />
+                <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[9px] text-slate-500 font-bold flex items-center gap-1">
+                        <Flame size={8} className="text-orange-500 fill-orange-500" />
                         <span className="text-slate-700">{e.currentStreakDays || 0}d</span>
                     </p>
-                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
-                        <Award size={10} className="text-purple-500" />
-                        <span className="text-slate-700">{e.badgeCount || 0} trophies</span>
+                    <p className="text-[9px] text-slate-500 font-bold flex items-center gap-0.5">
+                        <Award size={8} className="text-purple-500" />
+                        <span className="text-slate-700">{e.badgeCount || 0}</span>
                     </p>
                 </div>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex-shrink-0">
-                <Star size={14} className="text-yellow-600 fill-yellow-600" />
-                <span className="font-black text-slate-900 text-sm">{e.totalStars || 0}</span>
+            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded-lg border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937] flex-shrink-0">
+                <Star size={10} className="text-yellow-600 fill-yellow-600" />
+                <span className="font-black text-slate-900 text-xs">{e.totalStars || 0}</span>
             </div>
         </motion.div>
     );
@@ -222,16 +222,16 @@ export default function LearnerLeaderboardPage() {
     return (
         <div className="flex flex-col min-h-screen bg-[#fbf6ef] font-nunito pb-20">
             {/* ── Header Strip ── */}
-            <div className="sticky top-0 z-[50] bg-[#fbf6ef]/95 backdrop-blur-md px-6 py-6 transition-all duration-300 border-b-[2.5px] border-slate-900/10">
-                <div className="max-w-none mx-auto flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-white border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center -rotate-2">
-                            <Trophy size={28} className="text-yellow-500 fill-yellow-500 stroke-[2.5px]" />
+            <div className="sticky top-0 z-[50] bg-[#fbf6ef]/95 backdrop-blur-md px-4 py-3 transition-all duration-300 border-b-[2.5px] border-slate-900/10">
+                <div className="max-w-none mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-2">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center -rotate-2 text-yellow-500">
+                            <Trophy size={20} className="fill-yellow-500" />
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black text-slate-900 leading-none">Bảng Xếp Hạng</h2>
-                            <p className="text-sm text-slate-500 font-bold mt-1 flex items-center gap-1">
-                                {scope === 'REGIONAL' && <MapPin size={14} className="text-[#49B6E5]" />}
+                            <h2 className="text-2xl font-black text-slate-900 leading-none">Bảng Xếp Hạng</h2>
+                            <p className="text-xs text-slate-500 font-bold mt-0.5 flex items-center gap-1">
+                                {scope === 'REGIONAL' && <MapPin size={12} className="text-[#49B6E5]" />}
                                 {scopeLabel}
                             </p>
                         </div>
@@ -240,19 +240,19 @@ export default function LearnerLeaderboardPage() {
                     {/* Controls row */}
                     <div className="flex flex-wrap items-center justify-center gap-3">
                         {/* Scope toggle */}
-                        <div className="bg-white rounded-2xl border-[2.5px] border-slate-900 p-1 flex gap-1 shadow-[3px_3px_0_#1f2937]">
+                        <div className="bg-white rounded-xl border-[2px] border-slate-900 p-0.5 flex gap-0.5 shadow-[2px_2px_0_#1f2937]">
                             {([
                                 { label: 'Khu vực', value: 'REGIONAL', icon: MapPin },
                                 { label: 'Toàn quốc', value: 'GLOBAL', icon: Globe },
                             ] as const).map(({ label, value, icon: Icon }) => (
                                 <button key={value} onClick={() => setScope(value)}
                                     className={clsx(
-                                        "h-9 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all duration-200 whitespace-nowrap",
+                                        "h-8 px-3 rounded-lg font-black text-[10px] flex items-center justify-center gap-1.5 transition-all duration-200 whitespace-nowrap",
                                         scope === value
-                                            ? "bg-[#49B6E5] text-white border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
+                                            ? "bg-[#49B6E5] text-white border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937]"
                                             : "text-slate-500 hover:bg-slate-50"
                                     )}>
-                                    <Icon size={14} strokeWidth={2.5} /> {label}
+                                    <Icon size={12} strokeWidth={2.5} /> {label}
                                 </button>
                             ))}
                         </div>
@@ -261,16 +261,16 @@ export default function LearnerLeaderboardPage() {
                         <AnimatePresence>
                             {scope === 'REGIONAL' && (
                                 <motion.div key="regions" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                                    className="flex gap-1 bg-white rounded-2xl border-[2.5px] border-slate-900 p-1 shadow-[3px_3px_0_#1f2937]">
+                                    className="flex gap-0.5 bg-white rounded-xl border-[2px] border-slate-900 p-0.5 shadow-[2px_2px_0_#1f2937]">
                                     {REGIONS.map(r => (
                                         <button key={r.value} onClick={() => setRegion(r.value)}
                                             className={clsx(
-                                                "h-9 px-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-200 whitespace-nowrap",
+                                                "h-8 px-2.5 rounded-lg font-black text-[10px] flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap",
                                                 region === r.value
-                                                    ? "bg-[#BAE6FD] text-[#0369A1] border-[2px] border-slate-900"
+                                                    ? "bg-[#BAE6FD] text-[#0369A1] border-[1.5px] border-slate-900"
                                                     : "text-slate-400 hover:bg-slate-50"
                                             )}>
-                                            <r.icon size={14} strokeWidth={2.5} /> {r.label}
+                                            <r.icon size={12} strokeWidth={2.5} /> {r.label}
                                         </button>
                                     ))}
                                 </motion.div>
@@ -278,16 +278,16 @@ export default function LearnerLeaderboardPage() {
                         </AnimatePresence>
 
                         <button onClick={load} disabled={loading}
-                            className="w-11 h-11 rounded-2xl bg-white border-[2.5px] border-slate-900 flex items-center justify-center hover:bg-slate-50 transition-all shadow-[3px_3px_0_#1f2937] active:translate-y-0.5 active:shadow-none">
-                            <RefreshCw size={18} className={clsx("text-slate-900", loading && "animate-spin")} strokeWidth={2.5} />
+                            className="w-9 h-9 rounded-xl bg-white border-[2px] border-slate-900 flex items-center justify-center hover:bg-slate-50 transition-all shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 active:shadow-none">
+                            <RefreshCw size={16} className={clsx("text-slate-900", loading && "animate-spin")} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* ── Content ── */}
-            <div className="flex-1 px-6 py-8 overflow-y-auto">
-                <div className="max-w-none mx-auto px-4">
+            <div className="flex-1 px-4 py-4 overflow-y-auto">
+                <div className="max-w-none mx-auto px-2">
                     {loading ? (
                         <div className="flex justify-center items-center py-40">
                             <DoodleLoading message="Đang tải bảng vàng..." />
@@ -311,18 +311,18 @@ export default function LearnerLeaderboardPage() {
                             <p className="text-slate-500 font-bold mb-6">Hãy là người đầu tiên ghi tên lên đây nhé!</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                             {/* Left: Podium — 5 cols */}
-                            <div className="lg:col-span-5 hidden md:block sticky top-28">
+                            <div className="lg:col-span-5 hidden md:block sticky top-20">
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[8px_8px_0_#1f2937] overflow-hidden flex flex-col"
+                                    className="bg-white rounded-[1.5rem] border-[2px] border-slate-900 shadow-[6px_6px_0_#1f2937] overflow-hidden flex flex-col"
                                 >
-                                    <div className="bg-[#BAE6FD] px-8 py-4 border-b-[2.5px] border-slate-900 flex items-center justify-between">
+                                    <div className="bg-[#BAE6FD] px-6 py-3 border-b-[2px] border-slate-900 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <Crown size={20} className="text-yellow-500 fill-yellow-500" />
-                                            <span className="font-black text-slate-900 uppercase tracking-wider text-sm mt-0.5">Top 3 Dẫn Đầu</span>
+                                            <Crown size={18} className="text-yellow-500 fill-yellow-500" />
+                                            <span className="font-black text-slate-900 uppercase tracking-wider text-xs mt-0.5">Top 3 Dẫn Đầu</span>
                                         </div>
                                     </div>
                                     <div className="flex-1 p-4 bg-[#fdfaff]">
@@ -330,8 +330,8 @@ export default function LearnerLeaderboardPage() {
                                     </div>
 
                                     {data?.myRank && (
-                                        <div className="p-6 bg-slate-50 border-t-[2.5px] border-slate-900">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vị trí của bạn</p>
+                                        <div className="p-4 bg-slate-50 border-t-[2px] border-slate-900">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Vị trí của bạn</p>
                                             <Row e={data.myRank} idx={0} userId={user?.id} />
                                         </div>
                                     )}
@@ -339,19 +339,38 @@ export default function LearnerLeaderboardPage() {
                             </div>
 
                             {/* Right: Full ranking — 7 cols */}
-                            <div className="lg:col-span-7 flex flex-col gap-4">
-                                <div className="bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] p-8">
-                                    <div className="flex items-center justify-between mb-8">
+                            <div className="lg:col-span-7 flex flex-col gap-3">
+                                <div className="bg-white rounded-[1.5rem] border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937] p-6">
+                                    <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-2">
-                                            <Medal size={20} className="text-[#49B6E5]" />
-                                            <h3 className="text-xl font-black text-slate-900">Thứ Hạng Khác</h3>
+                                            <Medal size={18} className="text-[#49B6E5]" />
+                                            <h3 className="text-lg font-black text-slate-900">Thứ Hạng Khác</h3>
                                         </div>
-                                        <span className="text-xs font-black bg-slate-100 px-3 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                                        <span className="text-[10px] font-black bg-slate-100 px-2 py-0.5 rounded-full border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937]">
                                             {entries.length} người học
                                         </span>
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <style>{`
+                                        .ranking-scroll::-webkit-scrollbar {
+                                            width: 8px;
+                                        }
+                                        .ranking-scroll::-webkit-scrollbar-track {
+                                            background: #f1f5f9;
+                                            border-radius: 4px;
+                                            border: 1.5px solid #1f2937;
+                                        }
+                                        .ranking-scroll::-webkit-scrollbar-thumb {
+                                            background: #49B6E5;
+                                            border-radius: 4px;
+                                            border: 1.5px solid #1f2937;
+                                        }
+                                        .ranking-scroll::-webkit-scrollbar-thumb:hover {
+                                            background: #38a1d0;
+                                        }
+                                    `}</style>
+
+                                    <div className="space-y-3 max-h-[460px] overflow-y-auto pr-2 ranking-scroll">
                                         {pagedRest.length > 0 ? (
                                             pagedRest.map((e, i) => <Row key={e.accountId} e={e} idx={i} userId={user?.id} />)
                                         ) : (
