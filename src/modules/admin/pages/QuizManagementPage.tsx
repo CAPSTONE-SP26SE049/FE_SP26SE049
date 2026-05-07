@@ -534,31 +534,32 @@ const AdminQuizManagementPage: React.FC = () => {
         <div className="min-h-screen bg-[#fbf6ef] font-nunito p-8 space-y-10">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                            {quiz ? quiz.name || quiz.title : (selectedLevelId ? "Dòng thời gian luyện tập" : "Quản lý màn học")}
-                        </h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
-                            {selectedLevelId ? `Chương: ${selectedLevel?.name || '...'} • ${regionInfo?.label || '...'}` : "Nội dung học tập theo cấp độ"}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-6">
                     {selectedLevelId && (
                         <motion.button
                             whileHover={{ scale: 1.05, x: -5 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => { if (quiz) { setQuiz(null); setQuizChallenges([]); } else handleBackToChapters(); }}
-                            className="flex items-center gap-2 px-4 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all"
+                            className="w-12 h-12 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all shrink-0"
                         >
-                            <ArrowLeft size={16} strokeWidth={3} />
-                            Quay lại
+                            <ArrowLeft size={18} strokeWidth={3} />
                         </motion.button>
                     )}
 
+                    <div className="flex items-center gap-4">
+                        <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                                {quiz ? quiz.name || quiz.title : (selectedLevelId ? "Dòng thời gian luyện tập" : "Quản lý màn học")}
+                            </h1>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+                                {selectedLevelId ? `Chương: ${selectedLevel?.name || '...'} • ${regionInfo?.label || '...'}` : "Nội dung học tập theo cấp độ"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
                     {!quiz && selectedLevelId && (
                         <motion.button
                             whileHover={{ scale: 1.05, y: -2 }}
