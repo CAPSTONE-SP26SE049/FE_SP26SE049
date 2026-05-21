@@ -29,6 +29,13 @@ import AdminQuizManagementPage from '../modules/admin/pages/QuizManagementPage'
 import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
 import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementPage'
 import ErrorTagManagementPage from '../modules/admin/pages/ErrorTagManagementPage'
+import UserFeedbackManagementPage from '../modules/admin/pages/UserFeedbackManagementPage'
+import MinigamesPage from '../modules/learner/pages/MinigamesPage'
+import WordChallengePage from '../modules/learner/pages/minigames/WordChallengePage'
+import SentenceCompletionPage from '../modules/learner/pages/minigames/SentenceCompletionPage'
+import ConversationSimPage from '../modules/learner/pages/minigames/ConversationSimPage'
+import MatchingPairsPage from '../modules/learner/pages/minigames/MatchingPairsPage'
+import WordGuessPage from '../modules/learner/pages/minigames/WordGuessPage'
 import RoadmapPage from '../modules/learner/pages/RoadmapPage'
 import LearnerLayout from '../modules/learner/components/LearnerLayout'
 import LearnerDashboardPage from '../modules/learner/pages/LearnerDashboardPage'
@@ -75,6 +82,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="ai-monitor" element={<AiMonitorPage />} />
           <Route path="entry-test" element={<EntryTestManagementPage />} />
           <Route path="error-tags" element={<ErrorTagManagementPage />} />
+          <Route path="feedbacks" element={<UserFeedbackManagementPage />} />
         </Route>
       </Route>
 
@@ -113,6 +121,12 @@ export const AppRoutes: React.FC = () => {
           <Route path="pronunciation" element={<PronunciationModelPage />} />
           <Route path="leaderboard" element={<LearnerLeaderboardPage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="minigames" element={<MinigamesPage />} />
+          <Route path="minigames/word-challenge" element={<WordChallengePage />} />
+          <Route path="minigames/matching-pairs" element={<MatchingPairsPage />} />
+          <Route path="minigames/word-guess" element={<WordGuessPage />} />
+          <Route path="minigames/sentence-completion" element={<SentenceCompletionPage />} />
+          <Route path="minigames/conversation" element={<ConversationSimPage />} />
         </Route>
       </Route>
 
