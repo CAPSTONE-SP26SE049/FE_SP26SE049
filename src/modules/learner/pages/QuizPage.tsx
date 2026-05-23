@@ -662,7 +662,10 @@ const QuizPage: React.FC = () => {
         dialect: quiz?.dialect || currentChallenge?.region || '',
         audioUrl: audioUrl,
         consentGiven: !!consentGiven,
-        asrProcessingTimeMs
+        asrProcessingTimeMs,
+        asrScore: asrScore,
+        wordDetails: wordDetails,
+        recordId: apiResult.record_id || null
       })
 
 
@@ -1080,7 +1083,7 @@ const QuizPage: React.FC = () => {
       // ═══════════════ SPEAKING ══════════════════════════════════════════════
       case 'SPEAKING_READ': {
         const speakText = ch.transcript || ch.content
-        const { isRecording, durationSeconds } = recorder
+        const { isRecording, durationSeconds, noiseCancellation, setNoiseCancellation } = recorder
 
         return (
           <div className="space-y-10 mb-8">
@@ -1139,6 +1142,36 @@ const QuizPage: React.FC = () => {
 
               {consentGiven !== null && !answered && !isAnalyzing && (
                 <div className="flex flex-col items-center gap-6">
+                  {/* Chức năng Chống ồn Chủ động (Active Noise Cancellation) */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 bg-white border-[2.5px] border-slate-900 rounded-full px-5 py-2.5 shadow-[4px_4px_0_#1f2937] hover:shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 active:shadow-[1px_1px_0_#1f2937] transition-all cursor-pointer select-none mb-2"
+                    onClick={() => setNoiseCancellation(prev => !prev)}
+                  >
+                    <div className={clsx(
+                      "w-5 h-5 rounded-full flex items-center justify-center transition-all",
+                      noiseCancellation ? "bg-emerald-500 text-white animate-pulse" : "bg-slate-300 text-slate-500"
+                    )}>
+                      <Sparkles size={11} strokeWidth={3} />
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800 tracking-wide uppercase italic">
+                      {noiseCancellation ? "🔇 Chống ồn: Đang BẬT" : "🔈 Chống ồn: Đang TẮT"}
+                    </span>
+                    {/* Toggle Switch */}
+                    <div className={clsx(
+                      "w-8 h-4 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center",
+                      noiseCancellation ? "bg-emerald-500" : "bg-slate-300"
+                    )}>
+                      <motion.div 
+                        layout
+                        className="w-3 h-3 bg-white rounded-full shadow-md"
+                        animate={{ x: noiseCancellation ? 14 : 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    </div>
+                  </motion.div>
+
                   <p className="text-slate-400 font-black uppercase tracking-[0.1em] text-[10px] italic animate-pulse">
                     {isRecording ? '🔴 Đang lắng nghe...' : 'Giữ nút bên dưới để nói'}
                   </p>

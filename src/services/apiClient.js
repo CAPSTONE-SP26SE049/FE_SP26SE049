@@ -19,10 +19,21 @@ apiClient.interceptors.request.use(
     if (typeof window !== 'undefined') {
       const token = window.sessionStorage.getItem('ACCESS_TOKEN') || window.localStorage.getItem('ACCESS_TOKEN')
       if (token) {
-        // eslint-disable-next-line no-param-reassign
         config.headers = config.headers ?? {}
-        // eslint-disable-next-line no-param-reassign
-        config.headers.Authorization = `Bearer ${token}`
+        
+        // Robust check for Authorization header in any form (AxiosHeaders or plain object)
+        const hasAuth = config.headers.Authorization || 
+                        config.headers['Authorization'] || 
+                        (config.headers.get && config.headers.get('Authorization'))
+                        
+        if (!hasAuth) {
+          if (config.headers.set) {
+            config.headers.set('Authorization', `Bearer ${token}`)
+          } else {
+            // eslint-disable-next-line no-param-reassign
+            config.headers.Authorization = `Bearer ${token}`
+          }
+        }
       }
     }
     return config
@@ -66,7 +77,12 @@ apiClient.interceptors.response.use(
             return new Promise(function (resolve, reject) {
               failedQueue.push({ resolve, reject })
             }).then(token => {
-              originalRequest.headers['Authorization'] = 'Bearer ' + token;
+              if (originalRequest.headers.set) {
+                originalRequest.headers.set('Authorization', 'Bearer ' + token);
+              } else {
+                originalRequest.headers = originalRequest.headers ?? {};
+                originalRequest.headers['Authorization'] = 'Bearer ' + token;
+              }
               return apiClient(originalRequest);
             }).catch(err => {
               return Promise.reject(err);
@@ -106,25 +122,42 @@ apiClient.interceptors.response.use(
 
             if (newToken) {
               console.log("Refresh successful, getting new token.");
-              const isLocal = window.localStorage.getItem('speakvn_session') !== null;
+              const isLocal = window.localStorage.getItem('speakvn_session') !== null || window.localStorage.getItem('ACCESS_TOKEN') !== null;
               const storage = isLocal ? window.localStorage : window.sessionStorage;
+              const newRefreshToken = res.data.data?.refreshToken || res.data?.refreshToken;
 
               if (raw) {
                 const sessionData = JSON.parse(raw);
                 sessionData.accessToken = newToken;
 
-                const newRefreshToken = res.data.data?.refreshToken || res.data?.refreshToken;
                 if (newRefreshToken) {
                   sessionData.refreshToken = newRefreshToken;
-                  storage.setItem('REFRESH_TOKEN', newRefreshToken);
                 }
 
                 storage.setItem('speakvn_session', JSON.stringify(sessionData));
-                storage.setItem('ACCESS_TOKEN', newToken);
               }
 
+              storage.setItem('ACCESS_TOKEN', newToken);
+              if (newRefreshToken) {
+                storage.setItem('REFRESH_TOKEN', newRefreshToken);
+              }
+
+              // Dispatch custom event to sync with React AuthContext state
+              window.dispatchEvent(
+                new CustomEvent('session-refreshed', {
+                  detail: { accessToken: newToken, refreshToken: newRefreshToken || null }
+                })
+              );
+
               processQueue(null, newToken);
-              originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+              
+              if (originalRequest.headers.set) {
+                originalRequest.headers.set('Authorization', 'Bearer ' + newToken);
+              } else {
+                originalRequest.headers = originalRequest.headers ?? {};
+                originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+              }
+              
               return apiClient(originalRequest);
             } else {
               console.error("Refresh successful but no newToken found in response:", res.data);

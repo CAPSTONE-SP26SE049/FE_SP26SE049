@@ -14,6 +14,9 @@ export interface SpeakingAttempt {
     groqScore: number;
     groqFeedback: string;
     createdAt: string;
+    asrScore?: number;
+    wordDetails?: string;
+    recordId?: string;
 }
 
 export interface Feedback {
@@ -30,6 +33,9 @@ export interface Feedback {
     groqScore?: number;
     groqFeedback?: string;
     asrTranscription?: string;
+    asrScore?: number;
+    wordDetails?: string;
+    recordId?: string;
 }
 
 export const feedbackService = {

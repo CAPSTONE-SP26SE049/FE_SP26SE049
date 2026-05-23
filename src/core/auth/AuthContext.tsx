@@ -1,5 +1,5 @@
 import type React from 'react'
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo, useState, useEffect } from 'react'
 import { loginAPI, logoutAPI, socialLoginAPI } from '../../services/authService'
 
 export type Role = 'USER' | 'ADMIN' | 'EDUCATOR'
@@ -88,6 +88,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [session, setSession] = useState<AuthSession | null>(() =>
     readSessionFromStorage(),
   )
+
+  useEffect(() => {
+    const handleSessionRefreshed = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { accessToken, refreshToken } = customEvent.detail;
+      setSession((prevSession) => {
+        if (!prevSession) return null;
+        return {
+          ...prevSession,
+          accessToken,
+          refreshToken: refreshToken || prevSession.refreshToken,
+        };
+      });
+    };
+
+    window.addEventListener('session-refreshed', handleSessionRefreshed);
+    return () => {
+      window.removeEventListener('session-refreshed', handleSessionRefreshed);
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

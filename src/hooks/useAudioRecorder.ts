@@ -15,6 +15,8 @@ export interface UseAudioRecorderReturn extends AudioRecorderState {
     resetRecording: () => void
     /** Always holds the latest blob — safe to read from stale closures */
     blobRef: React.MutableRefObject<Blob | null>
+    noiseCancellation: boolean
+    setNoiseCancellation: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const MAX_DURATION = 30 // seconds
@@ -27,6 +29,8 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         durationSeconds: 0,
         error: null,
     })
+
+    const [noiseCancellation, setNoiseCancellation] = useState<boolean>(true)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const chunksRef = useRef<Blob[]>([])
@@ -61,7 +65,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         chunksRef.current = []
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const constraints: MediaStreamConstraints = {
+                audio: noiseCancellation
+                    ? {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                      }
+                    : true,
+            }
+            const stream = await navigator.mediaDevices.getUserMedia(constraints)
 
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
@@ -118,7 +131,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
                     : 'Không thể bắt đầu thu âm: ' + (err?.message ?? '')
             setState((prev) => ({ ...prev, error: msg }))
         }
-    }, [stopRecording])
+    }, [stopRecording, noiseCancellation])
 
     const resetRecording = useCallback(() => {
         stopRecording()
@@ -133,5 +146,5 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         chunksRef.current = []
     }, [stopRecording])
 
-    return { ...state, startRecording, stopRecording, resetRecording, blobRef }
+    return { ...state, startRecording, stopRecording, resetRecording, blobRef, noiseCancellation, setNoiseCancellation }
 }

@@ -30,6 +30,7 @@ import AiMonitorPage from '../modules/admin/pages/AiMonitorPage'
 import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementPage'
 import ErrorTagManagementPage from '../modules/admin/pages/ErrorTagManagementPage'
 import UserFeedbackManagementPage from '../modules/admin/pages/UserFeedbackManagementPage'
+import AiConfigManagementPage from '../modules/admin/pages/AiConfigManagementPage'
 import MinigamesPage from '../modules/learner/pages/MinigamesPage'
 import WordChallengePage from '../modules/learner/pages/minigames/WordChallengePage'
 import SentenceCompletionPage from '../modules/learner/pages/minigames/SentenceCompletionPage'
@@ -79,6 +80,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="quizzes/:levelId" element={<AdminQuizManagementPage />} />
           <Route path="achievements" element={<AchievementManagementPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="ai-config" element={<AiConfigManagementPage />} />
           <Route path="ai-monitor" element={<AiMonitorPage />} />
           <Route path="entry-test" element={<EntryTestManagementPage />} />
           <Route path="error-tags" element={<ErrorTagManagementPage />} />
