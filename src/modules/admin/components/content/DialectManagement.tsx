@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, message, Space, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from '../../../../lib/icons';
 import { adminService } from '../../services/adminService';
 
 const DialectManagement: React.FC = () => {
@@ -134,7 +134,7 @@ const DialectManagement: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={() => handleOpenModal()}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-5 rounded-lg border-none shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', height: 40, paddingInline: 20, borderRadius: 8, fontWeight: 600, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
                 >
                     Thêm vùng miền
                 </Button>
@@ -184,7 +184,7 @@ const DialectManagement: React.FC = () => {
                             type="primary"
                             htmlType="submit"
                             loading={loading}
-                            className="bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 px-8 rounded-lg border-none shadow-md"
+                            style={{ background: 'linear-gradient(135deg, #9333ea, #7e22ce)', border: 'none', color: '#fff', height: 40, paddingInline: 32, borderRadius: 8, fontWeight: 700, boxShadow: '0 4px 12px rgba(147,51,234,0.25)' }}
                         >
                             {editingId ? "Lưu thay đổi" : "Tạo mới"}
                         </Button>

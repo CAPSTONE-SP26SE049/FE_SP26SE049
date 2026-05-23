@@ -1,574 +1,598 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import {
-    Card,
-    Select,
-    Table,
-    Tag,
-    Spin,
-    Empty,
-    Typography,
-    Space,
-    Badge,
-    Tooltip,
-    Statistic,
-    Row,
-    Col,
-    Divider,
-    Button,
-    Modal,
-    Tabs,
-    Form,
-    Input,
-    InputNumber,
-    message,
+    Select, Tag, Spin, Empty, Space, Tooltip, Row, Col,
+    Divider, Button, Modal, Form, Input, InputNumber, message,
+    Pagination, Popconfirm, Badge
 } from 'antd';
 import {
-    FileTextOutlined,
-    ClockCircleOutlined,
-    TrophyOutlined,
-    QuestionCircleOutlined,
-    ReadOutlined,
-    SoundOutlined,
-    AudioOutlined,
-    PlusOutlined,
-    BankOutlined,
-    EditOutlined,
-    SearchOutlined,
-    EyeOutlined,
-    InfoCircleOutlined,
-    ArrowLeftOutlined,
-    DownloadOutlined,
-    UploadOutlined,
-    ExportOutlined,
-    DeleteOutlined,
-    ArrowRightOutlined,
-    CheckCircleOutlined
-} from '@ant-design/icons';
+    Trophy, HelpCircle, BookOpen, Volume2, Mic, Plus,
+    Library, Edit3, Search, Eye, Info, ArrowLeft, Download,
+    Upload, ExternalLink, Trash2, MinusCircle, LayoutGrid, Zap,
+    ChevronRight, Loader2, Save, MoreVertical, Sliders, RotateCcw
+} from 'lucide-react';
 import { adminService } from '../services/adminService';
 import { excelService, downloadBlob } from '../../educator/services/excelService';
+import { uploadToCloudinary } from '../../../services/cloudinaryService';
+import { synthesizeSpeechFPT, waitForAudioLink } from '../../../services/ttsService';
+import { useParams, useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-
-const SKILL_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    READING: { label: 'Đọc hiểu', color: '#2563eb', icon: <ReadOutlined /> },
-    LISTENING: { label: 'Nghe hiểu', color: '#7c3aed', icon: <SoundOutlined /> },
-    WRITING: { label: 'Viết', color: '#059669', icon: <EditOutlined /> },
-    SPEAKING: { label: 'Nói', color: '#ea580c', icon: <AudioOutlined /> },
+const SKILL_CONFIG: Record<string, { label: string; color: string; icon: any; bg: string }> = {
+    READING: { label: 'Đọc hiểu', color: '#2563eb', icon: BookOpen, bg: 'bg-blue-50' },
+    LISTENING: { label: 'Nghe hiểu', color: '#7c3aed', icon: Volume2, bg: 'bg-violet-50' },
+    WRITING: { label: 'Viết', color: '#059669', icon: Edit3, bg: 'bg-emerald-50' },
+    SPEAKING: { label: 'Nói', color: '#ea580c', icon: Mic, bg: 'bg-orange-50' },
 };
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
-    BEGINNER: { label: 'Cơ bản', color: 'green' },
-    INTERMEDIATE: { label: 'Trung bình', color: 'gold' },
-    ADVANCED: { label: 'Nâng cao', color: 'red' },
+const REGION_LABEL: Record<string, { label: string; color: string; bg: string; iconBg: string }> = {
+    NORTH: { label: 'Miền Bắc', color: '#49B6E5', bg: '#f0f9ff', iconBg: 'bg-blue-100' },
+    SOUTH: { label: 'Miền Nam', color: '#10b981', bg: '#f0fdf4', iconBg: 'bg-emerald-100' },
+    CENTRAL: { label: 'Miền Trung', color: '#f59e0b', bg: '#fffbeb', iconBg: 'bg-amber-100' },
 };
 
-const REGION_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-    NORTH: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
-    SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
-    CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
-};
+const SECOND_OPTIONS = [
+    { label: '15 giây', value: 15 }, { label: '30 giây', value: 30 },
+    { label: '45 giây', value: 45 }, { label: '60 giây', value: 60 },
+    { label: '90 giây', value: 90 }, { label: '120 giây', value: 120 }
+];
+
+interface BatchQuestion {
+    tempId: string; id: string; relationId: string; isExisting: boolean;
+    skillType: string; contentText: string;
+    fullSentence: string; wrongWord: string; correctWord: string;
+    options: string[]; correctAnswer: string;
+    transcript: string; correctSentence?: string; blankSentence: string;
+    alternatives: string; hint: string; words?: string; audioUrl: string;
+}
 
 const AdminQuizManagementPage: React.FC = () => {
+    const { levelId: urlLevelId } = useParams<{ levelId: string }>();
+    const navigate = useNavigate();
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
-    const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(undefined);
+    const [selectedLevelId, setSelectedLevelId] = useState<string | undefined>(urlLevelId);
     const [quizzes, setQuizzes] = useState<any[]>([]);
+    const [localQuizOrder, setLocalQuizOrder] = useState<any[] | null>(null);
+    const reorderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastWritingSuggestionRef = useRef('');
     const [quiz, setQuiz] = useState<any | null>(null);
     const [loadingQuiz, setLoadingQuiz] = useState(false);
-
-    // --- State for Adding Challenges ---
     const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
     const [activeSkillType, setActiveSkillType] = useState<string | null>(null);
-    const [availableChallenges, setAvailableChallenges] = useState<any[]>([]);
-    const [loadingBank, setLoadingBank] = useState(false);
-    const [selectedBankIds, setSelectedBankIds] = useState<string[]>([]);
-    const [isCreatingNew, setIsCreatingNew] = useState(false);
     const [createForm] = Form.useForm();
     const [submittingCreate, setSubmittingCreate] = useState(false);
-    const [submittingAssign, setSubmittingAssign] = useState(false);
     const [updatingQuiz, setUpdatingQuiz] = useState(false);
     const [isEditQuizModalOpen, setIsEditQuizModalOpen] = useState(false);
     const [editQuizForm] = Form.useForm();
     const [isCreateQuizModalOpen, setIsCreateQuizModalOpen] = useState(false);
     const [creatingQuiz, setCreatingQuiz] = useState(false);
     const [newQuizForm] = Form.useForm();
-
-    // --- State for Filtering ---
     const [searchTerm, setSearchTerm] = useState('');
     const [regionFilter, setRegionFilter] = useState<string | null>(null);
     const [quizSearchTerm, setQuizSearchTerm] = useState('');
     const [quizSkillFilter, setQuizSkillFilter] = useState<string | null>(null);
-
-    // --- State for Challenge Detail ---
-    const [selectedDetailChallenge, setSelectedDetailChallenge] = useState<any | null>(null);
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [bankSearchText, setBankSearchText] = useState('');
-
-    // --- Import/Export State (Quiz CSV) ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ success: number; errors: string[] } | null>(null);
     const [quizChallenges, setQuizChallenges] = useState<any[]>([]);
     const [loadingQuizChallenges, setLoadingQuizChallenges] = useState(false);
-
-    // --- Import Challenges Excel to Quiz State ---
+    const [uploadingSingle, setUploadingSingle] = useState(false);
+    const [isCreatingNew, setIsCreatingNew] = useState(false);
+    const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
+    const [isBatchQuestionsModalOpen, setIsBatchQuestionsModalOpen] = useState(false);
+    const [submittingBatchQuestions, setSubmittingBatchQuestions] = useState(false);
+    const [batchQuestions, setBatchQuestions] = useState<BatchQuestion[]>([]);
+    const [deletedQuestionsHistory, setDeletedQuestionsHistory] = useState<{ question: BatchQuestion; index: number }[]>([]);
+    const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+    const [rewards, setRewards] = useState<any[]>([]);
+    const [loadingRewards, setLoadingRewards] = useState(false);
+    const [submittingReward, setSubmittingReward] = useState(false);
+    const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
+    const [rewardFilter, setRewardFilter] = useState<'ALL' | 'UNASSIGNED' | 'ASSIGNED_OTHER' | 'ASSIGNED_CURRENT'>('ALL');
+    const [rewardSearchTerm, setRewardSearchTerm] = useState('');
     const [isImportChallengesModalOpen, setIsImportChallengesModalOpen] = useState(false);
     const [importChallengesFile, setImportChallengesFile] = useState<File | null>(null);
     const [importingChallenges, setImportingChallenges] = useState(false);
     const [importChallengesSkillType, setImportChallengesSkillType] = useState<string>('MIXED');
-    const [importChallengesResult, setImportChallengesResult] = useState<any | null>(null);
+    const [viewMode, setViewMode] = useState<'roadmap' | 'skill_groups'>('roadmap');
 
-    const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
-
+    // --- Data Fetching ---
     useEffect(() => {
-        const fetchLevels = async () => {
+        const initData = async () => {
             try {
-                const res: any = await adminService.getLevelsForSelection();
-                setLevels(res?.data || (Array.isArray(res) ? res : []));
-            } catch {
-                setLevels([]);
+                const [lRes, dRes, rRes]: any[] = await Promise.all([
+                    adminService.getLevelsForSelection(),
+                    adminService.getDialects(),
+                    adminService.getBadgesForAdmin()
+                ]);
+                setLevels(lRes?.data || (Array.isArray(lRes) ? lRes : []));
+                setDialects(dRes?.data || (Array.isArray(dRes) ? dRes : []));
+                setRewards(rRes?.data || (Array.isArray(rRes) ? rRes : []));
+            } catch (e) {
+                console.error('Init data failed', e);
             }
         };
-
-        const fetchDialects = async () => {
-            try {
-                const res: any = await adminService.getDialects();
-                setDialects(res?.data || (Array.isArray(res) ? res : []));
-            } catch {
-                setDialects([]);
-            }
-        };
-
-        fetchLevels();
-        fetchDialects();
+        initData();
     }, []);
 
-    useEffect(() => {
-        const fetchQuizChallenges = async () => {
-            if (quiz?.id) {
-                setLoadingQuizChallenges(true);
-                try {
-                    const res: any = await adminService.getQuizChallenges(quiz.id);
-                    setQuizChallenges(res?.data || (Array.isArray(res) ? res : []));
-                } catch (e) {
-                    console.error("Failed to fetch quiz challenges", e);
-                    setQuizChallenges([]);
-                } finally {
-                    setLoadingQuizChallenges(false);
-                }
-            } else {
-                setQuizChallenges([]);
-            }
-        };
-        fetchQuizChallenges();
+    const fetchQuizChallenges = useCallback(async () => {
+        if (!quiz?.id) { setQuizChallenges([]); return; }
+        setLoadingQuizChallenges(true);
+        try {
+            const res: any = await adminService.getQuizChallenges(quiz.id);
+            setQuizChallenges(res?.data || (Array.isArray(res) ? res : []));
+        } finally {
+            setLoadingQuizChallenges(false);
+        }
     }, [quiz?.id]);
 
-    const handleLevelChange = async (levelId: string) => {
+    useEffect(() => { fetchQuizChallenges(); }, [fetchQuizChallenges]);
+
+    const handleLevelChange = async (levelId: string, preserveQuizState = false) => {
         setSelectedLevelId(levelId);
-        setQuiz(null);
+        if (!preserveQuizState) setQuiz(null);
         setQuizzes([]);
+        setLocalQuizOrder(null);
         setLoadingQuiz(true);
         try {
             const res: any = await adminService.getQuizzesByLevel(levelId);
-            console.log('[QuizManagement] raw response:', res);
-
-            let quizList: any[] = [];
-            if (res?.data && Array.isArray(res.data)) {
-                quizList = res.data;
-            } else if (Array.isArray(res)) {
-                quizList = res;
-            } else if (res?.data && typeof res.data === 'object') {
-                quizList = [res.data];
-            } else if (res?.id) {
-                quizList = [res];
-            }
-
-            console.log('[QuizManagement] quizList resolved:', quizList);
-
-            const formattedQuizzes = quizList.map(quizData => {
-                let formatted = { ...quizData };
-                if (formatted && (formatted.metadataJson || formatted.itemsJson)) {
+            const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [res].filter(x => x?.id));
+            const formatted = list.map((q: any) => {
+                let f = { ...q };
+                if (f.metadataJson) {
                     try {
-                        const metadata = typeof formatted.metadataJson === 'string'
-                            ? JSON.parse(formatted.metadataJson)
-                            : (formatted.metadataJson || {});
-
-                        const items = typeof formatted.itemsJson === 'string'
-                            ? JSON.parse(formatted.itemsJson)
-                            : (formatted.itemsJson || []);
-
-                        formatted = {
-                            ...formatted,
-                            ...metadata,
-                            questions: items || []
-                        };
-                    } catch (e) {
-                        console.error("Error parsing quiz JSON fields:", e);
-                    }
+                        const meta = typeof f.metadataJson === 'string' ? JSON.parse(f.metadataJson) : f.metadataJson;
+                        f = { ...f, ...meta };
+                    } catch (e) { /* ignore */ }
                 }
-                return formatted;
+                // Independently parse itemsJson if it exists
+                const rawItems = f.itemsJson || q.itemsJson;
+                if (rawItems) {
+                    try {
+                        const items = typeof rawItems === 'string' ? JSON.parse(rawItems) : rawItems;
+                        f.questions = Array.isArray(items) ? items : [];
+                    } catch (e) { f.questions = []; }
+                } else if (!f.questions) {
+                    f.questions = [];
+                }
+                f.badgeId = q.rewardCatalogId || q.badgeId || null;
+                return f;
             });
-
-            setQuizzes(formattedQuizzes);
-        } catch (err) {
-            console.error('[QuizManagement] fetch error:', err);
-            setQuizzes([]);
+            formatted.sort((a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0));
+            setQuizzes(formatted);
+            if (preserveQuizState) {
+                setQuiz((prev: any) => formatted.find((q: any) => q.id === prev?.id) || prev);
+            }
         } finally {
             setLoadingQuiz(false);
         }
     };
 
-    const fetchBank = async () => {
-        setLoadingBank(true);
-        try {
-            const res: any = await adminService.getChallengeBank();
-            setAvailableChallenges(res?.data || (Array.isArray(res) ? res : []));
-        } catch (err) {
-            console.error('[QuizManagement] fetch bank error:', err);
-            message.error('Không thể tải ngân hàng thử thách');
-        } finally {
-            setLoadingBank(false);
-        }
-    };
-
-    const openChallengeModal = (skillType: string) => {
-        setActiveSkillType(skillType);
-        setIsChallengeModalOpen(true);
-        setIsCreatingNew(false);
-        setSelectedBankIds([]);
-        setBankSearchText(''); // Reset search
-        fetchBank();
-    };
-
-
-    const filteredLevels = useMemo(() => {
-        return levels.filter(level => {
-            const matchesSearch = level.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesRegion = !regionFilter || level.dialectId === regionFilter;
-            return matchesSearch && matchesRegion;
-        });
-    }, [levels, searchTerm, regionFilter]);
+    useEffect(() => { if (urlLevelId) handleLevelChange(urlLevelId); }, [urlLevelId]);
 
     const handleBackToChapters = () => {
-        if (quiz) {
-            setQuiz(null);
-        } else {
-            setSelectedLevelId(undefined);
-            setQuizzes([]);
+        if (urlLevelId) navigate('/admin/chapters');
+        else { setSelectedLevelId(undefined); setQuiz(null); setQuizzes([]); }
+    };
+
+    const [uploadingBatch, setUploadingBatch] = useState<Record<string, boolean>>({});
+
+    const handleOpenEditQuiz = (qObj?: any) => {
+        const activeQuiz = qObj || quiz;
+        if (!activeQuiz) return;
+        const qList = Array.isArray(activeQuiz.questions) ? activeQuiz.questions : [];
+        const getCnt = (type: string) => qList.filter((q: any) => q.skillType === type).length;
+        editQuizForm.setFieldsValue({
+            title: activeQuiz.title || activeQuiz.name,
+            description: activeQuiz.description,
+            instructions: activeQuiz.instructions,
+            passingScore: activeQuiz.passingScore || 80,
+            secondsPerQuestion: activeQuiz.timeLimitSeconds || 90,
+            skillType: activeQuiz.skillType || 'MIXED',
+            readingCount: getCnt('READING'),
+            listeningCount: getCnt('LISTENING'),
+            speakingCount: getCnt('SPEAKING'),
+            writingCount: getCnt('WRITING'),
+            orderIndex: activeQuiz.orderIndex || 1,
+        });
+        setIsEditQuizModalOpen(true);
+    };
+
+    const onConfirmReward = async () => {
+        if (!quiz?.id) return;
+        const currentAttachedId = quiz.rewardCatalogId || quiz.badgeId || null;
+        if (selectedRewardId === currentAttachedId) {
+            setIsRewardModalOpen(false);
+            return;
+        }
+        setSubmittingReward(true);
+        try {
+            if (selectedRewardId === null) {
+                if (currentAttachedId) {
+                    await adminService.attachRewardToQuiz(quiz.id, currentAttachedId);
+                }
+            } else {
+                await adminService.attachRewardToQuiz(quiz.id, selectedRewardId);
+            }
+            message.success('Cập nhật phần thưởng thành công!');
+            setIsRewardModalOpen(false);
+            handleLevelChange(selectedLevelId!, true);
+        } catch (err: any) {
+            message.error('Lỗi khi cập nhật phần thưởng!');
+        } finally { setSubmittingReward(false); }
+    };
+
+    const handleAttachReward = async (rewardId: string) => {
+        setSelectedRewardId(rewardId);
+    };
+
+    const handleRemoveReward = async () => {
+        if (!quiz?.id) return;
+        const currentAttachedId = quiz.rewardCatalogId || quiz.badgeId || null;
+        if (!currentAttachedId) return;
+        setSubmittingReward(true);
+        try {
+            await adminService.attachRewardToQuiz(quiz.id, currentAttachedId);
+            message.success('Đã gỡ phần thưởng thành công!');
+            setIsRewardModalOpen(false);
+            handleLevelChange(selectedLevelId!, true);
+        } catch (err: any) {
+            message.error('Lỗi khi gỡ phần thưởng!');
+        } finally { setSubmittingReward(false); }
+    };
+
+    const openRewardModal = async () => {
+        setIsRewardModalOpen(true);
+        const currentBadgeId = quiz?.rewardCatalogId || quiz?.badgeId || null;
+        setSelectedRewardId(currentBadgeId);
+        if (rewards.length === 0) {
+            setLoadingRewards(true);
+            try {
+                const res: any = await adminService.getBadgesForAdmin();
+                setRewards(res?.data || (Array.isArray(res) ? res : []));
+            } finally { setLoadingRewards(false); }
         }
     };
 
-    const handleOpenEditQuiz = () => {
-        if (!quiz) return;
+    // --- Batch Editing Logic ---
+    const addBatchQuestion = () => setBatchQuestions(prev => [...prev, {
+        tempId: `new-${Date.now()}-${Math.random()}`, id: '', relationId: '', isExisting: false,
+        skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType : 'READING',
+        contentText: '', fullSentence: '', wrongWord: '', correctWord: '',
+        options: ['', '', '', ''], correctAnswer: '', transcript: '', correctSentence: '', blankSentence: '', alternatives: '', hint: '', words: ''
+    } as any]);
 
-        const qList = Array.isArray(quiz.questions) ? quiz.questions : [];
-        const readingCount = qList.filter((q: any) => q.skillType === 'READING').length;
-        const listeningCount = qList.filter((q: any) => q.skillType === 'LISTENING').length;
-        const speakingCount = qList.filter((q: any) => q.skillType === 'SPEAKING').length;
-        const writingCount = qList.filter((q: any) => q.skillType === 'WRITING').length;
-
-        editQuizForm.setFieldsValue({
-            title: quiz.name || quiz.title,
-            description: quiz.description,
-            instructions: quiz.instructions,
-            passingScore: quiz.passingScore || 80,
-            timeLimitMinutes: quiz.timeLimitMinutes || 15,
-            pointsPerQuestion: quiz.pointsPerQuestion || 10,
-            readingCount,
-            listeningCount,
-            speakingCount,
-            writingCount,
-            comment: quiz.comment,
-            difficulty: quiz.difficulty || 'BEGINNER',
-            skillType: quiz.skillType || 'MIXED',
+    const removeBatchQuestion = (tid: string) => {
+        setBatchQuestions(prev => {
+            if (prev.length <= 1) {
+                message.warning("Phải giữ lại ít nhất 1 câu hỏi!");
+                return prev;
+            }
+            const index = prev.findIndex(q => q.tempId === tid);
+            if (index !== -1) {
+                const targetQuestion = prev[index];
+                setDeletedQuestionsHistory(hist => [...hist, { question: targetQuestion, index }]);
+                message.success({
+                    content: (
+                        <div className="flex items-center gap-2">
+                            <span>Đã xóa câu hỏi số {index + 1}</span>
+                            <button
+                                onClick={() => handleUndoDeleteQuestion()}
+                                className="px-3 py-1 bg-slate-900 text-white text-[10px] font-black uppercase rounded-lg border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all ml-2"
+                            >
+                                HOÀN TÁC
+                            </button>
+                        </div>
+                    ),
+                    duration: 6,
+                    key: 'delete-question-toast'
+                });
+            }
+            return prev.filter(q => q.tempId !== tid);
         });
-        setIsEditQuizModalOpen(true);
+    };
+
+    const handleUndoDeleteQuestion = () => {
+        setDeletedQuestionsHistory(prevHist => {
+            if (prevHist.length === 0) return prevHist;
+            const last = prevHist[prevHist.length - 1];
+            setBatchQuestions(prevQuestions => {
+                const updated = [...prevQuestions];
+                updated.splice(last.index, 0, last.question);
+                return updated;
+            });
+            message.success({ content: `Đã hoàn tác khôi phục câu hỏi!`, key: 'delete-question-toast' });
+            return prevHist.slice(0, -1);
+        });
+    };
+    const updateBatchQuestionField = (tid: string, f: string, v: any) => setBatchQuestions(prev => prev.map(q => {
+        if (q.tempId !== tid) return q;
+        const nextQ = { ...q, [f]: v };
+        if (q.skillType === 'WRITING' && (f === 'blankSentence' || f === 'correctAnswer')) {
+            const blank = f === 'blankSentence' ? v : q.blankSentence;
+            const answer = f === 'correctAnswer' ? v : q.correctAnswer;
+            nextQ.transcript = (blank || '').replace(/_+/g, answer || '').trim();
+            nextQ.correctSentence = nextQ.transcript;
+        }
+        if (q.skillType === 'LISTENING' && f === 'correctAnswer') {
+            nextQ.correctSentence = v;
+        }
+        return nextQ;
+    }));
+    const updateBatchOption = (tid: string, idx: number, v: string) => setBatchQuestions(prev => prev.map(q => {
+        if (q.tempId !== tid) return q;
+        const oldOpt = q.options[idx];
+        const opts = [...q.options]; opts[idx] = v;
+        const nextQ = { ...q, options: opts };
+        if (q.skillType === 'LISTENING' && q.correctAnswer === oldOpt && oldOpt !== '') {
+            nextQ.correctAnswer = v;
+            nextQ.correctSentence = v;
+        }
+        return nextQ;
+    }));
+
+    const handleAutoGenerateAudioBatch = async (tid: string) => {
+        const q = batchQuestions.find(i => i.tempId === tid);
+        if (!q?.transcript) { message.warning('Nhập transcript trước!'); return; }
+        setUploadingBatch(prev => ({ ...prev, [tid]: true }));
+        try {
+            message.success('Đã nhận transcript!');
+        } finally { setUploadingBatch(prev => ({ ...prev, [tid]: false })); }
+    };
+
+    const handleSubmitBatchQuestions = async () => {
+        if (!quiz?.id) return;
+        setSubmittingBatchQuestions(true);
+        try {
+            const currentIds = displayQuestions.map((q: any) => q.id).filter(Boolean);
+            for (const id of currentIds) await adminService.removeChallengeFromQuiz(quiz.id, id).catch(() => { });
+
+            const newBankIds: string[] = [];
+            for (const q of batchQuestions) {
+                let meta: any = {};
+                if (q.skillType === 'READING') {
+                    const words = q.fullSentence.trim().split(/\s+/);
+                    const eIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+                    meta = { words, error_index: eIdx === -1 ? 0 : eIdx, correct_word: q.correctWord, hint: q.hint };
+                } else if (q.skillType === 'LISTENING') {
+                    const correctSentence = q.correctSentence || q.correctAnswer || "";
+                    meta = { options: q.options.filter(o => o.trim()), correctAnswer: q.correctAnswer, transcript: correctSentence, correctSentence: correctSentence, hint: q.hint };
+                } else if (q.skillType === 'WRITING') {
+                    meta = { blankSentence: q.blankSentence, correctAnswer: q.correctAnswer, alternatives: (q.alternatives || '').split(',').map(s => s.trim()).filter(Boolean), hint: q.hint, transcript: q.transcript || "", correctSentence: q.transcript || "" };
+                } else if (q.skillType === 'SPEAKING') {
+                    const correctSentence = q.correctSentence || "";
+                    meta = { transcript: correctSentence, correctSentence: correctSentence, hint: q.hint };
+                }
+
+                const payload = { contentText: q.contentText, skillType: q.skillType, metadataJson: meta };
+                if (q.id && q.isExisting) {
+                    await adminService.updateChallengeBankItem(q.id, payload);
+                    newBankIds.push(q.id);
+                } else {
+                    const res: any = await adminService.createChallengeBankItem(payload);
+                    const nid = res?.data?.id || res?.id;
+                    if (nid) newBankIds.push(nid);
+                }
+            }
+            if (newBankIds.length > 0) await adminService.assignChallengesToQuiz(quiz.id, newBankIds);
+            message.success('Đã lưu toàn bộ!');
+            setIsBatchQuestionsModalOpen(false);
+            handleLevelChange(selectedLevelId!, true);
+            fetchQuizChallenges();
+        } finally { setSubmittingBatchQuestions(false); }
+    };
+
+    const openBatchQuestionsModal = () => {
+        setDeletedQuestionsHistory([]);
+        if (displayQuestions.length > 0) {
+            setBatchQuestions(displayQuestions.map((c: any, idx: number) => {
+                const p = parseMetadata(c);
+                const meta = p.metadataJson || {};
+                return {
+                    tempId: `ex-${p.id}-${idx}`, id: p.id, relationId: p.relationId || '', isExisting: true,
+                    skillType: p.skillType || quiz?.skillType || 'READING', contentText: p.contentText || '',
+                    fullSentence: Array.isArray(meta.words) ? meta.words.join(' ') : (p.contentText || ''),
+                    wrongWord: (Array.isArray(meta.words) && meta.error_index != null) ? meta.words[meta.error_index] : '',
+                    correctWord: meta.correct_word || meta.correctWord || '',
+                    options: Array.isArray(meta.options) ? [...meta.options, '', '', ''].slice(0, 4) : ['', '', '', ''],
+                    correctAnswer: meta.correctAnswer || meta.answer || '',
+                    transcript: meta.transcript || meta.correctSentence || '',
+                    correctSentence: meta.correctSentence || meta.transcript || '',
+                    blankSentence: meta.blankSentence || '',
+                    alternatives: Array.isArray(meta.alternatives) ? meta.alternatives.join(', ') : '',
+                    hint: meta.hint || ''
+                } as any;
+            }));
+        } else setBatchQuestions([{ tempId: 'new-1', id: '', relationId: '', isExisting: false, skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType || 'READING' : 'READING', options: ['', '', '', ''] } as any]);
+        setIsBatchQuestionsModalOpen(true);
+    };
+
+    const openImportChallengesModal = () => {
+        setImportChallengesSkillType(quiz?.skillType === 'MIXED' ? 'MIXED' : quiz?.skillType);
+        setImportChallengesFile(null);
+        setIsImportChallengesModalOpen(true);
+    };
+
+    const handleImportChallengesToQuiz = async () => {
+        if (!importChallengesFile || !quiz?.id) return;
+        setImportingChallenges(true);
+        try {
+            const res: any = importChallengesSkillType === 'MIXED'
+                ? await excelService.importMixedToQuiz(quiz.id, importChallengesFile)
+                : await excelService.importChallengesToQuiz(importChallengesSkillType, quiz.id, importChallengesFile);
+            if ((res?.data || res)?.successCount > 0) {
+                message.success('Import thành công!');
+                handleLevelChange(selectedLevelId!, true);
+                fetchQuizChallenges();
+                setIsImportChallengesModalOpen(false);
+            }
+        } finally { setImportingChallenges(false); }
+    };
+
+    const handleExportTemplate = async () => {
+        if (!quiz) return;
+        try {
+            message.loading({ content: 'Đang chuẩn bị form mẫu...', key: 'export-template', duration: 0 });
+            const blob = quiz.skillType === 'MIXED'
+                ? await excelService.downloadMixedTemplate()
+                : await excelService.downloadChallengeTemplate(quiz.skillType);
+            downloadBlob(blob, `form_mau_${quiz.skillType.toLowerCase()}_quiz.xlsx`);
+            message.success({ content: 'Tải form mẫu thành công!', key: 'export-template' });
+        } catch (err) {
+            message.error({ content: 'Lỗi tải form mẫu!', key: 'export-template' });
+        }
+    };
+
+    const handleExportQuizQuestions = async () => {
+        if (!quiz) return;
+        try {
+            message.loading({ content: 'Đang export câu hỏi...', key: 'export-quiz', duration: 0 });
+            const blob = await excelService.exportQuizQuestions(quiz.id);
+            const titleStr = quiz.title || quiz.name || 'quiz';
+            downloadBlob(blob, `danh_sach_cau_hoi_${titleStr.toLowerCase().replace(/\s+/g, '_')}.xlsx`);
+            message.success({ content: 'Export câu hỏi thành công!', key: 'export-quiz' });
+        } catch (err: any) {
+            console.error('Export quiz questions error:', err);
+            message.error({ content: 'Lỗi export câu hỏi!', key: 'export-quiz' });
+        }
+    };
+
+    // --- Quiz Ops ---
+    const handleCreateQuiz = async (values: any) => {
+        if (!selectedLevelId) return;
+        setCreatingQuiz(true);
+        try {
+            await adminService.createQuiz({
+                levelId: selectedLevelId,
+                title: values.title,
+                description: values.description,
+                instructions: values.instructions,
+                timeLimitSeconds: values.secondsPerQuestion || 90,
+                skillType: values.skillType || 'MIXED',
+                questionCount: 0,
+                questions: []
+            });
+            message.success('Tạo màn học thành công');
+            setIsCreateQuizModalOpen(false);
+            newQuizForm.resetFields();
+            handleLevelChange(selectedLevelId);
+        } finally { setCreatingQuiz(false); }
     };
 
     const handleUpdateQuiz = async (values: any) => {
         if (!quiz?.id || !selectedLevelId) return;
         setUpdatingQuiz(true);
         try {
-            const readingCount = Number(values.readingCount || 0);
-            const listeningCount = Number(values.listeningCount || 0);
-            const speakingCount = Number(values.speakingCount || 0);
-            const writingCount = Number(values.writingCount || 0);
-
-            // Logic to preserve existing questions but adjust counts
-            const currentQuestions = Array.isArray(quiz.questions) ? [...quiz.questions] : [];
-            const newQuestions: any[] = [];
-
-            const skills = [
-                { type: 'READING', count: readingCount },
-                { type: 'LISTENING', count: listeningCount },
-                { type: 'SPEAKING', count: speakingCount },
-                { type: 'WRITING', count: writingCount }
-            ];
-
-            skills.forEach(skill => {
-                const existingOfType = currentQuestions.filter(q => q.skillType === skill.type);
-                if (existingOfType.length >= skill.count) {
-                    // Keep first N existing
-                    newQuestions.push(...existingOfType.slice(0, skill.count));
-                } else {
-                    // Keep all existing and add placeholders
-                    newQuestions.push(...existingOfType);
-                    const diff = skill.count - existingOfType.length;
-                    for (let i = 0; i < diff; i++) {
-                        newQuestions.push({
-                            skillType: skill.type,
-                            difficulty: values.difficulty || 'BEGINNER',
-                            points: values.pointsPerQuestion || 10,
-                        });
-                    }
-                }
-            });
-
-            const finalQuestions = newQuestions.map((q, idx) => ({
-                ...q,
-                questionOrder: idx + 1
-            }));
-
-            const payload = {
+            const qCount = quiz.questions?.length || 0;
+            await adminService.updateQuiz(quiz.id, {
                 levelId: selectedLevelId,
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
+                timeLimitSeconds: values.secondsPerQuestion || 90,
                 skillType: values.skillType,
-                questionCount: finalQuestions.length,
-                comment: values.comment || 'Cập nhật quiz',
-                questions: finalQuestions
-            };
-
-            await adminService.updateQuiz(quiz.id, payload);
-            message.success('Cập nhật quiz thành công');
+                questionCount: qCount,
+                orderIndex: values.orderIndex,
+                questions: quiz.questions || []
+            });
+            message.success('Cập nhật thành công');
             setIsEditQuizModalOpen(false);
-            handleLevelChange(selectedLevelId);
-        } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi cập nhật quiz');
-        } finally {
-            setUpdatingQuiz(false);
-        }
+            handleLevelChange(selectedLevelId, true);
+        } finally { setUpdatingQuiz(false); }
     };
 
-    const handleCreateQuiz = async (values: any) => {
-        if (!selectedLevelId) return;
-        setCreatingQuiz(true);
+    const handleDeleteQuiz = async (id: string) => {
         try {
-            const payload = {
-                levelId: selectedLevelId,
-                title: values.title,
-                description: values.description,
-                instructions: values.instructions,
-                passingScore: values.passingScore || 80,
-                timeLimitMinutes: values.timeLimitMinutes || 15,
-                skillType: values.skillType || 'MIXED',
-                questionCount: 0,
-                comment: 'Tạo quiz mới',
-                questions: []
-            };
-
-            await adminService.createQuiz(payload);
-            message.success('Tạo bài kiểm tra mới thành công');
-            setIsCreateQuizModalOpen(false);
-            newQuizForm.resetFields();
-            handleLevelChange(selectedLevelId);
-        } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi tạo bài kiểm tra');
-        } finally {
-            setCreatingQuiz(false);
-        }
-    };
-
-    const parseMetadata = (challenge: any) => {
-        if (!challenge) return challenge;
-        let parsed = { ...challenge };
-        if (typeof parsed.metadataJson === 'string') {
-            try {
-                parsed.metadataJson = JSON.parse(parsed.metadataJson);
-            } catch (e) {
-                console.error('Failed to parse metadataJson:', e);
-                parsed.metadataJson = {};
-            }
-        }
-        // Normalize: API may return 'answer' instead of 'correctAnswer'
-        if (parsed.metadataJson && parsed.metadataJson.answer && !parsed.metadataJson.correctAnswer) {
-            parsed.metadataJson.correctAnswer = parsed.metadataJson.answer;
-        }
-        return parsed;
-    };
-
-    const showDetail = async (record: any, index?: number) => {
-        console.log('[showDetail] called with record:', record, 'index:', index);
-        if (quiz?.id) {
-            try {
-                // Resolve detailed information from Bank via Quiz ID API
-                const res: any = await adminService.getQuizChallenges(quiz.id);
-                console.log('[showDetail] getQuizChallenges response:', res);
-
-                // Handle both res.data (wrapped) and res (unwrapped) array
-                const items = res?.data || (Array.isArray(res) ? res : []);
-                console.log('[showDetail] items count:', items.length);
-
-                // Strategy 1: Match by challengeId
-                let bankItem = items.find((item: any) =>
-                    (record.id && item.challenge?.id === record.id) ||
-                    (record.challengeId && item.challenge?.id === record.challengeId)
-                );
-
-                // Strategy 2: Match by orderIndex === questionOrder
-                if (!bankItem && record.questionOrder != null) {
-                    bankItem = items.find((item: any) =>
-                        item.orderIndex === record.questionOrder
-                    );
-                    console.log('[showDetail] matched by orderIndex:', bankItem);
-                }
-
-                // Strategy 3: Match by array index position
-                if (!bankItem && index != null && index < items.length) {
-                    bankItem = items[index];
-                    console.log('[showDetail] matched by array index:', bankItem);
-                }
-
-                console.log('[showDetail] final bankItem:', bankItem);
-
-                if (bankItem?.challenge) {
-                    const parsed = parseMetadata(bankItem.challenge);
-                    console.log('[showDetail] parsed challenge:', parsed);
-                    setSelectedDetailChallenge(parsed);
-                    setIsDetailModalOpen(true);
-                    return;
-                }
-            } catch (err) {
-                console.error("Failed to resolve challenge detail:", err);
-            }
-        }
-
-        // Fallback: use the record directly (also parse metadataJson)
-        const parsed = parseMetadata(record);
-        setSelectedDetailChallenge(parsed);
-        setIsDetailModalOpen(true);
-    };
-
-
-    const handleAssignFromBank = async () => {
-        if (!quiz?.id || selectedBankIds.length === 0) return;
-        setSubmittingAssign(true);
-        try {
-            await adminService.assignChallengesToQuiz(quiz.id, selectedBankIds);
-            message.success('Gán câu hỏi vào quiz thành công');
-            setIsChallengeModalOpen(false);
-            // Refresh quiz data
+            await adminService.deleteQuiz(id);
+            message.success('Đã xóa bài kiểm tra');
             if (selectedLevelId) handleLevelChange(selectedLevelId);
-        } catch (err) {
-            message.error('Gán câu hỏi thất bại');
-        } finally {
-            setSubmittingAssign(false);
+        } catch (e: any) { message.error(e?.response?.data?.message || 'Lỗi khi xóa'); }
+    };
+
+    const handleReorder = useCallback((newOrder: any[]) => {
+        const updated = newOrder.map((q, idx) => ({ ...q, orderIndex: idx + 1 }));
+        setLocalQuizOrder(updated);
+        if (reorderTimerRef.current) clearTimeout(reorderTimerRef.current);
+        reorderTimerRef.current = setTimeout(async () => {
+            try {
+                await adminService.reorderQuizzes(updated.map(q => q.id));
+                setQuizzes(updated);
+                setLocalQuizOrder(null);
+                message.success('Đã cập nhật thứ tự');
+            } catch { setLocalQuizOrder(null); }
+        }, 800);
+    }, []);
+
+    // --- Challenge Ops ---
+    const parseMetadata = (c: any) => {
+        if (!c) return c;
+        let p = { ...c };
+        if (typeof p.metadataJson === 'string') {
+            try { p.metadataJson = JSON.parse(p.metadataJson); } catch { p.metadataJson = {}; }
         }
+        if (p.metadataJson?.answer && !p.metadataJson.correctAnswer) p.metadataJson.correctAnswer = p.metadataJson.answer;
+        return p;
     };
 
     const handleEditQuestion = async (record: any, index?: number) => {
-        const parsed = parseMetadata(record);
-        let challengeIdToModify = parsed.id;
+        const p = parseMetadata(record);
+        let targetId = p.id;
+        let bankItem = quizChallenges.find(i => (p.id && i.challenge?.id === p.id) || (p.challengeId && i.challenge?.id === p.challengeId));
+        if (!bankItem && p.questionOrder != null) bankItem = quizChallenges.find(i => i.orderIndex === p.questionOrder);
+        if (!bankItem && index != null) bankItem = quizChallenges[index];
 
-        // Find inside quizChallenges
-        if (quizChallenges && quizChallenges.length > 0) {
-            let bankItem = quizChallenges.find((item: any) =>
-                (parsed.id && item.challenge?.id === parsed.id) ||
-                (parsed.challengeId && item.challenge?.id === parsed.challengeId)
-            );
-            if (!bankItem && parsed.questionOrder != null) {
-                bankItem = quizChallenges.find((item: any) =>
-                    item.orderIndex === parsed.questionOrder
-                );
-            }
-            if (!bankItem && index != null && index < quizChallenges.length) {
-                bankItem = quizChallenges[index];
-            }
-            if (bankItem?.challenge) {
-                challengeIdToModify = bankItem.challenge.id;
-
-                const meta = parseMetadata(bankItem.challenge).metadataJson || {};
-                const formVals: any = {
-                    contentText: bankItem.challenge.contentText,
-                    difficultyTag: bankItem.challenge.difficultyTag || 'BEGINNER',
-                };
-
-                const skill = bankItem.challenge.skillType;
-                if (skill === 'READING') {
-                    formVals.words = meta.words?.join('|');
-                    formVals.error_index = meta.error_index;
-                    formVals.correct_word = meta.correct_word;
-                    formVals.hint = meta.hint;
-                } else if (skill === 'LISTENING') {
-                    formVals.audioUrl = meta.audioUrl;
-                    formVals.options = meta.options?.join('\n');
-                    formVals.correctAnswer = meta.correctAnswer;
-                    formVals.transcript = meta.transcript;
-                } else if (skill === 'WRITING') {
-                    formVals.scrambledWords = meta.scrambledWords?.join('\n');
-                    formVals.correctSentence = meta.correctSentence;
-                    formVals.hint = meta.hint;
-                } else if (skill === 'SPEAKING') {
-                    formVals.audioUrl = meta.audioUrl;
-                    formVals.transcript = meta.transcript;
-                    formVals.hint = meta.hint;
+        if (bankItem?.challenge) {
+            targetId = bankItem.challenge.id;
+            const meta = parseMetadata(bankItem.challenge).metadataJson || {};
+            const skill = bankItem.challenge.skillType;
+            const vals: any = { contentText: bankItem.challenge.contentText };
+            if (skill === 'READING') {
+                vals.fullSentence = meta.words?.join(' ');
+                vals.wrongWord = meta.words && meta.error_index != null ? meta.words[meta.error_index] : '';
+                vals.correctWord = meta.correct_word || meta.correctWord;
+                vals.hint = meta.hint;
+            } else if (skill === 'LISTENING' || skill === 'SPEAKING') {
+                vals.transcript = meta.transcript || meta.correctSentence || '';
+                vals.correctSentence = meta.correctSentence || meta.transcript || '';
+                if (skill === 'LISTENING') {
+                    vals.options = meta.options?.join('\n');
+                    vals.correctAnswer = meta.correctAnswer;
                 }
-
-                createForm.setFieldsValue(formVals);
-                setActiveSkillType(skill);
-                setIsCreatingNew(true);
-                setEditingChallengeId(challengeIdToModify);
-                setIsChallengeModalOpen(true);
-                return;
+                vals.hint = meta.hint;
+            } else if (skill === 'WRITING') {
+                vals.blankSentence = meta.blankSentence || meta.correctSentence;
+                vals.correctAnswer = meta.correctAnswer;
+                vals.alternatives = Array.isArray(meta.alternatives) ? meta.alternatives.join(', ') : '';
+                vals.transcript = meta.transcript || '';
+                vals.correctSentence = meta.correctSentence || '';
+                vals.hint = meta.hint;
+                lastWritingSuggestionRef.current = vals.transcript;
             }
+            createForm.setFieldsValue(vals);
+            setActiveSkillType(skill);
+            setEditingChallengeId(targetId);
+            setIsChallengeModalOpen(true);
         }
-        message.warning("Không lấy được dữ liệu chi tiết để sửa");
     };
 
     const handleRemoveQuestion = (record: any, index?: number) => {
-        let challengeId = record.id;
-        if (quizChallenges && quizChallenges.length > 0) {
-            let bankItem = quizChallenges.find((item: any) =>
-                (record.id && item.challenge?.id === record.id) ||
-                (record.challengeId && item.challenge?.id === record.challengeId)
-            );
-            if (!bankItem && record.questionOrder != null) {
-                bankItem = quizChallenges.find((item: any) =>
-                    item.orderIndex === record.questionOrder
-                );
-            }
-            if (!bankItem && index != null && index < quizChallenges.length) {
-                bankItem = quizChallenges[index];
-            }
-            if (bankItem?.challenge) {
-                challengeId = bankItem.challenge.id;
-            }
-        }
+        let cid = record.id;
+        let item = quizChallenges.find(i => (record.id && i.challenge?.id === record.id) || (record.challengeId && i.challenge?.id === record.challengeId));
+        if (!item && index != null) item = quizChallenges[index];
+        if (item?.challenge) cid = item.challenge.id;
 
-        if (!quiz?.id || !challengeId) {
-            message.warning("Không thể tìm thấy ID câu hỏi để xóa");
-            return;
-        }
-
+        if (!quiz?.id || !cid) return;
         Modal.confirm({
             title: 'Gỡ câu hỏi',
-            content: 'Bạn có chắc chắn muốn gỡ câu hỏi này khỏi bài kiểm tra hiện tại? (Vẫn giữ trong kho câu hỏi chung)',
-            okText: 'Gỡ bỏ',
-            okType: 'danger',
-            cancelText: 'Hủy',
+            content: 'Xác nhận gỡ câu hỏi này khỏi bài kiểm tra?',
+            okText: 'Gỡ bỏ', okType: 'danger', cancelText: 'Hủy',
             onOk: async () => {
                 try {
-                    await adminService.removeChallengeFromQuiz(quiz.id, challengeId);
-                    message.success('Gỡ câu hỏi thành công');
-                    if (selectedLevelId) handleLevelChange(selectedLevelId);
-                } catch (err: any) {
-                    message.error('Lỗi khi gỡ câu hỏi');
-                }
+                    await adminService.removeChallengeFromQuiz(quiz.id, cid);
+                    message.success('Đã gỡ câu hỏi');
+                    handleLevelChange(selectedLevelId!, true);
+                } catch { message.error('Lỗi khi gỡ'); }
             }
         });
     };
@@ -577,2124 +601,981 @@ const AdminQuizManagementPage: React.FC = () => {
         if (!quiz?.id) return;
         setSubmittingCreate(true);
         try {
-            let metadataJson: any = {};
+            const formVals = createForm.getFieldsValue();
             const skill = activeSkillType || values.skillType;
-
+            let meta: any = {};
             if (skill === 'READING') {
-                metadataJson = {
-                    words: values.words ? values.words.split('|').map((o: string) => o.trim()).filter(Boolean) : [],
-                    error_index: values.error_index,
-                    correct_word: values.correct_word,
-                    hint: values.hint || ""
-                };
+                const words = values.fullSentence.trim().split(/\s+/);
+                const errIdx = words.findIndex((w: string) => w.toLowerCase().replace(/[.,!?;:]/g, '') === values.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
+                meta = { words, error_index: errIdx === -1 ? 0 : errIdx, correct_word: values.correctWord.trim(), hint: values.hint || "" };
             } else if (skill === 'LISTENING') {
-                metadataJson = {
-                    audioUrl: values.audioUrl || "",
-                    options: values.options ? values.options.split('\n').filter((o: string) => o.trim()) : [],
-                    correctAnswer: values.correctAnswer,
-                    transcript: values.transcript || ""
-                };
+                const correctSentence = values.correctSentence || values.correctAnswer || "";
+                meta = { options: values.options?.split('\n').filter((o: string) => o.trim()) || [], correctAnswer: values.correctAnswer, answer: values.correctAnswer, transcript: correctSentence, correctSentence: correctSentence };
             } else if (skill === 'WRITING') {
-                metadataJson = {
-                    scrambledWords: values.scrambledWords ? values.scrambledWords.split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean) : [],
-                    correctSentence: values.correctSentence,
-                    hint: values.hint || ""
-                };
+                meta = { blankSentence: values.blankSentence, correctAnswer: values.correctAnswer, alternatives: values.alternatives?.split(/[,;]+/).map((s: string) => s.trim()).filter(Boolean) || [], hint: values.hint || "", transcript: values.transcript || "", correctSentence: values.transcript || "" };
             } else if (skill === 'SPEAKING') {
-                metadataJson = {
-                    audioUrl: values.audioUrl || "",
-                    transcript: values.transcript || "",
-                    hint: values.hint || ""
-                };
+                const correctSentence = values.correctSentence || "";
+                meta = { transcript: correctSentence, correctSentence: correctSentence, hint: values.hint || "" };
             }
-
-            const payload = {
-                contentText: values.contentText,
-                skillType: skill,
-                difficultyTag: values.difficultyTag,
-                metadataJson: metadataJson
-            };
-
+            const payload = { contentText: values.contentText, skillType: skill, metadataJson: meta };
             if (editingChallengeId) {
                 await adminService.updateChallengeBankItem(editingChallengeId, payload);
-                message.success('Cập nhật câu hỏi thành công');
+                message.success('Cập nhật thành công');
             } else {
                 const res: any = await adminService.createChallengeBankItem(payload);
-                const newChallengeId = res?.data?.id || res?.id;
-
-                if (newChallengeId) {
-                    // Auto assign to quiz after creation
-                    await adminService.assignChallengesToQuiz(quiz.id, [newChallengeId]);
-                    message.success('Tạo và gán câu hỏi thành công');
-                } else {
-                    message.success('Tạo câu hỏi thành công');
-                }
+                if (res?.id || res?.data?.id) await adminService.assignChallengesToQuiz(quiz.id, [res?.id || res?.data?.id]);
+                message.success('Tạo và gán thành công');
             }
-
             setIsChallengeModalOpen(false);
             createForm.resetFields();
             setEditingChallengeId(null);
-            if (selectedLevelId) handleLevelChange(selectedLevelId);
-        } catch (err: any) {
-            message.error(err?.message || 'Lỗi khi lưu câu hỏi');
-        } finally {
-            setSubmittingCreate(false);
-        }
+            handleLevelChange(selectedLevelId!, true);
+        } finally { setSubmittingCreate(false); }
     };
 
-    const getRegionInfo = (dialectId: string) => {
-        const dialect = dialects.find((d) => d.id === dialectId);
-        const regionKey = (dialect?.name || '').toUpperCase();
-        return REGION_LABEL[regionKey] || null;
-    };
-
-    const selectedLevel = levels.find((l) => l.id === selectedLevelId);
-
-    // --- Import/Export/Template Handlers ---
-    const handleDownloadQuizTemplate = () => {
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng';
-        const sample = 'Màn 1 - Khởi động,Nhận diện cơ bản lỗi phát âm,Nghe và chọn từ đúng,60,5,READING';
-        const blob = new Blob([`\uFEFF${header}\n${sample}`], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'quiz_template.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success('Đã tải template mẫu');
-    };
-
-    const handleImportQuizCSV = async () => {
-        if (!importFile || !selectedLevelId) return;
-        setImporting(true);
-        setImportResult(null);
+    const handleAutoGenerateAudio = async () => {
+        const transcript = createForm.getFieldValue('transcript');
+        if (!transcript) { message.warning('Vui lòng nhập Transcript!'); return; }
+        setUploadingSingle(true);
         try {
-            const text = await importFile.text();
-            const lines = text.split('\n').filter(l => l.trim());
-            if (lines.length < 2) { message.warning('File rỗng'); setImporting(false); return; }
-
-            const rows = lines.slice(1);
-            let success = 0;
-            const errors: string[] = [];
-
-            const existingNames = quizzes.map(q => (q.name || q.title || '').toLowerCase().trim());
-
-            for (let i = 0; i < rows.length; i++) {
-                const cols = rows[i].split(',');
-                if (cols.length < 4) { errors.push(`Dòng ${i + 2}: thiếu cột`); continue; }
-
-                const title = cols[0]?.trim();
-                const description = cols[1]?.trim() || '';
-                const instructions = cols[2]?.trim() || '';
-                const passingScore = parseInt(cols[3]?.trim() || '70');
-                const timeLimitMinutes = parseInt(cols[4]?.trim() || '10');
-                const skillType = cols[5]?.trim() || 'MIXED';
-
-                if (!title) { errors.push(`Dòng ${i + 2}: thiếu tên quiz`); continue; }
-                if (existingNames.includes(title.toLowerCase().trim())) {
-                    errors.push(`Dòng ${i + 2}: "${title}" đã tồn tại`);
-                    continue;
-                }
-
-                try {
-                    const payload = {
-                        levelId: selectedLevelId,
-                        title,
-                        description,
-                        instructions,
-                        passingScore: isNaN(passingScore) ? 70 : passingScore,
-                        timeLimitMinutes: isNaN(timeLimitMinutes) ? 10 : timeLimitMinutes,
-                        skillType,
-                        questionCount: 0,
-                        comment: `Import từ CSV - ${skillType}`,
-                        questions: [],
-                    };
-                    await adminService.createQuiz(payload);
-                    success++;
-                    existingNames.push(title.toLowerCase().trim());
-                } catch (err: any) {
-                    const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Lỗi tạo quiz';
-                    errors.push(`Dòng ${i + 2}: ${msg}`);
-                }
-            }
-
-            setImportResult({ success, errors });
-            if (success > 0) {
-                message.success(`Import thành công ${success} quiz`);
-                handleLevelChange(selectedLevelId);
-            }
-        } catch (err) {
-            message.error('Lỗi đọc file CSV');
-        } finally {
-            setImporting(false);
-        }
+            message.success({ content: 'Không cần tạo Audio URL nữa theo yêu cầu!', key: 'tts' });
+        } catch { message.error({ content: 'Lỗi TTS', key: 'tts' }); }
+        finally { setUploadingSingle(false); }
     };
 
-    const handleExportQuizCSV = () => {
-        if (quizzes.length === 0) { message.warning('Không có quiz để export'); return; }
-        const header = 'Tên quiz,Mô tả,Hướng dẫn,Điểm đạt (%),Thời gian (phút),Loại kỹ năng,Số câu hỏi';
-        const rows = quizzes.map(q => {
-            const name = (q.name || q.title || '').replace(/,/g, ';');
-            const desc = (q.description || '').replace(/,/g, ';');
-            const inst = (q.instructions || '').replace(/,/g, ';');
-            return `${name},${desc},${inst},${q.passingScore || ''},${q.timeLimitMinutes || ''},${q.skillType || 'MIXED'},${q.questions?.length ?? q.questionCount ?? 0}`;
-        });
+    // --- View Helpers ---
+    const displayQuestions = useMemo(() => {
+        if (!loadingQuizChallenges && quizChallenges.length > 0) {
+            return quizChallenges.map(qc => ({ ...qc, ...qc.challenge, questionOrder: qc.orderIndex, id: qc.challenge?.id || qc.id, relationId: qc.id }));
+        }
+        return quiz?.questions || [];
+    }, [quizChallenges, quiz?.questions, loadingQuizChallenges]);
 
-        const csv = [header, ...rows].join('\n');
-        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `quiz_${selectedLevel?.name?.replace(/\s+/g, '_') || 'export'}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} quiz`);
+    const filteredLevels = useMemo(() => levels.filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()) && (!regionFilter || l.dialectId === regionFilter)), [levels, searchTerm, regionFilter]);
+    const filteredQuizzes = useMemo(() => (localQuizOrder ?? quizzes).filter(q => (q.title || q.name || '').toLowerCase().includes(quizSearchTerm.toLowerCase()) && (!quizSkillFilter || q.skillType === quizSkillFilter)), [quizzes, localQuizOrder, quizSearchTerm, quizSkillFilter]);
+
+    const getRegionKey = (dialectId: string) => {
+        const d = dialects.find(i => i.id === dialectId);
+        const n = (d?.name || '').toUpperCase();
+        if (n.includes('BẮC') || n === 'NORTH') return 'NORTH';
+        if (n.includes('TRUNG') || n === 'CENTRAL') return 'CENTRAL';
+        if (n.includes('NAM') || n === 'SOUTH') return 'SOUTH';
+        return 'NORTH';
     };
 
-    // --- Import Challenges Excel to Quiz Handlers ---
-    const handleDownloadChallengeTemplate = async () => {
-        try {
-            const quizSkill = quiz?.skillType || 'MIXED';
+    const selectedLevel = levels.find(l => l.id === selectedLevelId);
+    const regionInfo = selectedLevel ? REGION_LABEL[getRegionKey(selectedLevel.dialectId)] : null;
 
-            // Determine which skill type to download:
-            // - If quiz is a specific skill (not MIXED), always download that skill's template
-            // - If quiz is MIXED, check importChallengesSkillType (from modal selector)
-            let skillToDownload: string;
-            if (quizSkill !== 'MIXED') {
-                skillToDownload = quizSkill;
-            } else if (importChallengesSkillType && importChallengesSkillType !== 'MIXED') {
-                skillToDownload = importChallengesSkillType;
-            } else {
-                skillToDownload = 'MIXED';
-            }
-
-            if (skillToDownload === 'MIXED') {
-                const blob = await excelService.downloadMixedTemplate();
-                downloadBlob(blob, 'template_mixed.xlsx');
-            } else {
-                const blob = await excelService.downloadChallengeTemplate(skillToDownload);
-                downloadBlob(blob, `template_${skillToDownload.toLowerCase()}.xlsx`);
-            }
-            message.success('Đã tải template Excel mẫu');
-        } catch (err) {
-            message.error('Không thể tải template');
+    const filteredRewards = rewards.filter(badge => {
+        if (rewardSearchTerm) {
+            const nameMatch = badge.name?.toLowerCase().includes(rewardSearchTerm.toLowerCase());
+            const codeMatch = badge.code?.toLowerCase().includes(rewardSearchTerm.toLowerCase());
+            if (!nameMatch && !codeMatch) return false;
         }
-    };
+        const isCurrentQuiz = badge.linkedQuizId === quiz?.id;
+        const isOtherQuiz = badge.linkedQuizId && badge.linkedQuizId !== quiz?.id;
+        const isUnassigned = !badge.linkedQuizId;
 
-    const handleImportChallengesToQuiz = async () => {
-        if (!importChallengesFile || !quiz?.id) return;
-        setImportingChallenges(true);
-        setImportChallengesResult(null);
-        try {
-            let result: any;
-            const isMixed = importChallengesSkillType === 'MIXED';
-
-            if (isMixed) {
-                result = await excelService.importMixedToQuiz(quiz.id, importChallengesFile);
-            } else {
-                result = await excelService.importChallengesToQuiz(importChallengesSkillType, quiz.id, importChallengesFile);
-            }
-
-            const importData = result?.data || result;
-            setImportChallengesResult(importData);
-
-            if (importData?.successCount > 0) {
-                message.success(`Import thành công ${importData.successCount} câu hỏi vào quiz`);
-                // Refresh quiz data
-                if (selectedLevelId) handleLevelChange(selectedLevelId);
-            } else {
-                message.info('Không có câu hỏi mới nào được import');
-            }
-        } catch (err: any) {
-            const errorMsg = err?.response?.data?.message || err?.message || 'Lỗi import';
-            message.error(errorMsg);
-        } finally {
-            setImportingChallenges(false);
-        }
-    };
-
-    const openImportChallengesModal = () => {
-        const quizSkill = quiz?.skillType || 'MIXED';
-        setImportChallengesSkillType(quizSkill === 'MIXED' ? 'MIXED' : quizSkill);
-        setImportChallengesFile(null);
-        setImportChallengesResult(null);
-        setIsImportChallengesModalOpen(true);
-    };
-
-    const questionColumns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 60,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => (
-                <span style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</span>
-            ),
-        },
-        {
-            title: 'Kỹ năng',
-            dataIndex: 'skillType',
-            key: 'skillType',
-            render: (skillType: string) => {
-                const cfg = SKILL_CONFIG[skillType] || { label: skillType, color: '#888', icon: <QuestionCircleOutlined /> };
-                return (
-                    <Tag
-                        icon={cfg.icon}
-                        style={{
-                            background: `${cfg.color}15`,
-                            border: `1px solid ${cfg.color}40`,
-                            color: cfg.color,
-                            fontWeight: 600,
-                            borderRadius: 20,
-                            padding: '2px 10px',
-                        }}
-                    >
-                        {cfg.label}
-                    </Tag>
-                );
-            },
-        },
-        {
-            title: 'Nội dung',
-            key: 'contentText',
-            width: 350,
-            render: (_text: string, record: any, index: number) => {
-                let finalChallenge = null;
-
-                // 1. Try to find the detailed challenge from quizChallenges
-                if (quizChallenges && quizChallenges.length > 0) {
-                    let bankItem = quizChallenges.find((item: any) =>
-                        (record.id && item.challenge?.id === record.id) ||
-                        (record.challengeId && item.challenge?.id === record.challengeId)
-                    );
-                    if (!bankItem && record.questionOrder != null) {
-                        bankItem = quizChallenges.find((item: any) => item.orderIndex === record.questionOrder);
-                    }
-                    if (!bankItem && index != null && index < quizChallenges.length) {
-                        bankItem = quizChallenges[index];
-                    }
-                    if (bankItem?.challenge) {
-                        finalChallenge = bankItem.challenge;
-                    }
-                }
-
-                // 2. Fallback to the record itself if it contains metadata
-                if (!finalChallenge && record.metadataJson) {
-                    finalChallenge = record;
-                }
-
-                if (finalChallenge) {
-                    const parsed = parseMetadata(finalChallenge);
-                    const meta = parsed.metadataJson || {};
-                    const skill = parsed.skillType;
-
-                    return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                                {parsed.contentText || '—'}
-                            </Text>
-
-                            <div style={{ fontSize: 14 }}>
-                                {skill === 'READING' && Array.isArray(meta.words) && (
-                                    <>
-                                        <div>
-                                            {meta.words.map((w: string, i: number) => (
-                                                <span key={i} style={{
-                                                    color: i === meta.error_index ? '#ef4444' : '#334155',
-                                                    textDecoration: i === meta.error_index ? 'line-through' : 'none',
-                                                    fontWeight: i === meta.error_index ? 600 : 400,
-                                                    marginRight: 4
-                                                }}>
-                                                    {w}
-                                                </span>
-                                            ))}
-                                            {meta.correct_word && (
-                                                <Text type="success" strong style={{ marginLeft: 6 }}>
-                                                    <ArrowRightOutlined style={{ fontSize: 12, marginRight: 6 }} />
-                                                    {meta.correct_word}
-                                                </Text>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-
-                                {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
-                                    <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
-                                )}
-
-                                {skill === 'WRITING' && meta.correctSentence && (
-                                    <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
-                                )}
-                            </div>
-                        </div>
-                    );
-                }
-
-                // Normal fallback
-                const fallbackText = record.contentText || record.content || record.questionText || '—';
-                return (
-                    <Text style={{ maxWidth: 300, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {fallbackText}
-                    </Text>
-                );
-            },
-        },
-        {
-            title: 'Độ khó',
-            dataIndex: 'difficulty',
-            key: 'difficulty',
-            render: (difficulty: string) => {
-                const cfg = DIFFICULTY_CONFIG[difficulty] || { label: difficulty || '—', color: 'default' };
-                return <Tag color={cfg.color}>{cfg.label}</Tag>;
-            },
-        },
-        {
-            title: 'Điểm',
-            dataIndex: 'points',
-            key: 'points',
-            align: 'center' as const,
-            render: (val: number) => (
-                <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: 15 }}>
-                    <TrophyOutlined style={{ marginRight: 4, fontSize: 13 }} />
-                    {val}
-                </span>
-            ),
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            width: 120,
-            align: 'center' as const,
-            render: (_: any, record: any, index: number) => {
-                let isMapped = false;
-                if (quizChallenges && quizChallenges.length > 0) {
-                    let bankItem = quizChallenges.find((item: any) =>
-                        (record.id && item.challenge?.id === record.id) ||
-                        (record.challengeId && item.challenge?.id === record.challengeId)
-                    );
-                    if (!bankItem && record.questionOrder != null) {
-                        bankItem = quizChallenges.find((item: any) =>
-                            item.orderIndex === record.questionOrder
-                        );
-                    }
-                    if (!bankItem && index != null && index < quizChallenges.length) {
-                        bankItem = quizChallenges[index];
-                    }
-                    if (bankItem?.challenge) {
-                        isMapped = true;
-                    }
-                }
-
-                if (loadingQuizChallenges) {
-                    return <Spin size="small" />;
-                }
-
-                if (!isMapped && !record.contentText) {
-                    return null;
-                }
-
-                return (
-                    <Space size="small">
-                        <Tooltip title="Xem chi tiết">
-                            <Button
-                                type="text"
-                                icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                                onClick={() => showDetail(record, index)}
-                            />
-                        </Tooltip>
-                        <Tooltip title="Chỉnh sửa câu hỏi này">
-                            <Button
-                                type="text"
-                                icon={<EditOutlined style={{ color: '#faad14' }} />}
-                                onClick={() => handleEditQuestion(record, index)}
-                            />
-                        </Tooltip>
-                        <Tooltip title="Gỡ khỏi bài thi">
-                            <Button
-                                type="text"
-                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-                                onClick={() => handleRemoveQuestion(record, index)}
-                            />
-                        </Tooltip>
-                    </Space>
-                );
-            },
-        },
-    ];
-
-    const levelColumns = [
-        {
-            title: 'Tên chương',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: any) => {
-                const rInfo = getRegionInfo(record.dialectId);
-                return (
-                    <Space direction="vertical" size={0}>
-                        <Text strong style={{ fontSize: 15, color: '#1e293b' }}>{text}</Text>
-                        {rInfo && (
-                            <Tag color={rInfo.color} style={{ fontSize: 11, borderRadius: 10, background: `${rInfo.color}15`, border: `1px solid ${rInfo.color}40` }}>
-                                {rInfo.label}
-                            </Tag>
-                        )}
-                    </Space>
-                );
-            }
-        },
-        {
-            title: 'Mô tả',
-            dataIndex: 'description',
-            key: 'description',
-            ellipsis: true,
-            render: (text: string) => <Text type="secondary" style={{ fontSize: 13 }}>{text || '—'}</Text>
-        },
-        {
-            title: 'Thứ tự',
-            dataIndex: 'levelOrder',
-            key: 'levelOrder',
-            align: 'center' as const,
-            width: 80,
-            render: (val: number) => <Badge count={val} showZero color="#64748b" />
-        },
-        {
-            title: 'Sao yêu cầu',
-            dataIndex: 'minStarsRequired',
-            key: 'minStarsRequired',
-            align: 'center' as const,
-            width: 120,
-            render: (val: number) => (
-                <span style={{ color: '#f59e0b', fontWeight: 600 }}>
-                    ⭐ {val ?? 0}
-                </span>
-            )
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            align: 'center' as const,
-            width: 120,
-            render: (_: any, record: any) => (
-                <Button
-                    type="primary"
-                    size="small"
-                    icon={<ArrowRightOutlined />}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleLevelChange(record.id);
-                    }}
-                    style={{ borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                >
-                    Mở
-                </Button>
-            )
-        }
-    ];
-
-    const quizColumns = [
-        {
-            title: 'Tên bài kiểm tra',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: any) => (
-                <Text strong style={{ color: '#1e293b' }}>{text || record.title || 'Untitled Quiz'}</Text>
-            )
-        },
-        {
-            title: 'Kỹ năng',
-            dataIndex: 'skillType',
-            key: 'skillType',
-            width: 150,
-            render: (skill: string) => {
-                const cfg = SKILL_CONFIG[skill] || { label: skill, color: '#888', icon: <QuestionCircleOutlined /> };
-                return (
-                    <Tag
-                        icon={cfg.icon}
-                        style={{
-                            background: `${cfg.color}10`,
-                            border: `1px solid ${cfg.color}30`,
-                            color: cfg.color,
-                            fontWeight: 600,
-                            borderRadius: 20
-                        }}
-                    >
-                        {cfg.label}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: 'Thông số',
-            key: 'stats',
-            render: (_: any, record: any) => (
-                <Space size={8}>
-                    <Tooltip title="Số câu hỏi">
-                        <Tag color="blue" icon={<FileTextOutlined />}>{record.questions?.length ?? record.questionCount ?? 0}</Tag>
-                    </Tooltip>
-                    <Tooltip title="Điểm đạt">
-                        <Tag color="green" icon={<CheckCircleOutlined />}>{record.passingScore ?? 0}%</Tag>
-                    </Tooltip>
-                    {record.timeLimitMinutes && (
-                        <Tooltip title="Thời gian">
-                            <Tag color="orange" icon={<ClockCircleOutlined />}>{record.timeLimitMinutes}p</Tag>
-                        </Tooltip>
-                    )}
-                </Space>
-            )
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            align: 'center' as const,
-            width: 120,
-            render: (_: any, record: any) => (
-                <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<EyeOutlined />}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setQuiz(record);
-                    }}
-                    style={{ borderRadius: 6, fontWeight: 600 }}
-                >
-                    Chi tiết
-                </Button>
-            )
-        }
-    ];
-
-    const filteredAndSortedQuizzes = useMemo(() => {
-        let result = quizzes;
-        if (quizSearchTerm) {
-            result = result.filter(q => (q.title || q.name || '').toLowerCase().includes(quizSearchTerm.toLowerCase()));
-        }
-        if (quizSkillFilter) {
-            result = result.filter(q => q.skillType === quizSkillFilter);
-        }
-
-        // Tự động sắp xếp (ví dụ: Màn 1, Màn 2, ... Màn 10, Màn 11)
-        result = [...result].sort((a, b) => {
-            const titleA = a.title || a.name || '';
-            const titleB = b.title || b.name || '';
-
-            const numA = parseInt(titleA.match(/\d+/)?.[0] || '0');
-            const numB = parseInt(titleB.match(/\d+/)?.[0] || '0');
-            if (numA !== numB) {
-                return numA - numB;
-            }
-            return titleA.localeCompare(titleB);
-        });
-
-        return result;
-    }, [quizzes, quizSearchTerm, quizSkillFilter]);
-
-    const regionInfo = selectedLevel ? getRegionInfo(selectedLevel.dialectId) : null;
+        if (rewardFilter === 'UNASSIGNED') return isUnassigned;
+        if (rewardFilter === 'ASSIGNED_OTHER') return isOtherQuiz;
+        if (rewardFilter === 'ASSIGNED_CURRENT') return isCurrentQuiz;
+        return true;
+    });
 
     return (
-        <div style={{ padding: 0 }}>
-            {/* Header */}
-            <div
-                style={{
-                    marginBottom: 28,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                    gap: 12,
-                }}
-            >
-                <div>
-                    <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center' }}>
-                        {selectedLevelId && (
-                            <Button
-                                icon={<ArrowLeftOutlined />}
-                                onClick={handleBackToChapters}
-                                style={{ marginRight: 16, borderRadius: 10, border: '1.5px solid #e2e8f0' }}
-                            />
-                        )}
-                        <FileTextOutlined style={{ marginRight: 10, color: '#2563eb' }} />
-                        {selectedLevelId && selectedLevel ? (
-                            <>Quản lý quiz<span style={{ color: '#64748b', fontWeight: 400, fontSize: 16, margin: '0 8px' }}>›</span><span style={{ color: '#2563eb', fontSize: 18 }}>{selectedLevel.name}</span></>
-                        ) : 'Quản lý quiz'}
-                    </Title>
-                    <Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                        {selectedLevelId && selectedLevel
-                            ? `Quản lý các bài kiểm tra trong chương "${selectedLevel.name}"`
-                            : 'Xem danh sách quiz và câu hỏi theo từng chương học'}
-                    </Text>
-                </div>
-                {selectedLevelId && !quiz && (
-                    <Space size={8}>
-                        <Button icon={<DownloadOutlined />} onClick={handleDownloadQuizTemplate}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0f9ff', color: '#0369a1', border: '1.5px solid #bae6fd' }}>
-                            Template
-                        </Button>
-                        <Button icon={<UploadOutlined />} onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#f0fdf4', color: '#15803d', border: '1.5px solid #86efac' }}>
-                            Import
-                        </Button>
-                        <Button icon={<ExportOutlined />} onClick={handleExportQuizCSV}
-                            style={{ borderRadius: 8, fontWeight: 600, background: '#fefce8', color: '#a16207', border: '1.5px solid #fde047' }}>
-                            Export
-                        </Button>
-                    </Space>
-                )}
-            </div>
+        <div className="h-screen bg-[#fbf6ef] font-nunito p-4 md:p-6 overflow-hidden flex flex-col">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-6">
+                    {selectedLevelId && (
+                        <motion.button
+                            whileHover={{ scale: 1.05, x: -5 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { if (quiz) { setQuiz(null); setQuizChallenges([]); } else handleBackToChapters(); }}
+                            className="w-12 h-12 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all shrink-0"
+                        >
+                            <ArrowLeft size={18} strokeWidth={3} />
+                        </motion.button>
+                    )}
 
-
-
-            {/* Content Area */}
-            {!selectedLevelId && !loadingQuiz && (
-                <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
+                    <div className="flex items-center gap-4">
+                        <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
                         <div>
-                            <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Khám phá các chương học
-                            </Title>
-                            <Text style={{ color: '#64748b', fontSize: 15 }}>
-                                Tìm kiếm và chọn một hệ chương trình bên dưới
-                            </Text>
+                            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                                {quiz ? quiz.name || quiz.title : (selectedLevelId ? "Dòng thời gian luyện tập" : "Quản lý màn học")}
+                            </h1>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+                                {selectedLevelId ? `Chương: ${selectedLevel?.name || '...'} • ${regionInfo?.label || '...'}` : "Nội dung học tập theo cấp độ"}
+                            </p>
+                            {selectedLevelId && selectedLevel?.description && (
+                                <p className="text-xs font-bold text-slate-500 mt-2 line-clamp-2 max-w-2xl bg-slate-100/60 border border-slate-200/40 rounded-xl px-3 py-1.5 shadow-[2px_2px_0_#1f293705]">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mr-1">Mô tả:</span>
+                                    {selectedLevel.description}
+                                </p>
+                            )}
                         </div>
-
-                        <Space size={12} className="filter-controls">
-                            <Input
-                                placeholder="Tìm tên chương..."
-                                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                style={{ width: 260, borderRadius: 12, height: 42 }}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                allowClear
-                            />
-                            <Select
-                                placeholder="Lọc vùng miền"
-                                style={{ width: 160, height: 42 }}
-                                allowClear
-                                onChange={(val) => setRegionFilter(val)}
-                                options={dialects.map((d: any) => {
-                                    const regionKey = (d.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: d.id,
-                                        label: info?.label || d.description || d.name || d.id,
-                                    };
-                                })}
-                                dropdownStyle={{ borderRadius: 12 }}
-                            />
-                            <div style={{
-                                background: '#eff6ff',
-                                padding: '0 20px',
-                                borderRadius: 12,
-                                border: '1px solid #dbeafe',
-                                height: 42,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8
-                            }}>
-                                <Badge count={filteredLevels.length} color="#2563eb" />
-                                <Text strong style={{ color: '#2563eb', fontSize: 13 }}>Chương</Text>
-                            </div>
-                        </Space>
                     </div>
-
-                    <Table
-                        columns={levelColumns}
-                        dataSource={filteredLevels}
-                        rowKey="id"
-                        pagination={{ pageSize: 15, showSizeChanger: true }}
-                        onRow={(record) => ({
-                            onClick: () => handleLevelChange(record.id),
-                            style: { cursor: 'pointer' }
-                        })}
-                        style={{
-                            background: '#fff',
-                            borderRadius: 16,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            border: '1px solid #f1f5f9'
-                        }}
-                    />
                 </div>
-            )}
 
-            {loadingQuiz && (
-                <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-                    <Spin size="large" tip="Đang tải dữ liệu quiz..." />
-                </div>
-            )}
-
-            {!loadingQuiz && selectedLevelId && !quiz && quizzes.length === 0 && (
-                <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<Text type="secondary">Chương học này chưa có bài kiểm tra nào</Text>}
-                    />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateQuizModalOpen(true)} size="large" style={{ marginTop: 16, background: '#1890ff', borderColor: '#1890ff', color: '#fff', fontWeight: 600, borderRadius: 8 }}>
-                        Tạo bài kiểm tra đầu tiên
-                    </Button>
-                </div>
-            )}
-
-            {!loadingQuiz && selectedLevelId && !quiz && quizzes.length > 0 && (
-                <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-                        <div>
-                            <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px', color: '#1e293b' }}>
-                                Danh sách bài kiểm tra
-                            </Title>
-                            <Text style={{ color: '#64748b', fontSize: 15 }}>
-                                Vui lòng chọn một bài kiểm tra để xem và quản lý chi tiết
-                            </Text>
-                        </div>
-                        <Space size={12} className="filter-controls" wrap>
-                            <Input
-                                placeholder="Tìm bài kiểm tra..."
-                                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                style={{ width: 220, borderRadius: 12, height: 42 }}
-                                onChange={(e) => setQuizSearchTerm(e.target.value)}
-                                allowClear
-                            />
-                            <Select
-                                placeholder="Lọc kỹ năng"
-                                allowClear
-                                style={{ width: 140, height: 42 }}
-                                onChange={(val) => setQuizSkillFilter(val)}
-                                options={Object.entries(SKILL_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
-                            />
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => setIsCreateQuizModalOpen(true)}
-                                size="large"
-                                style={{
-                                    borderRadius: 12,
-                                    fontWeight: 600,
-                                    background: '#1890ff',
-                                    height: 42
-                                }}
-                            >
-                                Tạo bài kiểm tra
-                            </Button>
-                        </Space>
-                    </div>
-
-                    <Table
-                        columns={quizColumns}
-                        dataSource={filteredAndSortedQuizzes}
-                        rowKey="id"
-                        pagination={{ pageSize: 15, showSizeChanger: true }}
-                        onRow={(record) => ({
-                            onClick: () => setQuiz(record),
-                            style: { cursor: 'pointer' }
-                        })}
-                        style={{
-                            background: '#fff',
-                            borderRadius: 16,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                            border: '1px solid #f1f5f9'
-                        }}
-                    />
-                </div>
-            )}
-
-            {!loadingQuiz && quiz && (
-                <>
-                    {/* Quiz Info Card */}
-                    <Card
-                        style={{
-                            borderRadius: 16,
-                            marginBottom: 24,
-                            boxShadow: '0 4px 20px rgba(37,99,235,0.08)',
-                            border: '1.5px solid #bfdbfe',
-                            background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)',
-                        }}
-                        styles={{ body: { padding: '24px 28px' } }}
-                    >
-                        {/* Title row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                            <div
-                                style={{
-                                    width: 48,
-                                    height: 48,
-                                    borderRadius: 12,
-                                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <FileTextOutlined style={{ fontSize: 22, color: '#fff' }} />
-                            </div>
-                            <div>
-                                <Title level={4} style={{ margin: 0, fontSize: 18 }}>
-                                    {quiz.name || quiz.title}
-                                    <Tooltip title="Chỉnh sửa thông tin quiz">
-                                        <Button
-                                            type="text"
-                                            icon={<EditOutlined style={{ color: '#2563eb' }} />}
-                                            size="small"
-                                            style={{ marginLeft: 8 }}
-                                            onClick={handleOpenEditQuiz}
-                                        />
-                                    </Tooltip>
-                                </Title>
-                                {regionInfo && (
-                                    <span
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: '2px 10px',
-                                            borderRadius: 20,
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            color: regionInfo.color,
-                                            background: regionInfo.bg,
-                                            border: `1.5px solid ${regionInfo.color}40`,
-                                            marginTop: 4,
-                                        }}
-                                    >
-                                        {regionInfo.label}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {quiz.description && (
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 13 }}>
-                                {quiz.description}
-                            </Text>
-                        )}
-
-                        {quiz.instructions && (
-                            <div
-                                style={{
-                                    background: '#fef9c3',
-                                    border: '1px solid #fde68a',
-                                    borderRadius: 8,
-                                    padding: '10px 14px',
-                                    marginBottom: 16,
-                                    fontSize: 13,
-                                    color: '#92400e',
-                                }}
-                            >
-                                <strong>Hướng dẫn:</strong> {quiz.instructions}
-                            </div>
-                        )}
-
-                        <Divider style={{ margin: '16px 0' }} />
-
-                        {/* Stats */}
-                        <Row gutter={[24, 16]}>
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Số câu hỏi</span>}
-                                    value={quiz.questions?.length ?? quiz.questionCount ?? 0}
-                                    prefix={<QuestionCircleOutlined style={{ color: '#2563eb' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#2563eb' }}
-                                />
-                            </Col>
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Điểm đạt</span>}
-                                    value={quiz.passingScore ?? '—'}
-                                    suffix={quiz.passingScore ? '%' : ''}
-                                    prefix={<TrophyOutlined style={{ color: '#f59e0b' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#f59e0b' }}
-                                />
-                            </Col>
-                            <Col xs={12} sm={6}>
-                                <Statistic
-                                    title={<span style={{ fontSize: 12, color: '#64748b' }}>Thời gian</span>}
-                                    value={quiz.timeLimitMinutes ?? '—'}
-                                    suffix={quiz.timeLimitMinutes ? ' phút' : ''}
-                                    prefix={<ClockCircleOutlined style={{ color: '#0891b2' }} />}
-                                    valueStyle={{ fontSize: 22, fontWeight: 700, color: '#0891b2' }}
-                                />
-                            </Col>
-                            <Col xs={12} sm={6}>
-                                <div>
-                                    <Text style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>
-                                        ID quiz
-                                    </Text>
-                                    <Tooltip title={quiz.id}>
-                                        <code
-                                            style={{
-                                                fontSize: 13,
-                                                background: '#f1f5f9',
-                                                padding: '3px 8px',
-                                                borderRadius: 6,
-                                                color: '#475569',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            {quiz.id?.substring(0, 8)}...
-                                        </code>
-                                    </Tooltip>
-                                </div>
-                            </Col>
-                        </Row>
-                    </Card>
-
-                    {/* Action Buttons - Always visible */}
-                    <Card
-                        style={{
-                            borderRadius: 16,
-                            marginBottom: 24,
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            border: '1px solid #e2e8f0',
-                        }}
-                        headStyle={{ borderRadius: '16px 16px 0 0' }}
-                        title={
-                            <Space>
-                                <QuestionCircleOutlined style={{ color: '#2563eb' }} />
-                                <span style={{ fontWeight: 600 }}>
-                                    Danh sách câu hỏi ({quiz.questions?.length ?? quiz.questionCount ?? 0} câu)
-                                </span>
-                            </Space>
-                        }
-                    >
-                        {/* Skill summary pills + Add buttons */}
-                        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Text strong style={{ marginRight: 8 }}>Thêm câu hỏi theo kỹ năng:</Text>
-                            {Object.entries(SKILL_CONFIG)
-                                .filter(([key]) => !quiz.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
-                                .map(([key, cfg]) => {
-                                    const count = (quiz.questions || []).filter((q: any) => q.skillType === key).length;
-                                    return (
-                                        <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 6,
-                                                    padding: '6px 14px',
-                                                    borderRadius: '20px 0 0 20px',
-                                                    background: `${cfg.color}12`,
-                                                    border: `1px solid ${cfg.color}30`,
-                                                    borderRight: 'none',
-                                                    color: cfg.color,
-                                                    fontWeight: 600,
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                {cfg.icon}
-                                                {cfg.label}: {count}
-                                            </span>
-                                            <Tooltip title={`Thêm câu hỏi ${cfg.label}`}>
-                                                <Button
-                                                    size="small"
-                                                    icon={<PlusOutlined />}
-                                                    onClick={() => openChallengeModal(key)}
-                                                    style={{
-                                                        borderRadius: '0 20px 20px 0',
-                                                        height: 33,
-                                                        background: cfg.color,
-                                                        color: '#fff',
-                                                        border: `1px solid ${cfg.color}`,
-                                                        padding: '0 10px',
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        </div>
-                                    );
-                                })}
-                        </div>
-
-                        {/* Import Excel buttons */}
-                        <div style={{
-                            display: 'flex',
-                            gap: 10,
-                            marginBottom: 20,
-                            padding: '12px 16px',
-                            background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                            borderRadius: 12,
-                            border: '1px solid #bbf7d0',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                        }}>
-                            <UploadOutlined style={{ fontSize: 18, color: '#15803d' }} />
-                            <Text strong style={{ color: '#166534', fontSize: 13, marginRight: 8 }}>
-                                Import hàng loạt từ Excel:
-                            </Text>
-                            <Button
-                                icon={<DownloadOutlined />}
-                                onClick={handleDownloadChallengeTemplate}
-                                style={{
-                                    borderRadius: 8,
-                                    fontWeight: 600,
-                                    background: '#fff',
-                                    color: '#0369a1',
-                                    border: '1.5px solid #7dd3fc',
-                                    fontSize: 12,
-                                }}
-                                size="small"
-                            >
-                                📥 Tải Template {quiz.skillType === 'MIXED' ? 'Tổng hợp' : SKILL_CONFIG[quiz.skillType]?.label || ''}
-                            </Button>
-                            <Button
-                                icon={<UploadOutlined />}
-                                onClick={openImportChallengesModal}
-                                style={{
-                                    borderRadius: 8,
-                                    fontWeight: 600,
-                                    background: '#15803d',
-                                    color: '#fff',
-                                    border: '1.5px solid #15803d',
-                                    fontSize: 12,
-                                }}
-                                size="small"
-                            >
-                                📤 Import câu hỏi từ Excel
-                            </Button>
-                            <Text type="secondary" style={{ fontSize: 11, flex: 1, minWidth: 150 }}>
-                                {quiz.skillType === 'MIXED'
-                                    ? 'Template gồm 4 sheet: Đọc, Nghe, Viết, Nói'
-                                    : `Template cho kỹ năng ${SKILL_CONFIG[quiz.skillType]?.label || quiz.skillType}`}
-                            </Text>
-                        </div>
-
-                        {/* Questions Table */}
-                        {quiz.questions && quiz.questions.length > 0 ? (
-                            <Table
-                                dataSource={quiz.questions}
-                                columns={questionColumns}
-                                rowKey={(r: any) => `${r.id}-${r.questionOrder}-${r.skillType}`}
-                                locale={{ emptyText: 'Không có câu hỏi nào' }}
-                                scroll={{ x: 'max-content' }}
-                                rowClassName={(_, index) =>
-                                    index % 2 === 0 ? '' : 'quiz-row-alt'
-                                }
-                            />
-                        ) : (
-                            <div style={{
-                                padding: '48px 24px',
-                                textAlign: 'center',
-                                background: '#f8fafc',
-                                borderRadius: 16,
-                                border: '1.5px dashed #cbd5e1',
-                            }}>
-                                <QuestionCircleOutlined style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
-                                <div style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: 600, color: '#475569' }}>
-                                        Quiz này chưa có câu hỏi nào
-                                    </Text>
-                                </div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>
-                                    Thêm câu hỏi từ ngân hàng đề hoặc tạo câu hỏi mới bằng các nút bên trên
-                                </Text>
-                                <Space size={12}>
-                                    <Button
-                                        type="primary"
-                                        icon={<BankOutlined />}
-                                        onClick={() => openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING')}
-                                        style={{ borderRadius: 8, fontWeight: 600, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
-                                    >
-                                        Chọn từ Ngân hàng đề
-                                    </Button>
-                                    <Button
-                                        icon={<PlusOutlined />}
-                                        onClick={() => { openChallengeModal(quiz.skillType && quiz.skillType !== 'MIXED' ? quiz.skillType : 'READING'); setIsCreatingNew(true); }}
-                                        style={{ borderRadius: 8, fontWeight: 600, background: '#f0fdf4', color: '#15803d', borderColor: '#86efac' }}
-                                    >
-                                        Tạo câu hỏi mới
-                                    </Button>
-                                </Space>
-                            </div>
-                        )}
-                    </Card>
-                </>
-            )}
-
-            <Modal
-                title={
-                    <Space>
-                        {editingChallengeId ? <EditOutlined style={{ color: '#faad14' }} /> : <BankOutlined style={{ color: '#2563eb' }} />}
-                        <span>
-                            {editingChallengeId
-                                ? `Cập nhật câu hỏi`
-                                : `Thêm câu hỏi cho kỹ năng: ${activeSkillType ? SKILL_CONFIG[activeSkillType]?.label : ''}`
-                            }
-                        </span>
-                    </Space>
-                }
-                open={isChallengeModalOpen}
-                onCancel={() => {
-                    setIsChallengeModalOpen(false);
-                    setEditingChallengeId(null);
-                }}
-                width={800}
-                footer={null}
-                centered
-                destroyOnHidden
-            >
-                <Tabs
-                    activeKey={isCreatingNew ? 'create' : 'bank'}
-                    onChange={(key) => setIsCreatingNew(key === 'create')}
-                    items={[
-                        ...(editingChallengeId ? [] : [{
-                            key: 'bank',
-                            label: (
-                                <span>
-                                    <BankOutlined /> Chọn từ ngân hàng
-                                </span>
-                            ),
-                            children: (
-                                <div style={{ minHeight: 400 }}>
-                                    <div style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
-                                        <Input
-                                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                                            placeholder="Tìm kiếm nội dung câu hỏi..."
-                                            style={{ borderRadius: 8 }}
-                                            value={bankSearchText}
-                                            onChange={(e) => setBankSearchText(e.target.value)}
-                                        />
-                                    </div>
-                                    <Table
-                                        loading={loadingBank}
-                                        dataSource={availableChallenges
-                                            .filter(c => c.skillType === activeSkillType)
-                                            .filter(c => {
-                                                if (!bankSearchText) return true;
-                                                const search = bankSearchText.toLowerCase();
-                                                if (c.contentText?.toLowerCase().includes(search)) return true;
-                                                // Also search in metadataJson details
-                                                const meta = typeof c.metadataJson === 'string'
-                                                    ? (() => { try { return JSON.parse(c.metadataJson); } catch { return {}; } })()
-                                                    : (c.metadataJson || {});
-                                                if (Array.isArray(meta.words) && meta.words.join(' ').toLowerCase().includes(search)) return true;
-                                                if (meta.correct_word?.toLowerCase().includes(search)) return true;
-                                                if (meta.transcript?.toLowerCase().includes(search)) return true;
-                                                if (meta.correctSentence?.toLowerCase().includes(search)) return true;
-                                                return false;
-                                            })
-                                        }
-                                        rowKey="id"
-                                        size="middle"
-                                        scroll={{ x: 'max-content' }}
-                                        columns={[
-                                            {
-                                                title: 'Nội dung',
-                                                dataIndex: 'contentText',
-                                                key: 'contentText',
-                                                render: (_text: string, record: any) => {
-                                                    const parsed = parseMetadata(record);
-                                                    const meta = parsed.metadataJson || {};
-                                                    const skill = parsed.skillType;
-
-                                                    return (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                            <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                                                                {parsed.contentText || '—'}
-                                                            </Text>
-
-                                                            <div style={{ fontSize: 14 }}>
-                                                                {skill === 'READING' && Array.isArray(meta.words) && (
-                                                                    <div>
-                                                                        {meta.words.map((w: string, i: number) => (
-                                                                            <span key={i} style={{
-                                                                                color: i === meta.error_index ? '#ef4444' : '#334155',
-                                                                                textDecoration: i === meta.error_index ? 'line-through' : 'none',
-                                                                                fontWeight: i === meta.error_index ? 600 : 400,
-                                                                                marginRight: 4
-                                                                            }}>
-                                                                                {w}
-                                                                            </span>
-                                                                        ))}
-                                                                        {meta.correct_word && (
-                                                                            <Text type="success" strong style={{ marginLeft: 6 }}>
-                                                                                → {meta.correct_word}
-                                                                            </Text>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-
-                                                                {(skill === 'LISTENING' || skill === 'SPEAKING') && meta.transcript && (
-                                                                    <Text italic style={{ color: '#0f172a' }}>"{meta.transcript}"</Text>
-                                                                )}
-
-                                                                {skill === 'WRITING' && meta.correctSentence && (
-                                                                    <Text strong style={{ color: '#0f172a' }}>{meta.correctSentence}</Text>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                            },
-                                            {
-                                                title: 'Độ khó',
-                                                dataIndex: 'difficultyTag',
-                                                key: 'difficultyTag',
-                                                width: 120,
-                                                render: (tag: string) => {
-                                                    const cfg = DIFFICULTY_CONFIG[tag] || { label: tag, color: 'default' };
-                                                    return <Tag color={cfg.color}>{cfg.label}</Tag>;
-                                                }
-                                            },
-                                            {
-                                                title: 'Chi tiết',
-                                                key: 'action',
-                                                width: 80,
-                                                align: 'center' as const,
-                                                render: (_: any, record: any) => (
-                                                    <Tooltip title="Xem chi tiết câu hỏi">
-                                                        <Button
-                                                            type="text"
-                                                            icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                                                            onClick={() => showDetail(record)}
-                                                        />
-                                                    </Tooltip>
-                                                )
-                                            }
-                                        ]}
-                                        rowSelection={{
-                                            type: 'checkbox',
-                                            selectedRowKeys: selectedBankIds,
-                                            onChange: (keys) => setSelectedBankIds(keys as string[])
-                                        }}
-                                        pagination={{ pageSize: 5 }}
-                                    />
-                                    <Divider />
-                                    <div style={{ display: 'flex', justifySelf: 'end', gap: 12 }}>
-                                        <Button onClick={() => setIsChallengeModalOpen(false)}>Hủy</Button>
-                                        <Button
-                                            type="primary"
-                                            onClick={handleAssignFromBank}
-                                            disabled={selectedBankIds.length === 0}
-                                            loading={submittingAssign}
-                                        >
-                                            Xác nhận thêm {selectedBankIds.length > 0 ? `(${selectedBankIds.length})` : ''}
-                                        </Button>
-                                    </div>
-                                </div>
-                            )
-                        }]),
-                        {
-                            key: 'create',
-                            label: (
-                                <span>
-                                    <PlusOutlined /> {editingChallengeId ? 'Cập nhật câu hỏi' : 'Tạo câu hỏi mới'}
-                                </span>
-                            ),
-                            children: (
-                                <Form
-                                    form={createForm}
-                                    layout="vertical"
-                                    onFinish={handleCreateNewChallenge}
-                                    initialValues={{ difficultyTag: 'BEGINNER' }}
-                                    style={{ marginTop: 16 }}
-                                >
-                                    <Form.Item
-                                        name="contentText"
-                                        label={<Text strong>Nội dung câu hỏi / Yêu cầu</Text>}
-                                        rules={[{ required: true, message: 'Vui lòng nhập nội dung' }]}
-                                    >
-                                        <Input.TextArea rows={2} placeholder="Ví dụ: Tìm từ trái nghĩa với..." style={{ borderRadius: 8 }} />
-                                    </Form.Item>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        <Form.Item name="difficultyTag" label={<Text strong>Độ khó</Text>}>
-                                            <Select>
-                                                {Object.entries(DIFFICULTY_CONFIG).map(([k, v]) => (
-                                                    <Option key={k} value={k}>{v.label}</Option>
-                                                ))}
-                                            </Select>
-                                        </Form.Item>
-                                    </div>
-
-                                    <Card size="small" style={{ background: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
-                                        {activeSkillType === 'READING' && (
-                                            <>
-                                                <Form.Item
-                                                    name="words"
-                                                    label="Các từ trong câu (phân cách bằng |)"
-                                                    extra="Ví dụ: Ông|lội|kể|chuyện"
-                                                    rules={[{ required: true }]}
-                                                >
-                                                    <Input.TextArea rows={2} placeholder="Con|lai|kia|chạy|lên|nương" />
-                                                </Form.Item>
-                                                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.words !== currentValues.words}>
-                                                    {({ getFieldValue }) => {
-                                                        const wordsText = getFieldValue('words') || '';
-                                                        const parsedWords = wordsText.split('|').map((s: string) => s.trim()).filter(Boolean);
-                                                        return (
-                                                            <Form.Item
-                                                                name="error_index"
-                                                                label="Từ bị viết sai"
-                                                                rules={[{ required: true }]}
-                                                            >
-                                                                <Select placeholder="Chọn từ bị sai">
-                                                                    {parsedWords.map((word: string, idx: number) => (
-                                                                        <Option key={idx} value={idx}>{word}</Option>
-                                                                    ))}
-                                                                </Select>
-                                                            </Form.Item>
-                                                        );
-                                                    }}
-                                                </Form.Item>
-                                                <Form.Item
-                                                    name="correct_word"
-                                                    label="Từ viết đúng"
-                                                    rules={[{ required: true }]}
-                                                >
-                                                    <Input placeholder="Ví dụ: nai" />
-                                                </Form.Item>
-                                                <Form.Item name="hint" label="Gợi ý (Không bắt buộc)">
-                                                    <Input placeholder="Gợi ý cho người học..." />
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'LISTENING' && (
-                                            <>
-                                                <Form.Item name="audioUrl" label="Link file âm thanh URL" rules={[{ required: true }]}>
-                                                    <Input placeholder="https://..." />
-                                                </Form.Item>
-                                                <Form.Item name="options" label="Các lựa chọn (Mỗi dòng 1 lựa chọn)" rules={[{ required: true }]}>
-                                                    <Input.TextArea rows={3} />
-                                                </Form.Item>
-                                                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.options !== currentValues.options}>
-                                                    {({ getFieldValue }) => {
-                                                        const optionsText = getFieldValue('options') || '';
-                                                        const parsedOptions = optionsText.split('\n').map((s: string) => s.trim()).filter(Boolean);
-                                                        return (
-                                                            <Form.Item name="correctAnswer" label="Đáp án đúng" rules={[{ required: true }]}>
-                                                                <Select placeholder="Chọn từ danh sách...">
-                                                                    {parsedOptions.map((opt: string, idx: number) => (
-                                                                        <Option key={idx} value={opt}>{opt}</Option>
-                                                                    ))}
-                                                                </Select>
-                                                            </Form.Item>
-                                                        );
-                                                    }}
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'WRITING' && (
-                                            <>
-                                                <Form.Item name="scrambledWords" label="Các từ bị xáo trộn (Cách nhau bởi dấu phẩy)" rules={[{ required: true }]}>
-                                                    <Input.TextArea placeholder="Con, mèo, đang, ngủ" />
-                                                </Form.Item>
-                                                <Form.Item name="correctSentence" label="Câu hoàn chỉnh đúng" rules={[{ required: true }]}>
-                                                    <Input />
-                                                </Form.Item>
-                                            </>
-                                        )}
-
-                                        {activeSkillType === 'SPEAKING' && (
-                                            <>
-                                                <Form.Item name="transcript" label="Nội dung cần nói" rules={[{ required: true }]}>
-                                                    <Input.TextArea />
-                                                </Form.Item>
-                                                <Form.Item name="audioUrl" label="Link file âm thanh mẫu" rules={[{ required: true }]}>
-                                                    <Input />
-                                                </Form.Item>
-                                            </>
-                                        )}
-                                    </Card>
-
-                                    <div style={{ textAlign: 'right', marginTop: 16 }}>
-                                        <Space>
-                                            <Button onClick={() => setIsChallengeModalOpen(false)}>Hủy</Button>
-                                            <Button type="primary" htmlType="submit" loading={submittingCreate}>
-                                                {editingChallengeId ? 'Lưu cập nhật' : 'Lưu và thêm vào quiz'}
-                                            </Button>
-                                        </Space>
-                                    </div>
-                                </Form>
-                            )
-                        }
-                    ]}
-                />
-            </Modal>
-
-            {/* Detail View Modal (Nested or separate) */}
-            <Modal
-                title={
-                    <Space>
-                        <EyeOutlined style={{ color: '#2563eb' }} />
-                        <span>Chi tiết câu hỏi</span>
-                    </Space>
-                }
-                open={isDetailModalOpen}
-                onCancel={() => setIsDetailModalOpen(false)}
-                footer={[
-                    <Button key="close" onClick={() => setIsDetailModalOpen(false)} type="primary" style={{ borderRadius: 6 }}>
-                        Đóng
-                    </Button>
-                ]}
-                width={650}
-                centered
-                zIndex={2000} // Ensure it's above the first modal
-            >
-                {selectedDetailChallenge && (
-                    <div style={{ padding: '8px 0' }}>
-                        <div style={{ marginBottom: 20 }}>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Yêu cầu câu hỏi:</Text>
-                            <Title level={5} style={{ marginTop: 0 }}>{selectedDetailChallenge.contentText}</Title>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 40, marginBottom: 24 }}>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Kỹ năng:</Text>
-                                {(() => {
-                                    const cfg = SKILL_CONFIG[selectedDetailChallenge.skillType] || { label: selectedDetailChallenge.skillType, color: '#888' };
-                                    return <Tag color={cfg.color}>{cfg.label}</Tag>;
-                                })()}
-                            </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Độ khó:</Text>
-                                <Tag color={DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.color}>{DIFFICULTY_CONFIG[selectedDetailChallenge.difficultyTag]?.label}</Tag>
-                            </div>
-                        </div>
-
-                        <Divider style={{ margin: '16px 0' }} />
-
-                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <Title level={5} style={{ marginTop: 0, marginBottom: 16, fontSize: 15 }}>
-                                <InfoCircleOutlined style={{ marginRight: 8, color: '#2563eb' }} />
-                                Cấu trúc dữ liệu ({selectedDetailChallenge.skillType})
-                            </Title>
-
-                            {selectedDetailChallenge.skillType === 'READING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Các từ trong câu (phân cách bằng |):</Text>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                                            {selectedDetailChallenge.metadataJson?.words?.map((word: string, idx: number) => (
-                                                <Tag key={idx} color={idx === selectedDetailChallenge.metadataJson?.error_index ? 'error' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
-                                                    {word}
-                                                </Tag>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                        <div>
-                                            <Text strong style={{ display: 'block' }}>Từ viết đúng:</Text>
-                                            <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correct_word}</Tag>
-                                        </div>
-                                        {selectedDetailChallenge.metadataJson?.hint && (
-                                            <div>
-                                                <Text strong style={{ display: 'block' }}>Gợi ý:</Text>
-                                                <Text>{selectedDetailChallenge.metadataJson?.hint}</Text>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'LISTENING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>File âm thanh:</Text>
-                                        <div style={{ marginTop: 8 }}>
-                                            <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Các lựa chọn:</Text>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8 }}>
-                                            {selectedDetailChallenge.metadataJson?.options?.map((opt: string, idx: number) => (
-                                                <Tag key={idx} color={opt === selectedDetailChallenge.metadataJson?.correctAnswer ? 'success' : 'default'} style={{ padding: '4px 12px', borderRadius: 6 }}>
-                                                    {opt}
-                                                </Tag>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                        <div>
-                                            <Text strong style={{ display: 'block' }}>Đáp án đúng:</Text>
-                                            <Tag color="success" style={{ marginTop: 4 }}>{selectedDetailChallenge.metadataJson?.correctAnswer}</Tag>
-                                        </div>
-                                        {selectedDetailChallenge.metadataJson?.transcript && (
-                                            <div>
-                                                <Text strong style={{ display: 'block' }}>Transcript:</Text>
-                                                <Text italic>{selectedDetailChallenge.metadataJson?.transcript}</Text>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'WRITING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Từ ngữ xáo trộn:</Text>
-                                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            {selectedDetailChallenge.metadataJson?.scrambledWords?.map((word: string, idx: number) => (
-                                                <Tag key={idx} style={{ background: '#fff', border: '1px dashed #d9d9d9' }}>{word}</Tag>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong style={{ display: 'block' }}>Câu hoàn chỉnh:</Text>
-                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedDetailChallenge.metadataJson?.correctSentence}</Text>
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedDetailChallenge.skillType === 'SPEAKING' && (
-                                <>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong>Âm thanh mẫu:</Text>
-                                        <div style={{ marginTop: 8 }}>
-                                            <audio controls src={selectedDetailChallenge.metadataJson?.audioUrl} style={{ width: '100%' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: 16 }}>
-                                        <Text strong style={{ display: 'block' }}>Nội dung cần nói:</Text>
-                                        <Text type="success" strong style={{ fontSize: 16 }}>{selectedDetailChallenge.metadataJson?.transcript}</Text>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </Modal>
-
-            {/* Edit Quiz Modal */}
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Chỉnh sửa quiz</span>}
-                open={isEditQuizModalOpen}
-                onCancel={() => setIsEditQuizModalOpen(false)}
-                onOk={() => editQuizForm.submit()}
-                confirmLoading={updatingQuiz}
-                okText="Lưu thay đổi"
-                width={800}
-                centered
-            >
-                <Form
-                    form={editQuizForm}
-                    layout="vertical"
-                    onFinish={handleUpdateQuiz}
-                >
-                    <Row gutter={24}>
-                        <Col span={10}>
-                            <Form.Item
-                                label="Tên quiz"
-                                name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                        </Col>
-                        <Col span={7}>
-                            <Form.Item label="Độ khó" name="difficulty">
-                                <Select
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={7}>
-                            <Form.Item label="Loại kỹ năng" name="skillType">
-                                <Select
-                                    options={[
-                                        { value: 'READING', label: '📖 Reading' },
-                                        { value: 'LISTENING', label: '🎧 Listening' },
-                                        { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                        { value: 'WRITING', label: '✍️ Writing' },
-                                        { value: 'MIXED', label: '🎯 Tổng hợp' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Mô tả" name="description">
-                                <Input.TextArea rows={2} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Hướng dẫn" name="instructions">
-                                <Input.TextArea rows={2} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item label="Điểm đạt (%)" name="passingScore" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Thời gian (phút)" name="timeLimitMinutes" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item label="Điểm mỗi câu" name="pointsPerQuestion" style={{ marginBottom: 0 }}>
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
-
-                        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.skillType !== cur.skillType}>
-                            {({ getFieldValue }) => {
-                                const skillType = getFieldValue('skillType');
-                                const showAll = !skillType || skillType === 'MIXED';
-                                const fields = [
-                                    { key: 'READING', label: 'Số câu Reading', name: 'readingCount' },
-                                    { key: 'LISTENING', label: 'Số câu Listening', name: 'listeningCount' },
-                                    { key: 'SPEAKING', label: 'Số câu Speaking', name: 'speakingCount' },
-                                    { key: 'WRITING', label: 'Số câu Writing', name: 'writingCount' },
-                                ];
-                                const visibleFields = showAll ? fields : fields.filter(f => f.key === skillType);
-                                return (
-                                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleFields.length}, 1fr)`, gap: '12px' }}>
-                                        {visibleFields.map(f => (
-                                            <Form.Item key={f.key} label={f.label} name={f.name} style={{ marginBottom: 0 }}>
-                                                <InputNumber min={0} style={{ width: '100%' }} />
-                                            </Form.Item>
-                                        ))}
-                                    </div>
-                                );
-                            }}
-                        </Form.Item>
-                    </div>
-
-                    <Form.Item label="Ghi chú cập nhật" name="comment">
-                        <Input placeholder="Lý do chỉnh sửa..." />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            <Modal
-                title={
-                    <Space>
-                        <PlusOutlined style={{ color: '#2563eb' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Tạo bài kiểm tra mới</span>
-                    </Space>
-                }
-                open={isCreateQuizModalOpen}
-                onCancel={() => {
-                    setIsCreateQuizModalOpen(false);
-                    newQuizForm.resetFields();
-                }}
-                onOk={() => newQuizForm.submit()}
-                confirmLoading={creatingQuiz}
-                okText="Tạo mới"
-                cancelText="Hủy"
-                width={700}
-                centered
-            >
-                <Form
-                    form={newQuizForm}
-                    layout="vertical"
-                    onFinish={handleCreateQuiz}
-                    initialValues={{
-                        passingScore: 80,
-                        timeLimitMinutes: 15,
-                    }}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item name="title" label={<Text strong>Tên bài kiểm tra</Text>} rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra' }]}>
-                        <Input placeholder="Ví dụ: Kiểm tra cuối khóa phát âm" />
-                    </Form.Item>
-                    <Form.Item name="description" label={<Text strong>Mô tả ngắn</Text>}>
-                        <Input.TextArea rows={2} placeholder="Mô tả nội dung bài kiểm tra" />
-                    </Form.Item>
-                    <Form.Item name="instructions" label={<Text strong>Hướng dẫn cho học viên</Text>}>
-                        <Input.TextArea rows={2} placeholder="Nội quy, thời gian, hướng dẫn chi tiết..." />
-                    </Form.Item>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                        <Form.Item name="passingScore" label={<Text strong>Điểm cần đạt (%)</Text>} rules={[{ required: true, message: 'Nhập điểm cần đạt' }]}>
-                            <InputNumber min={1} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item name="timeLimitMinutes" label={<Text strong>Thời gian (phút)</Text>} rules={[{ required: true, message: 'Nhập thời gian làm bài' }]}>
-                            <InputNumber min={1} max={300} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item name="skillType" label={<Text strong>Loại kỹ năng</Text>} rules={[{ required: true, message: 'Chọn loại kỹ năng' }]}>
-                            <Select placeholder="Chọn loại" options={[
-                                { value: 'READING', label: '📖 Reading' },
-                                { value: 'LISTENING', label: '🎧 Listening' },
-                                { value: 'SPEAKING', label: '🎙️ Speaking' },
-                                { value: 'WRITING', label: '✍️ Writing' },
-                                { value: 'MIXED', label: '🎯 Tổng hợp' },
-                            ]} />
-                        </Form.Item>
-                    </div>
-                </Form>
-            </Modal>
-
-            {/* Import Quiz Modal */}
-            <Modal
-                title={
-                    <Space>
-                        <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import quiz từ CSV</span>
-                    </Space>
-                }
-                open={isImportModalOpen}
-                onCancel={() => setIsImportModalOpen(false)}
-                footer={null}
-                width={560}
-                centered
-            >
-                <div style={{ marginTop: 20 }}>
-                    <div style={{ marginBottom: 16, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}>
-                        <Text style={{ color: '#0369a1', fontSize: 13 }}>
-                            <strong>Hướng dẫn:</strong> Tải template mẫu, điền dữ liệu rồi upload file CSV.<br />
-                            Các cột: Tên quiz, Mô tả, Hướng dẫn, Điểm đạt (%), Thời gian (phút), Độ khó
-                        </Text>
-                    </div>
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                        style={{ marginBottom: 16, display: 'block' }}
-                    />
-                    <Button
-                        type="primary"
-                        icon={<UploadOutlined />}
-                        onClick={handleImportQuizCSV}
-                        loading={importing}
-                        disabled={!importFile}
-                        size="large"
-                        style={{ width: '100%', borderRadius: 8, fontWeight: 600, background: '#15803d', borderColor: '#15803d', marginBottom: 16 }}
-                    >
-                        {importing ? 'Đang import...' : 'Bắt đầu Import'}
-                    </Button>
-                    {importResult && (
-                        <div style={{ marginTop: 8 }}>
-                            {importResult.success > 0 && (
-                                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, marginBottom: 8 }}>
-                                    <Text style={{ color: '#15803d', fontWeight: 600 }}>
-                                        ✅ Import thành công {importResult.success} quiz
-                                    </Text>
-                                </div>
-                            )}
-                            {importResult.errors.length > 0 && (
-                                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, maxHeight: 150, overflowY: 'auto' }}>
-                                    {importResult.errors.map((err, i) => (
-                                        <div key={i} style={{ color: '#dc2626', fontSize: 12, marginBottom: 2 }}>❌ {err}</div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                <div className="flex items-center gap-3">
+                    {!quiz && selectedLevelId && (
+                        <motion.button
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setIsCreateQuizModalOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-[10px] font-black uppercase tracking-widest text-white transition-all"
+                        >
+                            <Plus size={18} strokeWidth={4} />
+                            Thêm màn học
+                        </motion.button>
                     )}
                 </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col pt-4">
+                <AnimatePresence mode="wait">
+                    {!selectedLevelId && (
+                        /* ── Chapter Selection Grid ── */
+                        <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8 text-center py-20">
+                            <div className="max-w-md mx-auto space-y-6">
+                                <div className="w-24 h-24 bg-blue-50 border-[3px] border-slate-900 rounded-[2rem] shadow-[6px_6px_0_#1f2937] flex items-center justify-center mx-auto text-[#49B6E5]">
+                                    <Library size={48} strokeWidth={2.5} />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Chọn chương học để bắt đầu</h3>
+                                <p className="text-xs font-bold text-slate-400">Vui lòng chọn một chương học từ màn hình quản lý chương học để cấu trúc danh sách bài tập.</p>
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    onClick={() => navigate('/admin/chapters')}
+                                    className="px-8 py-4 bg-slate-900 text-white border-[3px] border-slate-900 rounded-2xl shadow-[6px_6px_0_#49B6E5] text-xs font-black uppercase tracking-widest"
+                                >
+                                    Đến quản lý chương học
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    )}
+                    {selectedLevelId && !quiz && (
+                        /* ── Quiz List (Roadmap style) ── */
+                        <motion.div key="quiz-list" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12 pb-20">
+                            {loadingQuiz ? (
+                                <div className="flex flex-col items-center justify-center py-32 bg-white/40 border-[3px] border-dashed border-slate-900/10 rounded-[3rem]">
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                        className="w-16 h-16 rounded-[1.5rem] bg-white border-[3px] border-slate-900 shadow-[6px_6px_0_#49B6E5] flex items-center justify-center mb-6"
+                                    >
+                                        <Zap className="text-[#49B6E5]" size={32} fill="#49B6E5" fillOpacity={0.2} />
+                                    </motion.div>
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Đang nạp dữ liệu bài tập...</p>
+                                </div>
+                            ) : quizzes.length === 0 ? (
+                                <div className="py-32 flex flex-col items-center gap-6 bg-white/40 border-[3px] border-dashed border-slate-900/10 rounded-[3rem]">
+                                    <Empty description={<span className="font-black uppercase text-slate-400">Chưa có bài kiểm tra nào</span>} />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center w-full">
+                                    {/* View Mode Toggle */}
+                                    <div className="flex justify-center mb-8">
+                                        <div className="bg-slate-200/50 p-1 rounded-2xl flex gap-1 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
+                                            <button
+                                                onClick={() => setViewMode('roadmap')}
+                                                className={clsx("px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'roadmap' ? "bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#49B6E5] text-slate-900" : "text-slate-500 hover:bg-slate-300/30")}
+                                            >Dòng thời gian</button>
+                                            <button
+                                                onClick={() => setViewMode('skill_groups')}
+                                                className={clsx("px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'skill_groups' ? "bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#49B6E5] text-slate-900" : "text-slate-500 hover:bg-slate-300/30")}
+                                            >Nhóm kỹ năng</button>
+                                        </div>
+                                    </div>
+
+                                    {viewMode === 'roadmap' ? (
+                                        <div className="w-full flex-1 flex flex-col overflow-hidden">
+                                            <div className="flex-1 flex items-center overflow-x-auto overflow-y-hidden px-12 custom-scrollbar relative">
+                                                <Reorder.Group axis="x" values={filteredQuizzes} onReorder={handleReorder} className="flex items-center gap-20 relative min-w-max mx-auto px-20 h-full">
+                                                    {/* Central Timeline Line */}
+                                                    <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 bg-slate-900/5 rounded-full z-0" />
+
+                                                    {filteredQuizzes.map((q, idx) => {
+                                                        const cfg = SKILL_CONFIG[q.skillType] || { label: 'T.Hợp', color: '#64748b', icon: Zap, bg: 'bg-slate-50' };
+                                                        const isEven = idx % 2 === 0;
+                                                        return (
+                                                            <Reorder.Item key={q.id} value={q} className="relative z-10 flex flex-col items-center" style={{ width: '280px' }}>
+                                                                <motion.div
+                                                                    whileHover={{ scale: 1.05, y: isEven ? -10 : 10 }}
+                                                                    className={clsx(
+                                                                        "w-full bg-white border-[3.5px] border-slate-900 rounded-[2.5rem] p-6 shadow-[8px_8px_0_#1f2937] flex flex-col gap-4 group cursor-pointer transition-all hover:shadow-[12px_12px_0_#1f2937] relative z-20",
+                                                                        isEven ? "mb-[8rem]" : "mt-[8rem]"
+                                                                    )}
+                                                                    onClick={() => setQuiz(q)}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="px-3 py-1 rounded-full bg-slate-100 border-2 border-slate-200 text-[9px] font-black uppercase text-slate-400 tracking-wider">Màn {idx + 1}</div>
+                                                                        <div className="flex gap-2">
+                                                                            <button onClick={(e) => { e.stopPropagation(); setQuiz(q); handleOpenEditQuiz(q); }} className="p-1.5 hover:bg-blue-50 rounded-xl text-slate-400 hover:text-blue-500 transition-all"><Edit3 size={16} strokeWidth={3} /></button>
+                                                                            <Popconfirm 
+                                                                                title="Xóa màn học?" 
+                                                                                onConfirm={(e) => { e?.stopPropagation(); handleDeleteQuiz(q.id); }} 
+                                                                                onCancel={(e) => e?.stopPropagation()} 
+                                                                                okText="Xóa" 
+                                                                                cancelText="Hủy"
+                                                                                okButtonProps={{ 
+                                                                                    style: { backgroundColor: '#ef4444', color: '#ffffff', fontWeight: '900', border: '2px solid #1f2937' },
+                                                                                    className: "hover:bg-red-600 rounded-xl"
+                                                                                }}
+                                                                                cancelButtonProps={{ 
+                                                                                    style: { fontWeight: '700' },
+                                                                                    className: "rounded-xl"
+                                                                                }}
+                                                                            >
+                                                                                <button onClick={e => e.stopPropagation()} className="p-1.5 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-500 transition-all">
+                                                                                    <Trash2 size={16} strokeWidth={3} />
+                                                                                </button>
+                                                                            </Popconfirm>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className={clsx("w-14 h-14 rounded-2xl border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center shrink-0 transition-transform group-hover:rotate-6", cfg.bg)}>
+                                                                            <cfg.icon size={28} style={{ color: cfg.color }} strokeWidth={3} />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight line-clamp-2 leading-tight">{q.title || q.name}</h4>
+                                                                            <div className="flex items-center gap-2 mt-1 text-[9px] font-bold text-slate-400">
+                                                                                <HelpCircle size={12} className="text-[#49B6E5]" /> {q.questionCount || q.questions?.length || 0} câu đố
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-[#49B6E5] border-[3px] border-slate-900 rounded-2xl flex items-center justify-center text-white shadow-sm opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                                                                        <ChevronRight size={20} strokeWidth={4} />
+                                                                    </div>
+                                                                </motion.div>
+
+                                                                {/* Visual Connector to Timeline */}
+                                                                <div className={clsx("absolute w-[3px] bg-slate-900/10 z-0", isEven ? "top-[100%] mt-[4rem] h-8" : "bottom-[100%] mb-[4rem] h-8")} />
+                                                                <div className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-[3.5px] border-slate-900 bg-white z-10 shadow-[3px_3px_0_#1f2937]" />
+                                                            </Reorder.Item>
+                                                        );
+                                                    })}
+                                                </Reorder.Group>
+                                            </div>
+
+                                            <div className="mt-2 shrink-0 mb-8 flex flex-col items-center">
+                                                <div className="px-8 py-3 bg-white border-[3px] border-slate-900 rounded-3xl shadow-[5px_5px_0_#1f2937] flex items-center gap-4 animate-bounce-subtle">
+                                                    <div className="flex -space-x-2">
+                                                        <div className="w-6 h-6 rounded-lg bg-blue-100 border-2 border-slate-900 flex items-center justify-center text-blue-600"><BookOpen size={12} /></div>
+                                                        <div className="w-6 h-6 rounded-lg bg-violet-100 border-2 border-slate-900 flex items-center justify-center text-violet-600"><Volume2 size={12} /></div>
+                                                        <div className="w-6 h-6 rounded-lg bg-emerald-100 border-2 border-slate-900 flex items-center justify-center text-emerald-600"><Edit3 size={12} /></div>
+                                                    </div>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Giữ và kéo để thay đổi thứ tự lộ trình học tập</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="w-full max-w-6xl mx-auto flex-1 overflow-y-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6 custom-scrollbar">
+                                            {Object.entries(SKILL_CONFIG).map(([skillKey, cfg]) => {
+                                                const skillQuizzes = filteredQuizzes.filter(q => q.skillType === skillKey);
+                                                if (skillQuizzes.length === 0) return null;
+                                                return (
+                                                    <div key={skillKey} className="bg-white border-[2.5px] border-slate-900 rounded-[1.5rem] p-4 shadow-[4px_4px_0_#1f2937] flex flex-col h-fit max-h-full">
+                                                        <div className="flex items-center gap-2 mb-4 shrink-0">
+                                                            <div className={clsx("w-12 h-12 rounded-xl border-[2.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center", cfg.bg)}>
+                                                                <cfg.icon size={18} style={{ color: cfg.color }} strokeWidth={3} />
+                                                            </div>
+                                                            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{cfg.label}</h3>
+                                                        </div>
+                                                        <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
+                                                            {skillQuizzes.map((q, idx) => (
+                                                                <div key={q.id} onClick={() => setQuiz(q)} className="p-3 bg-slate-50 border-[2px] border-slate-200 rounded-[1.25rem] cursor-pointer hover:border-[#49B6E5] hover:bg-blue-50/30 transition-all group flex items-center gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-[8px] font-black uppercase text-slate-400 leading-none">Màn {q.orderIndex || idx + 1}</span>
+                                                                            {q.rewardIconUrl ? (
+                                                                                <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5" title={`Thành tựu: ${q.rewardName}`}>
+                                                                                    <img src={q.rewardIconUrl} className="w-3 h-3 object-cover rounded-sm" alt="" />
+                                                                                    <span className="text-[6.5px] font-black text-amber-600 uppercase tracking-tighter">Quà</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-[7px] font-bold text-[#49B6E5] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">{(q.questions?.length || q.questionCount || 0)} câu đố</span>
+                                                                            )}
+                                                                        </div>
+                                                                        <h4 className="text-[10px] font-black text-slate-900 truncate uppercase tracking-tight">{q.title || q.name}</h4>
+                                                                    </div>
+                                                                    <Edit3 size={12} className="text-[#49B6E5] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                    {selectedLevelId && quiz && (
+                        /* ── Quiz Detail / Questions View ── */
+                        <motion.div
+                            key="quiz-detail"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            className="flex-1 flex flex-col overflow-hidden space-y-3"
+                        >
+                            <article className="bg-white rounded-[2rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f293708] overflow-hidden flex flex-col flex-1">
+                                <div className="p-5 border-b-[2.5px] border-slate-900/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-white">
+                                    <div className="flex items-center gap-4">
+                                        <div className={clsx(
+                                            "w-16 h-16 rounded-[1.5rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center shrink-0",
+                                            SKILL_CONFIG[quiz.skillType]?.bg || 'bg-slate-50'
+                                        )}>
+                                            {(() => {
+                                                const cfg = SKILL_CONFIG[quiz.skillType] || { icon: HelpCircle, color: '#64748b' };
+                                                const Icon = cfg.icon;
+                                                return <Icon size={28} strokeWidth={3} style={{ color: cfg.color }} />;
+                                            })()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <Badge status="processing" color="#49B6E5" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#49B6E5]">
+                                                    {SKILL_CONFIG[quiz.skillType]?.label || 'Hỗn hợp'}
+                                                </span>
+                                            </div>
+                                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight truncate">{quiz.title || quiz.name}</h2>
+                                            <p className="text-[10px] font-bold text-slate-400 truncate max-w-md">{quiz.description || "Nội dung bài tập & danh sách câu hỏi."}</p>
+                                            
+                                            {/* Reward Badge Display */}
+                                            {(quiz.rewardIconUrl || quiz.rewardName) && (
+                                                <div className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] rounded-xl w-fit">
+                                                    <div className="w-5 h-5 rounded-md border border-slate-900 overflow-hidden bg-white flex items-center justify-center shrink-0">
+                                                        <img src={quiz.rewardIconUrl || "https://img.icons8.com/color/96/medal.png"} alt="Badge" className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-700">Thành tựu: {quiz.rewardName}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <motion.button onClick={openRewardModal} whileHover={{ y: -2 }} className="px-4 py-2 bg-white border-[2px] border-slate-900 rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2"><Trophy size={14} strokeWidth={3} /> Quà</motion.button>
+                                        <motion.button onClick={openBatchQuestionsModal} whileHover={{ y: -2 }} className="px-5 py-2.5 bg-slate-900 border-[2px] border-slate-900 rounded-xl shadow-[4px_4px_0_#49B6E5] text-[9px] font-black uppercase tracking-widest text-white flex items-center gap-2 transition-all"><Sliders size={16} strokeWidth={3} /> Biên tập</motion.button>
+                                    </div>
+                                </div>
+
+                                <div className="p-5 flex-1 flex flex-col overflow-hidden bg-[#fafafa]/20">
+                                    <div className="flex items-center justify-between mb-4 shrink-0 px-1">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-5 bg-slate-900 rounded-full" />
+                                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Danh sách câu đố ({displayQuestions.length})</h3>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <motion.button onClick={openImportChallengesModal} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-[#49B6E5] transition-all"><Upload size={14} strokeWidth={3} /> Import</motion.button>
+                                            <motion.button onClick={handleExportTemplate} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-500 transition-all"><Download size={14} strokeWidth={3} /> Template</motion.button>
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                onClick={handleExportQuizQuestions}
+                                                className="px-4 py-2 bg-[#E2F5FC] text-[#49B6E5] border-[2px] border-[#49B6E5] rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest flex items-center gap-2"
+                                            >
+                                                <Download size={14} strokeWidth={4} /> Export
+                                            </motion.button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                        {loadingQuizChallenges ? (
+                                            <div className="py-20 flex flex-col items-center gap-4">
+                                                <div className="w-12 h-12 border-[3.5px] border-slate-100 border-t-[#49B6E5] rounded-full animate-spin" />
+                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Đang tải dữ liệu...</span>
+                                            </div>
+                                        ) : displayQuestions.length === 0 ? (
+                                            <div className="py-12 border-[3px] border-dashed border-slate-100 rounded-[2.5rem] flex flex-col items-center gap-4 bg-white/50">
+                                                <div className="w-16 h-16 bg-slate-50 border-[2.5px] border-slate-900 rounded-[1.25rem] flex items-center justify-center text-slate-200">
+                                                    <HelpCircle size={32} />
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">Chưa có câu hỏi</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5">Vui lòng sử dụng tính năng thêm hoặc nhập liệu.</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 pb-2">
+                                                {displayQuestions.map((q: any, idx: number) => {
+                                                    const cfg = SKILL_CONFIG[q.skillType] || { label: q.skillType, color: '#64748b', icon: HelpCircle, bg: 'bg-slate-50' };
+                                                    const p = parseMetadata(q);
+                                                    const meta = p.metadataJson || {};
+
+                                                    return (
+                                                        <motion.div
+                                                            key={q.id || idx}
+                                                            whileHover={{ y: -3 }}
+                                                            className="group relative bg-white border-[2.5px] border-slate-900 rounded-[1.5rem] p-4 shadow-[4px_4px_0_#1f293708] transition-all hover:shadow-[5px_5px_0_#1f293710] flex flex-col justify-between min-h-[120px]"
+                                                        >
+                                                            <div className="flex items-start gap-4">
+                                                                <div className={clsx("w-10 h-10 rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center shrink-0 transition-transform group-hover:-rotate-3", cfg.bg)}>
+                                                                    <cfg.icon size={18} style={{ color: cfg.color }} strokeWidth={3} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 pr-10">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className="px-1.5 py-0.5 bg-slate-100 rounded-md text-[7px] font-black uppercase text-slate-400 tracking-tighter"># {idx + 1}</span>
+                                                                        <span className="text-[7px] font-black uppercase tracking-widest truncate" style={{ color: cfg.color }}>{cfg.label}</span>
+                                                                    </div>
+                                                                    <p className="text-[12px] font-black text-slate-900 leading-tight line-clamp-2 mb-2 pr-2">{q.contentText || "(Trống)"}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-auto pt-2 border-t-[1.5px] border-slate-900/5 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 overflow-hidden">
+                                                                    {q.skillType === 'LISTENING' && meta.transcript && <div className="truncate shrink-0"><span className="text-[#49B6E5] text-[7px] uppercase">Audio</span></div>}
+                                                                    {q.skillType === 'READING' && (meta.correct_word || meta.correctWord) && <div className="truncate"><span className="text-emerald-500 text-[7px] uppercase">Đáp án:</span> {meta.correct_word || meta.correctWord}</div>}
+                                                                    {q.skillType === 'WRITING' && meta.correctAnswer && <div className="truncate"><span className="text-violet-500 text-[7px] uppercase">Điền:</span> {meta.correctAnswer}</div>}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="absolute top-3 right-3 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button onClick={() => handleEditQuestion(q, idx)} className="p-1.5 bg-white border-[1.5px] border-slate-900 rounded-lg hover:bg-blue-50 text-blue-500 shadow-sm transition-all"><Edit3 size={12} strokeWidth={3} /></button>
+                                                                <button onClick={() => handleRemoveQuestion(q, idx)} className="p-1.5 bg-white border-[1.5px] border-slate-900 rounded-lg hover:bg-red-50 text-red-500 shadow-sm transition-all"><Trash2 size={12} strokeWidth={3} /></button>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </article>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* --- Modals Modernized --- */}
+            <Modal
+                title={<div className="flex items-center gap-3 text-slate-900 font-black uppercase tracking-tight"><Plus size={20} strokeWidth={3} className="text-[#49B6E5]" /> {isEditQuizModalOpen ? "Cập nhật bài tập" : "Thêm màn học mới"}</div>}
+                open={isCreateQuizModalOpen || isEditQuizModalOpen}
+                onCancel={() => { setIsCreateQuizModalOpen(false); setIsEditQuizModalOpen(false); newQuizForm.resetFields(); editQuizForm.resetFields(); }}
+                footer={null}
+                centered
+                width={550}
+                className="doodle-modal"
+            >
+                <Form
+                    form={isEditQuizModalOpen ? editQuizForm : newQuizForm}
+                    layout="vertical"
+                    onFinish={isEditQuizModalOpen ? handleUpdateQuiz : handleCreateQuiz}
+                    className="mt-6 space-y-4"
+                >
+                    <Form.Item name="title" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Tiêu đề bài tập</span>} rules={[{ required: true, message: 'Nhập tiêu đề' }]}>
+                        <Input className="doodle-input" placeholder="Ví dụ: Luyện âm n - l" />
+                    </Form.Item>
+
+                    <Row gutter={16}>
+                        <Col span={14}>
+                            <Form.Item name="skillType" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Loại kỹ năng</span>} initialValue="READING">
+                                <Select className="doodle-select">
+                                    {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={10}>
+                            <Form.Item name="secondsPerQuestion" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Thời gian / câu</span>} initialValue={60}>
+                                <Select className="doodle-select">
+                                    {SECOND_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item name="description" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Mô tả ngắn</span>}>
+                        <Input.TextArea rows={2} className="doodle-input" placeholder="Ghi chú về nội dung bài tập..." />
+                    </Form.Item>
+
+                    <Form.Item name="instructions" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Hướng dẫn cho học viên</span>}>
+                        <Input.TextArea rows={2} className="doodle-input" placeholder="Học viên cần làm gì..." />
+                    </Form.Item>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <motion.button type="submit" disabled={creatingQuiz || updatingQuiz} className="h-12 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#49B6E5] text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2">
+                            {(creatingQuiz || updatingQuiz) ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            {isEditQuizModalOpen ? "Lưu thay đổi" : "Tạo ngay"}
+                        </motion.button>
+                    </div>
+                </Form>
             </Modal>
 
-            {/* Import Challenges Excel to Quiz Modal */}
+            {/* --- Challenge (Individual) Modal --- */}
             <Modal
-                title={
-                    <Space>
-                        <UploadOutlined style={{ color: '#15803d' }} />
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>Import câu hỏi từ Excel vào quiz</span>
-                    </Space>
-                }
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Zap className="text-[#49B6E5]" /> {editingChallengeId ? "Cập nhật câu đố" : "Thêm câu đố mới"}</div>}
+                open={isChallengeModalOpen}
+                onCancel={() => setIsChallengeModalOpen(false)}
+                footer={null}
+                width={650}
+                centered
+                className="doodle-modal"
+            >
+                <Form
+                    form={createForm}
+                    layout="vertical"
+                    onFinish={handleCreateNewChallenge}
+                    className="mt-6 space-y-4"
+                    onValuesChange={(changedValues, allValues) => {
+                        if (activeSkillType === 'WRITING' && (changedValues.blankSentence !== undefined || changedValues.correctAnswer !== undefined)) {
+                            const blank = allValues.blankSentence || '';
+                            const answer = allValues.correctAnswer || '';
+                            const currentTranscript = allValues.transcript || '';
+                            const oldSuggestion = lastWritingSuggestionRef.current;
+                            if (!currentTranscript || currentTranscript === oldSuggestion) {
+                                const suggestion = blank.replace(/_+/g, answer).trim();
+                                createForm.setFieldsValue({ transcript: suggestion, correctSentence: suggestion });
+                                lastWritingSuggestionRef.current = suggestion;
+                            }
+                        }
+                        if (activeSkillType === 'LISTENING' && changedValues.correctAnswer !== undefined) {
+                            createForm.setFieldsValue({ correctSentence: changedValues.correctAnswer });
+                        }
+                    }}
+                >
+                    {/* Skill Selector - Only show if Quiz is MIXED */}
+                    {quiz?.skillType === 'MIXED' ? (
+                        <Form.Item name="skillType" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Loại kỹ năng</span>} initialValue={activeSkillType}>
+                            <Select
+                                className="doodle-select"
+                                onChange={(v) => setActiveSkillType(v)}
+                            >
+                                {Object.entries(SKILL_CONFIG).map(([k, v]) => (
+                                    <Select.Option key={k} value={k}>{v.label}</Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    ) : (
+                        <div className="p-4 bg-slate-50 border-[2.5px] border-slate-900/5 rounded-2xl flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-black uppercase text-slate-400">Kỹ năng cố định:</span>
+                                <Badge status="processing" color={SKILL_CONFIG[quiz?.skillType]?.color} text={<span className="text-xs font-black uppercase" style={{ color: SKILL_CONFIG[quiz?.skillType]?.color }}>{SKILL_CONFIG[quiz?.skillType]?.label}</span>} />
+                            </div>
+                            <div className="text-[8px] font-black text-slate-300 uppercase tracking-tighter italic">Tối ưu theo màn học</div>
+                        </div>
+                    )}
+
+                    <Form.Item name="contentText" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nội dung hiển thị chính</span>} rules={[{ required: true }]}>
+                        <Input.TextArea rows={2} className="doodle-input" placeholder="Ví dụ: Luyện phát âm 'n' và 'l'..." />
+                    </Form.Item>
+
+                    <div className="bg-[#fafafa] p-6 rounded-[2rem] border-[2.5px] border-dashed border-slate-200">
+                        {activeSkillType === 'READING' && (
+                            <div className="space-y-4">
+                                <Form.Item name="fullSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Câu văn chứa lỗi</span>} rules={[{ required: true }]}>
+                                    <Input className="doodle-input" placeholder="Ví dụ: Trời lồm nên nhà bị lồm" />
+                                </Form.Item>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Form.Item name="wrongWord" label={<span className="text-[9px] font-black uppercase text-slate-400">Từ bị sai</span>} rules={[{ required: true }]}>
+                                        <Input className="doodle-input border-red-200" placeholder="lồm" />
+                                    </Form.Item>
+                                    <Form.Item name="correctWord" label={<span className="text-[9px] font-black uppercase text-slate-400">Từ sửa đúng</span>} rules={[{ required: true }]}>
+                                        <Input className="doodle-input border-emerald-200" placeholder="nồm" />
+                                    </Form.Item>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSkillType === 'LISTENING' && (
+                            <div className="space-y-4">
+                                <Form.Item name="correctSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Nội dung câu đọc chuẩn</span>} rules={[{ required: true }]}>
+                                    <Input.TextArea rows={2} className="doodle-input border-emerald-200 text-xs font-bold" placeholder="Ví dụ: Trời nồm nên nhà bị nồm..." />
+                                </Form.Item>
+                                <Form.Item name="options" label={<span className="text-[9px] font-black uppercase text-slate-400">Danh sách đáp án (Mỗi dòng 1 câu)</span>} rules={[{ required: true }]}>
+                                    <Input.TextArea rows={4} className="doodle-input" placeholder="Đáp án A&#10;Đáp án B&#10;..." />
+                                </Form.Item>
+                                <Form.Item name="correctAnswer" label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án đúng (Phải khớp chính xác một dòng trên)</span>} rules={[{ required: true }]}>
+                                    <Input className="doodle-input border-emerald-200" />
+                                </Form.Item>
+                            </div>
+                        )}
+
+                        {activeSkillType === 'WRITING' && (
+                            <div className="space-y-4">
+                                <Form.Item name="blankSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Câu đục lỗ (Dùng '_' cho chỗ trống)</span>} rules={[{ required: true }]}>
+                                    <Input className="doodle-input" placeholder="Ví dụ: Con _ đang gặm cỏ" />
+                                </Form.Item>
+                                <Form.Item name="correctAnswer" label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án đúng</span>} rules={[{ required: true }]}>
+                                    <Input className="doodle-input border-emerald-200" placeholder="bò" />
+                                </Form.Item>
+                                <Form.Item name="alternatives" label={<span className="text-[9px] font-black uppercase text-slate-400">Các đáp án chấp nhận khác (Cắt nhau bởi dấu phẩy)</span>}>
+                                    <Input className="doodle-input" placeholder="nghé, trâu" />
+                                </Form.Item>
+                            </div>
+                        )}
+
+                        {activeSkillType === 'SPEAKING' && (
+                            <div className="space-y-4">
+                                <Form.Item name="correctSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Nội dung câu đọc chuẩn</span>} rules={[{ required: true }]}>
+                                    <Input.TextArea rows={2} className="doodle-input border-emerald-200 text-xs font-bold" placeholder="Ví dụ: Lúa nếp là lúa nếp làng..." />
+                                </Form.Item>
+                                <div className="p-4 bg-orange-50 border-2 border-orange-100 rounded-2xl flex items-center gap-3">
+                                    <Mic className="text-orange-500" size={20} />
+                                    <p className="text-[10px] font-bold text-orange-600 leading-tight">Học viên sẽ được yêu cầu nói chính xác đoạn văn bản này để hoàn thành câu đố.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <Form.Item name="hint" label={<span className="text-[9px] font-black uppercase text-slate-400 mt-4 block">Gợi ý (Không bắt buộc)</span>}>
+                            <Input className="doodle-input" />
+                        </Form.Item>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-6">
+                        <motion.button
+                            type="submit"
+                            disabled={submittingCreate}
+                            className="h-12 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#49B6E5] text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2"
+                        >
+                            {submittingCreate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            {editingChallengeId ? "Cập nhật" : "Tạo và thêm vào bài tập"}
+                        </motion.button>
+                    </div>
+                </Form>
+            </Modal>
+
+            {/* --- Import Challenges Modal --- */}
+            <Modal
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Upload className="text-[#49B6E5]" /> Import bài tập từ Excel</div>}
                 open={isImportChallengesModalOpen}
                 onCancel={() => setIsImportChallengesModalOpen(false)}
                 footer={null}
-                width={640}
                 centered
-                destroyOnHidden
+                width={500}
+                className="doodle-modal"
             >
-                <div style={{ marginTop: 20 }}>
-                    {/* Info box */}
-                    <div style={{
-                        marginBottom: 16,
-                        padding: 16,
-                        background: 'linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%)',
-                        borderRadius: 12,
-                        border: '1px solid #bae6fd',
-                    }}>
-                        <Text style={{ color: '#0369a1', fontSize: 13 }}>
-                            <strong>📋 Hướng dẫn:</strong><br />
-                            1. Chọn loại kỹ năng bên dưới<br />
-                            2. Tải template Excel mẫu<br />
-                            3. Điền dữ liệu câu hỏi theo template<br />
-                            4. Upload file Excel đã điền để import câu hỏi vào quiz
-                        </Text>
-                    </div>
+                <div className="mt-6 space-y-6">
+                    <Form layout="vertical">
+                        <Form.Item label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Loại kỹ năng trong file</span>}>
+                            <Select
+                                className="doodle-select"
+                                value={importChallengesSkillType}
+                                onChange={setImportChallengesSkillType}
+                                disabled={quiz?.skillType !== 'MIXED'}
+                            >
+                                <Select.Option value="MIXED">Tổng hợp (Mixed)</Select.Option>
+                                {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
+                            </Select>
+                        </Form.Item>
 
-                    {/* Skill type selector */}
-                    <div style={{ marginBottom: 16 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
-                            Loại kỹ năng:
-                        </Text>
+                        <div className="p-10 border-[3px] border-dashed border-slate-200 rounded-[2rem] bg-slate-50/50 flex flex-col items-center gap-4 group hover:border-[#49B6E5] transition-all cursor-pointer relative overflow-hidden">
+                            <input
+                                type="file"
+                                accept=".xlsx, .xls"
+                                onChange={(e) => setImportChallengesFile(e.target.files?.[0] || null)}
+                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="w-16 h-16 rounded-3xl bg-white border-[2.5px] border-slate-900/5 flex items-center justify-center text-slate-300 group-hover:text-[#49B6E5] group-hover:scale-110 transition-all">
+                                <Upload size={32} />
+                            </div>
+                            <p className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-[#49B6E5]">
+                                {importChallengesFile ? importChallengesFile.name : "Chọn file Excel (.xlsx)"}
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-8">
+                            <motion.button
+                                onClick={handleImportChallengesToQuiz}
+                                disabled={importingChallenges || !importChallengesFile}
+                                className="h-12 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#49B6E5] text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
+                            >
+                                {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                Bắt đầu Import
+                            </motion.button>
+                        </div>
+                    </Form>
+                </div>
+            </Modal>
+
+            {/* --- Achievement Modal --- */}
+            <Modal
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Trophy className="text-amber-500" /> Phần thưởng bài tập</div>}
+                open={isRewardModalOpen}
+                onCancel={() => setIsRewardModalOpen(false)}
+                footer={
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                        <div>
+                            {(quiz?.rewardCatalogId || quiz?.badgeId) && (
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    disabled={submittingReward}
+                                    onClick={handleRemoveReward}
+                                    className="px-4 py-2 border-[2px] border-rose-200 hover:border-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-500 bg-white transition-all flex items-center gap-1.5"
+                                >
+                                    {submittingReward ? <Loader2 className="animate-spin" size={12} /> : null}
+                                    Gỡ gán phần thưởng
+                                </motion.button>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setIsRewardModalOpen(false)}
+                                className="px-4 py-2 border-[2px] border-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 bg-white shadow-[2px_2px_0_#1f2937]"
+                            >
+                                Hủy bỏ
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={onConfirmReward}
+                                disabled={submittingReward}
+                                className="px-5 py-2 bg-slate-900 border-[2px] border-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-[3px_3px_0_#49B6E5] flex items-center gap-2"
+                            >
+                                {submittingReward ? <Loader2 className="animate-spin" size={14} /> : null}
+                                Xác nhận chọn
+                            </motion.button>
+                        </div>
+                    </div>
+                }
+                centered
+                width={700}
+                className="doodle-modal shadow-xl"
+            >
+                <div className="mt-6 space-y-6">
+                    <p className="text-xs font-bold text-slate-400">Chọn một huy hiệu mà học viên sẽ nhận được khi hoàn thành xuất sắc bài tập này.</p>
+                    
+                    {/* Search & Filter Controls */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <Input
+                            placeholder="Tìm kiếm thành tựu..."
+                            value={rewardSearchTerm}
+                            onChange={e => setRewardSearchTerm(e.target.value)}
+                            className="doodle-input flex-1"
+                        />
                         <Select
-                            value={importChallengesSkillType}
-                            onChange={(val) => setImportChallengesSkillType(val)}
-                            style={{ width: '100%' }}
+                            value={rewardFilter}
+                            onChange={val => setRewardFilter(val)}
+                            className="doodle-select w-full sm:w-[220px]"
                             options={[
-                                ...(quiz?.skillType === 'MIXED' || !quiz?.skillType
-                                    ? [{ value: 'MIXED', label: '🎯 Tổng hợp (4 kỹ năng — mỗi kỹ năng 1 sheet)' }]
-                                    : []),
-                                ...Object.entries(SKILL_CONFIG)
-                                    .filter(([key]) => !quiz?.skillType || quiz.skillType === 'MIXED' || quiz.skillType === key)
-                                    .map(([key, cfg]) => ({
-                                        value: key,
-                                        label: `${cfg.icon ? '' : ''}${cfg.label}`,
-                                    })),
+                                { label: 'Tất cả thành tựu', value: 'ALL' },
+                                { label: 'Đã gán cho quiz khác', value: 'ASSIGNED_OTHER' },
+                                { label: 'Chưa được gán', value: 'UNASSIGNED' },
                             ]}
                         />
                     </div>
 
-                    {/* Download template button */}
-                    <Button
-                        icon={<DownloadOutlined />}
-                        onClick={handleDownloadChallengeTemplate}
-                        style={{
-                            marginBottom: 16,
-                            borderRadius: 8,
-                            fontWeight: 600,
-                            background: '#f0f9ff',
-                            color: '#0369a1',
-                            border: '1.5px solid #bae6fd',
-                            width: '100%',
-                        }}
-                        size="large"
-                    >
-                        📥 Tải Template Excel
-                        {importChallengesSkillType === 'MIXED'
-                            ? ' (Tổng hợp 4 kỹ năng)'
-                            : ` (${SKILL_CONFIG[importChallengesSkillType]?.label || importChallengesSkillType})`}
-                    </Button>
+                    {loadingRewards ? (
+                        <div className="py-20 flex justify-center"><Spin /></div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-1">
 
-                    <Divider style={{ margin: '16px 0' }}>Hoặc upload file đã điền</Divider>
-
-                    {/* File upload */}
-                    <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={(e) => setImportChallengesFile(e.target.files?.[0] || null)}
-                        style={{
-                            marginBottom: 16,
-                            display: 'block',
-                            width: '100%',
-                            padding: 12,
-                            border: '2px dashed #d1d5db',
-                            borderRadius: 10,
-                            cursor: 'pointer',
-                            background: '#fafafa',
-                        }}
-                    />
-
-                    {/* Import button */}
-                    <Button
-                        type="primary"
-                        icon={<UploadOutlined />}
-                        onClick={handleImportChallengesToQuiz}
-                        loading={importingChallenges}
-                        disabled={!importChallengesFile}
-                        size="large"
-                        style={{
-                            width: '100%',
-                            borderRadius: 8,
-                            fontWeight: 600,
-                            background: '#15803d',
-                            borderColor: '#15803d',
-                            marginBottom: 16,
-                            height: 48,
-                            fontSize: 15,
-                        }}
-                    >
-                        {importingChallenges ? 'Đang import...' : '🚀 Import câu hỏi vào quiz'}
-                    </Button>
-
-                    {/* Result display */}
-                    {importChallengesResult && (
-                        <div style={{ marginTop: 8 }}>
-                            {importChallengesResult.successCount > 0 && (
-                                <div style={{
-                                    padding: '12px 16px',
-                                    background: '#f0fdf4',
-                                    border: '1px solid #86efac',
-                                    borderRadius: 10,
-                                    marginBottom: 10,
-                                }}>
-                                    <Text style={{ color: '#15803d', fontWeight: 700, fontSize: 14 }}>
-                                        ✅ Import thành công {importChallengesResult.successCount} câu hỏi
-                                    </Text>
-                                    {importChallengesResult.skipCount > 0 && (
-                                        <Text style={{ color: '#a16207', display: 'block', fontSize: 12, marginTop: 4 }}>
-                                            ⚠️ Bỏ qua {importChallengesResult.skipCount} câu (đã tồn tại)
-                                        </Text>
-                                    )}
-                                    {importChallengesResult.errorCount > 0 && (
-                                        <Text style={{ color: '#dc2626', display: 'block', fontSize: 12, marginTop: 4 }}>
-                                            ❌ Lỗi {importChallengesResult.errorCount} dòng
-                                        </Text>
-                                    )}
-                                </div>
-                            )}
-                            {importChallengesResult.messages && importChallengesResult.messages.length > 0 && (
-                                <div style={{
-                                    padding: '10px 14px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: 10,
-                                    maxHeight: 200,
-                                    overflowY: 'auto',
-                                    fontSize: 12,
-                                    fontFamily: 'monospace',
-                                }}>
-                                    {importChallengesResult.messages.map((msg: string, i: number) => (
-                                        <div
-                                            key={i}
-                                            style={{
-                                                marginBottom: 3,
-                                                color: msg.includes('✅') || msg.includes('thành công') ? '#15803d'
-                                                    : msg.includes('❌') || msg.includes('Lỗi') ? '#dc2626'
-                                                        : msg.includes('bỏ qua') || msg.includes('⚠') ? '#a16207'
-                                                            : msg.startsWith('──') ? '#2563eb'
-                                                                : '#475569',
-                                                fontWeight: msg.startsWith('Import hoàn tất') || msg.startsWith('──') ? 700 : 400,
-                                            }}
-                                        >
-                                            {msg}
+                            {filteredRewards.map(badge => {
+                                const isCurrentQuiz = badge.linkedQuizId === quiz?.id;
+                                const isOtherQuiz = badge.linkedQuizId && badge.linkedQuizId !== quiz?.id;
+                                return (
+                                    <motion.div
+                                        key={badge.id}
+                                        whileHover={{ scale: 1.02 }}
+                                        className={clsx(
+                                            "p-4 rounded-[2rem] border-[3px] flex flex-col items-center justify-between gap-3 transition-all cursor-pointer min-h-[160px]",
+                                            selectedRewardId === badge.id ? "bg-amber-50 border-amber-500 shadow-[3px_3px_0_#f59e0b]" : "bg-white border-slate-900 shadow-[3px_3px_0_#1f293705] hover:border-amber-500"
+                                        )}
+                                        onClick={() => handleAttachReward(badge.id)}
+                                    >
+                                        <div className="w-16 h-16 rounded-2xl border-[2px] border-slate-900 overflow-hidden shadow-sm">
+                                            <img src={badge.iconUrl || badge.icon_url || "https://img.icons8.com/color/96/medal.png"} alt="Badge" className="w-full h-full object-cover" />
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                        <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight">{badge.name}</span>
+                                        
+                                        {/* Status Indicators */}
+                                        <div className="w-full flex justify-center">
+                                            {isCurrentQuiz ? (
+                                                <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-300 text-emerald-600 px-2 py-0.5 rounded-full">Đang gán</span>
+                                            ) : isOtherQuiz ? (
+                                                <span className="text-[8px] font-black uppercase bg-amber-50 border border-amber-300 text-amber-600 px-2 py-0.5 rounded-full truncate max-w-full text-center" title={`Gán cho: ${badge.linkedQuizName} (Level: ${badge.linkedLevelName})`}>
+                                                    Gán: {badge.linkedQuizName}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[8px] font-black uppercase bg-slate-50 border border-slate-200 text-slate-400 px-2 py-0.5 rounded-full">Chưa gán</span>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
             </Modal>
 
-            <style>{`
-                .quiz-row-alt td {
-                    background: #f8fafc !important;
+            {/* Quiz Editor Drawer (Batch UI can be a large full-screen modal or separate page - keeping Modal for simplicity) */}
+            <Modal
+                title={
+                    <div className="flex items-center justify-between w-full pr-10">
+                        <div className="flex items-center gap-3 text-slate-900 font-black uppercase tracking-tight">
+                            <Sliders className="text-[#49B6E5]" /> Biên tập bộ câu hỏi
+                        </div>
+                        <div className="flex gap-4">
+                            {deletedQuestionsHistory.length > 0 && (
+                                <motion.button
+                                    onClick={handleUndoDeleteQuestion}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-500 rounded-xl text-[10px] font-black uppercase border-[2px] border-orange-100 hover:border-orange-500 transition-all shadow-xs"
+                                >
+                                    <RotateCcw size={14} strokeWidth={3} /> Hoàn tác ({deletedQuestionsHistory.length})
+                                </motion.button>
+                            )}
+                            <motion.button onClick={addBatchQuestion} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#49B6E5] rounded-xl text-[10px] font-black uppercase border-[2px] border-blue-100 hover:border-[#49B6E5] transition-all"><Plus size={14} /> Thêm mới</motion.button>
+                            <motion.button onClick={handleSubmitBatchQuestions} disabled={submittingBatchQuestions} className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase shadow-[3px_3px_0_#49B6E5] flex items-center gap-2">
+                                {submittingBatchQuestions ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Lưu đồng bộ
+                            </motion.button>
+                        </div>
+                    </div>
                 }
-                .premium-level-card {
-                    background: white;
-                    border-radius: 20px;
-                    border: 1.5px solid #f1f5f9;
-                    padding: 24px;
-                    height: 100%;
-                    cursor: pointer;
-                    position: relative;
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+                open={isBatchQuestionsModalOpen}
+                onCancel={() => setIsBatchQuestionsModalOpen(false)}
+                footer={null}
+                width="85%"
+                style={{ top: 20 }}
+                className="doodle-modal-fullscreen"
+            >
+                <div className="mt-8 max-h-[calc(100vh-220px)] overflow-y-auto px-6 custom-scrollbar space-y-8 pb-10">
+                    <AnimatePresence>
+                        {batchQuestions.map((q: any, idx: number) => {
+                            const cfg = SKILL_CONFIG[q.skillType] || { label: '?', color: '#ccc', bg: 'bg-slate-50' };
+                            return (
+                                <motion.div key={q.tempId} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white border-[3px] border-slate-900 rounded-[2rem] p-6 shadow-[5px_5px_0_#1f293705] border-l-[8px]" style={{ borderLeftColor: cfg.color }}>
+                                    {/* Card Header Row - Prevents overlap completely */}
+                                    <div className="flex items-center justify-between mb-6 border-b-[2.5px] border-dashed border-slate-200 pb-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-3.5 py-1 bg-slate-900 text-white border-[2px] border-slate-900 rounded-xl text-xs font-black shadow-sm">Câu hỏi {idx + 1}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#49B6E5] bg-blue-50/50 px-2.5 py-1 rounded-lg border-[1.5px] border-blue-100">({cfg.label})</span>
+                                        </div>
+                                        <button
+                                            onClick={() => removeBatchQuestion(q.tempId)}
+                                            className="px-4 py-1.5 bg-red-50 border-[2px] border-slate-900 rounded-xl text-red-500 text-[10px] font-black uppercase shadow-[3px_3px_0_#1f2937] hover:bg-red-100 hover:text-red-600 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center gap-1.5 z-20"
+                                        >
+                                            <Trash2 size={14} strokeWidth={3} /> Xóa câu hỏi
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                        {/* Skill & Difficulty */}
+                                        <div className="lg:col-span-3 space-y-4">
+                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Loại kỹ năng</span>} className="mb-2">
+                                                <Select
+                                                    className="doodle-select"
+                                                    value={q.skillType}
+                                                    onChange={v => updateBatchQuestionField(q.tempId, 'skillType', v)}
+                                                    disabled={quiz?.skillType !== 'MIXED'}
+                                                >
+                                                    {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
+                                                </Select>
+                                            </Form.Item>
+                                            <div className={clsx("p-3 rounded-xl border-[2px] shadow-sm", cfg.bg)}>
+                                                <p className="text-[8px] font-black uppercase text-slate-400 mb-1">Đang thiết lập cho</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-white border-[2px] border-slate-900/5 flex items-center justify-center shadow-xs">
+                                                        {(() => { const SIcon = cfg.icon || HelpCircle; return <SIcon size={16} color={cfg.color} strokeWidth={3} />; })()}
+                                                    </div>
+                                                    <span className="text-[10px] font-black uppercase tracking-tight" style={{ color: cfg.color }}>{cfg.label}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Question Content */}
+                                        <div className="lg:col-span-9 space-y-4">
+                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Nội dung câu đố</span>} className="mb-2">
+                                                <Input.TextArea rows={1} className="doodle-input font-black" placeholder="Ví dụ: Chọn từ có âm 'n' đúng nhất?" value={q.contentText} onChange={e => updateBatchQuestionField(q.tempId, 'contentText', e.target.value)} />
+                                            </Form.Item>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Skill Specific Inputs */}
+                                                {q.skillType === 'READING' && (
+                                                    <>
+                                                        <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Cả câu chứa lỗi</span>} className="mb-0">
+                                                            <Input className="doodle-input" placeholder="Mẹ đi chợ mua lồi cơm" value={q.fullSentence} onChange={e => updateBatchQuestionField(q.tempId, 'fullSentence', e.target.value)} />
+                                                        </Form.Item>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Từ bị sai</span>} className="mb-0"><Input className="doodle-input border-red-200" placeholder="lồi" value={q.wrongWord} onChange={e => updateBatchQuestionField(q.tempId, 'wrongWord', e.target.value)} /></Form.Item>
+                                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Từ sửa đúng</span>} className="mb-0"><Input className="doodle-input border-emerald-200" placeholder="nồi" value={q.correctWord} onChange={e => updateBatchQuestionField(q.tempId, 'correctWord', e.target.value)} /></Form.Item>
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {(q.skillType === 'LISTENING' || q.skillType === 'SPEAKING') && (
+                                                    <>
+                                                        <Form.Item className="md:col-span-2 mb-0" label={
+                                                            <div className="flex items-center justify-between w-full pr-1">
+                                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Nội dung câu đọc chuẩn</span>
+                                                            </div>
+                                                        }>
+                                                            <Input.TextArea rows={2} className="doodle-input text-xs border-emerald-200 font-bold" placeholder="Nội dung câu đọc chuẩn..." value={q.correctSentence} onChange={e => updateBatchQuestionField(q.tempId, 'correctSentence', e.target.value)} />
+                                                        </Form.Item>
+                                                        {q.skillType === 'LISTENING' && (
+                                                            <div className="md:col-span-2 mt-4">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-2 ml-1">
+                                                                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Danh sách đáp án</span>
+                                                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">Tích chọn vòng tròn bên phải của đáp án để đặt làm đáp án đúng!</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                    {q.options.map((opt: string, oi: number) => (
+                                                                        <div key={oi} className="relative">
+                                                                            <Input className={clsx("doodle-input text-xs pr-8", q.correctAnswer === opt && opt !== "" ? "border-emerald-500 bg-emerald-50 font-black text-emerald-800" : "")} placeholder={`Đáp án ${oi + 1}`} value={opt} onChange={e => updateBatchOption(q.tempId, oi, e.target.value)} />
+                                                                            <Tooltip title="Đặt làm đáp án đúng">
+                                                                                <button onClick={() => updateBatchQuestionField(q.tempId, 'correctAnswer', opt)} className={clsx("absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 transition-colors", q.correctAnswer === opt && opt !== "" ? "bg-emerald-500 border-emerald-500 cursor-default" : "border-slate-300 hover:border-emerald-500")} />
+                                                                            </Tooltip>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {q.skillType === 'WRITING' && (
+                                                    <>
+                                                        <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Câu đục lỗ</span>} className="mb-0">
+                                                            <Input className="doodle-input" placeholder="Mẹ đi chợ mua _ cơm" value={q.blankSentence} onChange={e => updateBatchQuestionField(q.tempId, 'blankSentence', e.target.value)} />
+                                                        </Form.Item>
+                                                        <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Đáp án</span>} className="mb-0">
+                                                            <Input className="doodle-input border-emerald-200" placeholder="nồi" value={q.correctAnswer} onChange={e => updateBatchQuestionField(q.tempId, 'correctAnswer', e.target.value)} />
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+
+                                                {/* Hint field - all skill types */}
+                                                <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Gợi ý (không bắt buộc)</span>} className="md:col-span-2 mb-0">
+                                                    <Input className="doodle-input" placeholder="Nhập gợi ý cho người học..." value={q.hint || ''} onChange={e => updateBatchQuestionField(q.tempId, 'hint', e.target.value)} />
+                                                </Form.Item>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+                </div>
+            </Modal>
+
+            {/* --- Global Doodle Styles --- */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .doodle-input { height: 42px; border: 2.5px solid #1f293715 !important; border-radius: 1rem !important; font-weight: 700 !important; font-family: 'Nunito' !important; transition: all 0.2s ease !important; font-size: 13px !important; }
+                .doodle-input:focus, .doodle-input:hover { border-color: #49B6E5 !important; box-shadow: 2px 2px 0 #1f293705 !important; }
+                .doodle-select .ant-select-selector { height: 42px !important; border: 2.5px solid #1f293715 !important; border-radius: 1rem !important; font-weight: 700 !important; padding-top: 4px !important; font-size: 13px !important; }
+                .ant-select-focused .ant-select-selector { border-color: #49B6E5 !important; box-shadow: none !important; }
+                .doodle-modal .ant-modal-content { border-radius: 2.5rem; border: 3.5px solid #1f2937; padding: 25px; box-shadow: 10px 10px 0 #1f293715; }
+                .doodle-modal-fullscreen .ant-modal-content { border-radius: 2.5rem; border: 4px solid #1f2937; background: #fbf6ef; padding: 30px; }
+                .ant-form-item-label label { margin-bottom: 2px !important; line-height: 1 !important; }
+                .ant-modal-close { top: 25px; right: 25px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #1f293720; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1f293740; }
+                @keyframes bounce-subtle {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-5px); }
                 }
-                .premium-level-card:hover {
-                    transform: translateY(-6px);
-                    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.12), 0 6px 12px -4px rgba(0, 0, 0, 0.06);
-                    border-color: #bfdbfe;
-                }
-                .card-accent {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    height: 3px;
-                }
-                .card-top {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 20px;
-                }
-                .icon-wrapper {
-                    width: 52px;
-                    height: 52px;
-                    border-radius: 16px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: transform 0.4s ease;
-                }
-                .premium-level-card:hover .icon-wrapper {
-                    transform: scale(1.1) rotate(5deg);
-                }
-                .region-tag {
-                    padding: 5px 12px;
-                    border-radius: 100px;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 12px;
-                }
-                .dot {
-                    width: 7px;
-                    height: 7px;
-                    border-radius: 50%;
-                }
-                .card-content {
-                    flex: 1;
-                    min-height: 0;
-                }
-                .card-title {
-                    margin: 0 0 10px 0;
-                    font-size: 17px;
-                    font-weight: 700;
-                    color: #0f172a;
-                    line-height: 1.35;
-                    letter-spacing: -0.2px;
-                }
-                .card-desc {
-                    color: #64748b;
-                    font-size: 13.5px;
-                    line-height: 1.65;
-                    margin: 0 0 14px 0;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                .card-meta {
-                    display: flex;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-                .meta-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 3px 10px;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-weight: 500;
-                    color: #475569;
-                    background: #f1f5f9;
-                    border: 1px solid #e2e8f0;
-                }
-                .meta-stars {
-                    color: #d97706;
-                    background: #fffbeb;
-                    border-color: #fde68a;
-                }
-                .card-footer {
-                    margin-top: 20px;
-                    padding-top: 16px;
-                    border-top: 1px solid #f1f5f9;
-                }
-                .action-btn {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    color: #2563eb;
-                    font-weight: 700;
-                    font-size: 14px;
-                }
-                .arrow {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 10px;
-                    background: #f8fafc;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    color: #64748b;
-                }
-                .premium-level-card:hover .arrow {
-                    background: #2563eb;
-                    color: white;
-                    transform: translateX(4px);
-                }
-            `}</style>
+                .animate-bounce-subtle { animation: bounce-subtle 3s ease-in-out infinite; }
+            `}} />
         </div>
     );
-
 };
 
 export default AdminQuizManagementPage;

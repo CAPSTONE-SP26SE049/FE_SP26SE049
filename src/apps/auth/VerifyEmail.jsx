@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Form, Input, Button, message, Alert } from 'antd'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { verifyEmailAPI, resendVerificationAPI } from '../../services/authService'
-import { Mail, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react'
-import illustration from '../../assets/login-illustration.png'
+import { Mail, CheckCircle, ArrowLeft, RefreshCw, Home, Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { DoodleLoading } from '../../components/ui/DoodleLoading'
 
 export default function VerifyEmail() {
     const [form] = Form.useForm()
@@ -14,13 +15,11 @@ export default function VerifyEmail() {
     const navigate = useNavigate()
     const location = useLocation()
 
-    // Get email from URL params OR from router state (passed from Register)
     const [email] = useState(() => {
         const params = new URLSearchParams(location.search)
         return params.get('email') || location.state?.email || ''
     })
 
-    // Auto-fill OTP code if present in the URL
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const codeParam = params.get('code')
@@ -65,7 +64,7 @@ export default function VerifyEmail() {
             setResending(true)
             await resendVerificationAPI(email)
             message.success('Đã gửi lại mã xác thực!')
-            setCountdown(60) // Prevent spamming resend
+            setCountdown(60)
         } catch (err) {
             message.error(err?.message || 'Không thể gửi lại mã xác thực')
         } finally {
@@ -73,71 +72,69 @@ export default function VerifyEmail() {
         }
     }
 
+    if (submitting) {
+        return (
+            <div className="min-h-screen bg-[#fbf6ef] flex items-center justify-center">
+                <DoodleLoading message="Đang xác thực tài khoản..." />
+            </div>
+        )
+    }
+
     return (
-        <div className="min-h-screen flex bg-gray-50">
-            {/* Left Panel - Branding & Illustration */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-green to-teal-600 relative overflow-hidden flex-col items-center justify-center text-white p-12">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        <div className="h-screen w-full bg-[#fbf6ef] flex items-center justify-center p-4 sm:p-2 font-nunito relative overflow-hidden">
 
-                <div className="relative z-10 text-center max-w-lg">
-                    <h1 className="text-4xl font-extrabold mb-4 tracking-tight drop-shadow-sm text-white">
-                        SpeakVN Journey
-                    </h1>
-                    <p className="text-xl text-green-50 mb-8 font-light">
-                        Chinh phục phát âm tiếng Việt qua hành trình khám phá đầy thú vị khắp Việt Nam.
-                    </p>
+            <Link
+                to="/"
+                className="absolute top-6 left-6 z-20 flex items-center gap-2 px-5 py-2.5 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-slate-900 hover:bg-sky-50 transition-all font-black text-xs uppercase tracking-widest active:translate-y-0.5 active:shadow-none"
+            >
+                <Home size={16} strokeWidth={2.5} />
+                Về Trang Chủ
+            </Link>
 
-                    <div className="relative mx-auto w-full max-w-md aspect-square bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-2xl transform hover:scale-105 transition-transform duration-500">
-                        <img
-                            src={illustration}
-                            alt="Bản đồ SpeakVN"
-                            className="w-full h-full object-contain drop-shadow-lg"
-                        />
-                    </div>
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-[1000px] h-full max-h-[600px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] flex flex-col md:flex-row overflow-hidden relative z-10"
+            >
 
-                    <div className="mt-12 flex gap-4 justify-center">
-                        <div className="text-center">
-                            <div className="text-3xl font-bold">3</div>
-                            <div className="text-sm opacity-80">Miền</div>
+                {/* LEFT SIDE */}
+                <div className="hidden md:block w-5/12 relative bg-slate-900 border-r-[3px] border-slate-900 overflow-hidden">
+                    <img
+                        src="/speakvn_simple_poster.png"
+                        alt="SpeakVN"
+                        className="absolute inset-0 w-full h-full object-cover opacity-80"
+                    />
+                    <div className="absolute inset-0 bg-[#49B6E5]/20 mix-blend-multiply"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+
+                    <div className="absolute bottom-10 left-8 right-8 text-white space-y-4">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-400 border-[2.5px] border-white shadow-[3px_3px_0_#ffffff33]">
+                            <Sparkles size={24} className="text-white" strokeWidth={3} />
                         </div>
-                        <div className="w-px bg-white/30 text-white"></div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold">15+</div>
-                            <div className="text-sm opacity-80">Cấp Độ</div>
-                        </div>
-                        <div className="w-px bg-white/30"></div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold">AI</div>
-                            <div className="text-sm opacity-80">Phản Hồi</div>
-                        </div>
+                        <h2 className="text-4xl font-black leading-[1.1] font-nunito uppercase tracking-tight">
+                            Xác Thực<br />
+                            <span className="text-orange-400">Tài Khoản</span>
+                        </h2>
                     </div>
                 </div>
-            </div>
 
-            {/* Right Panel - Verify Email Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
-                <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-gray-100 relative z-10 animate-slideUp">
-                    <div className="text-center mb-10">
-                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Mail className="text-brand-blue w-8 h-8" />
+                {/* RIGHT SIDE */}
+                <div className="w-full md:w-7/12 flex flex-col justify-center p-8 lg:p-14 bg-white relative">
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-sky-50 rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center mx-auto mb-6">
+                            <Mail className="text-[#49B6E5] w-8 h-8" strokeWidth={3} />
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                            Xác Thực Email
-                        </h2>
-                        <p className="text-gray-500 font-medium">
-                            Mã OTP 6 số đã được gửi đến <br />
-                            <strong className="text-gray-900">{email || 'email của bạn'}</strong>
+                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Kiểm tra Email</h2>
+                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mt-2 px-4">
+                            Mã OTP đã được gửi đến <br />
+                            <strong className="text-slate-900">{email || 'email của bạn'}</strong>
                         </p>
                     </div>
 
                     {!email && (
-                        <Alert
-                            message="Chưa có thông tin email"
-                            description="Vui lòng quay lại để bắt đầu quá trình xác thực."
-                            type="warning"
-                            showIcon
-                            className="mb-6 rounded-xl"
-                        />
+                        <div className="mb-8 p-4 bg-orange-50 rounded-2xl border-[2px] border-orange-200 text-orange-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            Chưa có thông tin email.
+                        </div>
                     )}
 
                     <Form
@@ -145,6 +142,7 @@ export default function VerifyEmail() {
                         form={form}
                         onFinish={onSubmit}
                         size="large"
+                        className="doodle-form"
                     >
                         <Form.Item
                             name="code"
@@ -152,44 +150,78 @@ export default function VerifyEmail() {
                                 { required: true, message: 'Vui lòng nhập mã OTP' },
                                 { len: 6, message: 'Mã OTP phải đúng 6 ký tự' }
                             ]}
+                            className="mb-8"
                         >
                             <Input
                                 placeholder="Nhập mã 6 số"
                                 maxLength={6}
-                                className="text-center text-xl tracking-widest rounded-xl py-3 border-gray-200 focus:border-brand-blue focus:shadow-blue-100"
+                                className="text-center text-2xl tracking-[0.5em] h-16 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black shadow-[3px_3px_0_#1f2937] focus:bg-white transition-all overflow-hidden"
                             />
                         </Form.Item>
 
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            loading={submitting}
-                            className="w-full rounded-xl h-12 bg-brand-blue hover:bg-blue-600 border-none shadow-lg shadow-blue-200 text-white font-bold text-lg flex items-center justify-center gap-2 mt-4 transition-all transform hover:-translate-y-0.5"
-                            disabled={!email}
-                        >
-                            Xác Nhận <CheckCircle size={18} />
-                        </Button>
-
-                        <div className="mt-8 flex flex-col items-center gap-4 text-sm max-w-sm mx-auto">
+                        <Form.Item className="mb-10">
                             <Button
-                                type="link"
-                                onClick={handleResend}
-                                loading={resending}
-                                disabled={countdown > 0 || !email}
-                                className="flex items-center gap-2 text-gray-500 hover:text-brand-blue p-0 font-medium transition-colors"
-                                title={countdown > 0 ? `Vui lòng đợi ${countdown}s để thử lại` : ''}
+                                type="primary"
+                                htmlType="submit"
+                                block
+                                disabled={!email}
+                                className="h-14 rounded-2xl bg-[#49B6E5] text-white border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0_#1f2937] active:translate-y-0.5 active:shadow-none"
                             >
-                                <RefreshCw size={16} className={resending ? 'animate-spin' : ''} />
-                                {countdown > 0 ? `Gửi lại mã sau ${countdown}s` : 'Gửi lại mã xác thực'}
+                                XÁC NHẬN <CheckCircle size={18} strokeWidth={3} />
                             </Button>
+                        </Form.Item>
 
-                            <Link to="/login" className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mt-2 font-medium transition-colors">
-                                <ArrowLeft size={16} /> Quay lại đăng nhập
+                        <div className="flex flex-col items-center gap-6">
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={countdown > 0 || !email || resending}
+                                className="text-slate-400 hover:text-[#49B6E5] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-colors disabled:opacity-50"
+                            >
+                                <RefreshCw size={14} strokeWidth={3} className={resending ? 'animate-spin' : ''} />
+                                {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại mã xác thực'}
+                            </button>
+
+                            <Link to="/login" className="flex items-center gap-1.5 text-slate-400 hover:text-slate-900 font-black text-[10px] uppercase tracking-widest transition-colors group">
+                                <ArrowLeft size={16} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
+                                Quay lại đăng nhập
                             </Link>
                         </div>
                     </Form>
                 </div>
-            </div>
+            </motion.div>
+
+            <style>{`
+                .doodle-form .ant-input {
+                  border: none !important;
+                  background: transparent !important;
+                }
+                .doodle-form .ant-input-affix-wrapper {
+                  border: 2.5px solid #1f2937 !important;
+                  border-radius: 1rem !important;
+                  padding: 0 16px !important;
+                  box-shadow: 2px 2px 0 #1f2937 !important;
+                  transition: all 0.2s ease !important;
+                  background-color: #f8fafc !important;
+                }
+                .doodle-form .ant-input-affix-wrapper:hover {
+                  box-shadow: 4px 4px 0 #1f2937 !important;
+                  transform: translate(-1px, -1px);
+                }
+                .doodle-form .ant-input-affix-wrapper-focused {
+                  box-shadow: 4px 4px 0 #1f2937 !important;
+                  border-color: #49B6E5 !important;
+                  background-color: white !important;
+                }
+                .doodle-form .ant-form-item-explain-error {
+                  font-size: 10px;
+                  text-transform: uppercase;
+                  font-weight: 900;
+                  margin-top: 4px;
+                  text-align: center;
+                  color: #ef4444;
+                }
+            `}</style>
         </div>
     )
 }

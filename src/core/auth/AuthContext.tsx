@@ -1,5 +1,5 @@
 import type React from 'react'
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo, useState, useEffect } from 'react'
 import { loginAPI, logoutAPI, socialLoginAPI } from '../../services/authService'
 
 export type Role = 'USER' | 'ADMIN' | 'EDUCATOR'
@@ -15,9 +15,13 @@ export interface AuthUser {
   phoneNumber?: string
   streak?: number
   totalXp?: number
+  totalStars?: number
+  totalExperience?: number
   completedLessons?: number
   createdAt?: string
+  hasDoneEntryTest?: boolean
 }
+
 
 export interface AuthSession {
   accessToken: string
@@ -85,6 +89,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     readSessionFromStorage(),
   )
 
+  useEffect(() => {
+    const handleSessionRefreshed = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { accessToken, refreshToken } = customEvent.detail;
+      setSession((prevSession) => {
+        if (!prevSession) return null;
+        return {
+          ...prevSession,
+          accessToken,
+          refreshToken: refreshToken || prevSession.refreshToken,
+        };
+      });
+    };
+
+    window.addEventListener('session-refreshed', handleSessionRefreshed);
+    return () => {
+      window.removeEventListener('session-refreshed', handleSessionRefreshed);
+    };
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -103,11 +127,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             fullName: data.user.fullName,
             role: data.user.role as Role,
             region: data.user.region,
-            avatar: data.user.avatar,
+            avatar: data.user.avatar_url || data.user.avatar,
             phone: data.user.phone,
             phoneNumber: data.user.phoneNumber || data.user.phone,
             streak: data.user.currentStreakDays ?? 0,
+            totalStars: data.user.totalStars ?? 0,
+            totalExperience: data.user.totalExperience ?? 0,
+            totalXp: data.user.totalExperience ?? 0,
+            hasDoneEntryTest: data.user.hasDoneEntryTest
           },
+
         }
 
         setSession(fullSession)
@@ -127,9 +156,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             fullName: data.user.fullName,
             role: data.user.role as Role,
             region: data.user.region,
-            avatar: data.user.avatar,
+            avatar: data.user.avatar_url || data.user.avatar,
             streak: data.user.currentStreakDays ?? 0,
+            totalStars: data.user.totalStars ?? 0,
+            totalExperience: data.user.totalExperience ?? 0,
+            totalXp: data.user.totalExperience ?? 0,
+            hasDoneEntryTest: data.user.hasDoneEntryTest
           },
+
         }
 
         setSession(fullSession)

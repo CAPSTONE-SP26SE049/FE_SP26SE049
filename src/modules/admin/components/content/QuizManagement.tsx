@@ -65,10 +65,10 @@ const QuizManagement: React.FC = () => {
         },
         {
             title: 'Thời gian',
-            dataIndex: 'timeLimitMinutes',
-            key: 'timeLimitMinutes',
+            dataIndex: 'timeLimitSeconds',
+            key: 'timeLimitSeconds',
             width: 120,
-            render: (v: number) => v ? `${v} phút` : 'Không giới hạn',
+            render: (v: number) => v ? `${v} giây` : 'Không giới hạn',
         },
         {
             title: 'Trạng thái',

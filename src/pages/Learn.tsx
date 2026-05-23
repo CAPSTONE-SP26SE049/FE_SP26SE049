@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, Check } from 'lucide-react';
+import { Star, Lock, Check } from '../lib/icons';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 

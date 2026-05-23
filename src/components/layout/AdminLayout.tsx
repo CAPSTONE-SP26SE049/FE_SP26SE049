@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, LogOut } from '../../lib/icons';
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();

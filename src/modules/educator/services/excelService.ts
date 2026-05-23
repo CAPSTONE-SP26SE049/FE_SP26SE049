@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8082/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const EXCEL_BASE = `${BASE_URL}/excel/challenge-bank`;
 
 /**

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, GraduationCap, LogOut } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, LogOut } from '../../lib/icons';
 
 const EducatorLayout = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();

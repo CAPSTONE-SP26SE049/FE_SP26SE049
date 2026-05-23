@@ -70,11 +70,11 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
       setLoading(true);
       const res: any = await educatorService.getQuizzes();
       let data = res.data || (Array.isArray(res) ? res : []);
-      
+
       if (levelId) {
         data = data.filter((q: Quiz) => q.levelId === levelId);
       }
-      
+
       setQuizzes(data);
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
@@ -92,11 +92,11 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
   const openNewQuizModal = () => {
     setEditingQuiz(null);
     form.resetFields();
-    
+
     if (levelId) {
       form.setFieldsValue({ levelId });
     }
-    
+
     setLevels([]);
     setQuestions([{
       skillType: 'PRONUNCIATION',
@@ -128,8 +128,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
         title: fullQuiz.title,
         description: fullQuiz.description,
         instructions: fullQuiz.instructions,
-        passingScore: fullQuiz.passingScore,
-        timeLimitMinutes: fullQuiz.timeLimitMinutes,
+        secondsPerQuestion: Math.round((fullQuiz.timeLimitSeconds || 900) / (fullQuiz.questions?.length || 10)),
       });
       setQuestions(fullQuiz.questions || []);
       setModalOpen(true);
@@ -150,9 +149,11 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
       }
 
       setLoading(true);
-      const { dialectName, ...restValues } = values;
+      const { dialectName, secondsPerQuestion, ...restValues } = values;
       const payload: QuizCreateRequest = {
         ...restValues,
+        passingScore: restValues.passingScore || 80,
+        timeLimitSeconds: (secondsPerQuestion || 90) * questions.length,
         levelId: levelId || restValues.levelId, // Prioritize levelId from props
         questions: questions.map((q, index) => ({ ...q, questionOrder: index + 1 }))
       };
@@ -231,9 +232,9 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
     },
     {
       title: 'Thời gian',
-      dataIndex: 'timeLimitMinutes',
-      key: 'timeLimitMinutes',
-      render: (val: number) => val ? `${val} phút` : 'Không giới hạn',
+      dataIndex: 'timeLimitSeconds',
+      key: 'timeLimitSeconds',
+      render: (val: number) => val ? `${val} giây` : '—',
     },
     {
       title: 'Thao tác',
@@ -321,7 +322,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
             >
               <Input placeholder="Ví dụ: Kiểm tra phát âm trung cấp" />
             </Form.Item>
-            
+
             {!levelId && (
               <>
                 <Form.Item
@@ -375,18 +376,13 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
+            {/* Điểm đạt ẩn đi và mặc định 80 */}
             <Form.Item
-              name="passingScore"
-              label="Điểm để đạt (Passing Score)"
-              rules={[{ required: true, message: 'Nhập điểm tối thiểu' }]}
+              name="secondsPerQuestion"
+              label="Số giây mỗi câu hỏi"
+              initialValue={90}
             >
-              <InputNumber min={1} max={100} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
-              name="timeLimitMinutes"
-              label="Giới hạn thời gian (phút)"
-            >
-              <InputNumber min={1} style={{ width: '100%' }} placeholder="Để trống nếu không giới hạn" />
+              <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
           </div>
 
@@ -410,7 +406,7 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
                   </Button>
                 ]}
               >
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
                     <Text type="secondary" style={{ fontSize: '11px' }}>Loại kỹ năng</Text>
                     <Select
@@ -422,19 +418,6 @@ const QuizManagementComponent: React.FC<QuizManagementComponentProps> = ({ level
                       <Select.Option value="PRONUNCIATION">Phát âm</Select.Option>
                       <Select.Option value="LISTENING">Nghe</Select.Option>
                       <Select.Option value="VOCABULARY">Giao tiếp</Select.Option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>Độ khó</Text>
-                    <Select
-                      className="w-full"
-                      size="small"
-                      value={q.difficulty}
-                      onChange={(v) => handleQuestionChange(index, 'difficulty', v)}
-                    >
-                      <Select.Option value="EASY">Dễ</Select.Option>
-                      <Select.Option value="MEDIUM">Trung bình</Select.Option>
-                      <Select.Option value="HARD">Khó</Select.Option>
                     </Select>
                   </div>
                   <div>
