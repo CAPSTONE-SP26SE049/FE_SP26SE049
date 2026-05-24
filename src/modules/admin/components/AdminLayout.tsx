@@ -17,12 +17,14 @@ import {
   User,
   MoreVertical,
   Tag,
-  Cpu
+  Cpu,
+  Database
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
   { key: '/admin', icon: LayoutDashboard, label: 'Tổng quan' },
+  { key: '/admin/challenge-bank', icon: Database, label: 'Kho câu hỏi' },
   { key: '/admin/chapters', icon: BookOpen, label: 'Quản lý bài tập' },
   { key: '/admin/error-tags', icon: Tag, label: 'Lỗi vùng miền' },
   { key: '/admin/ai-monitor', icon: Bot, label: 'Giám sát AI' },

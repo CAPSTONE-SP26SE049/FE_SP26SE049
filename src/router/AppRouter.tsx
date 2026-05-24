@@ -22,6 +22,7 @@ import RoadmapRuleManagementPage from '../modules/educator/pages/RoadmapRuleMana
 import AdminDashboardPage from '../modules/admin/pages/AdminDashboardPage'
 import AdminLayout from '../modules/admin/components/AdminLayout'
 import UserManagementPage from '../modules/admin/pages/UserManagementPage'
+import ChallengeBankManagementPage from '../modules/admin/pages/ChallengeBankManagementPage'
 import AdminSettingsPage from '../modules/admin/pages/SettingsPage'
 import AchievementManagementPage from '../modules/admin/pages/AchievementManagementPage'
 import AdminChapterManagementPage from '../modules/admin/pages/ChapterManagementPage'
@@ -86,6 +87,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="entry-test" element={<EntryTestManagementPage />} />
           <Route path="error-tags" element={<ErrorTagManagementPage />} />
           <Route path="feedbacks" element={<UserFeedbackManagementPage />} />
+          <Route path="challenge-bank" element={<ChallengeBankManagementPage />} />
         </Route>
       </Route>
 

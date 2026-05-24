@@ -205,6 +205,17 @@ export default function LearnerLayout() {
 
   const user = session?.user || { fullName: "Learner", avatar: null };
 
+  // Generate initials for avatar fallback to keep style clean without icons
+  const initials = React.useMemo(() => {
+    if (!user?.fullName) return "HV";
+    return user.fullName.split(" ")
+      .map(n => n.charAt(0))
+      .filter(char => char.match(/[\p{L}\p{N}]/u))
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  }, [user?.fullName]);
+
   // Reset error when avatar changes
   React.useEffect(() => {
     setAvatarErr(false);
@@ -226,28 +237,26 @@ export default function LearnerLayout() {
     items: [
       {
         key: "profile",
-        icon: <User size={16} />,
-        label: <Link to="/learner/profile">Hồ sơ cá nhân</Link>,
+        label: <Link to="/learner/profile" className="font-black text-xs text-slate-800 uppercase tracking-tight">Hồ sơ cá nhân</Link>,
       },
       { type: "divider" },
       {
         key: "logout",
-        icon: <LogOut size={16} className="text-red-500" />,
-        label: <span className="text-red-500 font-semibold">Đăng xuất</span>,
+        label: <span className="text-red-500 font-black text-xs uppercase tracking-tight">Đăng xuất</span>,
         onClick: handleLogout,
       },
     ],
   };
 
   const menuItems = React.useMemo(() => [
-    { key: "/learner/dashboard", icon: LayoutDashboard, label: "Trang chủ" },
-    { key: "/learner/mailbox", icon: Mail, label: "Hộp thư" },
-    { key: "/learner/roadmap", icon: Map, label: "Hành trình" },
-    { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
-    { key: "/learner/custom-journey", icon: Sparkles, label: "Gợi ý học" },
-    { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
-    { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
-    { key: "/learner/friends", icon: Users, label: "Bạn bè" },
+    { key: "/learner/dashboard", label: "Trang chủ" },
+    { key: "/learner/mailbox", label: "Hộp thư" },
+    { key: "/learner/roadmap", label: "Hành trình" },
+    { key: "/learner/pronunciation", label: "Phát âm" },
+    { key: "/learner/custom-journey", label: "Gợi ý học" },
+    { key: "/learner/leaderboard", label: "Xếp hạng" },
+    { key: "/learner/achievements", label: "Thành tựu" },
+    { key: "/learner/friends", label: "Bạn bè" },
   ], []);
 
   const selectedKey = React.useMemo(() => {
@@ -281,27 +290,23 @@ export default function LearnerLayout() {
               />
             </Link>
 
-            {/* Navigation - Hidden on small screens, simplified */}
-            <nav className="hidden xl:flex items-center gap-6">
+            {/* Navigation - Arranged in a beautiful unified brutalist capsule without icons */}
+            <nav className="hidden xl:flex items-center gap-1 rounded-full border-[2px] border-slate-900 bg-white p-1 shadow-[2px_2px_0_#1f2937]">
               {menuItems.map((item) => {
                 const isActive = selectedKey === item.key;
-                const Icon = item.icon;
                 return (
                   <Link
                     key={item.key}
                     to={item.key}
-                    className={`group relative flex items-center gap-2 px-1 py-1 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`relative flex items-center justify-center px-4 py-1.5 rounded-full transition-all duration-100 ${
+                      isActive 
+                        ? 'bg-[#7dd3fc] text-slate-900 border border-slate-900 font-black shadow-[1px_1px_0_#1f2937]' 
+                        : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-50'
+                    }`}
                   >
-                    <Icon size={14} className={isActive ? "text-[#49B6E5]" : "text-slate-400 group-hover:text-[#49B6E5]"} />
-                    <span className="text-[13px] font-black tracking-tight whitespace-nowrap">
+                    <span className="text-[12px] tracking-tight whitespace-nowrap">
                       {item.label}
                     </span>
-                    {isActive && (
-                      <motion.span
-                        layoutId="activeNav"
-                        className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-[#7dd3fc]"
-                      />
-                    )}
                   </Link>
                 );
               })}
@@ -309,15 +314,15 @@ export default function LearnerLayout() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-              {/* Stats */}
-              <div className="hidden sm:flex items-center gap-3 rounded-full border-[2px] border-slate-900 bg-white px-3 py-1.5 shadow-[3px_3px_0_#1f2937]">
-                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
-                  <Flame size={12} className="text-orange-500 fill-orange-500" />
-                  <span className="text-slate-700 font-black text-[11px]">{user?.currentStreakDays || user?.streak || "0"}</span>
+              {/* Stats - Brutalist styling without icons */}
+              <div className="hidden sm:flex items-center gap-3 rounded-full border-[2px] border-slate-900 bg-white px-3.5 py-1.5 shadow-[3px_3px_0_#1f2937] text-[10px] font-black tracking-wider uppercase">
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2.5 text-orange-600">
+                  <span>Streak:</span>
+                  <span className="text-slate-900 text-xs font-black">{user?.currentStreakDays || user?.streak || "0"}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                  <span className="text-slate-700 font-black text-[11px]">{user?.totalStars || 0}</span>
+                <div className="flex items-center gap-1 text-yellow-600">
+                  <span>Sao:</span>
+                  <span className="text-slate-900 text-xs font-black">{user?.totalStars || 0}</span>
                 </div>
               </div>
 
@@ -327,10 +332,11 @@ export default function LearnerLayout() {
                   <Avatar
                     src={avatarErr ? null : (user.avatar_url || user.avatar)}
                     onError={() => { setAvatarErr(true); return true; }}
-                    icon={<UserCircle2 />}
                     size={32}
-                    className="bg-[#49B6E5] text-white border-2 border-white"
-                  />
+                    className="bg-[#49B6E5] text-white border-2 border-white flex items-center justify-center font-black text-xs"
+                  >
+                    {initials}
+                  </Avatar>
                   <div className="hidden md:block text-left">
                     <div className="text-[11px] font-black leading-none text-slate-800 mb-0.5 truncate max-w-[100px]">{user.fullName || "User"}</div>
                     <div className="text-[9px] font-bold uppercase tracking-wider text-[#49B6E5]">Học viên</div>
@@ -341,10 +347,10 @@ export default function LearnerLayout() {
               {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="grid h-10 w-10 place-items-center rounded-full border-[2px] border-slate-900 bg-white text-slate-700 shadow-[3px_3px_0_#1f2937] xl:hidden"
+                className="flex items-center justify-center h-10 px-4 rounded-full border-[2px] border-slate-900 bg-white text-slate-800 font-black text-xs shadow-[3px_3px_0_#1f2937] xl:hidden"
                 aria-label="Open menu"
               >
-                <Menu size={18} />
+                Menu
               </button>
             </div>
           </div>
@@ -384,13 +390,13 @@ export default function LearnerLayout() {
             >
               <div className="p-6 flex items-center justify-between border-b border-gray-50 bg-[#fbfaff]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-orange-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                    <Sparkles size={18} className="text-white" />
-                  </div>
-                  <span className="font-black text-xl tracking-tight">SpeakVN</span>
+                  <span className="font-black text-xl tracking-tight text-slate-800">SpeakVN</span>
                 </div>
-                <button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">
-                  <X size={20} />
+                <button 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="px-4 py-2 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 font-bold text-xs hover:bg-gray-200 transition-colors"
+                >
+                  Đóng
                 </button>
               </div>
 
@@ -398,12 +404,10 @@ export default function LearnerLayout() {
                 <h3 className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Hệ thống menu</h3>
                 {menuItems.map((item) => {
                   const isActive = selectedKey === item.key;
-                  const Icon = item.icon;
                   return (
                     <Link key={item.key} to={item.key} onClick={() => setMobileMenuOpen(false)}>
-                      <div className={`flex items-center gap-3.5 px-5 py-4 rounded-2xl font-black text-[15px] transition-all
-                        ${isActive ? "bg-purple-600 text-white shadow-xl shadow-purple-600/20" : "text-gray-600 hover:bg-purple-50 active:scale-95"}`}>
-                        <Icon size={20} />
+                      <div className={`flex items-center px-5 py-4 rounded-2xl font-black text-[15px] transition-all
+                        ${isActive ? "bg-[#49B6E5] text-white shadow-xl shadow-[#49B6E5]/20" : "text-gray-600 hover:bg-slate-50 active:scale-95"}`}>
                         {item.label}
                       </div>
                     </Link>
@@ -416,7 +420,7 @@ export default function LearnerLayout() {
                   onClick={handleLogout}
                   className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl font-black text-base text-red-500 bg-white border border-red-100 hover:bg-red-50 transition-all shadow-sm"
                 >
-                  <LogOut size={20} /> Đăng xuất
+                  Đăng xuất
                 </button>
               </div>
             </motion.aside>

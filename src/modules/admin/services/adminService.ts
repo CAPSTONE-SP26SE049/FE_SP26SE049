@@ -319,5 +319,42 @@ export const adminService = {
                 ...getAuthHeaders()
             }
         });
+    },
+
+    // --- Challenge Bank Excel ---
+    downloadChallengeBankTemplate: async () => {
+        const res = await axios.get(`${BASE_URL}/admin/excel/challenge-bank/template`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    exportChallengeBankToExcel: async (skillType?: string) => {
+        const url = skillType 
+            ? `${BASE_URL}/admin/excel/challenge-bank/export?skillType=${skillType}`
+            : `${BASE_URL}/admin/excel/challenge-bank/export`;
+        const res = await axios.get(url, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    importChallengeBankFromExcel: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return axios.post(`${BASE_URL}/admin/excel/challenge-bank/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...getAuthHeaders()
+            }
+        });
+    },
+
+    // --- Weekly Tournament Finalization ---
+    finalizeWeeklyTournament: async (tournamentId?: string) => {
+        const url = tournamentId 
+            ? `/admin/tournaments/finalize?tournamentId=${tournamentId}` 
+            : '/admin/tournaments/finalize';
+        return apiClient.post(url);
     }
 };
