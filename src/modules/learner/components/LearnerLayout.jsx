@@ -14,6 +14,10 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
+import {
+  getLearnerOnboardingPath,
+  isLearnerOnboardingPath,
+} from "../../../utils/onboarding";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 
@@ -30,13 +34,17 @@ export default function LearnerLayout() {
   const user = session?.user || { fullName: "Learner", avatar: null };
 
   useEffect(() => {
-    if (
-      session &&
-      session.user.role === "USER" &&
-      !session.user.region &&
-      location.pathname !== "/learner/entrytest"
-    ) {
-      navigate("/learner/entrytest", { replace: true });
+    if (!session || session.user.role !== "USER") return;
+
+    const target = getLearnerOnboardingPath(session.user);
+
+    if (session.user.hasDoneEntryTest && isLearnerOnboardingPath(location.pathname)) {
+      navigate("/learner/roadmap", { replace: true });
+      return;
+    }
+
+    if (!session.user.hasDoneEntryTest && !isLearnerOnboardingPath(location.pathname)) {
+      navigate(target, { replace: true });
     }
   }, [session, location.pathname, navigate]);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Form, Input, Button, message, Checkbox } from 'antd'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../core/auth/AuthContext'
+import { getLearnerOnboardingPath } from '../../utils/onboarding'
 import { User, Lock, Mail } from 'lucide-react'
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import illustration from '../../assets/login-illustration.png'
@@ -29,11 +30,7 @@ function LoginForm() {
     } else if (session.user.role === 'EDUCATOR') {
       navigate('/educator', { replace: true })
     } else {
-      if (!session.user.region) {
-        navigate('/learner/entrytest', { replace: true })
-      } else {
-        navigate('/learner/roadmap', { replace: true })
-      }
+      navigate(getLearnerOnboardingPath(session.user), { replace: true })
     }
   }, [navigate])
 
@@ -148,11 +145,7 @@ function LoginForm() {
       } else if (session.user.role === 'EDUCATOR') {
         navigate('/educator', { replace: true })
       } else {
-        if (!session.user.region) {
-          navigate('/learner/entrytest', { replace: true })
-        } else {
-          navigate('/learner/roadmap', { replace: true })
-        }
+        navigate(getLearnerOnboardingPath(session.user), { replace: true })
       }
     } catch (err) {
       if (err?.status === 403 || err?.response?.status === 403) {
