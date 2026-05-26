@@ -122,6 +122,9 @@ const Entrytest = () => {
       setStepStatus('listening')
       setFeedback(null)
     } catch {
+      stopStream()
+      mediaRecorderRef.current = null
+      audioChunksRef.current = []
       setStepStatus('error')
       setFeedback('Vui lòng cấp quyền Microphone để tiếp tục.')
     }
