@@ -7,8 +7,7 @@ import {
   Activity,
   Zap,
   Target,
-  Search,
-  Filter
+  Search
 } from 'lucide-react'
 import {
   BarElement,
@@ -25,6 +24,7 @@ import {
 } from 'chart.js'
 import { Bar, Radar } from 'react-chartjs-2'
 import { adminService } from '../services/adminService'
+import apiClient from '../../../services/apiClient'
 import { motion, AnimatePresence } from 'framer-motion'
 import clsx from 'clsx'
 
@@ -78,20 +78,269 @@ const AdminDashboardPage = () => {
   const [userSearch, setUserSearch] = React.useState('')
   const [performanceFilter, setPerformanceFilter] = React.useState('ALL')
 
-  const handleFinalizeTournament = async () => {
+  const executeFinalize = async () => {
     setFinalizingTournament(true)
     setTournamentReport(null)
     try {
       const res: any = await adminService.finalizeWeeklyTournament();
       const report = res?.data ?? res?.data?.data ?? res ?? {}
       setTournamentReport(report)
+      loadAllTournaments()
+      setNoticeModal({
+        type: 'success',
+        title: 'Chốt giải thành công',
+        message: 'Đã chốt giải đấu tuần thành công! Top 3 học viên đã được vinh danh và nhận thưởng XP.'
+      });
     } catch (err: any) {
       console.error('Failed to finalize tournament:', err)
-      alert('Lỗi: ' + (err?.message || 'Không thể chốt giải đấu lúc này.'))
+      const backendMessage = err?.response?.data?.message || err?.message || 'Không thể chốt giải đấu lúc này.'
+      setNoticeModal({
+        type: 'error',
+        title: 'Chốt giải thất bại',
+        message: 'Lỗi: ' + backendMessage
+      });
     } finally {
       setFinalizingTournament(false)
     }
   }
+
+  const handleFinalizeTournament = async () => {
+    const activeT = tournaments.find((t) => t.status === 'ACTIVE')
+    if (activeT) {
+      const isExpired = new Date(activeT.endsAt) <= new Date()
+      if (!isExpired) {
+        setNoticeModal({
+          type: 'error',
+          title: 'Không thể chốt giải đấu',
+          message: `Không thể chốt giải đấu này sớm! Giải đấu "${activeT.name}" chưa kết thúc thời gian thi đấu. Vui lòng đợi đến khi hết hạn để đảm bảo công bằng cho tất cả học viên.`
+        });
+        return
+      }
+    }
+    
+    setNoticeModal({
+      type: 'confirm',
+      title: 'Xác nhận chốt giải đấu',
+      message: 'Bạn có chắc chắn muốn chốt giải đấu tuần này không? Hành động này sẽ phát thưởng và tạo giải tuần mới. Không thể hoàn tác!',
+      onConfirm: () => {
+        executeFinalize()
+      }
+    })
+  }
+
+  // Tournament Editing States
+  const [editingTournament, setEditingTournament] = React.useState(false)
+  const [isSavingTournament, setIsSavingTournament] = React.useState(false)
+  const [tournamentForm, setTournamentForm] = React.useState({ name: '', description: '', endsAt: '' })
+  const [activeTournamentStatus, setActiveTournamentStatus] = React.useState<string>('ACTIVE')
+  const [challengeBankQuestions, setChallengeBankQuestions] = React.useState<any[]>([])
+  const [selectedQuestionIds, setSelectedQuestionIds] = React.useState<string[]>([])
+  const [tSearch, setTSearch] = React.useState('')
+  const [tRegion, setTRegion] = React.useState('ALL')
+
+  const [noticeModal, setNoticeModal] = React.useState<{
+    type: 'error' | 'success' | 'confirm';
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  } | null>(null)
+
+  // Upcoming Tournament & List States
+  const [tournaments, setTournaments] = React.useState<any[]>([])
+  const [isLoadingTournaments, setIsLoadingTournaments] = React.useState(false)
+  const [isUpcomingModalOpen, setIsUpcomingModalOpen] = React.useState(false)
+  const [isCreatingUpcoming, setIsCreatingUpcoming] = React.useState(false)
+  const [upcomingForm, setUpcomingForm] = React.useState({
+    name: '',
+    description: '',
+    startsAt: '',
+    endsAt: ''
+  })
+  const [upcomingSelectedQuestionIds, setUpcomingSelectedQuestionIds] = React.useState<string[]>([])
+  const [upTSearch, setUpTSearch] = React.useState('')
+  const [upTRegion, setUpTRegion] = React.useState('ALL')
+
+  // Tournament Tab & Search States
+  const [tournamentTab, setTournamentTab] = React.useState<'ALL' | 'ACTIVE' | 'UPCOMING' | 'FINISHED'>('ALL')
+  const [tournamentSearch, setTournamentSearch] = React.useState('')
+
+  const filteredTournaments = React.useMemo(() => {
+    return tournaments.filter((t) => {
+      const matchesSearch = (t.name || '').toLowerCase().includes(tournamentSearch.toLowerCase());
+      const matchesTab = 
+        tournamentTab === 'ALL' ||
+        (tournamentTab === 'ACTIVE' && t.status === 'ACTIVE') ||
+        (tournamentTab === 'UPCOMING' && t.status === 'UPCOMING') ||
+        (tournamentTab === 'FINISHED' && t.status === 'FINISHED');
+      return matchesSearch && matchesTab;
+    });
+  }, [tournaments, tournamentSearch, tournamentTab]);
+
+  // Tournament Leaderboard Viewing States
+  const [viewingLeaderboardTournament, setViewingLeaderboardTournament] = React.useState<any | null>(null)
+  const [leaderboardStandings, setLeaderboardStandings] = React.useState<any[]>([])
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = React.useState(false)
+
+  const handleViewLeaderboard = async (tournament: any) => {
+    setViewingLeaderboardTournament(tournament)
+    setIsLoadingLeaderboard(true)
+    try {
+      const res: any = await adminService.getTournamentLeaderboard(tournament.id)
+      const list = res?.data?.data ?? res?.data ?? res ?? []
+      setLeaderboardStandings(list)
+    } catch (err) {
+      console.error('Failed to load leaderboard standings', err)
+      setLeaderboardStandings([])
+    } finally {
+      setIsLoadingLeaderboard(false)
+    }
+  }
+
+  const loadAllTournaments = async () => {
+    setIsLoadingTournaments(true)
+    try {
+      const res: any = await adminService.getAllTournaments()
+      const list = res?.data?.data ?? res?.data ?? res ?? []
+      setTournaments(list)
+    } catch (err) {
+      console.error('Failed to load tournaments list', err)
+    } finally {
+      setIsLoadingTournaments(false)
+    }
+  }
+
+  const handleCreateUpcomingTournament = async () => {
+    if (!upcomingForm.startsAt || !upcomingForm.endsAt) {
+      setNoticeModal({
+        type: 'error',
+        title: 'Thiếu thông tin',
+        message: 'Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc!'
+      });
+      return
+    }
+    setIsCreatingUpcoming(true)
+    try {
+      const startsAtIso = new Date(upcomingForm.startsAt).toISOString()
+      const endsAtIso = new Date(upcomingForm.endsAt).toISOString()
+      
+      await adminService.createUpcomingTournament(
+        upcomingForm.name,
+        upcomingForm.description,
+        startsAtIso,
+        endsAtIso,
+        upcomingSelectedQuestionIds
+      )
+      setNoticeModal({
+        type: 'success',
+        title: 'Tạo giải đấu thành công',
+        message: 'Tạo giải đấu chuẩn bị (Upcoming) thành công!'
+      });
+      setIsUpcomingModalOpen(false)
+      setUpcomingForm({ name: '', description: '', startsAt: '', endsAt: '' })
+      setUpcomingSelectedQuestionIds([])
+      loadAllTournaments()
+    } catch (err: any) {
+      console.error('Failed to create upcoming tournament:', err)
+      const errMsg = err?.response?.data?.message || err?.message || 'Không thể tạo giải đấu sắp tới.'
+      setNoticeModal({
+        type: 'error',
+        title: 'Tạo giải đấu thất bại',
+        message: 'Lỗi: ' + errMsg
+      });
+    } finally {
+      setIsCreatingUpcoming(false)
+    }
+  }
+
+  const loadActiveTournamentData = async () => {
+    try {
+      const res: any = await apiClient.get('/tournaments/active');
+      const data = res?.data?.data ?? res?.data ?? res ?? {};
+      setTournamentForm({
+        name: data.name || '',
+        description: data.description || '',
+        endsAt: data.endsAt || ''
+      });
+      setActiveTournamentStatus(data.status || 'ACTIVE');
+      if (data.challenges) {
+        setSelectedQuestionIds(data.challenges.map((c: any) => c.id));
+      }
+    } catch (err) {
+      console.error('Failed to load active tournament details', err);
+    }
+  };
+
+  const loadChallengeBank = async () => {
+    try {
+      const res: any = await adminService.getChallengeBank();
+      const list = res?.data?.data ?? res?.data ?? res ?? [];
+      const speakingOnly = Array.isArray(list) 
+        ? list.filter((c: any) => c.skillType === 'SPEAKING')
+        : [];
+      setChallengeBankQuestions(speakingOnly);
+    } catch (err) {
+      console.error('Failed to load challenge bank questions', err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (editingTournament) {
+      loadActiveTournamentData();
+      loadChallengeBank();
+    }
+  }, [editingTournament]);
+
+  React.useEffect(() => {
+    if (isUpcomingModalOpen) {
+      loadChallengeBank();
+    }
+  }, [isUpcomingModalOpen]);
+
+  const handleSaveTournament = async () => {
+    setIsSavingTournament(true);
+    try {
+      await adminService.updateActiveTournament(
+        tournamentForm.name,
+        tournamentForm.description,
+        tournamentForm.endsAt
+      );
+
+      await adminService.assignActiveTournamentQuestions(selectedQuestionIds);
+
+      setNoticeModal({
+        type: 'success',
+        title: 'Cập nhật thành công',
+        message: 'Đã cập nhật thông tin giải đấu và câu hỏi thành công!'
+      });
+      setEditingTournament(false);
+    } catch (err: any) {
+      console.error('Failed to update active tournament:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Không thể cập nhật giải đấu.';
+      setNoticeModal({
+        type: 'error',
+        title: 'Cập nhật thất bại',
+        message: 'Lỗi: ' + errMsg
+      });
+    } finally {
+      setIsSavingTournament(false);
+    }
+  };
+
+  const filteredChallenges = React.useMemo(() => {
+    return challengeBankQuestions.filter((c) => {
+      const matchesSearch = (c.contentText || '').toLowerCase().includes(tSearch.toLowerCase());
+      const matchesRegion = tRegion === 'ALL' || c.region === tRegion;
+      return matchesSearch && matchesRegion;
+    });
+  }, [challengeBankQuestions, tSearch, tRegion]);
+
+  const filteredUpcomingChallenges = React.useMemo(() => {
+    return challengeBankQuestions.filter((c) => {
+      const matchesSearch = (c.contentText || '').toLowerCase().includes(upTSearch.toLowerCase());
+      const matchesRegion = upTRegion === 'ALL' || c.region === upTRegion;
+      return matchesSearch && matchesRegion;
+    });
+  }, [challengeBankQuestions, upTSearch, upTRegion]);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -128,6 +377,7 @@ const AdminDashboardPage = () => {
     }
 
     fetchData()
+    loadAllTournaments()
   }, [])
 
   const heatmapValues = pronunciationPairs.map((pair) => {
@@ -536,18 +786,241 @@ const AdminDashboardPage = () => {
             <p className="text-xs text-slate-600 leading-relaxed">
               Đóng giải đấu tuần đang diễn ra. Hệ thống sẽ tự động tổng kết Top 3 học viên dẫn đầu, phát thưởng XP, mở khóa Huy hiệu vô địch và khởi động kỳ giải đấu cho tuần kế tiếp.
             </p>
+            {(() => {
+              const activeT = tournaments.find((t) => t.status === 'ACTIVE');
+              if (!activeT) return null;
+              const isExpired = new Date(activeT.endsAt) <= new Date();
+              const formattedEndsAt = (() => {
+                try {
+                  const date = new Date(activeT.endsAt);
+                  return date.toLocaleString('vi-VN', {
+                    timeZone: 'Asia/Ho_Chi_Minh',
+                    hour12: false,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                } catch (e) {
+                  return activeT.endsAt;
+                }
+              })();
+              return (
+                <div className="mt-4 p-4 rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#1f2937] space-y-2">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Giải đang diễn ra</p>
+                  <p className="text-xs font-black text-slate-900 truncate">{activeT.name}</p>
+                  <p className="text-[10px] font-bold text-slate-500">Kết thúc: {formattedEndsAt}</p>
+                  <div className="pt-1">
+                    {isExpired ? (
+                      <span className="inline-block px-2.5 py-1 rounded-lg border-2 border-slate-900 bg-emerald-100 text-[10px] font-black text-emerald-800 shadow-[1px_1px_0_#1f2937]">
+                        ĐÃ HẾT HẠN - SẴN SÀNG CHỐT
+                      </span>
+                    ) : (
+                      <span className="inline-block px-2.5 py-1 rounded-lg border-2 border-slate-900 bg-amber-100 text-[10px] font-black text-amber-800 shadow-[1px_1px_0_#1f2937]">
+                        ĐANG THI ĐẤU - CHƯA ĐƯỢC CHỐT
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setEditingTournament(true)}
+                className="flex-1 rounded-2xl border-[3px] border-slate-900 bg-white py-4 text-xs font-black text-slate-900 shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+              >
+                CHỈNH SỬA GIẢI ĐẤU
+              </button>
+              <button
+                onClick={handleFinalizeTournament}
+                disabled={finalizingTournament}
+                className="flex-1 rounded-2xl border-[3px] border-slate-900 bg-[#f1c46f] py-4 text-xs font-black text-slate-900 shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+              >
+                {finalizingTournament ? 'ĐANG CHỐT...' : 'CHỐT GIẢI ĐẤU'}
+              </button>
+            </div>
             <button
-              onClick={handleFinalizeTournament}
-              disabled={finalizingTournament}
-              className="w-full rounded-2xl border-[3px] border-slate-900 bg-[#f1c46f] py-4 text-sm font-black text-slate-900 shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+              onClick={() => setIsUpcomingModalOpen(true)}
+              className="w-full rounded-2xl border-[3px] border-slate-900 bg-[#C084FC] py-4 text-xs font-black text-slate-900 shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none text-center"
             >
-              {finalizingTournament ? 'ĐANG CHỐT GIẢI ĐẤU...' : 'CHỐT GIẢI ĐẤU TUẦN'}
+              TẠO GIẢI ĐẤU SẮP TỚI
             </button>
           </div>
         </article>
+      </section>
+
+      {/* 📅 TOURNAMENTS LIST SECTION */}
+      <section className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937] space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b-2 border-slate-100 pb-6">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Danh sách & Lịch sử giải đấu</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+              Quản lý và xem lịch sử thứ hạng của tất cả các kỳ đấu đã qua, đang chạy, hoặc sắp diễn ra
+            </p>
+          </div>
+          <button
+            onClick={() => loadAllTournaments()}
+            disabled={isLoadingTournaments}
+            className="px-4 py-2 rounded-xl border-2 border-slate-900 bg-slate-50 text-xs font-black text-slate-700 shadow-[2px_2px_0_#1f2937] hover:bg-slate-100 transition-colors disabled:opacity-50"
+          >
+            {isLoadingTournaments ? 'ĐANG TẢI...' : 'TẢI LẠI DANH SÁCH'}
+          </button>
+        </div>
+
+        {/* 🔍 SEARCH & TAB SWITCHERS FOR MANY TOURNAMENTS */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between pb-2">
+          {/* Tab Filter buttons */}
+          <div className="flex flex-wrap gap-2">
+            {(['ALL', 'ACTIVE', 'UPCOMING', 'FINISHED'] as const).map((tab) => {
+              const label = 
+                tab === 'ALL' ? 'TẤT CẢ' : 
+                tab === 'ACTIVE' ? 'ĐANG DIỄN RA' : 
+                tab === 'UPCOMING' ? 'SẮP DIỄN RA' : 'ĐÃ KẾT THÚC / LỊCH SỬ';
+              const isActive = tournamentTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setTournamentTab(tab)}
+                  className={clsx(
+                    "px-4 py-2 rounded-xl border-2 border-slate-900 text-xs font-black transition-all shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 active:shadow-none",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-none" 
+                      : "bg-white text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search bar */}
+          <div className="relative w-full md:max-w-xs">
+            <span className="absolute inset-y-0 left-3.5 flex items-center text-slate-400">
+              <Search size={14} strokeWidth={3} />
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm giải đấu theo tên..."
+              value={tournamentSearch}
+              onChange={(e) => setTournamentSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border-2 border-slate-900 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-slate-900 bg-slate-50/50"
+            />
+          </div>
+        </div>
+
+        {isLoadingTournaments ? (
+          <div className="py-14 text-center">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Đang tải danh sách giải đấu...</p>
+          </div>
+        ) : filteredTournaments.length > 0 ? (
+          <div className="overflow-x-auto border-2 border-slate-900 rounded-2xl max-h-[400px] overflow-y-auto custom-scrollbar shadow-[4px_4px_0_#1f2937] bg-white">
+            <table className="w-full min-w-[800px] relative border-collapse">
+              <thead className="sticky top-0 bg-slate-50 z-15 shadow-sm border-b-2 border-slate-900">
+                <tr className="text-left bg-slate-100">
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 w-1/4">Giải đấu</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Loại</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Trạng thái</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Bắt đầu</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Kết thúc</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Số câu hỏi</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-right pr-6">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-slate-100">
+                {filteredTournaments.map((t) => {
+                  let statusBg = 'bg-slate-100 border-slate-300 text-slate-650'
+                  if (t.status === 'ACTIVE') statusBg = 'bg-emerald-50 border-emerald-300 text-emerald-600'
+                  else if (t.status === 'UPCOMING') statusBg = 'bg-purple-50 border-purple-300 text-purple-650'
+
+                  let questionsCount = 0
+                  if (t.questionsJson) {
+                    try {
+                      const questions = typeof t.questionsJson === 'string' ? JSON.parse(t.questionsJson) : t.questionsJson
+                      questionsCount = Array.isArray(questions) ? questions.length : 0
+                    } catch (e) {
+                      console.error('Error parsing questionsJson', e)
+                    }
+                  }
+
+                  const formatDateTime = (isoString?: string) => {
+                    if (!isoString) return 'N/A'
+                    try {
+                      const date = new Date(isoString)
+                      return date.toLocaleString('vi-VN', {
+                        timeZone: 'Asia/Ho_Chi_Minh',
+                        hour12: false,
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    } catch (e) {
+                      return isoString
+                    }
+                  }
+
+                  return (
+                    <tr key={t.id} className="group hover:bg-slate-50/40 transition-all">
+                      <td className="p-4 pr-4">
+                        <div>
+                          <div className="text-sm font-black uppercase tracking-tight text-slate-900">
+                            {t.name || 'Giải Đấu Tuần'}
+                          </div>
+                          {t.description && (
+                            <div className="text-[10px] font-semibold text-slate-400 truncate max-w-[300px]" title={t.description}>
+                              {t.description}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{t.type || 'WEEKLY'}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className={`inline-block px-3 py-1 rounded-lg border-[1.5px] font-black text-xs uppercase ${statusBg}`}>
+                          {t.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-xs font-bold text-slate-700">{formatDateTime(t.startsAt)}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-xs font-bold text-slate-700">{formatDateTime(t.endsAt)}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-xs font-black text-[#49B6E5]">
+                          {questionsCount} câu hỏi
+                        </span>
+                      </td>
+                      <td className="p-4 text-right pr-6">
+                        {t.status !== 'UPCOMING' ? (
+                          <button
+                            onClick={() => handleViewLeaderboard(t)}
+                            className="px-3 py-1.5 rounded-lg border-2 border-slate-900 bg-[#f1c46f] text-[10px] font-black text-slate-900 shadow-[2px_2px_0_#1f2937] hover:bg-[#e2b25b] active:translate-y-0.5 active:shadow-none"
+                          >
+                            XEM THỨ HẠNG
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 italic">Chưa bắt đầu</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-14 rounded-2xl border-2 border-dashed border-slate-200 text-center bg-slate-50">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Không có giải đấu nào được tìm thấy</p>
+          </div>
+        )}
       </section>
 
       {/* Row 3: 100% Width Learner Tracking Center */}
@@ -738,6 +1211,541 @@ const AdminDashboardPage = () => {
           </div>
         </div>
       )}
+
+      {/* 🛠️ EDIT TOURNAMENT MODAL */}
+      <AnimatePresence>
+        {editingTournament && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-3xl rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] p-6 lg:p-8 text-left shadow-[10px_10px_0_#1f2937] my-8 max-h-[90vh] flex flex-col"
+            >
+              <button
+                onClick={() => setEditingTournament(false)}
+                className="absolute right-6 top-6 grid h-10 w-10 place-items-center rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[3px_3px_0_#1f2937] active:translate-y-0.5"
+              >
+                X
+              </button>
+
+              <div className="mb-4">
+                <span className="inline-block rounded-full border-2 border-slate-900 bg-[#7dd3fc] px-3 py-1 text-[10px] font-black uppercase text-slate-800 shadow-[2px_2px_0_#1f2937]">
+                  Weekly Event Manager
+                </span>
+                <h3 className="mt-2 text-2xl font-black text-slate-900 uppercase">
+                  Chỉnh Sửa Giải Đấu Tuần
+                </h3>
+                <p className="text-xs text-slate-500">Thay đổi thông tin kỳ đấu và chọn thủ công các câu hỏi phát âm từ kho câu hỏi.</p>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar my-4">
+                
+                {activeTournamentStatus === 'ACTIVE' && (
+                  <div className="p-4 rounded-xl border-2 border-rose-900 bg-rose-50 text-xs font-black text-rose-800 shadow-[2px_2px_0_#1f2937] leading-relaxed">
+                    Lưu ý: Giải đấu tuần này đang diễn ra (ACTIVE). Để đảm bảo tính công bằng và bảo vệ quyền lợi, điểm số của các học viên đang thi đấu, toàn bộ thông tin và danh sách câu hỏi đã được tự động khóa chỉnh sửa.
+                  </div>
+                )}
+
+                {/* Form Fields */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tên Giải Đấu</label>
+                    <input
+                      type="text"
+                      value={tournamentForm.name}
+                      onChange={(e) => setTournamentForm({ ...tournamentForm, name: e.target.value })}
+                      disabled={activeTournamentStatus === 'ACTIVE'}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-805 font-bold focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-300"
+                      placeholder="Giải đấu Tuần..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời Gian Kết Thúc (ISO UTC)</label>
+                    <input
+                      type="text"
+                      value={tournamentForm.endsAt}
+                      onChange={(e) => setTournamentForm({ ...tournamentForm, endsAt: e.target.value })}
+                      disabled={activeTournamentStatus === 'ACTIVE'}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-805 font-bold focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-300"
+                      placeholder="e.g. 2026-06-02T15:53:51Z"
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mô Tả Giải Đấu</label>
+                    <textarea
+                      value={tournamentForm.description}
+                      onChange={(e) => setTournamentForm({ ...tournamentForm, description: e.target.value })}
+                      disabled={activeTournamentStatus === 'ACTIVE'}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-805 font-bold focus:outline-none h-20 resize-none disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-300"
+                      placeholder="Mô tả chi tiết giải đấu..."
+                    />
+                  </div>
+                </div>
+
+                {/* Question Selection Panel */}
+                <div className="border-t-[2px] border-slate-900/10 pt-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-base font-black text-slate-900 uppercase">
+                        Chọn Câu Hỏi Phát Âm ({selectedQuestionIds.length} câu đang chọn)
+                      </h4>
+                      <p className="text-[10px] font-semibold text-slate-400">
+                        {activeTournamentStatus === 'ACTIVE' 
+                          ? 'Danh sách câu hỏi thi đấu hiện tại của tuần này.'
+                          : 'Chọn tối thiểu 1 câu, tốt nhất là 5 câu phát âm.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Tìm câu hỏi..."
+                        value={tSearch}
+                        onChange={(e) => setTSearch(e.target.value)}
+                        className="px-3 py-1.5 text-xs rounded-lg border-2 border-slate-900 bg-white text-slate-805 focus:outline-none"
+                      />
+                      <select
+                        value={tRegion}
+                        onChange={(e) => setTRegion(e.target.value)}
+                        className="rounded-lg border-2 border-slate-900 bg-white px-2 py-1.5 text-xs font-black text-slate-800"
+                      >
+                        <option value="ALL">TẤT CẢ VÙNG</option>
+                        <option value="BAC">MIỀN BẮC</option>
+                        <option value="TRUNG">MIỀN TRUNG</option>
+                        <option value="NAM">MIỀN NAM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* List of Challenges */}
+                  <div className="max-h-[220px] overflow-y-auto border-2 border-slate-900 rounded-2xl bg-white divide-y-2 divide-slate-100 custom-scrollbar">
+                    {filteredChallenges.length > 0 ? (
+                      filteredChallenges.map((c) => {
+                        const isChecked = selectedQuestionIds.includes(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              if (activeTournamentStatus === 'ACTIVE') return;
+                              if (isChecked) {
+                                setSelectedQuestionIds(selectedQuestionIds.filter((id) => id !== c.id));
+                              } else {
+                                setSelectedQuestionIds([...selectedQuestionIds, c.id]);
+                              }
+                            }}
+                            className={`flex items-start gap-3 p-3 text-xs transition-colors ${
+                              activeTournamentStatus === 'ACTIVE' 
+                                ? 'cursor-default' 
+                                : 'cursor-pointer hover:bg-slate-50'
+                            } ${isChecked ? 'bg-[#eef9fe]' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              disabled={activeTournamentStatus === 'ACTIVE'}
+                              className="mt-0.5 accent-[#49B6E5]"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-serif font-black text-slate-800 leading-snug">"{c.contentText}"</p>
+                              <div className="flex gap-2 mt-1">
+                                <span className="rounded-full px-2 py-0.5 bg-slate-100 border text-[9px] font-bold text-slate-500">
+                                  {c.region === 'BAC' ? 'BẮC' : c.region === 'TRUNG' ? 'TRUNG' : 'NAM'}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || 'N/A'}/</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center text-slate-400 font-bold">Không tìm thấy câu hỏi phát âm nào trong kho</div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 border-t-[2px] border-slate-900/10 pt-4 mt-auto">
+                {activeTournamentStatus === 'ACTIVE' ? (
+                  <button
+                    onClick={() => setEditingTournament(false)}
+                    className="px-8 py-3 rounded-xl border-2 border-slate-900 bg-white text-xs font-black text-slate-700 shadow-[3px_3px_0_#1f2937] hover:bg-slate-50 transition-all active:translate-y-0.5 active:shadow-none"
+                  >
+                    ĐÓNG CHI TIẾT
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setEditingTournament(false)}
+                      className="px-6 py-3 rounded-xl border-2 border-slate-900 bg-white text-xs font-black text-slate-500 shadow-[3px_3px_0_#1f2937]"
+                    >
+                      HỦY BỎ
+                    </button>
+                    <button
+                      onClick={handleSaveTournament}
+                      disabled={isSavingTournament || selectedQuestionIds.length === 0}
+                      className="px-6 py-3 rounded-xl border-2 border-slate-900 bg-[#10b981] text-xs font-black text-white shadow-[3px_3px_0_#1f2937] disabled:opacity-50"
+                    >
+                      {isSavingTournament ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
+                    </button>
+                  </>
+                )}
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🛠️ CREATE UPCOMING TOURNAMENT MODAL */}
+      <AnimatePresence>
+        {isUpcomingModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-3xl rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] p-6 lg:p-8 text-left shadow-[10px_10px_0_#1f2937] my-8 max-h-[90vh] flex flex-col"
+            >
+              <button
+                onClick={() => setIsUpcomingModalOpen(false)}
+                className="absolute right-6 top-6 grid h-10 w-10 place-items-center rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[3px_3px_0_#1f2937] active:translate-y-0.5"
+              >
+                X
+              </button>
+
+              <div className="mb-4">
+                <span className="inline-block rounded-full border-2 border-slate-900 bg-[#C084FC]/25 px-3 py-1 text-[10px] font-black uppercase text-[#8B5CF6] shadow-[2px_2px_0_#1f2937]">
+                  Upcoming Event Creator
+                </span>
+                <h3 className="mt-2 text-2xl font-black text-slate-900 uppercase">
+                  Tạo Giải Đấu Sắp Tới (Upcoming)
+                </h3>
+                <p className="text-xs text-slate-500">Lên lịch trước cho giải đấu tương lai và cấu hình danh sách câu hỏi phát âm.</p>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar my-4">
+                
+                {/* Form Fields */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tên Giải Đấu</label>
+                    <input
+                      type="text"
+                      value={upcomingForm.name}
+                      onChange={(e) => setUpcomingForm({ ...upcomingForm, name: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-900 font-bold focus:outline-none"
+                      placeholder="Giải Đấu Tuần Sau..."
+                    />
+                  </div>
+                  <div className="space-y-1 font-bold">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mô Tả</label>
+                    <input
+                      type="text"
+                      value={upcomingForm.description}
+                      onChange={(e) => setUpcomingForm({ ...upcomingForm, description: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-900 font-bold focus:outline-none"
+                      placeholder="Mô tả sơ lược giải đấu..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời Gian Bắt Đầu</label>
+                    <input
+                      type="datetime-local"
+                      value={upcomingForm.startsAt}
+                      onChange={(e) => setUpcomingForm({ ...upcomingForm, startsAt: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-900 font-bold focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời Gian Kết Thúc</label>
+                    <input
+                      type="datetime-local"
+                      value={upcomingForm.endsAt}
+                      onChange={(e) => setUpcomingForm({ ...upcomingForm, endsAt: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-900 font-bold focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Question Selection Panel */}
+                <div className="border-t-[2px] border-slate-900/10 pt-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-base font-black text-slate-900 uppercase">Chọn Câu Hỏi Phát Âm ({upcomingSelectedQuestionIds.length} câu đang chọn)</h4>
+                      <p className="text-[10px] font-semibold text-slate-400">Chọn các câu phát âm từ kho để gán cho giải đấu này.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Tìm câu hỏi..."
+                        value={upTSearch}
+                        onChange={(e) => setUpTSearch(e.target.value)}
+                        className="px-3 py-1.5 text-xs rounded-lg border-2 border-slate-900 bg-white text-slate-900 focus:outline-none"
+                      />
+                      <select
+                        value={upTRegion}
+                        onChange={(e) => setUpTRegion(e.target.value)}
+                        className="rounded-lg border-2 border-slate-900 bg-white px-2 py-1.5 text-xs font-black text-slate-800"
+                      >
+                        <option value="ALL">TẤT CẢ VÙNG</option>
+                        <option value="BAC">MIỀN BẮC</option>
+                        <option value="TRUNG">MIỀN TRUNG</option>
+                        <option value="NAM">MIỀN NAM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* List of Challenges */}
+                  <div className="max-h-[200px] overflow-y-auto border-2 border-slate-900 rounded-2xl bg-white divide-y-2 divide-slate-100 custom-scrollbar">
+                    {filteredUpcomingChallenges.length > 0 ? (
+                      filteredUpcomingChallenges.map((c) => {
+                        const isChecked = upcomingSelectedQuestionIds.includes(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              if (isChecked) {
+                                setUpcomingSelectedQuestionIds(upcomingSelectedQuestionIds.filter((id) => id !== c.id));
+                              } else {
+                                setUpcomingSelectedQuestionIds([...upcomingSelectedQuestionIds, c.id]);
+                              }
+                            }}
+                            className={`flex items-start gap-3 p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors ${
+                              isChecked ? 'bg-[#f5eefb]' : ''
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="mt-0.5 accent-[#8B5CF6]"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-serif font-black text-slate-800 leading-snug">"{c.contentText}"</p>
+                              <div className="flex gap-2 mt-1">
+                                <span className="rounded-full px-2 py-0.5 bg-slate-100 border text-[9px] font-bold text-slate-500">
+                                  {c.region === 'BAC' ? 'BẮC' : c.region === 'TRUNG' ? 'TRUNG' : 'NAM'}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || 'N/A'}/</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center text-slate-400 font-bold">Không tìm thấy câu hỏi phát âm nào trong kho</div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 border-t-[2px] border-slate-900/10 pt-4 mt-auto">
+                <button
+                  onClick={() => setIsUpcomingModalOpen(false)}
+                  className="px-6 py-3 rounded-xl border-2 border-slate-900 bg-white text-xs font-black text-slate-500 shadow-[3px_3px_0_#1f2937]"
+                >
+                  HỦY BỎ
+                </button>
+                <button
+                  onClick={handleCreateUpcomingTournament}
+                  disabled={isCreatingUpcoming || upcomingSelectedQuestionIds.length === 0}
+                  className="px-6 py-3 rounded-xl border-2 border-slate-900 bg-[#C084FC] text-slate-950 text-xs font-black shadow-[3px_3px_0_#1f2937] disabled:opacity-50"
+                >
+                  {isCreatingUpcoming ? 'ĐANG TẠO...' : 'TẠO GIẢI ĐẤU'}
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🏆 TOURNAMENT LEADERBOARD VIEW MODAL */}
+      <AnimatePresence>
+        {viewingLeaderboardTournament && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-2xl rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] p-6 lg:p-8 text-left shadow-[10px_10px_0_#1f2937] my-8 max-h-[90vh] flex flex-col"
+            >
+              <button
+                onClick={() => setViewingLeaderboardTournament(null)}
+                className="absolute right-6 top-6 grid h-10 w-10 place-items-center rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[3px_3px_0_#1f2937] active:translate-y-0.5"
+              >
+                X
+              </button>
+
+              <div className="mb-4">
+                <span className="inline-block rounded-full border-2 border-slate-900 bg-[#f1c46f]/25 px-3 py-1 text-[10px] font-black uppercase text-[#c69130] shadow-[2px_2px_0_#1f2937]">
+                  Tournament Standings
+                </span>
+                <h3 className="mt-2 text-2xl font-black text-slate-900 uppercase">
+                  Bảng Xếp Hạng Giải Đấu
+                </h3>
+                <p className="text-sm font-bold text-slate-700 mt-1">
+                  {viewingLeaderboardTournament.name || 'Giải Đấu Tuần'}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Trạng thái: <span className="font-black uppercase text-[#49B6E5]">{viewingLeaderboardTournament.status}</span>
+                </p>
+              </div>
+
+              {/* Scrollable Leaderboard List */}
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar my-4">
+                {isLoadingLeaderboard ? (
+                  <div className="py-10 text-center">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Đang tải xếp hạng...</p>
+                  </div>
+                ) : leaderboardStandings.length > 0 ? (
+                  <div className="border-2 border-slate-900 rounded-2xl bg-white overflow-hidden shadow-[4px_4px_0_#1f2937]">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b-2 border-slate-950 bg-slate-50 text-left">
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center w-12">Hạng</th>
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400">Học viên</th>
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center">XP Tích Lũy</th>
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center">Phát âm hoàn thành</th>
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-right pr-4">Độ chính xác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y-2 divide-slate-100">
+                        {leaderboardStandings.map((p: any) => {
+                          let rankBg = 'bg-slate-100 border-slate-200 text-slate-500'
+                          let rankLabel = `${p.rankPosition}`
+                          if (p.rankPosition === 1) {
+                            rankBg = 'bg-yellow-100 border-yellow-300 text-yellow-700'
+                            rankLabel = '🥇'
+                          } else if (p.rankPosition === 2) {
+                            rankBg = 'bg-slate-200 border-slate-300 text-slate-700'
+                            rankLabel = '🥈'
+                          } else if (p.rankPosition === 3) {
+                            rankBg = 'bg-amber-100 border-amber-200 text-amber-800'
+                            rankLabel = '🥉'
+                          }
+
+                          return (
+                            <tr key={p.accountId || p.id} className="hover:bg-slate-50/50">
+                              <td className="p-3 text-center">
+                                <span className={`inline-flex w-7 h-7 rounded-full border items-center justify-center font-black ${rankBg}`}>
+                                  {rankLabel}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div>
+                                  <div className="font-black text-slate-900">{p.fullName}</div>
+                                  <div className="text-[10px] font-bold text-slate-400">{p.email}</div>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center font-black text-slate-800">
+                                {p.totalXp} XP ⭐
+                              </td>
+                              <td className="p-3 text-center text-slate-500">
+                                {p.challengesCompleted} câu 🎯
+                              </td>
+                              <td className="p-3 text-right pr-4">
+                                <span className="inline-block px-2.5 py-0.5 rounded-full border-[1.5px] border-emerald-200 bg-emerald-50 text-[10px] font-black text-emerald-600">
+                                  {p.averageScore ? p.averageScore.toFixed(1) : '0.0'}%
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-14 rounded-2xl border-2 border-dashed border-slate-200 text-center bg-slate-50">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Chưa có học viên nào tham gia giải đấu này</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end border-t-[2px] border-slate-900/10 pt-4 mt-auto">
+                <button
+                  onClick={() => setViewingLeaderboardTournament(null)}
+                  className="px-6 py-3 rounded-xl border-2 border-slate-900 bg-white text-xs font-black text-slate-500 shadow-[3px_3px_0_#1f2937]"
+                >
+                  ĐÓNG
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 📣 NEO-BRUTALISM NOTICE MODAL */}
+      <AnimatePresence>
+        {noticeModal && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md rounded-[2rem] border-[3px] border-slate-900 bg-[#fbf6ef] p-6 text-left shadow-[8px_8px_0_#1f2937] flex flex-col gap-4"
+            >
+              <div>
+                <span className={clsx(
+                  "inline-block rounded-full border-2 border-slate-900 px-3 py-1 text-[10px] font-black uppercase shadow-[2px_2px_0_#1f2937]",
+                  noticeModal.type === 'error' ? "bg-rose-100 text-rose-800" :
+                  noticeModal.type === 'success' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                )}>
+                  {noticeModal.type === 'error' ? 'Lỗi hệ thống' :
+                   noticeModal.type === 'success' ? 'Thành công' : 'Xác nhận thao tác'}
+                </span>
+                <h3 className="mt-3 text-lg font-black text-slate-900 uppercase leading-snug">
+                  {noticeModal.title}
+                </h3>
+              </div>
+
+              <p className="text-xs font-bold text-slate-600 leading-relaxed bg-white p-4 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                {noticeModal.message}
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {noticeModal.type === 'confirm' ? (
+                  <>
+                    <button
+                      onClick={() => setNoticeModal(null)}
+                      className="px-4 py-2 rounded-xl border-2 border-slate-900 bg-white text-xs font-black text-slate-500 shadow-[3px_3px_0_#1f2937] hover:bg-slate-50 transition-colors"
+                    >
+                      HỦY BỎ
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (noticeModal.onConfirm) noticeModal.onConfirm();
+                        setNoticeModal(null);
+                      }}
+                      className="px-5 py-2 rounded-xl border-2 border-slate-900 bg-[#10b981] text-xs font-black text-white shadow-[3px_3px_0_#1f2937] hover:bg-emerald-600 transition-colors"
+                    >
+                      XÁC NHẬN
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setNoticeModal(null)}
+                    className="px-6 py-2 rounded-xl border-2 border-slate-900 bg-[#49B6E5] text-xs font-black text-white shadow-[3px_3px_0_#1f2937] hover:bg-sky-500 transition-colors"
+                  >
+                    ĐỒNG Ý
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -48,6 +48,7 @@ import PronunciationModelPage from '../modules/learner/pages/PronunciationModelP
 import QuizPage from '../modules/learner/pages/QuizPage'
 import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardPage'
 import AchievementsPage from '../modules/learner/pages/AchievementsPage'
+import TournamentPage from '../modules/learner/pages/TournamentPage'
 
 import { ProtectedRoute, AnonymousRoute } from '../core/auth/ProtectedRoute'
 
@@ -124,7 +125,8 @@ export const AppRoutes: React.FC = () => {
           <Route path="roadmap-v2" element={<LearningRoadmapPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="friends" element={<LearnerFriendsPage />} />
-          <Route path="pronunciation" element={<PronunciationModelPage />} />
+           <Route path="pronunciation" element={<PronunciationModelPage />} />
+          <Route path="tournament" element={<TournamentPage />} />
           <Route path="leaderboard" element={<LearnerLeaderboardPage />} />
           <Route path="achievements" element={<AchievementsPage />} />
           <Route path="minigames" element={<MinigamesPage />} />

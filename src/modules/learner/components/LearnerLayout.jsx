@@ -40,7 +40,7 @@ const REGION_CHOICES = [
   {
     value: "north",
     label: "Giọng miền Bắc",
-    emoji: "🏛️",
+    emoji: "",
     icon: Landmark,
     tagline: "Thanh lịch & Chuẩn mực",
     description: "Chinh phục phát âm chuẩn — nền tảng tiếng Việt quy chuẩn.",
@@ -254,6 +254,7 @@ export default function LearnerLayout() {
     { key: "/learner/roadmap", label: "Hành trình" },
     { key: "/learner/pronunciation", label: "Phát âm" },
     { key: "/learner/custom-journey", label: "Gợi ý học" },
+    { key: "/learner/tournament", label: "Giải đấu" },
     { key: "/learner/leaderboard", label: "Xếp hạng" },
     { key: "/learner/achievements", label: "Thành tựu" },
     { key: "/learner/friends", label: "Bạn bè" },
