@@ -171,8 +171,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       },
       refreshUserProfile: async () => {
-        const res: { data?: { data?: Record<string, unknown> } } = await apiClient.get('/users/me')
-        const profile = res.data?.data
+        const result: Record<string, unknown> | { data?: Record<string, unknown> } =
+          await apiClient.get('/users/me')
+        const profile = ('data' in result ? result.data : result) ?? undefined
         if (!profile) return
         setSession((prev) => {
           if (!prev) return prev
