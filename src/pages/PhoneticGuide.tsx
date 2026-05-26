@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/Button';
-import { Volume2, BookOpen, Music } from 'lucide-react';
+import { Volume2, BookOpen, Music } from '../lib/icons';
 
 const PhoneticGuide = () => {
     return (

@@ -1,393 +1,521 @@
-import { useEffect, useState } from 'react'
-import { Card, Avatar, Typography, Button, Switch, Progress, Select, Modal, Form, Input, Divider, message } from 'antd'
-import { UserOutlined, SettingOutlined, BellOutlined, TrophyOutlined, EditOutlined, PhoneOutlined, EnvironmentOutlined, CameraOutlined } from '@ant-design/icons'
-import { Flame, Zap, Lock, Shield } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Button, Form, Input, Select, Modal, message, Tooltip, Progress } from 'antd'
+import {
+    CameraOutlined, TrophyOutlined, CheckCircleOutlined,
+} from '@ant-design/icons'
+import {
+    Flame, Star, Shield, BookOpen, ArrowRight, Landmark, Castle, Building2,
+    Mail, Phone, Calendar, Edit, MessageSquare, Target, Activity,
+    TrendingUp, TrendingDown, Minus, ChevronRight, Layout, Zap
+} from 'lucide-react'
 import { useAuth } from '../../../core/auth/AuthContext'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { apiClient } from '../../../services/apiClient'
+import { useParams, useNavigate } from 'react-router-dom'
+import { educatorService } from '../../educator/services/educatorService'
 
-const { Title, Text } = Typography
 const { Option } = Select
 
-const regionOptions = [
-    { value: 'north', label: 'Miền Bắc' },
-    { value: 'central', label: 'Miền Trung' },
-    { value: 'south', label: 'Miền Nam' },
-]
-
-const getRegionLabel = (region: string | undefined) => {
-    if (!region) return 'Mặc định'
-    const found = regionOptions.find(r => r.value === region.toLowerCase() || r.value === region)
-    return found ? found.label : region
+const REGION_MAP: Record<string, { label: string; icon: any; color: string; bg: string }> = {
+    north: { label: 'Miền Bắc', icon: Landmark, color: '#6366f1', bg: '#eef2ff' },
+    central: { label: 'Miền Trung', icon: Castle, color: '#f59e0b', bg: '#fffbeb' },
+    south: { label: 'Miền Nam', icon: Building2, color: '#10b981', bg: '#ecfdf5' },
 }
 
-const BadgeItem = ({ imageUrl, icon: Icon, title, level, locked }: any) => (
-    <div className={`flex flex-col items-center p-4 rounded-2xl border-2 ${locked ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-white border-yellow-400 shadow-sm'}`}>
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 overflow-hidden ${locked ? 'bg-gray-200 text-gray-400' : 'bg-brand-yellow text-yellow-700'}`}>
-            {imageUrl ? <img src={imageUrl} alt={title} className="w-full h-full object-cover" /> : (locked ? <Lock size={24} /> : (Icon ? <Icon size={32} /> : <TrophyOutlined style={{fontSize: 32}} />))}
-        </div>
-        <div className="font-bold text-gray-700 text-sm text-center">{title}</div>
-        <div className="text-xs text-gray-400 font-bold uppercase mt-1">{level ? `Cấp độ ${level}` : 'Đã đạt'}</div>
-    </div>
-);
+const BRAND_BLUE = '#49B6E5'
+const BRAND_ORANGE = '#f97316'
 
 export default function ProfilePage() {
+    const { studentId } = useParams()
+    const navigate = useNavigate()
     const { session, updateSessionItem } = useAuth()
+    const isEducatorView = !!studentId
+
+    // For Learner view
     const user = session?.user
+    const [badges, setBadges] = useState<any[]>([])
+    const [progress, setProgress] = useState<Record<string, number>>({})
+    const [badgesLoading, setBadgesLoading] = useState(true)
+    const [progressLoading, setProgressLoading] = useState(true)
 
-    const regionName = getRegionLabel(user?.region)
+    // For Educator view
+    const [studentData, setStudentData] = useState<any>(null)
+    const [analytics, setAnalytics] = useState<any>(null)
+    const [pronunciationData, setPronunciationData] = useState<any>(null)
+    const [loading, setLoading] = useState(isEducatorView)
 
-    const [badges, setBadges] = useState<any[]>([]);
-    const [progress, setProgress] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [form] = Form.useForm();
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [avatarErr, setAvatarErr] = useState(false)
+    const [form] = Form.useForm()
 
+    // ══════ DATA FETCHING (EDUCATOR) ══════
     useEffect(() => {
-        const loadProfileData = async () => {
+        if (!isEducatorView) return
+
+        const fetchStudentData = async () => {
+            setLoading(true)
             try {
-                setLoading(true);
-                const [badgesRes, progressRes] = await Promise.all([
-                    apiClient.get('/badges/my-badges').catch(() => ({ data: { data: [] } })),
-                    apiClient.get('/users/me/progress').catch(() => ({ data: { data: { progressByRegion: {} } } }))
-                ]);
-                
-                if (badgesRes.data?.data) {
-                    setBadges(badgesRes.data.data);
-                }
-                if (progressRes.data?.data?.progressByRegion) {
-                    setProgress(progressRes.data.data.progressByRegion);
-                }
-            } catch (error) {
-                console.error("Failed to load profile data", error);
+                const [accRes, analyticsRes, pronunRes] = await Promise.all([
+                    educatorService.getStudentAccountById(studentId!),
+                    educatorService.getAnalyticsReportByStudent(studentId!),
+                    educatorService.getPronunciationAnalytics(studentId!)
+                ])
+
+                // apiClient unwraps data already if configured, but let's be safe
+                setStudentData(accRes?.data || accRes)
+                setAnalytics(analyticsRes?.data || analyticsRes)
+                setPronunciationData(pronunRes?.data || pronunRes)
+            } catch (err) {
+                console.error('Error fetching student details:', err)
+                message.error('Không thể tải thông tin học viên')
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
-        };
-        
-        loadProfileData();
-    }, []);
+        }
+
+        fetchStudentData()
+    }, [studentId, isEducatorView])
+
+    // ══════ DATA FETCHING (LEARNER) ══════
+    useEffect(() => {
+        if (isEducatorView) return
+
+        apiClient.get('/learner/my-badges')
+            .then((res: any) => {
+                const l = res?.data?.data ?? res?.data ?? []
+                setBadges(Array.isArray(l) ? l : [])
+            })
+            .catch(() => { })
+            .finally(() => setBadgesLoading(false))
+
+        apiClient.get('/users/me/progress')
+            .then((res: any) => {
+                const body = res?.data?.data ?? res?.data ?? {}
+                const regions: any[] = body?.regions ?? []
+                const map: Record<string, number> = {}
+                regions.forEach((r: any) => {
+                    if (r?.regionName) map[r.regionName] = Math.round(r.completionPercentage ?? 0)
+                })
+                if (Object.keys(map).length) setProgress(map)
+            })
+            .catch(() => { })
+            .finally(() => setProgressLoading(false))
+    }, [isEducatorView])
 
     const handleEdit = () => {
         form.setFieldsValue({
             fullName: user?.fullName,
             phone: user?.phone || user?.phoneNumber,
-            region: user?.region,
-            avatarUrl: user?.avatar,
-        });
-        setIsModalOpen(true);
-    };
+            region: (user?.region || '').toLowerCase(),
+            avatarUrl: (user as any)?.avatar_url || user?.avatar,
+        })
+        setIsModalOpen(true)
+    }
 
     const handleSave = async () => {
         try {
-            const values = await form.validateFields();
-            setSaving(true);
-            
-            await apiClient.patch('/users/me', {
-                fullName: values.fullName,
-                phone: values.phone,
-                region: values.region,
-                avatar: values.avatarUrl
-            });
+            const v = await form.validateFields()
+            setSaving(true)
+            await apiClient.put('/users/me', { fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl })
+            updateSessionItem?.({ fullName: v.fullName, phone: v.phone, region: v.region, avatar: v.avatarUrl, avatar_url: v.avatarUrl } as any)
+            message.success('Cập nhật hồ sơ thành công!')
+            setIsModalOpen(false)
+        } catch (e: any) {
+            if (e?.errorFields) return
+            message.error(e?.response?.data?.message || 'Không thể cập nhật hồ sơ')
+        } finally { setSaving(false) }
+    }
 
-            if (updateSessionItem) {
-                updateSessionItem({
-                    fullName: values.fullName,
-                    phone: values.phone,
-                    region: values.region,
-                    avatar: values.avatarUrl
-                });
-            }
+    if (loading) {
+        return (
+            <div className="flex h-[400px] items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-[4px] border-slate-200 border-t-BRAND_BLUE rounded-full animate-spin" />
+                    <span className="font-black text-slate-400 uppercase tracking-widest text-xs">Đang tải dữ liệu...</span>
+                </div>
+            </div>
+        )
+    }
 
-            message.success('Cập nhật hồ sơ thành công!');
-            setIsModalOpen(false);
-        } catch (error: any) {
-            console.error("Failed to update profile", error);
-            message.error(error?.response?.data?.message || 'Không thể cập nhật hồ sơ');
-        } finally {
-            setSaving(false);
-        }
-    };
+    // Determine which data to use
+    const activeData = isEducatorView ? studentData : user
+    const regionKey = (activeData?.region || activeData?.level || '').toLowerCase()
+    const region = REGION_MAP[regionKey] || REGION_MAP.north
+    const streak = activeData?.currentStreakDays ?? activeData?.streak ?? 0
+    const totalStars = activeData?.totalStars ?? 0
+    const joinDate = activeData?.createdAt
+        ? new Date(activeData.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long' })
+        : 'Mới gia nhập'
+
+    // ══════ UI COMPONENTS ══════
+
+    const StatCard = ({ icon: Icon, label, value, color, bg }: any) => (
+        <div className="flex-1 bg-white border-[3px] border-slate-900 rounded-2xl p-4 shadow-[4px_4px_0_#1f2937] flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-xl border-[2px] border-slate-900 flex items-center justify-center mb-2 shadow-[2px_2px_0_#1f2937]" style={{ backgroundColor: bg }}>
+                <Icon size={20} className="text-slate-900" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 leading-none">{value}</div>
+            <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</div>
+        </div>
+    )
 
     return (
-        <div className="max-w-4xl mx-auto pb-10">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full flex flex-col md:flex-row gap-8 pb-8 border-b border-gray-200 mb-8 pt-8"
-            >
-                <div className="relative inline-block mx-auto md:mx-0">
-                    <Avatar
-                        src={user?.avatar}
-                        icon={!user?.avatar && <UserOutlined />}
-                        size={120}
-                        className="bg-brand-blue/10 text-brand-blue border-4 border-white shadow-xl"
-                    />
-                    <div className="absolute bottom-0 right-1 w-8 h-8 bg-brand-green rounded-full border-[3px] border-white flex justify-center items-center shadow-md">
-                        <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
-                    </div>
-                </div>
-                
-                <div className="flex-1 text-center md:text-left flex flex-col justify-center gap-1">
-                    <div className="flex flex-col md:flex-row justify-between items-center md:items-start">
-                        <div>
-                            <Title level={2} style={{ margin: '0 0 4px', fontWeight: 800, color: '#4b4b4b' }}>
-                                {user?.fullName || 'Người Học Ẩn Danh'}
-                            </Title>
-                            <Text className="text-gray-500 font-medium tracking-wide block">
-                                Học viên SpeakVN • {regionName}
-                            </Text>
-                            <div className="text-gray-400 text-sm mt-1">
-                                Tham gia từ {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
-                            </div>
+        <div className="max-w-7xl mx-auto space-y-8 font-nunito animate-in fade-in duration-500">
+
+            {/* Header / Profile Info */}
+            <div className="relative bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937] overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-BRAND_BLUE/5 rounded-bl-full -z-0" />
+                <div className="absolute bottom-10 left-10 w-20 h-20 border-[3px] border-BRAND_ORANGE/10 rounded-full -z-0" />
+
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                    {/* Avatar */}
+                    <div className="relative">
+                        <div className="w-32 h-32 rounded-3xl border-[4px] border-slate-900 bg-slate-50 overflow-hidden shadow-[6px_6px_0_#1f2937]">
+                            <img
+                                src={activeData?.avatarUrl || activeData?.avatar || (activeData as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeData?.fullName || 'User'}`}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as any).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeData?.fullName || 'User'}`
+                                }}
+                            />
                         </div>
-                        <Button 
-                            className="mt-4 md:mt-0 font-bold text-gray-500 hover:text-brand-blue rounded-xl border-gray-200 shadow-sm" 
-                            icon={<SettingOutlined />}
-                            onClick={handleEdit}
-                        >
-                            Cài đặt
-                        </Button>
+                        <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-2xl border-[3px] border-slate-900 flex items-center justify-center shadow-[3px_3px_0_#1f2937]">
+                            <CheckCircleOutlined className="text-white text-lg" />
+                        </div>
                     </div>
 
-                    <div className="flex justify-center md:justify-start gap-8 md:gap-12 mt-6">
-                        <div className="flex flex-col items-center md:items-start group">
-                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xl mb-1 group-hover:text-brand-orange transition-colors">
-                                <Flame className="text-brand-orange" /> {user?.streak || 0}
-                            </div>
-                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Chuỗi ngày</div>
+                    {/* Basic Info */}
+                    <div className="flex-1 text-center md:text-left">
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
+                            <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
+                                {activeData?.fullName || 'Học viên'}
+                            </h1>
+                            <span className="px-3 py-1 rounded-xl border-[2px] border-slate-900 bg-[#fef3c7] text-slate-900 font-black text-[10px] uppercase tracking-widest shadow-[3px_3px_0_#1f2937]">
+                                Level: {activeData?.level || 'Bắt đầu'}
+                            </span>
                         </div>
-                        <div className="flex flex-col items-center md:items-start group">
-                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xl mb-1 group-hover:text-brand-yellow transition-colors">
-                                <Zap className="text-brand-yellow" /> {user?.totalXp || 0}
+
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-slate-500 mb-6">
+                            <div className="flex items-center gap-1.5">
+                                <Mail size={14} className="text-slate-400" />
+                                <span className="text-sm font-bold">{activeData?.email || 'Chưa cập nhật'}</span>
                             </div>
-                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tổng XP</div>
+                            <div className="flex items-center gap-1.5">
+                                <Phone size={14} className="text-slate-400" />
+                                <span className="text-sm font-bold">{activeData?.phone || activeData?.phoneNumber || 'Chưa cập nhật'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Calendar size={14} className="text-slate-400" />
+                                <span className="text-sm font-bold">Tham gia: {joinDate}</span>
+                            </div>
                         </div>
-                        <div className="flex flex-col items-center md:items-start group">
-                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xl mb-1 group-hover:text-brand-blue transition-colors">
-                                <Shield className="text-brand-blue" /> Đồng
-                            </div>
-                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Hạng đấu</div>
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                            {isEducatorView ? (
+                                <>
+                                    <Button
+                                        className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                                        icon={<MessageSquare size={16} />}
+                                    >
+                                        Nhắn tin
+                                    </Button>
+                                    <Button
+                                        onClick={() => navigate('/educator/students')}
+                                        className="h-12 px-6 bg-white border-[3px] border-slate-900 text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                                    >
+                                        Quay lại
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button
+                                    onClick={handleEdit}
+                                    className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                                    icon={<Edit size={16} />}
+                                >
+                                    Chỉnh sửa hồ sơ
+                                </Button>
+                            )}
                         </div>
                     </div>
-                </div>
-            </motion.div>
 
-            <div className="flex flex-col lg:flex-row gap-8 mt-6 pt-2">
-                {/* Cột trái: Thông tin tài khoản & Cài đặt (Sticky Sidebar) */}
-                <div className="w-full md:w-1/3 space-y-6 md:sticky md:top-24 h-max">
-                    {/* Cài đặt hệ thống */}
-                    <Card className="rounded-3xl shadow-sm border-gray-100" bodyStyle={{ padding: '28px' }} title={<span className="font-extrabold text-lg text-gray-700">Cài đặt hệ thống</span>}>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue text-sm">
-                                        <BellOutlined />
-                                    </div>
-                                    <div className="font-bold text-gray-700 text-sm">Thông báo đẩy</div>
-                                </div>
-                                <Switch defaultChecked className="bg-brand-green" />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 text-sm">
-                                        <SettingOutlined />
-                                    </div>
-                                    <div className="font-bold text-gray-700 text-sm">Hiệu ứng âm thanh</div>
-                                </div>
-                                <Switch defaultChecked className="bg-brand-green" />
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Thông tin tài khoản */}
-                    <Card className="rounded-3xl shadow-sm border-gray-100" bodyStyle={{ padding: '28px' }} title={<span className="font-extrabold text-lg text-gray-700">Thông tin tài khoản</span>}>
-                        <div className="space-y-4">
-                            <div>
-                                <div className="text-gray-400 font-bold text-xs uppercase tracking-wider mb-1">Email</div>
-                                <div className="text-gray-900 font-semibold">{user?.email || 'Chưa cập nhật'}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Cột phải: Tiến trình & Thành tích (Scrollable) */}
-                <div className="w-full md:w-2/3 space-y-8">
-                    
-                    {/* Tiến độ ngôn ngữ */}
-                    <Card className="rounded-3xl shadow-sm border-gray-100 overflow-hidden" bodyStyle={{ padding: 0 }} title={<span className="font-extrabold text-lg text-gray-700 px-8 pt-6 pb-2 block border-b border-gray-50">Tiến độ ngôn ngữ</span>}>
-                        <div className="max-h-[350px] overflow-y-auto px-8 py-6 custom-scrollbar">
-                            <div className="space-y-6 pl-1 pr-3">
-                                {Object.keys(progress).length > 0 ? Object.entries(progress).map(([region, percent], idx) => (
-                                    <div key={idx}>
-                                        <div className="flex justify-between mb-2">
-                                            <span className={`font-bold tracking-wide ${idx % 2 === 0 ? 'text-brand-green' : (idx % 3 === 0 ? 'text-brand-orange' : 'text-brand-blue')}`}>{region.includes('Miền') || region.includes('miền') ? region : `Giọng ${region}`}</span>
-                                            <span className="font-bold text-gray-400 text-sm">{percent}%</span>
-                                        </div>
-                                        <Progress percent={percent} strokeColor={idx % 2 === 0 ? "#58cc02" : (idx % 3 === 0 ? "#ff8c00" : "#3b82f6")} trailColor="#f3f4f6" showInfo={false} />
-                                    </div>
-                                )) : (
-                                    <div className="text-gray-400 text-center py-4">{loading ? 'Đang tải...' : 'Chưa có thông tin tiến độ hệ thống.'}</div>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Thành tích */}
-                    <Card className="rounded-3xl shadow-sm border-gray-100 overflow-hidden" bodyStyle={{ padding: 0 }} title={
-                        <div className="flex justify-between items-center px-8 pt-6 pb-2 border-b border-gray-50">
-                            <span className="font-extrabold text-lg text-gray-700">Thành tích</span>
-                            <Button type="text" className="text-gray-400 uppercase tracking-widest text-xs font-bold hover:text-gray-600">Xem tất cả</Button>
-                        </div>
-                    }>
-                        <div className="max-h-[400px] overflow-y-auto px-8 py-6 custom-scrollbar">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pr-2">
-                                {badges.length > 0 ? badges.map((b, idx) => (
-                                    <BadgeItem key={b.id || idx} imageUrl={b.badge?.imageUrl || b.imageUrl} title={b.badge?.name || b.name || 'Huy hiệu'} locked={false} />
-                                )) : (
-                                    loading ? <div className="text-gray-400 col-span-3 text-center py-4">Đang tải...</div> : <div className="text-gray-400 col-span-3 text-center py-4">Bạn chưa nhận được danh hiệu nào. Hãy tiếp tục học nhé!</div>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-
+                    {/* Quick Stats Grid */}
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <StatCard icon={Flame} label="Chuỗi ngày" value={streak} color="#f97316" bg="#fff7ed" />
+                        <StatCard icon={Star} label="Tổng sao" value={totalStars} color="#eab308" bg="#fefce8" />
+                        <StatCard icon={Shield} label="Huy hiệu" value={isEducatorView ? 'N/A' : (badges.length || 0)} color="#8b5cf6" bg="#f5f3ff" />
+                    </div>
                 </div>
             </div>
 
-            {/* Edit Profile Modal */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Column: Analytics & Progress */}
+                <div className="lg:col-span-8 space-y-8">
+
+                    {/* Educator Analytics Section */}
+                    {isEducatorView ? (
+                        <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-1.5 h-8 bg-BRAND_BLUE rounded-full" />
+                                <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Phân tích năng lực</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Pronunciation Score Chart Placeholder */}
+                                <div className="p-6 rounded-3xl border-[3px] border-slate-900 bg-slate-50">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="text-sm font-black uppercase tracking-widest text-slate-400">Điểm phát âm</div>
+                                        <div className="text-2xl font-black text-BRAND_BLUE">{activeData?.pronunciationScore || 0}%</div>
+                                    </div>
+                                    <div className="h-4 bg-white border-[2.5px] border-slate-900 rounded-full overflow-hidden mb-4">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${activeData?.pronunciationScore || 0}%` }}
+                                            className="h-full bg-BRAND_BLUE"
+                                        />
+                                    </div>
+                                    <div className="text-[10px] font-bold text-slate-400 text-center">
+                                        Vượt qua 85% học viên cùng cấp độ
+                                    </div>
+                                </div>
+
+                                {/* Learning Effectiveness */}
+                                <div className="p-6 rounded-3xl border-[3px] border-slate-900 bg-white">
+                                    <div className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Hiệu quả tiếp thu</div>
+                                    <div className="space-y-4">
+                                        {(analytics?.learningEffectiveness || [
+                                            { label: 'Từ vựng', value: 75 },
+                                            { label: 'Ngữ pháp', value: 60 },
+                                            { label: 'Phản xạ', value: 85 }
+                                        ]).map((item: any, idx: number) => (
+                                            <div key={idx}>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">{item.label}</span>
+                                                    <span className="text-[10px] font-black text-slate-900">{item.value}%</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-slate-900" style={{ width: `${item.value}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Weak Phonemes / Error Patterns */}
+                            <div className="mt-8">
+                                <div className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Mẫu lỗi phát âm thường gặp</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(activeData?.weakPhonemes || ['tr', 'ng', 'kh', 'th']).map((p: string, i: number) => (
+                                        <div key={i} className="px-4 py-2 rounded-xl border-[2px] border-slate-900 bg-white shadow-[3px_3px_0_#1f2937] flex items-center gap-3">
+                                            <span className="font-black text-BRAND_ORANGE uppercase">/{p}/</span>
+                                            <div className="w-[1px] h-3 bg-slate-200" />
+                                            <span className="text-[10px] font-bold text-slate-500">Tỷ lệ lỗi: 12%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Learner Progress Section */
+                        <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-1.5 h-8 bg-BRAND_BLUE rounded-full" />
+                                <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Tiến độ ngôn ngữ</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {Object.entries(progress).length > 0 ? (
+                                    Object.entries(progress).map(([key, pct], idx) => (
+                                        <div key={idx} className="p-6 rounded-3xl border-[3px] border-slate-900 bg-slate-50 shadow-[4px_4px_0_#1f2937]">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-sm font-black uppercase tracking-widest text-slate-600">{key}</span>
+                                                <span className="text-lg font-black text-BRAND_BLUE">{pct}%</span>
+                                            </div>
+                                            <Progress
+                                                percent={pct}
+                                                strokeColor={BRAND_BLUE}
+                                                railColor="white"
+                                                strokeWidth={12}
+                                                showInfo={false}
+                                                className="mb-2"
+                                            />
+                                            <p className="text-[10px] font-bold text-slate-400 text-center mt-2 uppercase tracking-tighter">Hoàn thành các bài luyện tập để tăng tốc!</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-2 text-center py-12">
+                                        <div className="w-16 h-16 bg-slate-50 border-[3px] border-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                                            <BookOpen size={32} className="text-slate-300" />
+                                        </div>
+                                        <p className="font-black text-slate-400 uppercase tracking-widest text-sm">Chưa có tiến độ ghi nhận</p>
+                                        <Button
+                                            onClick={() => navigate('/learner/journey')}
+                                            className="mt-4 border-none text-BRAND_BLUE font-black uppercase text-[10px] tracking-widest hover:bg-BRAND_BLUE/5 px-4 h-8 rounded-lg"
+                                        >
+                                            Khám phá ngay <ArrowRight size={12} className="ml-1" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Column: Achievements & Recent Activity */}
+                <div className="lg:col-span-4 space-y-8">
+
+                    {/* Achievements */}
+                    <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-1.5 h-6 bg-yellow-400 rounded-full" />
+                            <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Thành tích</h2>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            {(isEducatorView ? [] : badges).slice(0, 9).map((b, i) => (
+                                <Tooltip title={b?.badge?.name || b?.name} key={i}>
+                                    <motion.div
+                                        whileHover={{ scale: 1.1, rotate: 5 }}
+                                        className="aspect-square rounded-2xl border-[2.5px] border-slate-900 bg-[#fefce8] flex items-center justify-center shadow-[3px_3px_0_#1f2937] cursor-help"
+                                    >
+                                        <img src={b?.badge?.iconUrl || b?.iconUrl} className="w-10 h-10 object-contain" alt="Badge" />
+                                    </motion.div>
+                                </Tooltip>
+                            ))}
+                            {(isEducatorView ? [] : badges).length === 0 && (
+                                <div className="col-span-3 py-6 text-center">
+                                    <TrophyOutlined className="text-slate-200 text-3xl mb-2" />
+                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Chưa có huy hiệu</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Recent Sessions (Educator Only) */}
+                    {isEducatorView && (
+                        <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-1.5 h-6 bg-green-400 rounded-full" />
+                                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">Phiên học gần đây</h2>
+                            </div>
+
+                            <div className="space-y-4">
+                                {(analytics?.recentSessions || [
+                                    { id: '1', score: 92, createdAt: '2026-04-28T10:00:00Z' },
+                                    { id: '2', score: 85, createdAt: '2026-04-27T15:30:00Z' },
+                                    { id: '3', score: 78, createdAt: '2026-04-26T09:15:00Z' }
+                                ]).map((s: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between p-4 rounded-2xl border-[2px] border-slate-100 hover:border-slate-900 hover:bg-slate-50 transition-all cursor-default">
+                                        <div>
+                                            <div className="text-xs font-black text-slate-900 uppercase">Giao tiếp hằng ngày</div>
+                                            <div className="text-[10px] font-bold text-slate-400 mt-0.5">
+                                                {new Date(s.createdAt).toLocaleDateString('vi-VN')}
+                                            </div>
+                                        </div>
+                                        <div className="text-sm font-black text-green-500">+{s.score}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ══════ EDIT MODAL ══════ */}
             <Modal
                 title={
-                    <div className="flex items-center gap-3 pb-2">
-                        <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center">
-                            <EditOutlined className="text-brand-blue text-lg" />
+                    <div className="flex items-center gap-3 pb-1">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center border-[2px] border-slate-900 bg-[#fff7ed] shadow-[2px_2px_0_#1f2937]">
+                            <Edit size={16} className="text-slate-900" />
                         </div>
                         <div>
-                            <div className="font-extrabold text-gray-800 text-lg">Chỉnh Sửa Hồ Sơ</div>
-                            <div className="text-xs text-gray-400 font-medium">Cập nhật thông tin cá nhân của bạn</div>
+                            <div className="font-black text-slate-900 uppercase tracking-tight">Chỉnh sửa hồ sơ</div>
+                            <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Cập nhật thông tin cá nhân</div>
                         </div>
                     </div>
                 }
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
-                footer={null}
-                centered
-                width={520}
-                className="profile-edit-modal"
-                destroyOnClose
+                footer={null} centered width={520} destroyOnClose
+                className="neobrutalist-modal"
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    className="mt-4"
-                    requiredMark={false}
-                >
-                    {/* Avatar Preview */}
-                    <div className="text-center mb-6">
-                        <div className="relative inline-block">
-                            <Avatar
-                                src={form.getFieldValue('avatarUrl') || user?.avatar}
-                                icon={<UserOutlined />}
-                                size={96}
-                                className="bg-brand-blue/10 text-brand-blue border-4 border-gray-100 shadow-lg"
-                            />
-                        </div>
+                <Form form={form} layout="vertical" className="mt-6" requiredMark={false}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Form.Item name="fullName" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Họ và tên</span>}
+                            rules={[{ required: true }, { min: 2 }, { max: 100 }]}>
+                            <Input placeholder="Nguyễn Văn A" className="h-12 rounded-xl border-[2.5px] border-slate-900 font-bold" />
+                        </Form.Item>
+                        <Form.Item name="phone" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Số điện thoại</span>}
+                            rules={[{ pattern: /^(0|\+84)[0-9]{9,10}$/, message: 'Số điện thoại không hợp lệ' }]}>
+                            <Input placeholder="0901234567" className="h-12 rounded-xl border-[2.5px] border-slate-900 font-bold" />
+                        </Form.Item>
                     </div>
 
-                    <Form.Item
-                        name="fullName"
-                        label={<span className="font-bold text-gray-600">Họ và Tên</span>}
-                        rules={[
-                            { required: true, message: 'Vui lòng nhập họ và tên' },
-                            { min: 2, message: 'Họ tên phải có ít nhất 2 ký tự' },
-                            { max: 100, message: 'Họ tên không được quá 100 ký tự' },
-                        ]}
-                    >
-                        <Input
-                            prefix={<UserOutlined className="text-gray-400" />}
-                            placeholder="Nhập họ và tên"
-                            className="h-12 rounded-xl"
-                            size="large"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="phone"
-                        label={<span className="font-bold text-gray-600">Số Điện Thoại</span>}
-                        rules={[
-                            {
-                                pattern: /^(0|\+84)[0-9]{9,10}$/,
-                                message: 'Số điện thoại không hợp lệ (VD: 0912345678)',
-                            },
-                        ]}
-                    >
-                        <Input
-                            prefix={<PhoneOutlined className="text-gray-400" />}
-                            placeholder="Nhập số điện thoại"
-                            className="h-12 rounded-xl"
-                            size="large"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="region"
-                        label={<span className="font-bold text-gray-600">Khu Vực Học</span>}
-                        rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}
-                    >
-                        <Select
-                            placeholder="Chọn khu vực"
-                            className="h-12 rounded-xl"
-                            size="large"
-                            suffixIcon={<EnvironmentOutlined className="text-gray-400" />}
-                        >
-                            {regionOptions.map(opt => (
-                                <Option key={opt.value} value={opt.value}>
-                                    {opt.label}
+                    <Form.Item name="region" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Khu vực học</span>}
+                        rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}>
+                        <Select placeholder="Chọn khu vực" className="h-12 rounded-xl border-[2.5px] border-slate-900">
+                            {Object.entries(REGION_MAP).map(([val, o]) => (
+                                <Option key={val} value={val}>
+                                    <div className="flex items-center gap-2 font-bold"><o.icon size={14} /> {o.label}</div>
                                 </Option>
                             ))}
                         </Select>
                     </Form.Item>
 
-                    <Form.Item
-                        name="avatarUrl"
-                        label={<span className="font-bold text-gray-600">Link Ảnh Đại Diện</span>}
-                        rules={[
-                            {
-                                type: 'url',
-                                message: 'Vui lòng nhập đường dẫn hợp lệ (https://...)',
-                            },
-                        ]}
-                    >
-                        <Input
-                            prefix={<CameraOutlined className="text-gray-400" />}
-                            placeholder="https://example.com/avatar.jpg"
-                            className="h-12 rounded-xl"
-                            size="large"
-                        />
+                    <Form.Item name="avatarUrl" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Link ảnh đại diện</span>}
+                        rules={[{ type: 'url', message: 'URL không hợp lệ' }]}>
+                        <Input prefix={<CameraOutlined className="text-slate-400" />} placeholder="https://…/avatar.jpg" className="h-12 rounded-xl border-[2.5px] border-slate-900 font-bold" />
                     </Form.Item>
 
-                    <Divider className="my-4 border-gray-100" />
-
-                    <div className="flex gap-3 justify-end">
-                        <Button
+                    <div className="flex gap-4 justify-end mt-8">
+                        <button
+                            type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="h-12 px-6 rounded-xl font-bold"
-                            size="large"
+                            className="h-12 px-6 rounded-xl border-[3px] border-slate-900 bg-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                         >
                             Hủy
-                        </Button>
-                        <Button
-                            type="primary"
-                            loading={saving}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={saving}
                             onClick={handleSave}
-                            className="h-12 px-8 rounded-xl font-bold bg-brand-blue border-none shadow-md shadow-blue-100 hover:bg-blue-600"
-                            size="large"
+                            className="h-12 px-8 rounded-xl border-[3px] border-slate-900 bg-BRAND_ORANGE text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all disabled:opacity-50"
                         >
-                            {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
-                        </Button>
+                            {saving ? 'Đang lưu…' : 'Lưu thay đổi'}
+                        </button>
                     </div>
                 </Form>
             </Modal>
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .neobrutalist-modal .ant-modal-content {
+                    border: 4px solid #1f2937;
+                    box-shadow: 12px 12px 0 #1f2937;
+                    border-radius: 2.5rem;
+                    padding: 2rem;
+                }
+                .neobrutalist-modal .ant-modal-header {
+                    border-bottom: none;
+                    margin-bottom: 0;
+                }
+                .ant-select-selector {
+                    border-width: 2.5px !important;
+                    border-color: #1f2937 !important;
+                    border-radius: 0.75rem !important;
+                    height: 48px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    box-shadow: none !important;
+                }
+                .ant-progress-inner {
+                    border: 2.5px solid #1f2937 !important;
+                }
+            `}} />
         </div>
     )
 }

@@ -1,11 +1,23 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
-import { useLocation } from 'react-router-dom';
-import { Card, Table, message, Tag, Form, Input, InputNumber, Select, Button, Modal, Tooltip, Space, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Descriptions, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, FileAddOutlined, SearchOutlined, FilterOutlined, ClearOutlined, SortAscendingOutlined, DownloadOutlined, UploadOutlined, FileExcelOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { message, Form, Input, InputNumber, Select, Modal, Tooltip, Badge, Row, Col, DatePicker, Popconfirm, Drawer, Divider, Spin, Empty, Pagination } from 'antd';
+import {
+    Plus, Search, MapPin,
+    Download, Upload, FileSpreadsheet,
+    Trash2, Edit3, ChevronRight,
+    Info, AlertCircle, CheckCircle2,
+    Rocket, BookOpen,
+    LayoutGrid, Zap
+} from 'lucide-react';
 import { adminService } from '../services/adminService';
+import { adminExcelService } from '../services/adminExcelService';
+import { downloadBlob } from '../../educator/services/excelService';
+import { motion } from 'framer-motion';
+import clsx from 'clsx';
 
 const AdminChapterManagementPage: React.FC = () => {
+    const navigate = useNavigate();
     const [levels, setLevels] = useState<any[]>([]);
     const [dialects, setDialects] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -14,7 +26,8 @@ const AdminChapterManagementPage: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingLevel, setEditingLevel] = useState<any | null>(null);
-    const [errorTags, setErrorTags] = useState<any[]>([]);
+    const [errorTags, setErrorTags] = useState<any[]>([]); // Tags for current dialect (dropdown)
+    const [allErrorTags, setAllErrorTags] = useState<any[]>([]); // Global list for name lookup
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [quizForm] = Form.useForm();
@@ -30,12 +43,15 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Filter & Sort State ---
     const [searchText, setSearchText] = useState('');
     const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
+    const [regionPages, setRegionPages] = useState<Record<string, number>>({ NORTH: 1, CENTRAL: 1, SOUTH: 1, OTHER: 1 });
 
     // Import/Export states
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+    const [templateDownloading, setTemplateDownloading] = useState(false);
+    const templateDownloadInFlight = useRef(false);
     const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
     const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
     const [selectedLevelForDetail, setSelectedLevelForDetail] = useState<any | null>(null);
@@ -57,10 +73,10 @@ const AdminChapterManagementPage: React.FC = () => {
         }
     };
 
-    const REGION_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-        NORTH: { label: 'Miền Bắc', color: '#1d4ed8', bg: '#dbeafe' },
-        SOUTH: { label: 'Miền Nam', color: '#15803d', bg: '#dcfce7' },
-        CENTRAL: { label: 'Miền Trung', color: '#b45309', bg: '#fef3c7' },
+    const REGION_LABEL: Record<string, { label: string; color: string; bg: string; iconBg: string }> = {
+        NORTH: { label: 'Miền Bắc', color: '#49B6E5', bg: '#f0f9ff', iconBg: 'bg-blue-100' },
+        SOUTH: { label: 'Miền Nam', color: '#10b981', bg: '#f0fdf4', iconBg: 'bg-emerald-100' },
+        CENTRAL: { label: 'Miền Trung', color: '#f59e0b', bg: '#fffbeb', iconBg: 'bg-amber-100' },
     };
 
     const fetchDialects = async () => {
@@ -96,10 +112,38 @@ const AdminChapterManagementPage: React.FC = () => {
         }
     };
 
+    const sanitizeText = (val: string) => {
+        if (typeof val !== 'string') return '';
+        return val.replace(/[^a-zA-ZÀ-ỹà-ỹ0-9\s.,!?_'-]/g, '');
+    };
+
     useEffect(() => {
         fetchLevels();
         fetchDialects();
+        fetchAllErrorTags();
     }, []);
+
+    const fetchAllErrorTags = async () => {
+        try {
+            const response: any = await adminService.getErrorTags();
+            if (response && (response.status === 'success' || response.data)) {
+                setAllErrorTags(response.data || response);
+            } else {
+                setAllErrorTags(Array.isArray(response) ? response : []);
+            }
+        } catch (error) {
+            console.error('Error fetching all error tags:', error);
+        }
+    };
+
+    const getErrorTagName = (tagRef: any) => {
+        if (!tagRef) return null;
+        if (typeof tagRef === 'object' && tagRef.name) return tagRef.name;
+        
+        // Lookup by tagCode or id
+        const tag = allErrorTags.find(t => t.tagCode === tagRef || t.id === tagRef);
+        return tag ? tag.name : tagRef;
+    };
 
     const handleCreateLevel = async (values: any) => {
         setCreating(true);
@@ -109,8 +153,9 @@ const AdminChapterManagementPage: React.FC = () => {
                 levelOrder: values.levelOrder || 1,
                 name: values.name,
                 description: values.description || '',
-                minStarsRequired: values.minStarsRequired,
+                minStarsRequired: values.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || null,
+                difficultyLevel: values.difficultyLevel || null,
                 aiThreshold: values.aiThreshold || 75,
             });
             message.success('Tạo chương học thành công');
@@ -134,7 +179,8 @@ const AdminChapterManagementPage: React.FC = () => {
             levelOrder: record.levelOrder,
             minStarsRequired: record.minStarsRequired,
             aiThreshold: record.aiThreshold,
-            errorTagId: record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
+            difficultyLevel: record.difficulty_level || record.difficultyLevel,
+            errorTagId: record.error_tag || record.errorTagId || (record.errorTag && typeof record.errorTag === 'object' ? record.errorTag.id : record.errorTag),
             description: record.description || '',
             comment: record.rejectionReason || '',
         });
@@ -150,8 +196,9 @@ const AdminChapterManagementPage: React.FC = () => {
                 description: values.description,
                 dialectId: values.dialectId ?? editingLevel.dialectId ?? editingLevel.dialect?.id,
                 levelOrder: values.levelOrder || editingLevel.levelOrder || 1,
-                minStarsRequired: values.minStarsRequired,
+                minStarsRequired: values.minStarsRequired ?? editingLevel.minStarsRequired ?? 3,
                 errorTagId: values.errorTagId || (editingLevel.errorTag && typeof editingLevel.errorTag === 'object' ? editingLevel.errorTag.id : editingLevel.errorTag) || null,
+                difficultyLevel: values.difficultyLevel || editingLevel.difficultyLevel || null,
                 aiThreshold: values.aiThreshold || editingLevel.aiThreshold || 75,
                 status: editingLevel.status || 'APPROVED',
                 rejectionReason: editingLevel.rejectionReason ?? null,
@@ -171,19 +218,15 @@ const AdminChapterManagementPage: React.FC = () => {
         }
     };
 
-    const handleOpenCreateQuiz = (record: any) => {
-        setSelectedLevelForQuiz(record);
-        quizForm.setFieldsValue({
-            title: record?.name ? `Quiz ${record.name}` : '',
-            passingScore: 80,
-            timeLimitMinutes: 15,
-            pointsPerQuestion: 10,
-            readingCount: 0,
-            listeningCount: 0,
-            speakingCount: 0,
-            writingCount: 0,
-        });
-        setIsCreateQuizModalOpen(true);
+    const handleDeleteLevel = async (levelId: string) => {
+        try {
+            await adminService.deleteLevel(levelId);
+            message.success('Xóa chương học thành công');
+            fetchLevels();
+        } catch (error: any) {
+            console.error('Error deleting level:', error);
+            message.error(error?.response?.data?.message || 'Không thể xóa chương học');
+        }
     };
 
     const handleCreateQuiz = async (values: any) => {
@@ -205,7 +248,6 @@ const AdminChapterManagementPage: React.FC = () => {
                 if (count <= 0) return [];
                 return Array.from({ length: count }, (_, index) => ({
                     skillType,
-                    difficulty: values.difficulty,
                     questionOrder: index + 1,
                     points: values.pointsPerQuestion,
                     challengeId: undefined,
@@ -227,8 +269,8 @@ const AdminChapterManagementPage: React.FC = () => {
                 title: values.title,
                 description: values.description,
                 instructions: values.instructions,
-                passingScore: values.passingScore,
-                timeLimitMinutes: values.timeLimitMinutes,
+                passingScore: 80,
+                timeLimitSeconds: questionCount * (values.secondsPerQuestion || 90),
                 questionCount,
                 comment: values.comment,
                 questions,
@@ -310,7 +352,11 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Helper to resolve region key from dialectId ---
     const getRegionKey = (dialectId: string) => {
         const dialect = dialects.find((item) => item.id === dialectId);
-        return (dialect?.name || '').toUpperCase();
+        const name = (dialect?.name || '').toUpperCase();
+        if (name.includes('BẮC')) return 'NORTH';
+        if (name.includes('TRUNG')) return 'CENTRAL';
+        if (name.includes('NAM')) return 'SOUTH';
+        return name || 'NORTH';
     };
 
     const fetchedAssignments = (location.state as any)?.fetchedAssignments as any[] | undefined;
@@ -321,7 +367,6 @@ const AdminChapterManagementPage: React.FC = () => {
         if (!fetchedAssignments || fetchedAssignments.length === 0) return levels;
 
         const mappedFromAssignments = fetchedAssignments.map((item: any) => {
-            // Parse metadataJson if available
             let meta: any = {};
             if (item.metadataJson) {
                 try {
@@ -337,6 +382,9 @@ const AdminChapterManagementPage: React.FC = () => {
                 levelOrder: meta.level_order ?? item.levelOrder ?? null,
                 minStarsRequired: meta.min_stars_required ?? item.minStarsRequired ?? null,
                 aiThreshold: meta.ai_threshold ?? item.aiThreshold ?? null,
+                difficultyLevel: meta.difficulty_level ?? item.difficultyLevel ?? null,
+                errorTag: meta.error_tag ?? item.errorTag ?? null,
+                errorTagId: meta.error_tag_id ?? item.errorTagId ?? (item.errorTag && typeof item.errorTag === 'object' ? item.errorTag.id : item.errorTag) ?? null,
                 status: meta.status || item.status || 'APPROVED',
                 createdAt: item.createdAt,
                 dueDate: item.dueDate,
@@ -351,23 +399,18 @@ const AdminChapterManagementPage: React.FC = () => {
     // --- Filtered & Sorted data ---
     const filteredLevels = useMemo(() => {
         let data = [...mergedLevels];
-
-        // Search by name
         if (searchText.trim()) {
             const lower = searchText.trim().toLowerCase();
             data = data.filter((item) =>
                 (item.name || '').toLowerCase().includes(lower)
             );
         }
-
-        // Filter by region
         if (filterRegion) {
             data = data.filter((item) => {
                 const regionKey = getRegionKey(item.dialectId);
                 return regionKey === filterRegion;
             });
         }
-
         return data;
     }, [mergedLevels, searchText, filterRegion, dialects]);
 
@@ -379,874 +422,592 @@ const AdminChapterManagementPage: React.FC = () => {
     };
 
     // ============ IMPORT / EXPORT ============
-    const handleDownloadTemplate = () => {
-        const headers = 'Tên chương học,Mô tả,Số sao tối thiểu,Ngưỡng AI';
-        const sampleRows = [
-            'Nhóm chữ D (Đọc nhẹ),"Luyện phát âm chữ D đúng chuẩn",3,75',
-            'Nhóm chữ GI,"Phân biệt GI với D",3,75',
-            'Nhóm chữ R (Uốn lưỡi),"Luyện R uốn lưỡi",3,75',
-        ];
-        const csvContent = [headers, ...sampleRows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'template_chuong_hoc.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success('Đã tải template mẫu');
+    const downloadLevelsTemplateExcel = async () => {
+        if (templateDownloadInFlight.current) return;
+        templateDownloadInFlight.current = true;
+        setTemplateDownloading(true);
+        try {
+            message.loading({ content: 'Đang tải template...', key: 'tpl' });
+            const blob = await adminExcelService.downloadLevelsTemplate();
+            downloadBlob(blob, 'template_levels.xlsx');
+            message.success({ content: 'Đã tải template mẫu', key: 'tpl' });
+        } catch (err) {
+            console.error('[Levels Excel] Template error:', err);
+            message.error({ content: 'Không thể tải template', key: 'tpl' });
+        } finally {
+            templateDownloadInFlight.current = false;
+            setTemplateDownloading(false);
+        }
     };
 
-    const handleImportCSV = async () => {
-        if (!importFile) { message.warning('Vui lòng chọn file CSV'); return; }
+    const handleImportExcel = async () => {
+        if (!importFile) { message.warning('Vui lòng chọn file Excel'); return; }
         setImporting(true);
-        const result = { success: 0, failed: 0, errors: [] as string[] };
+        setImportResult(null);
         try {
-            const text = await importFile.text();
-            const lines = text.split(/\r?\n/).filter(l => l.trim());
-            if (lines.length < 2) { message.error('File rỗng hoặc không có dữ liệu'); setImporting(false); return; }
-
-            // Find SOUTH dialect
-            const southDialect = dialects.find((d: any) => (d.name || '').toUpperCase() === 'SOUTH');
-            if (!southDialect) { message.error('Không tìm thấy phương ngữ Miền Nam (SOUTH) trong hệ thống'); setImporting(false); return; }
-
-            // Parse CSV rows (skip header)
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                // Simple CSV parse supporting quoted strings
-                const cols: string[] = [];
-                let current = '';
-                let inQuotes = false;
-                for (const ch of line) {
-                    if (ch === '"') { inQuotes = !inQuotes; }
-                    else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
-                    else { current += ch; }
-                }
-                cols.push(current.trim());
-
-                const name = cols[0];
-                const description = cols[1] || '';
-                const minStars = parseInt(cols[2]) || 3;
-                const aiThreshold = parseInt(cols[3]) || 75;
-
-                if (!name) { result.errors.push(`Dòng ${i + 1}: Thiếu tên chương`); result.failed++; continue; }
-
-                // Check duplicate
-                const exists = levels.some((l: any) => (l.name || '').toLowerCase() === name.toLowerCase());
-                if (exists) { result.errors.push(`Dòng ${i + 1}: '${name}' đã tồn tại`); result.failed++; continue; }
-
-                try {
-                    await adminService.createLevel({
-                        dialectId: southDialect.id,
-                        levelOrder: levels.length + result.success + 1,
-                        name,
-                        description,
-                        minStarsRequired: minStars,
-                        aiThreshold,
-                    });
-                    result.success++;
-                } catch (err: any) {
-                    result.errors.push(`Dòng ${i + 1}: ${err?.message || 'Lỗi tạo chương'}`);
-                    result.failed++;
-                }
-            }
-            setImportResult(result);
-            if (result.success > 0) {
-                message.success(`Import thành công ${result.success} chương học`);
+            const res: any = await adminExcelService.importLevels(importFile);
+            const data = res?.data || res;
+            setImportResult({
+                success: data?.successCount ?? 0,
+                failed: data?.errorCount ?? 0,
+                errors: data?.messages || [],
+            });
+            if ((data?.successCount ?? 0) > 0) {
+                message.success(`Import thành công ${data.successCount} chương học`);
                 fetchLevels();
+            } else {
+                message.info('Import hoàn tất');
             }
-            if (result.failed > 0) {
-                message.warning(`${result.failed} dòng bị lỗi`);
-            }
-        } catch (err) {
-            message.error('Lỗi đọc file CSV');
+            if ((data?.errorCount ?? 0) > 0) message.warning(`${data.errorCount} dòng bị lỗi`);
+        } catch (err: any) {
+            console.error('[Levels Excel] Import error:', err);
+            message.error(err?.response?.data?.message || err?.message || 'Lỗi khi import');
         } finally {
             setImporting(false);
         }
     };
 
-    const handleExportCSV = () => {
-        const headers = 'Tên chương học,Mô tả,Vùng,Trạng thái,Số sao tối thiểu';
-        const rows = filteredLevels.map((item: any) => {
-            const regionKey = getRegionKey(item.dialectId);
-            const regionLabel = REGION_LABEL[regionKey]?.label || regionKey;
-            const desc = (item.description || item.metadataJson?.description || '').replace(/"/g, '""');
-            return `"${item.name || ''}","${desc}","${regionLabel}","${item.status || 'DRAFT'}",${item.minStarsRequired || 3}`;
-        });
-        const csvContent = [headers, ...rows].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `chuong_hoc_export_${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success(`Đã export ${rows.length} chương học`);
+    const handleExportExcel = async () => {
+        try {
+            message.loading({ content: 'Đang export...', key: 'exp' });
+            const blob = await adminExcelService.exportLevels();
+            downloadBlob(blob, `levels_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            message.success({ content: 'Export thành công!', key: 'exp' });
+        } catch (err) {
+            console.error('[Levels Excel] Export error:', err);
+            message.error({ content: 'Không thể export', key: 'exp' });
+        }
     };
 
-    const columns = [
-        {
-            title: 'STT',
-            key: 'stt',
-            width: 70,
-            align: 'center' as const,
-            render: (_: any, __: any, index: number) => index + 1,
-        },
-        {
-            title: 'Vùng',
-            dataIndex: 'dialectId',
-            key: 'dialectId',
-            width: 140,
-            sorter: (a: any, b: any) => {
-                const aRegion = getRegionKey(a.dialectId);
-                const bRegion = getRegionKey(b.dialectId);
-                return aRegion.localeCompare(bRegion);
-            },
-            render: (dialectId: string) => {
-                const regionKey = getRegionKey(dialectId);
-                const info = REGION_LABEL[regionKey];
-                if (!info) return <Tag>Không có</Tag>;
-                return (
-                    <span
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: info.color,
-                            background: info.bg,
-                            border: `1px solid ${info.color}30`,
-                        }}
-                    >
-                        {info.label}
-                    </span>
-                );
-            },
-        },
-        {
-            title: 'Tên chương học',
-            dataIndex: 'name',
-            key: 'name',
-            sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'vi'),
-            render: (text: string) => <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>,
-        },
-        {
-            title: 'Hành Động',
-            key: 'actions',
-            width: 180,
-            fixed: 'right' as const,
-            align: 'center' as const,
-            render: (_: any, record: any) => (
-                <Space size="small">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            icon={<EyeOutlined />}
-                            onClick={() => {
-                                setSelectedLevelForDetail(record);
-                                setIsDetailDrawerOpen(true);
-                            }}
-                            style={{ color: '#6366f1', borderColor: '#e0e7ff', background: '#f5f7ff' }}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Tạo quiz">
-                        <Button icon={<FileAddOutlined />} onClick={() => handleOpenCreateQuiz(record)} />
-                    </Tooltip>
-                    <Tooltip title="Chỉnh sửa">
-                        <Button icon={<EditOutlined />} onClick={() => handleEditLevel(record)} />
-                    </Tooltip>
-                    {fromClassroomId && record._fromAssignment && (
-                        <Popconfirm
-                            title="Gỡ chương học khỏi lớp?"
-                            description="Chương học sẽ bị gỡ khỏi lớp này. Bạn chắc chắn chứ?"
-                            onConfirm={() => handleRemoveAssignment(record._assignmentId)}
-                            okText="Gỡ"
-                            cancelText="Hủy"
-                            okButtonProps={{ danger: true, style: { background: '#ff4d4f', color: '#fff', borderColor: '#ff4d4f' } }}
-                        >
-                            <Tooltip title="Gỡ khỏi lớp">
-                                <Button icon={<DeleteOutlined />} danger />
-                            </Tooltip>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
-        }
-    ];
-
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800" style={{ margin: 0 }}>Quản lý chương học</h2>
-                    {fromClassroomName ? (
-                        <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-                            Đang xem chương đã gán cho lớp: <strong>{fromClassroomName}</strong>
+        <div className="min-h-screen bg-[#fbf6ef] font-nunito pb-10">
+            {/* Header / Actions Row */}
+            <div className="flex flex-col gap-6 p-8">
+                <div className="flex justify-between items-center flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý Chương học</h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Nội dung học tập theo vùng miền</p>
                         </div>
-                    ) : null}
-                </div>
-                <Space>
-                    <Button
-                        icon={<DownloadOutlined />}
-                        onClick={handleDownloadTemplate}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Template
-                    </Button>
-                    <Button
-                        icon={<UploadOutlined />}
-                        onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true); }}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Import
-                    </Button>
-                    <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={handleExportCSV}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: '1.5px solid #000',
-                            color: '#000',
-                            background: '#fff',
-                            fontWeight: 600,
-                        }}
-                    >
-                        Export
-                    </Button>
-                    {fromClassroomId ? (
-                        <Button
-                            type="primary"
-                            onClick={handleOpenAssignModal}
-                            loading={assigning}
-                            style={{
-                                height: '40px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
-                            }}
-                        >
-                            Gán chương vào lớp
-                        </Button>
-                    ) : null}
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsCreateModalOpen(true)}
-                        style={{
-                            height: '40px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)',
-                            border: 'none',
-                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                        }}
-                    >
-                        Thêm chương học
-                    </Button>
-                </Space>
-            </div>
+                    </div>
 
-            {/* ====== FILTER & SORT TOOLBAR ====== */}
-            <Card
-                style={{
-                    borderRadius: 14,
-                    marginBottom: 0,
-                    boxShadow: '0 2px 12px rgba(37,99,235,0.06)',
-                    border: '1px solid #e2e8f0',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #fff 100%)',
-                }}
-                styles={{ body: { padding: '16px 20px' } }}
-            >
-                <Row gutter={[16, 12]} align="middle">
-                    <Col xs={24} sm={24} md={8} lg={7}>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="Tìm kiếm theo tên chương học..."
+                    <div className="flex items-center gap-3">
+                        <motion.button
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={downloadLevelsTemplateExcel}
+                            className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all"
+                        >
+                            <Download size={16} strokeWidth={3} />
+                            Template
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setImportResult(null); setImportFile(null); setIsImportModalOpen(true); }}
+                            className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all"
+                        >
+                            <Upload size={16} strokeWidth={3} />
+                            Import
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleExportExcel}
+                            className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-50 transition-all"
+                        >
+                            <FileSpreadsheet size={16} strokeWidth={3} />
+                            Export
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-xs font-black uppercase tracking-widest text-white transition-all flex-shrink-0"
+                        >
+                            <Plus size={18} strokeWidth={4} />
+                            Thêm chương
+                        </motion.button>
+                    </div>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex items-center gap-4 bg-white p-4 rounded-[2rem] border-[3px] border-slate-900 shadow-[4px_4px_0_#1f293705] flex-wrap">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={3} />
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm chương học..."
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
-                            style={{ borderRadius: 8, height: 38 }}
+                            className="w-full h-12 pl-12 pr-4 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] focus:outline-none text-sm font-black uppercase tracking-wider transition-all placeholder:text-slate-300"
                         />
-                    </Col>
-                    <Col xs={12} sm={12} md={5} lg={5}>
-                        <Select
-                            placeholder="Lọc theo vùng"
-                            value={filterRegion}
-                            onChange={(val) => setFilterRegion(val)}
-                            allowClear
-                            style={{ width: '100%', borderRadius: 8 }}
-                            suffixIcon={<FilterOutlined style={{ color: '#64748b' }} />}
-                        >
-                            <Select.Option value="NORTH">
-                                <span style={{ color: '#1d4ed8', fontWeight: 600 }}>🔵 Miền Bắc</span>
-                            </Select.Option>
-                            <Select.Option value="CENTRAL">
-                                <span style={{ color: '#b45309', fontWeight: 600 }}>🟠 Miền Trung</span>
-                            </Select.Option>
-                            <Select.Option value="SOUTH">
-                                <span style={{ color: '#15803d', fontWeight: 600 }}>🟢 Miền Nam</span>
-                            </Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={24} md={6} lg={7}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            {activeFilterCount > 0 && (
-                                <Button
-                                    icon={<ClearOutlined />}
-                                    onClick={handleResetFilters}
-                                    style={{ borderRadius: 8, height: 38, borderColor: '#e2e8f0' }}
-                                >
-                                    Xóa bộ lọc
-                                </Button>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {activeFilterCount > 0 ? (
-                                    <Badge
-                                        count={activeFilterCount}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            fontSize: 11,
-                                            height: 20,
-                                            lineHeight: '20px',
-                                            borderRadius: 10,
-                                            padding: '0 7px',
-                                        }}
-                                    />
-                                ) : null}
-                                <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                                    {filteredLevels.length}/{mergedLevels.length} chương
-                                </span>
-                            </div>
-                            <Tooltip title="Nhấn vào tiêu đề cột để sắp xếp">
-                                <SortAscendingOutlined style={{ color: '#94a3b8', fontSize: 16, cursor: 'help' }} />
-                            </Tooltip>
-                        </div>
-                    </Col>
-                </Row>
-            </Card>
+                    </div>
 
+                    <div className="relative w-48">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} strokeWidth={3} />
+                        <select
+                            value={filterRegion || ''}
+                            onChange={(e) => setFilterRegion(e.target.value || undefined)}
+                            className="w-full h-12 pl-12 pr-4 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-sm font-black uppercase tracking-widest transition-all cursor-pointer"
+                        >
+                            <option value="">Tất cả vùng</option>
+                            <option value="NORTH">Miền Bắc</option>
+                            <option value="CENTRAL">Miền Trung</option>
+                            <option value="SOUTH">Miền Nam</option>
+                        </select>
+                    </div>
+
+                    {activeFilterCount > 0 && (
+                        <motion.button
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            onClick={handleResetFilters}
+                            className="h-12 px-6 bg-slate-100 border-[2px] border-slate-300 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200 transition-colors"
+                        >
+                            Xóa lọc
+                        </motion.button>
+                    )}
+
+                    <div className="ml-auto flex items-center gap-3 px-4">
+                        <LayoutGrid size={18} className="text-[#49B6E5]" strokeWidth={3} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">
+                            {filteredLevels.length} / {mergedLevels.length} chương
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="px-8 space-y-12">
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-32">
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                            className="w-16 h-16 rounded-[1.5rem] bg-white border-[3px] border-slate-900 shadow-[6px_6px_0_#49B6E5] flex items-center justify-center mb-6"
+                        >
+                            <Zap className="text-[#49B6E5]" size={32} fill="#49B6E5" fillOpacity={0.2} />
+                        </motion.div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Đang đồng bộ dữ liệu...</p>
+                    </div>
+                ) : filteredLevels.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-32 bg-white/40 border-[3px] border-dashed border-slate-900/10 rounded-[3rem]">
+                        <Empty description={<span className="font-black uppercase tracking-widest text-slate-400">Không tìm thấy bản ghi nào</span>} />
+                    </div>
+                ) : (
+                    (() => {
+                        const grouped: Record<string, any[]> = {};
+                        filteredLevels.forEach(level => {
+                            const key = getRegionKey(level.dialectId) || 'OTHER';
+                            if (!grouped[key]) grouped[key] = [];
+                            grouped[key].push(level);
+                        });
+                        const regionOrder = ['NORTH', 'CENTRAL', 'SOUTH'];
+                        const existingRegions = regionOrder.filter(r => grouped[r]);
+
+                        return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                                {existingRegions.map(regionKey => {
+                                    const info = REGION_LABEL[regionKey] || { label: 'Khác', color: '#475569', bg: '#f8fafc', iconBg: 'bg-slate-100' };
+                                    const allCards = grouped[regionKey] || [];
+                                    const pageSize = 3;
+                                    const page = regionPages[regionKey] || 1;
+                                    const pagedCards = allCards.slice((page - 1) * pageSize, page * pageSize);
+
+                                    return (
+                                        <div key={regionKey} className="flex flex-col gap-6">
+                                            <div className="flex items-center justify-between px-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={clsx("w-2 h-6 rounded-full", idxToBgColor(regionKey))} />
+                                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{info.label}</h3>
+                                                </div>
+                                                <Badge count={allCards.length} showZero style={{ backgroundColor: '#1f2937', color: '#fff', fontWeight: '900' }} />
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                {pagedCards.map((level, idx) => {
+                                                    const globalIdx = (page - 1) * pageSize + idx + 1;
+                                                    return (
+                                                        <motion.div
+                                                            key={level.id}
+                                                            whileHover={{ y: -5, scale: 1.02 }}
+                                                            className="group relative"
+                                                        >
+                                                            <div
+                                                                onClick={() => navigate(`/admin/quizzes/${level.id}`)}
+                                                                className={clsx(
+                                                                    "relative flex flex-col p-6 bg-white border-[3px] border-slate-900 rounded-[2rem] shadow-[6px_6px_0_#1f2937] transition-all cursor-pointer overflow-hidden z-10",
+                                                                    "hover:shadow-[10px_10px_0_#1f2937]"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-start justify-between gap-4 mb-4">
+                                                                    <div className={clsx("w-12 h-12 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center text-slate-900 font-black transition-transform group-hover:rotate-6", info.iconBg)}>
+                                                                        {globalIdx}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Tooltip title="Chỉnh sửa">
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); handleEditLevel(level); }}
+                                                                                className="p-2 hover:bg-slate-50 rounded-xl transition-colors border-[2px] border-transparent hover:border-slate-900/10 text-slate-400 hover:text-slate-900"
+                                                                            >
+                                                                                <Edit3 size={18} strokeWidth={3} />
+                                                                            </button>
+                                                                        </Tooltip>
+                                                                        <Popconfirm
+                                                                            title="Xác nhận xóa?"
+                                                                            onConfirm={(e) => { e?.stopPropagation(); handleDeleteLevel(level.id); }}
+                                                                            onCancel={(e) => e?.stopPropagation()}
+                                                                            okText="Xóa"
+                                                                            cancelText="Hủy"
+                                                                        >
+                                                                            <button
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                className="p-2 hover:bg-red-50 rounded-xl transition-colors border-[2px] border-transparent hover:border-red-500/10 text-slate-400 hover:text-red-500"
+                                                                            >
+                                                                                <Trash2 size={18} strokeWidth={3} />
+                                                                            </button>
+                                                                        </Popconfirm>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="mb-2">
+                                                                    <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight group-hover:text-[#49B6E5] transition-colors line-clamp-1">{level.name}</h4>
+                                                                    <p className="text-xs font-bold text-slate-400 mt-1 line-clamp-2 h-8 leading-relaxed">
+                                                                        {level.description || 'Nội dung học tập tiếng Việt đặc thù theo từng địa phương.'}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="mt-4 pt-4 border-t-[2px] border-slate-900/5 flex flex-col gap-3">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        {(level.difficulty_level || level.difficultyLevel) && (
+                                                                            <div className="px-2 py-1 rounded-md bg-[#49B6E5]/10 text-[#49B6E5] text-[9px] font-black uppercase tracking-widest border border-[#49B6E5]/20">
+                                                                                {(level.difficulty_level || level.difficultyLevel) === 'BEGINNER' ? 'Cơ bản' : (level.difficulty_level || level.difficultyLevel) === 'INTERMEDIATE' ? 'Trung bình' : 'Nâng cao'}
+                                                                            </div>
+                                                                        )}
+                                                                        {(level.error_tag || level.errorTag) && (
+                                                                            <div className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 text-[9px] font-black uppercase tracking-widest border border-purple-500/20">
+                                                                                {getErrorTagName(level.error_tag || level.errorTag)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-1 text-[#49B6E5] font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            Chi tiết <ChevronRight size={14} strokeWidth={4} />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Decorative pattern */}
+                                                                <div className="absolute -bottom-4 -right-4 opacity-5 pointer-events-none group-hover:rotate-12 transition-transform">
+                                                                    <Zap size={100} strokeWidth={3} />
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {allCards.length > pageSize && (
+                                                <div className="flex justify-center mt-4">
+                                                    <Pagination
+                                                        size="small"
+                                                        current={page}
+                                                        total={allCards.length}
+                                                        pageSize={pageSize}
+                                                        onChange={(newPage) => setRegionPages(prev => ({ ...prev, [regionKey]: newPage }))}
+                                                        hideOnSinglePage
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()
+                )}
+            </div>
+
+            {/* Modals */}
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo chương học mới</span>}
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900">Tạo chương học mới</div>}
                 open={isCreateModalOpen}
-                onCancel={() => {
-                    form.resetFields();
-                    setIsCreateModalOpen(false);
-                }}
+                onCancel={() => { form.resetFields(); setIsCreateModalOpen(false); }}
                 onOk={() => form.submit()}
                 confirmLoading={creating}
-                okText="Xác Nhận"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
                 centered
+                width={500}
+                className="doodle-modal"
             >
                 <Form
                     form={form}
                     layout="vertical"
                     onFinish={handleCreateLevel}
                     initialValues={{ aiThreshold: 75, minStarsRequired: 3 }}
+                    className="mt-6"
                 >
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Tên chương học"
-                            name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
-                        >
-                            <Input placeholder="Ví dụ: Level 1" />
-                        </Form.Item>
-                        <Form.Item
-                            label="Phương ngữ"
-                            name="dialectId"
-                            rules={[{ required: true, message: 'Vui lòng chọn phương ngữ' }]}
-                        >
-                            <Select
-                                placeholder="Chọn phương ngữ"
-                                options={dialects.map((dialect: any) => {
-                                    const regionKey = (dialect.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: dialect.id,
-                                        label: dialect.description || info?.label || dialect.name || dialect.code || dialect.id,
-                                    };
-                                })}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            label="Thứ tự level"
-                            name="levelOrder"
-                            hidden
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
-                            <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Error Tag ID" name="errorTagId" hidden>
-                            <Input placeholder="ID error tag (nếu có)" />
-                        </Form.Item>
-                    </div>
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>Gán chương học vào lớp</span>}
-                open={isAssignModalOpen}
-                onCancel={() => {
-                    assignmentForm.resetFields();
-                    setIsAssignModalOpen(false);
-                }}
-                onOk={() => assignmentForm.submit()}
-                confirmLoading={assigning}
-                okText="Gán chương"
-                okButtonProps={{
-                    style: { background: '#059669', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy"
-                centered
-            >
-                <Form
-                    form={assignmentForm}
-                    layout="vertical"
-                    onFinish={handleCreateAssignment}
-                >
-                    <Form.Item name="classroomId" hidden>
-                        <Input />
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Tên chương</span>}
+                        name="name"
+                        rules={[{ required: true, message: 'Vui lòng nhập tên chương' }]}
+                    >
+                        <Input className="doodle-input" placeholder="Ví dụ: Level 1" />
                     </Form.Item>
 
                     <Form.Item
-                        label="Chọn chương học hiện có"
-                        name="learningUnitId"
-                        rules={[{ required: true, message: 'Vui lòng chọn chương học' }]}
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Phương ngữ</span>}
+                        name="dialectId"
+                        rules={[{ required: true, message: 'Vui lòng chọn phương ngữ' }]}
                     >
                         <Select
-                            loading={assigning}
-                            placeholder="Chọn chương học để gán"
-                            showSearch
-                            optionFilterProp="label"
-                            options={assignLevels.map((item: any) => ({
-                                value: item.id,
-                                label: item.name || item.levelName || item.id,
-                            }))}
+                            placeholder="Chọn vùng miền"
+                            className="doodle-select"
+                            onChange={(val) => fetchErrorTags(val)}
+                            options={dialects.map((dialect: any) => {
+                                const regionKey = (dialect.name || '').toUpperCase();
+                                const info = REGION_LABEL[regionKey];
+                                return {
+                                    value: dialect.id,
+                                    label: dialect.description || info?.label || dialect.name,
+                                };
+                            })}
                         />
                     </Form.Item>
 
                     <Form.Item
-                        label="Hạn nộp"
-                        name="dueDate"
-                        rules={[{ required: true, message: 'Vui lòng chọn hạn nộp' }]}
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Độ khó</span>}
+                        name="difficultyLevel"
+                        rules={[{ required: true, message: 'Vui lòng chọn độ khó' }]}
                     >
-                        <DatePicker
-                            style={{ width: '100%' }}
-                            showTime
-                            format="DD/MM/YYYY HH:mm"
-                        />
-                    </Form.Item>
-
-                    <Form.Item label="Trạng thái" name="status" initialValue="OPEN">
                         <Select
+                            placeholder="Chọn độ khó"
+                            className="doodle-select"
                             options={[
-                                { value: 'OPEN', label: 'OPEN' },
-                                { value: 'CLOSED', label: 'CLOSED' },
+                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
+                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
                             ]}
                         />
                     </Form.Item>
 
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả giao bài/chương học" />
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        name="errorTagId"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
+                    >
+                        <Select
+                            placeholder="Chọn loại lỗi"
+                            className="doodle-select"
+                            options={errorTags.map((tag: any) => ({
+                                value: tag.id,
+                                label: tag.name
+                            }))}
+                            disabled={errorTags.length === 0}
+                        />
+                    </Form.Item>
+
+                    <Form.Item label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Mô tả</span>} name="description">
+                        <Input.TextArea rows={3} className="doodle-input" placeholder="Thông tin về chương học..." />
                     </Form.Item>
                 </Form>
             </Modal>
 
-            <Drawer
-                title={<span style={{ fontWeight: 700, fontSize: 18 }}>Chi tiết chương học</span>}
-                placement="right"
-                width={500}
-                onClose={() => {
-                    setIsDetailDrawerOpen(false);
-                    setSelectedLevelForDetail(null);
-                }}
-                open={isDetailDrawerOpen}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {selectedLevelForDetail && (
-                    <div className="space-y-6">
-                        <Descriptions column={1} bordered size="small" labelStyle={{ fontWeight: 600, width: 140, background: '#f8fafc' }}>
-                            <Descriptions.Item label="Tên chương học">
-                                <span style={{ fontWeight: 700, color: '#1e293b' }}>{selectedLevelForDetail.name}</span>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Vùng miền">
-                                {(() => {
-                                    const regionKey = getRegionKey(selectedLevelForDetail.dialectId);
-                                    const info = REGION_LABEL[regionKey];
-                                    return info ? <Tag color={info.color} style={{ background: info.bg, border: `1px solid ${info.color}30` }}>{info.label}</Tag> : <Tag>Không có</Tag>;
-                                })()}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Trạng thái">
-                                {(() => {
-                                    const val = selectedLevelForDetail.status;
-                                    if (val === 'APPROVED' || val === 'PUBLISHED') return <Tag color="success">Đã công bố</Tag>;
-                                    if (val === 'PENDING') return <Tag color="warning">Đang chờ</Tag>;
-                                    if (val === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-                                    return <Tag color="default">Bản nháp</Tag>;
-                                })()}
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
-                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Chỉ số & Yêu cầu
-                            </span>
-                        </Divider>
-
-                        <Descriptions column={1} size="small" labelStyle={{ color: '#64748b' }}>
-                            <Descriptions.Item label="Số sao tối thiểu">
-                                <span style={{ color: '#faad14', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                                    {'⭐'.repeat(selectedLevelForDetail.minStarsRequired ?? 0)}
-                                </span>
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider orientation={"left" as any} style={{ margin: '24px 0 16px' }}>
-                            <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Mô tả nội dung
-                            </span>
-                        </Divider>
-
-                        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', color: '#475569', lineHeight: 1.6 }}>
-                            {selectedLevelForDetail.description || selectedLevelForDetail.metadataJson?.description || 'Không có mô tả cho chương học này.'}
-                        </div>
-
-                        <Divider style={{ margin: '24px 0' }} />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: 12 }}>
-                            <span>Ngày tạo: {selectedLevelForDetail.createdAt ? dayjs(selectedLevelForDetail.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
-                            <span>Cập nhật: {selectedLevelForDetail.updatedAt ? dayjs(selectedLevelForDetail.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
-                        </div>
-                    </div>
-                )}
-            </Drawer>
-
-            <Card
-                variant="borderless"
-                style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
-            >
-                <Table
-                    dataSource={filteredLevels}
-                    columns={columns}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} chương học` }}
-                    locale={{ emptyText: activeFilterCount > 0 ? 'Không tìm thấy chương học phù hợp' : 'Chưa có dữ liệu chương học' }}
-                    showSorterTooltip={{ title: 'Nhấn để sắp xếp' }}
-                />
-            </Card>
-
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Cập nhật chương học</span>}
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900">Cập nhật chương học</div>}
                 open={isEditModalOpen}
-                onCancel={() => {
-                    editForm.resetFields();
-                    setIsEditModalOpen(false);
-                    setEditingLevel(null);
-                }}
+                onCancel={() => { editForm.resetFields(); setIsEditModalOpen(false); }}
                 onOk={() => editForm.submit()}
                 confirmLoading={updating}
-                okText="Cập nhật"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
                 centered
+                width={500}
+                className="doodle-modal"
             >
                 <Form
                     form={editForm}
                     layout="vertical"
                     onFinish={handleUpdateLevel}
+                    className="mt-6"
                 >
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                        <Form.Item
-                            label="Tên chương học"
-                            name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên chương học' }]}
-                        >
-                            <Input placeholder="Ví dụ: Level 1" />
-                        </Form.Item>
-                        <Form.Item
-                            label="Phương ngữ"
-                            name="dialectId"
-                            rules={[{ required: true, message: 'Vui lòng chọn phương ngữ' }]}
-                        >
-                            <Select
-                                placeholder="Chọn phương ngữ"
-                                options={dialects.map((dialect: any) => {
-                                    const regionKey = (dialect.name || '').toUpperCase();
-                                    const info = REGION_LABEL[regionKey];
-                                    return {
-                                        value: dialect.id,
-                                        label: dialect.description || info?.label || dialect.name || dialect.code || dialect.id,
-                                    };
-                                })}
-                                onChange={(value) => fetchErrorTags(value)}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            label="Thứ tự level"
-                            name="levelOrder"
-                            hidden
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            label="Số sao tối thiểu"
-                            name="minStarsRequired"
-                            rules={[{ required: true, message: 'Vui lòng nhập số sao tối thiểu' }]}
-                        >
-                            <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Ngưỡng AI" name="aiThreshold" hidden>
-                            <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item label="Error Tag" name="errorTagId" hidden>
-                            <Select
-                                placeholder="Chọn loại lỗi"
-                                allowClear
-                                options={errorTags.map((tag: any) => ({
-                                    value: tag.id,
-                                    label: tag.name || tag.tagCode || tag.id,
-                                }))}
-                            />
-                        </Form.Item>
-                    </div>
-                    <Form.Item label="Mô tả" name="description">
-                        <Input.TextArea rows={3} placeholder="Mô tả chương học" />
-                    </Form.Item>
                     <Form.Item
-                        label="Ghi chú thay đổi"
-                        name="comment"
-                        rules={[{ required: true, message: 'Vui lòng nhập ghi chú thay đổi' }]}
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Tên chương</span>}
+                        name="name"
+                        rules={[{ required: true, message: 'Nhập tên chương' }]}
                     >
-                        <Input.TextArea rows={2} placeholder="Lý do hoặc nội dung cập nhật" />
+                        <Input className="doodle-input" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Phương ngữ</span>}
+                        name="dialectId"
+                    >
+                        <Select
+                            placeholder="Chọn vùng miền"
+                            className="doodle-select"
+                            onChange={(val) => { fetchErrorTags(val); editForm.setFieldValue('errorTagId', undefined); }}
+                            options={dialects.map((dialect: any) => {
+                                const regionKey = (dialect.name || '').toUpperCase();
+                                const info = REGION_LABEL[regionKey];
+                                return {
+                                    value: dialect.id,
+                                    label: dialect.description || info?.label || dialect.name,
+                                };
+                            })}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Độ khó</span>}
+                        name="difficultyLevel"
+                        rules={[{ required: true, message: 'Vui lòng chọn độ khó' }]}
+                    >
+                        <Select
+                            placeholder="Chọn độ khó"
+                            className="doodle-select"
+                            options={[
+                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
+                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        name="errorTagId"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
+                    >
+                        <Select
+                            placeholder="Chọn loại lỗi"
+                            className="doodle-select"
+                            options={errorTags.map((tag: any) => ({
+                                value: tag.id,
+                                label: tag.name
+                            }))}
+                            disabled={errorTags.length === 0}
+                        />
+                    </Form.Item>
+
+                    <Form.Item label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Mô tả</span>} name="description">
+                        <Input.TextArea rows={3} className="doodle-input" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Ghi chú</span>}
+                        name="comment"
+                        rules={[{ required: true, message: 'Vui lòng cung cấp lý do thay đổi' }]}
+                    >
+                        <Input.TextArea rows={2} className="doodle-input" placeholder="Nội dung cập nhật..." />
                     </Form.Item>
                 </Form>
             </Modal>
 
             <Modal
-                title={<span style={{ fontWeight: 600 }}>Tạo quiz cho level {selectedLevelForQuiz?.name}</span>}
-                open={isCreateQuizModalOpen}
-                onCancel={() => {
-                    quizForm.resetFields();
-                    setIsCreateQuizModalOpen(false);
-                    setSelectedLevelForQuiz(null);
-                }}
-                onOk={() => quizForm.submit()}
-                confirmLoading={creatingQuiz}
-                okText="Tạo quiz"
-                okButtonProps={{
-                    style: { background: '#2563eb', border: 'none', borderRadius: '6px' }
-                }}
-                cancelText="Hủy bỏ"
-                centered
-                width={850}
-            >
-                <Form
-                    form={quizForm}
-                    layout="vertical"
-                    onFinish={handleCreateQuiz}
-                >
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Tên quiz"
-                                name="title"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quiz' }]}
-                            >
-                                <Input placeholder="Ví dụ: Thử thách Level 1" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                label="Độ khó"
-                                name="difficulty"
-                            >
-                                <Select
-                                    placeholder="Chọn độ khó"
-                                    options={[
-                                        { value: 'BEGINNER', label: 'Beginner' },
-                                        { value: 'INTERMEDIATE', label: 'Intermediate' },
-                                        { value: 'ADVANCED', label: 'Advanced' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item label="Mô tả" name="description">
-                                <Input.TextArea rows={2} placeholder="Mô tả bài quiz" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Hướng dẫn" name="instructions">
-                                <Input.TextArea rows={2} placeholder="Hướng dẫn làm bài" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <div style={{
-                        background: '#f8fafc',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        marginBottom: '20px'
-                    }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                            <Form.Item
-                                label="Điểm đạt (%)"
-                                name="passingScore"
-                                rules={[{ required: true, message: 'Vui lòng nhập điểm đạt' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Giới hạn (phút)"
-                                name="timeLimitMinutes"
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Điểm mỗi câu"
-                                name="pointsPerQuestion"
-                                rules={[{ required: true, message: 'Vui lòng nhập điểm mỗi câu' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                            <Form.Item
-                                label="Số câu Reading"
-                                name="readingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Listening"
-                                name="listeningCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Speaking"
-                                name="speakingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                            <Form.Item
-                                label="Số câu Writing"
-                                name="writingCount"
-                                rules={[{ required: true, message: 'Bắt buộc' }]}
-                                style={{ marginBottom: 0 }}
-                            >
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </div>
+                title={
+                    <div className="flex items-center gap-3 text-slate-900 font-black uppercase tracking-tight">
+                        <Rocket size={24} className="text-[#49B6E5]" strokeWidth={3} />
+                        Import chương học
                     </div>
-
-                    <Form.Item label="Ghi chú" name="comment" style={{ marginBottom: 0 }}>
-                        <Input.TextArea rows={1} placeholder="Ghi chú khi tạo quiz" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* ===== IMPORT MODAL ===== */}
-            <Modal
-                title={<span style={{ fontWeight: 600 }}>📥 Import chương học từ CSV</span>}
+                }
                 open={isImportModalOpen}
                 onCancel={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
                 footer={null}
                 centered
-                width={520}
+                width={540}
+                className="doodle-modal"
             >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                    <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 10, border: '1px dashed #91caff' }}>
-                        <p style={{ margin: 0, fontSize: 13, color: '#1677ff' }}>
-                            📌 File CSV cần có các cột: <strong>Tên chương học, Mô tả, Số sao tối thiểu, Ngưỡng AI</strong>
-                        </p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
-                            Import sẽ tự động gán vào phương ngữ <strong>Miền Nam (SOUTH)</strong>. Chương trùng tên sẽ bị bỏ qua.
-                        </p>
+                <div className="flex flex-col gap-6 py-4">
+                    <div className="bg-[#f0f9ff] p-4 rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f293705]">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-black uppercase tracking-widest text-[#49B6E5]">1. Mẫu Excel</span>
+                            <button onClick={downloadLevelsTemplateExcel} className="text-[10px] font-black uppercase underline text-slate-400 hover:text-[#49B6E5]">Tải mẫu</button>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-500">Vui lòng sử dụng đúng định dạng tệp mẫu để tránh lỗi hệ thống.</p>
                     </div>
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                        style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '8px 12px' }}
-                    />
-                    <Button
-                        type="primary"
-                        icon={<UploadOutlined />}
-                        loading={importing}
-                        onClick={handleImportCSV}
-                        disabled={!importFile}
-                        block
-                        size="large"
-                        style={{ borderRadius: 10, background: '#52c41a', border: 'none', fontWeight: 600 }}
-                    >
-                        {importing ? 'Đang import...' : 'Bắt đầu Import'}
-                    </Button>
+
+                    <div className="space-y-3">
+                        <span className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1">2. Chọn tệp</span>
+                        <div className={clsx(
+                            "relative border-[3px] border-dashed rounded-[2rem] p-10 text-center transition-all group",
+                            importFile ? "bg-emerald-50 border-emerald-400" : "bg-slate-50 border-slate-900/10 hover:border-[#49B6E5]"
+                        )}>
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="flex flex-col items-center gap-3">
+                                <FileSpreadsheet size={40} className={importFile ? 'text-emerald-500' : 'text-slate-300'} strokeWidth={3} />
+                                <span className={clsx("text-xs font-black uppercase tracking-widest", importFile ? "text-emerald-700" : "text-slate-400")}>
+                                    {importFile ? importFile.name : 'Nhấn để chọn tệp'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     {importResult && (
-                        <div style={{ padding: 12, background: importResult.failed > 0 ? '#fff7e6' : '#f6ffed', borderRadius: 8, border: `1px solid ${importResult.failed > 0 ? '#ffd591' : '#b7eb8f'}` }}>
-                            <p style={{ margin: 0, fontWeight: 600 }}>
-                                ✅ Thành công: {importResult.success} | ❌ Lỗi: {importResult.failed}
-                            </p>
-                            {importResult.errors.length > 0 && (
-                                <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 12, color: '#d4380d' }}>
-                                    {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
-                                </ul>
-                            )}
+                        <div className={clsx("p-4 rounded-2xl border-[2px]", importResult.failed > 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200")}>
+                            <div className="text-[11px] font-black uppercase tracking-widest mb-1">Kết quả import</div>
+                            <div className="text-[10px] font-bold text-slate-600">Thành công: {importResult.success} | Lỗi: {importResult.failed}</div>
                         </div>
                     )}
+
+                    <motion.button
+                        whileHover={importFile ? { scale: 1.02 } : {}}
+                        whileTap={importFile ? { scale: 0.98 } : {}}
+                        onClick={handleImportExcel}
+                        disabled={!importFile || importing}
+                        className={clsx(
+                            "w-full h-14 rounded-2xl border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] text-sm font-black uppercase tracking-widest transition-all",
+                            importFile ? "bg-[#49B6E5] text-white" : "bg-slate-100 text-slate-300 border-none shadow-none"
+                        )}
+                    >
+                        {importing ? "Đang xử lý..." : "Xác nhận & Tải lên"}
+                    </motion.button>
                 </div>
             </Modal>
-        </div>
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .doodle-input {
+                    height: 50px; border: 2.5px solid #1f293720 !important; border-radius: 1rem !important;
+                    font-family: 'Nunito', sans-serif !important; font-weight: 700 !important;
+                }
+                .doodle-input:focus { border-color: #49B6E5 !important; }
+                
+                .doodle-select .ant-select-selector {
+                    height: 50px !important; border: 2.5px solid #1f293720 !important; border-radius: 1rem !important;
+                    display: flex !important; align-items: center !important;
+                }
+                
+                .doodle-modal .ant-modal-content {
+                    border: 4px solid #1f2937 !important; border-radius: 2.5rem !important;
+                    box-shadow: 12px 12px 0 #1f2937 !important; background: #fbf6ef !important;
+                }
+                .doodle-modal .ant-modal-header { background: transparent !important; border: none !important; }
+                .doodle-modal .ant-btn-primary { 
+                    background: #49B6E5 !important; height: 48px !important; border: 3px solid #1f2937 !important;
+                    border-radius: 1rem !important; font-weight: 900 !important; text-transform: uppercase !important;
+                    box-shadow: 4px 4px 0 #1f2937 !important;
+                }
+                .doodle-modal .ant-btn-default { height: 48px !important; border-radius: 1rem !important; font-weight: 900 !important; text-transform: uppercase !important; border: 2px solid #1f293720 !important; }
+            `}} />
+        </div >
     );
 };
+
+const idxToBgColor = (region: string) => {
+    switch (region) {
+        case 'NORTH': return 'bg-[#49B6E5]';
+        case 'CENTRAL': return 'bg-orange-400';
+        case 'SOUTH': return 'bg-emerald-500';
+        default: return 'bg-slate-400';
+    }
+}
 
 export default AdminChapterManagementPage;

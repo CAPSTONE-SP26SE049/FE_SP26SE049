@@ -1,10 +1,24 @@
 import apiClient from '../../../services/apiClient';
+import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+function getAuthHeaders() {
+    const token = window.sessionStorage.getItem('ACCESS_TOKEN') || window.localStorage.getItem('ACCESS_TOKEN');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // --- Interfaces for Request/Response ---
 
 export interface CreateEducatorRequest {
     email: string;
     fullName: string;
+}
+
+export interface CreateUserRequest {
+    email: string;
+    fullName: string;
+    role: 'USER' | 'EDUCATOR';
 }
 
 export interface DialectRequest {
@@ -58,6 +72,10 @@ export const adminService = {
         return apiClient.post('/admin/educators', data);
     },
 
+    createUser: async (data: CreateUserRequest) => {
+        return apiClient.post('/admin/users', data);
+    },
+
     // --- Content Management (Dialects) ---
     getDialects: async () => {
         return apiClient.get('/dialects');
@@ -84,12 +102,16 @@ export const adminService = {
             name: data.name,
             type: 'LEVEL',
             parent_id: data.dialectId,
+            difficulty_level: data.difficultyLevel,
+            error_tag: data.errorTagId,
             metadata_json: {
                 status: data.status || 'APPROVED',
                 audio_url: data.audioUrl ?? null,
                 level_order: data.levelOrder,
                 ai_threshold: data.aiThreshold ?? null,
                 error_tag_id: data.errorTagId ?? null,
+                error_tag: data.errorTagId ?? null,
+                difficulty_level: data.difficultyLevel ?? null,
                 rejection_reason: data.rejectionReason ?? null,
                 min_stars_required: data.minStarsRequired,
                 description: data.description || '',
@@ -102,12 +124,16 @@ export const adminService = {
             name: data.name,
             type: 'LEVEL',
             parent_id: data.dialectId,
+            difficulty_level: data.difficultyLevel,
+            error_tag: data.errorTagId,
             metadata_json: {
                 status: data.status || 'APPROVED',
                 audio_url: data.audioUrl ?? null,
                 level_order: data.levelOrder,
                 ai_threshold: data.aiThreshold ?? null,
                 error_tag_id: data.errorTagId ?? null,
+                error_tag: data.errorTagId ?? null,
+                difficulty_level: data.difficultyLevel ?? null,
                 rejection_reason: data.rejectionReason ?? null,
                 min_stars_required: data.minStarsRequired,
                 description: data.description || '',
@@ -167,6 +193,12 @@ export const adminService = {
     updateQuiz: async (id: string, data: any) => {
         return apiClient.put(`/admin/content/quizzes/${id}`, data);
     },
+    deleteQuiz: async (id: string) => {
+        return apiClient.delete(`/admin/content/quizzes/${id}`);
+    },
+    reorderQuizzes: async (quizIds: string[]) => {
+        return apiClient.put('/admin/content/quizzes/reorder', quizIds);
+    },
     getQuizChallenges: async (quizId: string) => {
         return apiClient.get(`/admin/content/quizzes/${quizId}/challenges`);
     },
@@ -193,6 +225,12 @@ export const adminService = {
     getAnalyticsErrorHeatmaps: async () => {
         return apiClient.get('/admin/analytics/errors/heatmaps');
     },
+    getAnalyticsUsersProgress: async () => {
+        return apiClient.get('/admin/analytics/users-progress');
+    },
+    getAiMonitorLogs: async (limit = 50) => {
+        return apiClient.get(`/admin/ai-monitor/logs?limit=${limit}`);
+    },
 
     // --- System Monitoring ---
     getSystemHealth: async () => {
@@ -209,8 +247,7 @@ export const adminService = {
     getErrorTags: async (dialectId?: string) => {
         const params: any = {};
         if (dialectId) params.dialectId = dialectId;
-        // The backend exposes this via EducatorController for curriculum context
-        return apiClient.get('/educator/curriculum/error-tags', { params });
+        return apiClient.get('/public/error-tags', { params });
     },
     createErrorTag: async (tagCode: string, name: string, description: string, regions: string[]) => {
         // Backend ErrorTagController uses @RequestParam, but we can try sending as JSON if the backend is updated, 
@@ -239,5 +276,85 @@ export const adminService = {
     },
     getContentHistory: async (id: string) => {
         return apiClient.get(`/admin/content/${id}/history`);
+    },
+
+    // --- Badge/Reward Management ---
+    getBadgesForAdmin: async () => {
+        return apiClient.get('/admin/rewards');
+    },
+    createReward: async (data: any) => {
+        return apiClient.post('/admin/rewards', data);
+    },
+    updateReward: async (id: string, data: any) => {
+        return apiClient.put(`/admin/rewards/${id}`, data);
+    },
+    deleteReward: async (id: string) => {
+        return apiClient.delete(`/admin/rewards/${id}`);
+    },
+    attachRewardToQuiz: async (quizId: string, rewardId: string) => {
+        return apiClient.post(`/admin/rewards/${rewardId}/attach/${quizId}`);
+    },
+
+    // --- Reward Excel ---
+    downloadRewardTemplate: async () => {
+        const res = await axios.get(`${BASE_URL}/admin/excel/rewards/template`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    exportRewardsToExcel: async () => {
+        const res = await axios.get(`${BASE_URL}/admin/excel/rewards/export`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    importRewardsFromExcel: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return axios.post(`${BASE_URL}/admin/excel/rewards/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...getAuthHeaders()
+            }
+        });
+    },
+
+    // --- Challenge Bank Excel ---
+    downloadChallengeBankTemplate: async () => {
+        const res = await axios.get(`${BASE_URL}/admin/excel/challenge-bank/template`, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    exportChallengeBankToExcel: async (skillType?: string) => {
+        const url = skillType 
+            ? `${BASE_URL}/admin/excel/challenge-bank/export?skillType=${skillType}`
+            : `${BASE_URL}/admin/excel/challenge-bank/export`;
+        const res = await axios.get(url, {
+            responseType: 'blob',
+            headers: getAuthHeaders(),
+        });
+        return res.data;
+    },
+    importChallengeBankFromExcel: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return axios.post(`${BASE_URL}/admin/excel/challenge-bank/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...getAuthHeaders()
+            }
+        });
+    },
+
+    // --- Weekly Tournament Finalization ---
+    finalizeWeeklyTournament: async (tournamentId?: string) => {
+        const url = tournamentId 
+            ? `/admin/tournaments/finalize?tournamentId=${tournamentId}` 
+            : '/admin/tournaments/finalize';
+        return apiClient.post(url);
     }
 };
