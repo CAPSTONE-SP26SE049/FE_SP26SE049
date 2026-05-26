@@ -390,7 +390,7 @@ const QuizPage: React.FC = () => {
         setResult({ score: pct, passed: pct >= quiz.passingScore, starsEarned: pct >= 100 ? 3 : (pct >= 90 ? 2 : (pct >= 80 ? 1 : 0)) })
         setFinished(true)
       } else {
-        const res = await apiClient.post(`/users/quizzes/${quiz.id}/complete`, payload)
+        const res = await apiClient.post(`/quizzes/${quiz.id}/complete`, payload)
         const data = res?.data || res
         setResult(data)
         setFinished(true)

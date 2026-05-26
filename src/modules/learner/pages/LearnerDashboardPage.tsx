@@ -118,19 +118,8 @@ export default function Dashboard() {
         setEvaluationFeedback(null);
         
         try {
-            let audioFile = recorder.audioBlob;
-            let filename = 'recording.webm';
-            
-            try {
-                audioFile = await convertWebmToWav(recorder.audioBlob);
-                filename = 'recording.wav';
-            } catch (err) {
-                console.warn('WAV conversion failed, using fallback webm', err);
-            }
-            
             const formData = new FormData();
-            formData.append('challengeId', challengeId);
-            formData.append('audio', new File([audioFile], filename, { type: audioFile.type }));
+            formData.append('audio', new File([recorder.audioBlob], 'recording.webm', { type: 'audio/webm' }));
             
             const region = (user?.region || 'SOUTH').toUpperCase();
             let dialectStr = 'NAM';
@@ -139,7 +128,7 @@ export default function Dashboard() {
             
             formData.append('dialect', dialectStr);
             
-            const res = await apiClient.post('/daily-challenges/submit', formData, {
+            const res = await apiClient.post(`/daily-challenges/${challengeId}/submit`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             
