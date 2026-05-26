@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { Form, Input, Button, message, Checkbox } from 'antd'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../core/auth/AuthContext'
+import { getLearnerOnboardingPath } from '../../utils/onboarding'
 import { Lock, Mail, Home, Sparkles, User, ArrowRight } from 'lucide-react'
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import { motion } from 'framer-motion'
@@ -29,7 +30,7 @@ function LoginForm() {
     } else if (session.user.role === 'EDUCATOR') {
       navigate('/educator', { replace: true })
     } else {
-      navigate('/learner/roadmap', { replace: true })
+      navigate(getLearnerOnboardingPath(session.user), { replace: true })
     }
   }, [navigate])
 

@@ -46,6 +46,8 @@ import ProfilePage from '../modules/learner/pages/ProfilePage'
 import LearnerFriendsPage from '../modules/learner/pages/LearnerFriendsPage'
 import PronunciationModelPage from '../modules/learner/pages/PronunciationModelPage'
 import QuizPage from '../modules/learner/pages/QuizPage'
+import Entrytest from '../pages/Entrytest'
+import SelectRegionPage from '../pages/SelectRegionPage'
 import LearnerLeaderboardPage from '../modules/learner/pages/LearnerLeaderboardPage'
 import AchievementsPage from '../modules/learner/pages/AchievementsPage'
 
@@ -115,6 +117,8 @@ export const AppRoutes: React.FC = () => {
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/entry-test" element={<EntryTestPage />} />
         <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
+        <Route path="/learner/select-region" element={<SelectRegionPage />} />
+        <Route path="/learner/entrytest" element={<Entrytest />} />
         <Route path="/learner" element={<LearnerLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<LearnerDashboardPage />} />

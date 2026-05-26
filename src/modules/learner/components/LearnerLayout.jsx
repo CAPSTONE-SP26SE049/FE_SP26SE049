@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Dropdown, Avatar, message } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -7,6 +7,11 @@ import {
   FireFilled,
 } from "@ant-design/icons";
 import { useAuth } from "../../../core/auth/AuthContext";
+import {
+  getLearnerOnboardingPath,
+  isLearnerOnboardingPath,
+} from "../../../utils/onboarding";
+import clsx from "clsx";
 import { apiClient } from "../../../services/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -205,6 +210,20 @@ export default function LearnerLayout() {
 
   const user = session?.user || { fullName: "Learner", avatar: null };
 
+  useEffect(() => {
+    if (!session || session.user.role !== "USER") return;
+
+    const target = getLearnerOnboardingPath(session.user);
+
+    if (session.user.hasDoneEntryTest && isLearnerOnboardingPath(location.pathname)) {
+      navigate("/learner/roadmap", { replace: true });
+      return;
+    }
+
+    if (!session.user.hasDoneEntryTest && !isLearnerOnboardingPath(location.pathname)) {
+      navigate(target, { replace: true });
+    }
+  }, [session, location.pathname, navigate]);
   // Generate initials for avatar fallback to keep style clean without icons
   const initials = React.useMemo(() => {
     if (!user?.fullName) return "HV";
