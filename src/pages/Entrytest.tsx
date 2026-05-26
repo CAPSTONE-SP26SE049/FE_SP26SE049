@@ -68,10 +68,29 @@ const Entrytest = () => {
     loadPlacementSet()
   }, [loadPlacementSet])
 
-  const stopStream = () => {
+  const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
-  }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      const mediaRecorder = mediaRecorderRef.current
+
+      if (mediaRecorder) {
+        mediaRecorder.ondataavailable = null
+        mediaRecorder.onstop = null
+
+        if (mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop()
+        }
+      }
+
+      stopStream()
+      mediaRecorderRef.current = null
+      audioChunksRef.current = []
+    }
+  }, [stopStream])
 
   const startRecording = async () => {
     if (!currentQuestion) return
