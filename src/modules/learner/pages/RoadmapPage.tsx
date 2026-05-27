@@ -41,7 +41,7 @@ const DIALECT_META: Record<string, {
     bgColor: 'from-indigo-600 to-blue-700',
     tagline: 'Thanh lịch & Chuẩn mực',
     keyword: '',
-    emoji: '🏛️',
+    emoji: '',
     icon: Landmark,
     description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
     photo: mienbacImg,

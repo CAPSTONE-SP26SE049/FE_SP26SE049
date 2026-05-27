@@ -35,6 +35,7 @@ import {
   Landmark,
   Castle,
   Building2,
+  ChevronDown,
 } from "lucide-react";
 import mienbacImg from "../../../assets/mienbac.png";
 import mientrungImg from "../../../assets/mientrung.png";
@@ -45,7 +46,7 @@ const REGION_CHOICES = [
   {
     value: "north",
     label: "Giọng miền Bắc",
-    emoji: "🏛️",
+    emoji: "",
     icon: Landmark,
     tagline: "Thanh lịch & Chuẩn mực",
     description: "Chinh phục phát âm chuẩn — nền tảng tiếng Việt quy chuẩn.",
@@ -207,6 +208,7 @@ export default function LearnerLayout() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [avatarErr, setAvatarErr] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const user = session?.user || { fullName: "Learner", avatar: null };
 
@@ -267,16 +269,26 @@ export default function LearnerLayout() {
     ],
   };
 
-  const menuItems = React.useMemo(() => [
+  const coreItems = React.useMemo(() => [
     { key: "/learner/dashboard", label: "Trang chủ" },
-    { key: "/learner/mailbox", label: "Hộp thư" },
     { key: "/learner/roadmap", label: "Hành trình" },
     { key: "/learner/pronunciation", label: "Phát âm" },
+    { key: "/learner/minigames", label: "Trò chơi" },
+  ], []);
+
+  const dropdownItems = React.useMemo(() => [
+    { key: "/learner/mailbox", label: "Hộp thư" },
     { key: "/learner/custom-journey", label: "Gợi ý học" },
+    { key: "/learner/tournament", label: "Giải đấu" },
     { key: "/learner/leaderboard", label: "Xếp hạng" },
     { key: "/learner/achievements", label: "Thành tựu" },
     { key: "/learner/friends", label: "Bạn bè" },
   ], []);
+
+  const menuItems = React.useMemo(() => [
+    ...coreItems,
+    ...dropdownItems
+  ], [coreItems, dropdownItems]);
 
   const selectedKey = React.useMemo(() => {
     return menuItems.find(
@@ -285,6 +297,10 @@ export default function LearnerLayout() {
         location.pathname.startsWith(`${item.key}/`)
     )?.key || "/learner/dashboard";
   }, [location.pathname, menuItems]);
+
+  const isDropdownActive = React.useMemo(() => {
+    return dropdownItems.some((item) => selectedKey === item.key);
+  }, [selectedKey, dropdownItems]);
 
   return (
     <div className="flex flex-col h-screen bg-[#fbfaff] font-nunito overflow-hidden">
@@ -311,7 +327,7 @@ export default function LearnerLayout() {
 
             {/* Navigation - Arranged in a beautiful unified brutalist capsule without icons */}
             <nav className="hidden xl:flex items-center gap-1 rounded-full border-[2px] border-slate-900 bg-white p-1 shadow-[2px_2px_0_#1f2937]">
-              {menuItems.map((item) => {
+              {coreItems.map((item) => {
                 const isActive = selectedKey === item.key;
                 return (
                   <Link
@@ -329,6 +345,48 @@ export default function LearnerLayout() {
                   </Link>
                 );
               })}
+
+              <Dropdown
+                dropdownRender={() => (
+                  <div className="border-2 border-slate-900 rounded-2xl bg-white p-2 shadow-[4px_4px_0_#1f2937] flex flex-col gap-1 min-w-[160px] z-[200]">
+                    {dropdownItems.map((item) => {
+                      const isSubActive = selectedKey === item.key;
+                      return (
+                        <Link
+                          key={item.key}
+                          to={item.key}
+                          onClick={() => setDropdownOpen(false)}
+                          className={`flex items-center px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight transition-all duration-100 ${
+                            isSubActive
+                              ? "bg-[#7dd3fc] text-slate-900 border border-slate-900 shadow-[1px_1px_0_#1f2937]"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                          }`}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                placement="bottomRight"
+                trigger={["hover", "click"]}
+                open={dropdownOpen}
+                onOpenChange={setDropdownOpen}
+              >
+                <button
+                  type="button"
+                  className={`relative flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full transition-all duration-100 ${
+                    isDropdownActive
+                      ? "bg-[#7dd3fc] text-slate-900 border border-slate-900 font-black shadow-[1px_1px_0_#1f2937]"
+                      : "text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="text-[12px] tracking-tight whitespace-nowrap">
+                    Xem thêm
+                  </span>
+                  <ChevronDown size={14} className={`transform transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </Dropdown>
             </nav>
 
             {/* Right Actions */}

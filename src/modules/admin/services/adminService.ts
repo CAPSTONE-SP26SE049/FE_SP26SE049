@@ -356,5 +356,36 @@ export const adminService = {
             ? `/admin/tournaments/finalize?tournamentId=${tournamentId}` 
             : '/admin/tournaments/finalize';
         return apiClient.post(url);
+    },
+
+    updateActiveTournament: async (name?: string, description?: string, endsAt?: string) => {
+        const params: string[] = [];
+        if (name) params.push(`name=${encodeURIComponent(name)}`);
+        if (description) params.push(`description=${encodeURIComponent(description)}`);
+        if (endsAt) params.push(`endsAt=${encodeURIComponent(endsAt)}`);
+        const query = params.length > 0 ? `?${params.join('&')}` : '';
+        return apiClient.put(`/admin/tournaments/active${query}`);
+    },
+
+    assignActiveTournamentQuestions: async (questionIds: string[]) => {
+        return apiClient.post('/admin/tournaments/active/questions', questionIds);
+    },
+
+    getAllTournaments: async () => {
+        return apiClient.get('/admin/tournaments');
+    },
+
+    createUpcomingTournament: async (name: string, description: string, startsAt: string, endsAt: string, questionIds: string[]) => {
+        const params: string[] = [];
+        if (name) params.push(`name=${encodeURIComponent(name)}`);
+        if (description) params.push(`description=${encodeURIComponent(description)}`);
+        params.push(`startsAt=${encodeURIComponent(startsAt)}`);
+        params.push(`endsAt=${encodeURIComponent(endsAt)}`);
+        const query = `?${params.join('&')}`;
+        return apiClient.post(`/admin/tournaments${query}`, questionIds);
+    },
+
+    getTournamentLeaderboard: async (id: string) => {
+        return apiClient.get(`/admin/tournaments/${id}/leaderboard`);
     }
 };

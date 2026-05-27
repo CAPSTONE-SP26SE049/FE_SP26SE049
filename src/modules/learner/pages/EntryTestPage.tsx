@@ -34,7 +34,7 @@ const DIALECT_META: Record<string, {
     NORTH: {
         viName: 'Miền Bắc',
         tagline: 'Thanh lịch & Chuẩn mực',
-        emoji: '🏛️',
+        emoji: '',
         description: 'Chinh phục phát âm chuẩn — nền tảng của tiếng Việt quy chuẩn.',
         photo: '/region_mien_bac.png',
         gradient: 'from-[#49B6E5]/90 to-blue-500/90',
