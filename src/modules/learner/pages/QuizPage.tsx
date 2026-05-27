@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Volume2,
   Mic,
-  PenTool,
-  BookOpen,
   RotateCcw,
   Lightbulb,
   MousePointer2,
@@ -17,9 +15,7 @@ import {
   XCircle,
   Trophy,
   ArrowRight,
-  Zap,
-  Info,
-  Timer
+  Info
 } from 'lucide-react'
 import { Input, message } from 'antd'
 import clsx from 'clsx'
@@ -29,10 +25,16 @@ import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
 import characterImg from '../../../assets/sprite-max-px-36.gif'
-import { ASR_BASE_URL, ASR_MODEL, ASR_LANGUAGE, ASR_SAMPLING_RATE } from '../../../config'
+import { ASR_BASE_URL } from '../../../config'
 import { DoodleLoading } from '../../../components/ui/DoodleLoading'
 
 const PAGE_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Delius+Swash+Caps&display=swap');
+  
+  .font-doodle {
+    font-family: 'Delius Swash Caps', cursive;
+  }
+  
   @keyframes doodle-shake {
     0%, 100% { transform: rotate(-0.5deg); }
     50% { transform: rotate(0.5deg); }
@@ -47,7 +49,54 @@ const PAGE_STYLES = `
   .animate-timer-danger {
     animation: pulse-intense 0.6s infinite ease-in-out;
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 `
+
+const TypedText: React.FC<{ text: string; speed?: number; onComplete?: () => void }> = ({ text, speed = 25, onComplete }) => {
+  const [displayedText, setDisplayedText] = useState('')
+  const [index, setIndex] = useState(0)
+  const [isDone, setIsDone] = useState(false)
+
+  useEffect(() => {
+    setDisplayedText('')
+    setIndex(0)
+    setIsDone(false)
+  }, [text])
+
+  useEffect(() => {
+    if (index < text.length && !isDone) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[index])
+        setIndex(prev => prev + 1)
+      }, speed)
+      return () => clearTimeout(timeout)
+    } else if (index >= text.length && !isDone) {
+      setIsDone(true)
+      if (onComplete) onComplete()
+    }
+  }, [index, text, speed, onComplete, isDone])
+
+  const handleSkip = () => {
+    setDisplayedText(text)
+    setIndex(text.length)
+    setIsDone(true)
+    if (onComplete) onComplete()
+  }
+
+  return (
+    <div className="cursor-pointer select-none h-full w-full" onClick={handleSkip}>
+      <p className="leading-relaxed whitespace-pre-wrap">{displayedText}</p>
+      {!isDone && <span className="inline-block w-2 h-5 bg-slate-900 animate-pulse ml-1 align-middle" />}
+    </div>
+  )
+}
 
 
 
@@ -200,13 +249,6 @@ function parseChallenge(raw: any): ParsedChallenge {
 
 // ─── Skill type badge info ───────────────────────────────────────────────────
 
-const SKILL_META: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
-  LISTENING: { label: 'Nghe hiểu', bg: 'bg-blue-100', text: 'text-blue-600', icon: <Volume2 size={16} strokeWidth={3} /> },
-  SPEAKING: { label: 'Nói', bg: 'bg-indigo-100', text: 'text-indigo-600', icon: <Mic size={16} strokeWidth={3} /> },
-  READING: { label: 'Đọc hiểu', bg: 'bg-orange-100', text: 'text-orange-600', icon: <BookOpen size={16} strokeWidth={3} /> },
-  WRITING: { label: 'Viết', bg: 'bg-teal-100', text: 'text-teal-600', icon: <PenTool size={16} strokeWidth={3} /> },
-  ENTRY_TEST: { label: 'Kiểm tra đầu vào', bg: 'bg-amber-100', text: 'text-amber-600', icon: <Zap size={16} strokeWidth={3} /> },
-}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -215,7 +257,7 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
   options: string[]; correct: string; answered: boolean; selected: string | null; onSelect: (o: string) => void
 }) {
   return (
-    <div className="grid gap-4 mb-6">
+    <div className="grid grid-cols-2 gap-4">
       {options.map((opt, i) => {
         const isRight = answered && opt === correct
         const isWrong = answered && opt === selected && opt !== correct
@@ -228,26 +270,27 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
             whileTap={{ scale: answered ? 1 : 0.98 }}
             onClick={() => onSelect(opt)}
             className={clsx(
-              'w-full text-left px-8 py-6 rounded-3xl border-[2.5px] font-black text-xl transition-all duration-200',
-              isRight ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-[4px_4px_0_#059669]'
-                : isWrong ? 'border-rose-400 bg-rose-50 text-rose-600 shadow-[4px_4px_0_#e11d48]'
-                  : isSelected ? 'border-[#49B6E5] bg-[#49B6E5]/10 text-slate-800 shadow-[6px_6px_0_#1f2937] -translate-y-1'
+              'w-full text-left px-6 py-4 rounded-3xl border-[3.5px] font-black text-lg transition-all duration-200 min-h-[100px] flex items-center',
+              isRight ? 'border-emerald-500 bg-[#E8F5E9] text-emerald-700 shadow-[4px_4px_0_#10B981]'
+                : isWrong ? 'border-rose-500 bg-[#FCE8E8] text-rose-600 shadow-[4px_4px_0_#F43F5E]'
+                  : isSelected ? 'border-[#49B6E5] bg-[#E1F5FE] text-slate-800 shadow-[6px_6px_0_#1f2937] -translate-y-1'
                     : 'border-slate-900 bg-white text-slate-700 hover:border-[#49B6E5] hover:bg-slate-50 shadow-[4px_4px_0_#1f2937]'
             )}
           >
-            <span className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full">
               <div className={clsx(
-                "w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0",
+                "w-10 h-10 rounded-full border-[2.5px] flex items-center justify-center shrink-0 font-doodle text-xl",
                 isRight ? "bg-emerald-500 border-emerald-600 text-white"
                   : isWrong ? "bg-rose-500 border-rose-600 text-white"
-                    : "bg-slate-100 border-slate-300 text-slate-400"
+                    : isSelected ? "bg-[#49B6E5] border-slate-900 text-white"
+                      : "bg-white border-slate-900 text-slate-900"
               )}>
                 {isRight ? <CheckCircle size={18} strokeWidth={3} />
                   : isWrong ? <XCircle size={18} strokeWidth={3} />
-                    : <span className="text-xs uppercase font-black">{String.fromCharCode(65 + i)}</span>}
+                    : <span>{String.fromCharCode(65 + i)}</span>}
               </div>
-              <span className={clsx(isRight || isWrong || isSelected ? "" : "opacity-80")}>{opt}</span>
-            </span>
+              <span className="flex-1 leading-tight">{opt}</span>
+            </div>
           </motion.button>
         )
       })}
@@ -255,26 +298,6 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
   )
 }
 
-function BubbleContent({ text }: { text: string }) {
-  const shouldTruncate = text.length > 200
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  if (!shouldTruncate) return <>{text}</>
-
-  return (
-    <div className="text-left w-full">
-      <p className="leading-relaxed">
-        {isExpanded ? text : `${text.slice(0, 200)}...`}
-      </p>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 text-[10px] text-[#49B6E5] font-black uppercase tracking-wider hover:underline"
-      >
-        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
-      </button>
-    </div>
-  )
-}
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -308,7 +331,6 @@ const QuizPage: React.FC = () => {
   const [writingInput, setWritingInput] = useState('')
   const [wordPicked, setWordPicked] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [showHint, setShowHint] = useState(false)
 
   // ── Speaking Quiz State ─────────────────────────────────────────────────────
   const recorder = useAudioRecorder()
@@ -456,9 +478,7 @@ const QuizPage: React.FC = () => {
     setWritingInput('')
     setWordPicked(null)
     setTimeLeft(null)
-    setShowHint(false)
     setOllamaResult(null)
-    setShowFullSuggestion(false)
     setNextQuizId(null)
     setSaving(false)
     setConsentGiven(null)
@@ -506,7 +526,6 @@ const QuizPage: React.FC = () => {
   const goNext = () => {
     // Only clear timing/temporary state initially
     setTimeLeft(null)
-    setShowHint(false)
     setOllamaResult(null)
     setShowFullSuggestion(false)
     recorder.resetRecording()
@@ -618,10 +637,6 @@ const QuizPage: React.FC = () => {
       const asrFormData = new FormData()
       asrFormData.append('audio', audioForAsr, uploadFileName)
       asrFormData.append('target', targetText)
-      // Send custom model parameters
-      asrFormData.append('model', ASR_MODEL)
-      asrFormData.append('language', ASR_LANGUAGE)
-      asrFormData.append('sampling_rate', ASR_SAMPLING_RATE)
 
       const asrStartTime = performance.now()
       const asrResponse = await fetch(ASR_BASE_URL, {
@@ -938,7 +953,6 @@ const QuizPage: React.FC = () => {
 
   // ── Current question ──────────────────────────────────────────────────────
   const ch = challenges[idx]
-  const skillMeta = SKILL_META[ch.skillType] ?? SKILL_META['READING']
 
   // ── Render interaction by mode ────────────────────────────────────────────
   const renderInteraction = () => {
@@ -975,11 +989,11 @@ const QuizPage: React.FC = () => {
           if (wordIdx === ch.errorIndex) setScore(s => s + 1)
         }
         return (
-          <div className="bg-white border-[2.5px] border-slate-900 rounded-[2rem] p-8 mb-8 shadow-[6px_6px_0_#1f2937]">
+          <div className="bg-white border-[3.5px] border-slate-900 rounded-[2rem] p-8 shadow-[6px_6px_0_#1f2937]">
             <p className="text-sm text-slate-400 font-black uppercase tracking-widest mb-6 flex items-center gap-2">
               <MousePointer2 size={16} /> Chạm vào từ viết SAI:
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4">
               {ch.words.map((w, i) => {
                 const isError = answered && i === ch.errorIndex
                 const isPickedWrong = answered && i === wordPicked && i !== ch.errorIndex
@@ -992,11 +1006,11 @@ const QuizPage: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleWordClick(i)}
                     className={clsx(
-                      'px-5 py-3 rounded-2xl text-xl font-black transition-all border-[2.5px]',
-                      isError ? 'border-emerald-500 bg-emerald-50 text-emerald-700 line-through decoration-[3px]'
-                        : isPickedWrong ? 'border-rose-400 bg-rose-50 text-rose-600'
-                          : isPicked ? 'border-[#49B6E5] bg-[#49B6E5]/10 text-slate-900'
-                            : 'border-slate-200 bg-white text-slate-800 hover:border-slate-900'
+                      'px-6 py-4 rounded-2xl text-2xl font-black transition-all border-[3.5px]',
+                      isError ? 'border-emerald-500 bg-emerald-50 text-emerald-700 line-through decoration-[4px]'
+                        : isPickedWrong ? 'border-rose-500 bg-rose-50 text-rose-600'
+                          : isPicked ? 'border-[#49B6E5] bg-[#E1F5FE] text-slate-900'
+                            : 'border-slate-300 bg-white text-slate-800 hover:border-slate-900'
                     )}>
                     {w}
                   </motion.button>
@@ -1023,20 +1037,20 @@ const QuizPage: React.FC = () => {
         const isCorrect = answered && ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
 
         return (
-          <div className="space-y-6 mb-8">
+          <div className="space-y-6">
             {(ch.blankSentence || ch.sentence) && (
-              <div className="bg-white border-[2.5px] border-slate-900 rounded-[2rem] p-10 text-center shadow-[6px_6px_0_#1f2937]">
-                <p className="text-slate-900 font-black text-2xl leading-relaxed italic">
+              <div className="bg-white border-[3.5px] border-slate-900 rounded-[2rem] p-10 text-center shadow-[6px_6px_0_#1f2937]">
+                <p className="text-slate-900 font-black text-3xl leading-relaxed font-doodle italic">
                   "
                   {ch.blankSentence ? ch.blankSentence.split('_').map((part, i, arr) => (
                     <React.Fragment key={i}>
                       {part}
                       {i < arr.length - 1 && (
                         <span className={clsx(
-                          "inline-block border-b-[3px] min-w-[100px] px-3 mx-2 transition-all rounded-t-xl",
+                          "inline-block border-b-[4px] min-w-[150px] px-3 mx-2 transition-all rounded-t-2xl",
                           answered
-                            ? (isCorrect ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-rose-400 text-rose-500 bg-rose-50')
-                            : 'border-[#49B6E5] text-[#49B6E5] bg-[#49B6E5]/5'
+                            ? (isCorrect ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-rose-500 text-rose-500 bg-rose-50')
+                            : 'border-[#49B6E5] text-[#49B6E5] bg-[#E1F5FE]'
                         )}>
                           {answered ? writingInput : (writingInput || '...')}
                         </span>
@@ -1048,33 +1062,27 @@ const QuizPage: React.FC = () => {
               </div>
             )}
 
-            <div className="relative group">
+            <div className="relative group flex gap-4">
               <Input
                 placeholder="Viết đáp án của bạn vào đây..."
                 size="large"
                 value={writingInput}
                 onChange={e => setWritingInput(e.target.value)}
                 disabled={answered}
-                className="rounded-[1.5rem] text-xl h-20 px-8 border-[2.5px] border-slate-900 focus:border-[#49B6E5] shadow-[4px_4px_0_#1f2937] font-black italic bg-white"
+                className="rounded-[1.5rem] text-2xl h-20 px-8 border-[3.5px] border-slate-900 focus:border-[#49B6E5] shadow-[4px_4px_0_#1f2937] font-black italic bg-white flex-1"
                 onPressEnter={handleWritingSubmit}
                 autoFocus
               />
               {!answered && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 group-focus-within:opacity-100 transition-opacity">
-                  <PenTool size={24} className="text-[#49B6E5]" />
-                </div>
+                <button
+                  disabled={!writingInput.trim()}
+                  onClick={handleWritingSubmit}
+                  className="px-10 h-20 bg-[#49B6E5] border-[3.5px] border-slate-900 rounded-[1.5rem] text-white text-xl font-black shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
+                >
+                  GỬI BIỂU MẪU
+                </button>
               )}
             </div>
-
-            {!answered && (
-              <button
-                disabled={!writingInput.trim()}
-                onClick={handleWritingSubmit}
-                className="w-full bg-[#49B6E5] border-[2.5px] border-slate-900 py-5 rounded-[1.5rem] text-white text-xl font-black shadow-[6px_6px_0_#1f2937] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale disabled:shadow-none disabled:translate-y-0"
-              >
-                Gửi đáp án của tôi
-              </button>
-            )}
           </div>
         )
       }
@@ -1319,237 +1327,232 @@ const QuizPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbf6ef] font-nunito pb-12">
+    <div className="h-screen w-screen bg-[#FDF5E6] font-nunito overflow-hidden flex flex-col p-6 gap-6 relative">
       <style>{PAGE_STYLES}</style>
 
-      {/* ─── Header ─── */}
-      <div className="sticky top-0 z-50 bg-[#fbf6ef]/90 backdrop-blur-md border-b-[2.5px] border-slate-900 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-6">
+      {/* ─── Top Header ─── */}
+      <div className="flex items-center gap-6 h-20 shrink-0">
+        {/* Floating Exit Button moved to top-left */}
+        <button
+          onClick={handleExitQuiz}
+          className="w-14 h-14 rounded-2xl border-[3.5px] border-slate-900 bg-white flex items-center justify-center hover:bg-slate-50 active:translate-y-0.5 shadow-[4px_4px_0_#1f2937] transition-all z-50 shrink-0"
+        >
+          <ArrowLeft className="text-slate-900" size={24} strokeWidth={3} />
+        </button>
 
-          {/* Back Action */}
-          <button
-            onClick={handleExitQuiz}
-            className="w-12 h-12 rounded-2xl border-[2.5px] border-slate-900 bg-white flex items-center justify-center hover:bg-slate-50 active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] transition-all flex-shrink-0"
-          >
-            <ArrowLeft className="text-slate-900" size={20} strokeWidth={3} />
-          </button>
-
-          {/* Title & Stats */}
-          <div className="flex-1 min-w-0">
-            <h2 className="font-black text-slate-900 text-lg md:text-xl truncate leading-none mb-1">{quiz.name}</h2>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                Câu {idx + 1} / {total}
-              </span>
-            </div>
-          </div>
-
-          {/* Dynamic Stats (Timer, etc) */}
-          <div className="flex items-center gap-4 flex-shrink-0">
-            {timeLeft !== null && (
-              <motion.div
-                className={clsx(
-                  "flex items-center gap-2 px-6 py-3 rounded-2xl border-[2.5px] shadow-[4px_4px_0_#1f2937] transition-all",
-                  timeLeft < 10
-                    ? 'bg-rose-500 text-white border-slate-900 animate-timer-danger'
-                    : timeLeft < 30
-                      ? 'bg-amber-400 text-slate-900 border-slate-900'
-                      : 'bg-[#49B6E5] text-white border-slate-900'
-                )}
-              >
-                <Timer size={20} strokeWidth={3} className={timeLeft < 10 ? "animate-pulse" : ""} />
-                <span className="text-2xl font-black italic tabular-nums">{timeLeft}s</span>
-              </motion.div>
-            )}
-          </div>
+        {/* Question Number */}
+        <div className="w-20 h-20 bg-[#F43F5E] border-[3.5px] border-slate-900 rounded-[1.5rem] flex items-center justify-center shadow-[6px_6px_0_#1f2937] shrink-0">
+          <span className="text-4xl font-black text-white font-doodle italic">{idx + 1}</span>
         </div>
 
-        {/* Progress System */}
-        <div className="max-w-5xl mx-auto mt-6 flex items-center gap-4">
-          <div className="flex-1 h-5 bg-white border-[2.5px] border-slate-900 rounded-full overflow-hidden p-0.5 shadow-[inner_0_2px_4px_rgba(0,0,0,0.05)]">
+        {/* Progress Bar */}
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex justify-between items-center px-1">
+            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">PROGRESS</span>
+            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">{Math.round(((idx) / total) * 100)}%</span>
+          </div>
+          <div className="h-4 bg-white border-[3.5px] border-slate-900 rounded-full overflow-hidden p-0.5 shadow-[4px_4px_0_#1f2937]">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#49B6E5] via-[#49B6E5]/80 to-[#49B6E5] rounded-full border-r-[2px] border-slate-900"
+              className="h-full bg-slate-900 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${Math.max(2, ((idx) / total) * 100)}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
-          <div className="bg-slate-900 text-white px-3 py-1 rounded-xl text-[10px] font-black shadow-[3px_3px_0_#49B6E5] italic">
-            {Math.round(((idx) / total) * 100)}%
+        </div>
+
+        {/* Score & Level */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <div className="flex items-center gap-2">
+            <Sparkles className="text-[#FFC107] fill-[#FFC107]" size={36} />
+            <span className="text-5xl font-black text-[#F43F5E] font-doodle italic leading-none">Score: {score * 100 + 1200}</span>
           </div>
+          <span className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] opacity-40">LEVEL: ROOKIE</span>
         </div>
       </div>
 
+      {/* ─── Main Content Grid ─── */}
+      <div className="flex-1 grid grid-cols-12 gap-8 min-h-0">
 
-      {/* Question area */}
-      <div className="max-w-3xl mx-auto px-6 pt-10 relative">
+        {/* Left Side: Question & Answers */}
+        <div className="col-span-8 flex flex-col gap-6 min-h-0">
 
-        {/* Mascot & Speech Bubble (Right Column on XL) */}
-        <div className="hidden xl:block absolute -right-96 top-10 w-72 transition-all duration-500">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={idx + (answered ? '_ans' : '')}
-              initial={{ opacity: 0, scale: 0.9, x: 30 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.9, x: 30 }}
-              className="flex flex-col items-center"
-            >
-              {/* Speech Bubble */}
-              <div className="bg-white border-[2.5px] border-slate-900 rounded-[2rem] p-6 mb-6 shadow-[5px_5px_0_#1f2937] relative min-h-[120px] flex flex-col items-center justify-center">
-                <div className="max-h-[300px] overflow-y-auto no-scrollbar w-full">
-                  {explaining ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <DoodleLoading message="Đang suy nghĩ..." />
-                    </div>
-                  ) : (
-                    <BubbleContent text={explanation || ch.content || "Cùng vượt qua thử thách này nhé! 🚀"} />
-                  )}
-                </div>
+          {/* Question Card */}
+          <div className="bg-white border-[4px] border-slate-900 rounded-[2.5rem] p-10 shadow-[inner_0_4px_12px_rgba(0,0,0,0.05),8px_8px_0_#1f2937] relative flex flex-col justify-center min-h-[300px]">
+            <div className="absolute -top-6 -left-4 bg-[#FFC107] border-[3.5px] border-slate-900 px-6 py-2 rounded-2xl shadow-[4px_4px_0_#1f2937] rotate-[-2deg]">
+              <span className="text-lg font-black text-slate-900 uppercase tracking-widest font-doodle">QUESTION</span>
+            </div>
 
-                {explanation && !explaining && (
-                  <div className="mt-4 w-full border-t-[2px] border-slate-100 pt-4 flex flex-col gap-2">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest text-center">Nghe giọng vùng miền</p>
-                    <div className="flex justify-center gap-2">
-                      {['banmai', 'myan', 'linhsan'].map((voice, i) => (
-                        <button
-                          key={voice}
-                          onClick={() => playRegionalTTS(ch.correctSentence || ch.content, voice)}
-                          className={clsx(
-                            "px-3 py-1.5 bg-white border-[2px] border-slate-900 rounded-xl shadow-[2px_2px_0_#1f2937] text-[10px] font-black transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none",
-                            playingTTS === voice ? "bg-amber-400" : "hover:bg-slate-50"
-                          )}
-                        >
-                          {['Bắc', 'Trung', 'Nam'][i]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            <div className="flex flex-col gap-6 items-center text-center">
+              <h4 className="text-4xl font-black text-slate-900 leading-snug font-doodle max-w-2xl">
+                {ch.content}
+              </h4>
 
-                {/* Bubble Tail */}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b-[2.5px] border-r-[2.5px] border-slate-900 rotate-45" />
-              </div>
-
-              <div className="relative">
-                <img src={characterImg} alt="Mascot" className="w-40 drop-shadow-2xl" />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-3 bg-slate-900/10 blur-md rounded-full -z-10" />
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={idx}
-            initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 22 }}>
-
-            {/* Question Card */}
-            <div className="bg-white border-[2.5px] border-slate-900 rounded-[2.5rem] p-8 mb-8 shadow-[8px_8px_0_#1f2937]">
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-4xl font-black text-slate-900 italic">Câu {idx + 1}</h3>
-                  <div className={clsx("flex items-center gap-2 px-4 py-1.5 rounded-xl border-[2px] border-slate-900 font-black text-xs uppercase tracking-wider shadow-[3px_3px_0_#1f2937]", skillMeta.bg, skillMeta.text)}>
-                    {skillMeta.icon}
-                    {skillMeta.label}
-                  </div>
-                </div>
-
-                {ch.region && (
-                  <div className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase border border-slate-200">
-                    Khu vực: {ch.region}
-                  </div>
-                )}
-              </div>
-
-              {/* Question Content */}
-              <div className="mb-8">
-                <h4 className="text-2xl font-black text-slate-800 leading-relaxed mb-4">
-                  {ch.content}
-                </h4>
-
-                {ch.hint && (
-                  <div className="mt-4">
-                    {!showHint ? (
-                      <button
-                        onClick={() => setShowHint(true)}
-                        className="flex items-center gap-2 text-slate-400 hover:text-[#49B6E5] font-black text-sm uppercase tracking-widest transition-colors"
-                      >
-                        <Lightbulb size={16} />
-                        Xem gợi ý
-                      </button>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-amber-50 border-[2px] border-slate-900 p-5 rounded-2xl flex items-start gap-3 shadow-[4px_4px_0_#1f2937]"
-                      >
-                        <Sparkles className="text-amber-500 shrink-0 mt-1" size={20} />
-                        <div>
-                          <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Gợi ý từ chuyên gia</p>
-                          <p className="text-slate-700 font-bold leading-relaxed">{ch.hint}</p>
-                        </div>
-                      </motion.div>
+              {/* Prominent Audio Button inside the card */}
+              {ch.audioUrl && (
+                <div className="absolute bottom-4 right-4 flex flex-col items-center gap-2">
+                  <button
+                    disabled={(audioPlays[idx] || 0) >= 2}
+                    onClick={() => {
+                      try {
+                        const plays = audioPlays[idx] || 0;
+                        if (plays < 2) {
+                          new Audio(ch.audioUrl!).play();
+                          setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
+                        }
+                      } catch (_) { }
+                    }}
+                    className={clsx(
+                      "w-16 h-16 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all group relative",
+                      (audioPlays[idx] || 0) >= 2 ? "opacity-50 grayscale cursor-not-allowed shadow-none" : ""
                     )}
-                  </div>
-                )}
-              </div>
-
-              {/* Audio Support */}
-              {ch.audioUrl && ch.mode !== 'SPEAKING_READ' && (
-                <button
-                  disabled={(audioPlays[idx] || 0) >= 2}
-                  onClick={() => {
-                    try {
-                      const plays = audioPlays[idx] || 0;
-                      if (plays < 2) {
-                        new Audio(ch.audioUrl!).play();
-                        setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
-                      }
-                    } catch (_) { }
-                  }}
-                  className={clsx(
-                    "flex items-center gap-4 px-8 py-5 rounded-2xl border-[2.5px] border-slate-900 font-black text-xl transition-all shadow-[6px_6px_0_#1f2937] mb-4 active:shadow-none active:translate-x-1 active:translate-y-1",
-                    (audioPlays[idx] || 0) >= 2
-                      ? "bg-slate-100 text-slate-400 border-slate-400 shadow-none -translate-x-0 -translate-y-0 opacity-50 cursor-not-allowed"
-                      : "bg-[#49B6E5] text-white hover:bg-[#3da3d1]"
-                  )}
-                >
-                  <Volume2 size={24} strokeWidth={3} />
-                  <span>Nghe âm thanh</span>
-                  {(audioPlays[idx] || 0) > 0 && <span className="opacity-60 text-sm ml-auto">({(audioPlays[idx] || 0)}/2)</span>}
-                </button>
-              )}
-
-              {ch.imageUrl && (
-                <div className="mt-4 overflow-hidden rounded-2xl border-[2px] border-slate-900 shadow-[4px_4px_0_#1f2937]">
-                  <img src={ch.imageUrl} alt="Context" className="w-full max-h-48 object-cover" />
+                  >
+                    <Volume2 className="text-slate-900 group-hover:scale-110 transition-transform" size={28} />
+                    {(audioPlays[idx] || 0) > 0 && (
+                      <div className="absolute -top-2 -right-2 bg-[#F43F5E] border-[2px] border-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-[1px_1px_0_#000]">
+                        {audioPlays[idx]}
+                      </div>
+                    )}
+                  </button>
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border-[1.5px] border-slate-200 shadow-sm">
+                    nghe âm thanh ({audioPlays[idx] || 0}/2)
+                  </span>
                 </div>
               )}
             </div>
+          </div>
 
+          {/* Interaction Area - No scroll as requested */}
+          <div className="flex-1 min-h-0 no-scrollbar pb-4">
             {renderInteraction()}
+          </div>
 
-            {/* Next button */}
-            {(answered || ch.mode === 'GENERIC') && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <button
-                  disabled={saving}
-                  onClick={goNext}
-                  className="w-full h-18 py-5 rounded-[1.5rem] bg-emerald-500 border-[2.5px] border-slate-900 text-white text-xl font-black shadow-[6px_6px_0_#065f46] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-3"
-                >
-                  {idx + 1 >= total ? (
-                    <>Hoàn thành bài tập <Trophy size={24} strokeWidth={3} /></>
+          {/* Action Button Area removed from here */}
+          <div className="h-6 shrink-0" />
+
+        </div>
+
+        {/* Right Side: Feedback & Character */}
+        <div className="col-span-4 flex flex-col gap-6 min-h-0 relative">
+
+          {/* Feedback Speech Bubble */}
+          <div className="flex-1 min-h-0 flex flex-col justify-end">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={idx + (answered ? '_ans' : '')}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white border-[4px] border-slate-900 rounded-[2.5rem] p-8 shadow-[8px_8px_0_#1f2937] relative flex flex-col min-h-[150px] mb-12"
+              >
+                {/* Tip/Info Icon */}
+                <div className="absolute -top-5 -right-5 w-12 h-12 bg-[#F43F5E] border-[3.5px] border-slate-900 rounded-full flex items-center justify-center shadow-[4px_4px_0_#1f2937]">
+                  <Lightbulb size={24} className="text-white" />
+                </div>
+
+                <div className="overflow-y-auto no-scrollbar font-bold text-lg text-slate-800 leading-relaxed italic pr-2">
+                  {explaining ? (
+                    <div className="flex flex-col items-center gap-4 py-4">
+                      <DoodleLoading message="Đang suy nghĩ..." />
+                    </div>
+                  ) : answered ? (
+                    <div className="flex flex-col gap-6">
+                      <TypedText text={explanation || "Đáp án chính xác! Tiếp tục phát huy nhé."} />
+
+                      {/* Regional TTS moved INSIDE the bubble */}
+                      {!explaining && (
+                        <div className="mt-2 border-t-[3px] border-slate-100 pt-6 flex flex-col gap-3">
+                          <p className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">
+                            Bạn muốn nghe giọng vùng miền khác?
+                          </p>
+                          <div className="flex gap-3">
+                            {['banmai', 'myan', 'linhsan'].map((voice, i) => (
+                              <button
+                                key={voice}
+                                onClick={() => playRegionalTTS(ch.correctSentence || ch.content, voice)}
+                                className={clsx(
+                                  "px-5 py-3 bg-white border-[3.5px] border-slate-900 rounded-xl shadow-[4px_4px_0_#1f2937] text-xs font-black transition-all hover:-translate-y-1 active:translate-y-0",
+                                  playingTTS === voice ? "bg-[#FFC107]" : "hover:bg-slate-50"
+                                )}
+                              >
+                                {['BẮC', 'TRUNG', 'NAM'][i]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <>Tiếp theo <ArrowRight size={24} strokeWidth={3} /></>
+                    <p>{ch.hint || "Hãy tập trung nhé! Bạn có thể nghe lại âm thanh nếu cần thiết."}</p>
                   )}
-                </button>
+                </div>
+
+                {/* Bubble Tail */}
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-white border-b-[4px] border-r-[4px] border-slate-900 rotate-45" />
               </motion.div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            </AnimatePresence>
+          </div>
+
+          {/* Action Button & Character Area */}
+          <div className="h-1/3 flex items-end justify-between gap-6 pb-6 pr-4">
+            <div className="flex-1 min-h-0 mb-4">
+              <AnimatePresence>
+                {answered && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    transition={{ type: 'spring', damping: 20 }}
+                    className="w-full"
+                  >
+                    <button
+                      onClick={goNext}
+                      className="w-full h-20 py-4 rounded-[2rem] bg-emerald-500 border-[4px] border-slate-900 text-white text-xl font-black shadow-[6px_6px_0_#065f46] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2 font-doodle"
+                    >
+                      {idx + 1 >= total ? (
+                        <>Hoàn thành <Trophy size={24} strokeWidth={3} /></>
+                      ) : (
+                        <>Tiếp theo <ArrowRight size={24} strokeWidth={3} /></>
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ type: 'spring', damping: 15 }}
+              className="relative shrink-0"
+            >
+              <img src={characterImg} alt="Character" className="h-[28vh] object-contain drop-shadow-xl" />
+            </motion.div>
+          </div>
+
+        </div>
+
       </div>
+
+
+
+
+      {/* Timer Overlays */}
+      {timeLeft !== null && !answered && (
+        <div className="absolute top-1/2 left-6 -translate-y-1/2 flex flex-col items-center gap-2">
+          <motion.div
+            animate={(timeLeft ?? 0) < 10 ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 0.5 }}
+            className={clsx(
+              "w-20 h-20 rounded-full border-[3.5px] flex items-center justify-center shadow-[6px_6px_0_#1f2937] text-3xl font-black italic",
+              (timeLeft ?? 0) < 10 ? "bg-[#F43F5E] text-white border-slate-900" : "bg-[#49B6E5] text-white border-slate-900"
+            )}
+          >
+            {timeLeft}
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default QuizPage
-

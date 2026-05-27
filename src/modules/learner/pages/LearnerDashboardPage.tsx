@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { LockOutlined, PlayCircleFilled, RightOutlined, TrophyOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, Leaf, Map, Target, Trophy, Zap } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Gamepad2, Leaf, Map, Target, Trophy, Zap } from 'lucide-react'
 
 import { useAuth } from '../../../core/auth/AuthContext'
 import apiClient from '../../../services/apiClient'
@@ -378,6 +378,7 @@ export default function Dashboard() {
         { icon: Map, label: 'Lộ trình', desc: 'Bản đồ học', path: '/learner/roadmap', tint: '#263D5B', bg: '#f7f4ee' },
         { icon: Trophy, label: 'Xếp hạng', desc: 'Bảng điểm', path: '/learner/leaderboard', tint: '#D97706', bg: '#fff8ee' },
         { icon: Zap, label: 'Phát âm', desc: 'Luyện ngay', path: '/learner/pronunciation', tint: '#49B6E5', bg: '#eef9fe' },
+        { icon: Gamepad2, label: 'Trò chơi', desc: 'Minigames', path: '/learner/minigames', tint: '#EC4899', bg: '#fdf2f8' },
         { icon: Target, label: 'Bạn bè', desc: 'Kết nối', path: '/learner/friends', tint: '#16A34A', bg: '#effaf3' },
     ]), [])
 
@@ -635,7 +636,7 @@ export default function Dashboard() {
                                 <h3 className="text-2xl font-black text-slate-900">Truy cập nhanh</h3>
                                 <p className="text-sm text-slate-600">Đi thẳng tới phần bạn cần mà không phải tìm lại.</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {quickActions.map(({ icon: Icon, label, desc, path, tint, bg }) => (
                                     <motion.button key={label} whileHover={{ y: -2 }} onClick={() => navigate(path)} className="rounded-[1.25rem] border-2 border-slate-900 p-4 text-left shadow-[4px_4px_0_#1f2937] transition-transform" style={{ background: bg }}>
                                         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white">

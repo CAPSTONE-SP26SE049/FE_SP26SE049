@@ -4,6 +4,30 @@ import clsx from 'clsx';
 import { Volume2, Play, RotateCcw, Lightbulb, AlertTriangle, Sparkles, Type, Pause } from 'lucide-react';
 import MouthViseme, { useWordAnimation, textToVisemeKeys } from '../components/MouthViseme';
 import type { FaceType } from '../components/MouthViseme';
+import '@google/model-viewer';
+
+declare global {
+    namespace JSX {
+        interface IntrinsicElements {
+            'model-viewer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+                src?: string
+                alt?: string
+                'camera-controls'?: boolean | string
+                'auto-rotate'?: boolean | string
+                'shadow-intensity'?: string
+                exposure?: string
+                'camera-orbit'?: string
+                'field-of-view'?: string
+                'interaction-prompt'?: string
+                'animation-name'?: string
+                autoplay?: boolean | string
+                'animation-crossfade-duration'?: string
+                loading?: string
+                style?: React.CSSProperties
+            }, HTMLElement>
+        }
+    }
+}
 
 const SOUND_GROUPS = [
     ['N', 'L'],
@@ -42,6 +66,10 @@ export default function PronunciationModelPage() {
     const [faceType, setFaceType] = useState<FaceType>('child');
     const { currentViseme, isPlaying, currentPhonemeIndex, playWord, stop } = useWordAnimation();
     const [manualViseme, setManualViseme] = useState('rest');
+    
+    // 3D Model Viewer state hooks
+    const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+    const [selectedModel, setSelectedModel] = useState<string>('/3D/Pronunciation.glb');
 
     const displayViseme = isPlaying ? currentViseme : manualViseme;
 
@@ -49,6 +77,13 @@ export default function PronunciationModelPage() {
         if (isPlaying) return;
         setActiveSound(sound);
         setManualViseme(sound.toLowerCase());
+        
+        // Auto select specific 3D model for 'L', general one for other sounds
+        if (sound === 'L') {
+            setSelectedModel('/3D/mieng_phat_am_L.glb');
+        } else {
+            setSelectedModel('/3D/Pronunciation.glb');
+        }
     }, [isPlaying]);
 
     const handlePlayWord = useCallback((word: string) => {
@@ -185,41 +220,113 @@ export default function PronunciationModelPage() {
                             className="bg-white rounded-[1.5rem] border-[2px] border-slate-900 shadow-[8px_8px_0_#1f2937] overflow-hidden flex flex-col"
                         >
                             {/* Top Bar */}
-                            <div className="px-5 py-3 bg-slate-50 border-b-[2px] border-slate-900 flex items-center justify-between">
+                            <div className="px-5 py-3 bg-slate-50 border-b-[2px] border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
                                         <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-red-400" />
                                         <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-yellow-400" />
                                         <div className="w-2.5 h-2.5 rounded-full border-[1.2px] border-slate-900 bg-green-400" />
                                     </div>
-                                    <span className="ml-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Pronunciation View</span>
+                                    <span className="ml-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] hidden sm:inline">Pronunciation View</span>
                                 </div>
+
+                                {/* 2D / 3D Mode Selector */}
+                                <div className="flex gap-1 bg-slate-200 p-0.5 rounded-lg border-[1.5px] border-slate-900 shadow-[1.5px_1.5px_0_#1f2937]">
+                                    <button
+                                        onClick={() => setViewMode('2d')}
+                                        className={clsx(
+                                            "px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all",
+                                            viewMode === '2d'
+                                                ? "bg-[#49B6E5] text-white shadow-[1px_1px_0_#1f2937]"
+                                                : "text-slate-500 hover:text-slate-900"
+                                        )}
+                                    >
+                                        Hình 2D
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('3d')}
+                                        className={clsx(
+                                            "px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all",
+                                            viewMode === '3d'
+                                                ? "bg-[#49B6E5] text-white shadow-[1px_1px_0_#1f2937]"
+                                                : "text-slate-500 hover:text-slate-900"
+                                        )}
+                                    >
+                                        Mô hình 3D
+                                    </button>
+                                </div>
+
                                 <div className="px-3 py-1 bg-white border-[1.2px] border-slate-900 rounded-lg text-[8px] font-black text-[#49B6E5] shadow-[1.5px_1.5px_0_#1f2937]">
                                     {isPlaying ? `ĐANG PHÁT: ${wordInput}` : `ÂM: ${activeSound}`}
                                 </div>
                             </div>
 
                             {/* Viseme Viewport */}
-                            <div className="relative bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center p-6 h-[320px] md:h-[380px]">
-                                <MouthViseme
-                                    viseme={displayViseme}
-                                    faceType={faceType}
-                                    className="w-[280px] h-[280px] md:w-[320px] md:h-[320px]"
-                                />
+                            <div className="relative bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center p-6 h-[340px] md:h-[400px]">
+                                {viewMode === '2d' ? (
+                                    <>
+                                        <MouthViseme
+                                            viseme={displayViseme}
+                                            faceType={faceType}
+                                            className="w-[280px] h-[280px] md:w-[320px] md:h-[320px]"
+                                        />
 
-                                {/* Current phoneme label */}
-                                <AnimatePresence>
-                                    {isPlaying && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0 }}
-                                            className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]"
-                                        >
-                                            <span className="font-black text-[#49B6E5] text-sm uppercase">{currentViseme}</span>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                        {/* Current phoneme label */}
+                                        <AnimatePresence>
+                                            {isPlaying && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0 }}
+                                                    className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]"
+                                                >
+                                                    <span className="font-black text-[#49B6E5] text-sm uppercase">{currentViseme}</span>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full relative flex items-center justify-center">
+                                        {/* Model selector buttons */}
+                                        <div className="absolute top-0 left-0 z-10 flex flex-col gap-2">
+                                            <button
+                                                onClick={() => setSelectedModel('/3D/Pronunciation.glb')}
+                                                className={clsx(
+                                                    "px-3 py-1.5 rounded-lg border-[1.5px] border-slate-900 text-[9px] font-black uppercase shadow-[2px_2px_0_#1f2937] transition-all bg-white",
+                                                    selectedModel === '/3D/Pronunciation.glb' ? "text-[#49B6E5] bg-slate-50 border-[#49B6E5]" : "text-slate-500"
+                                                )}
+                                            >
+                                                Mô hình 3D (Tổng quan)
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedModel('/3D/mieng_phat_am_L.glb')}
+                                                className={clsx(
+                                                    "px-3 py-1.5 rounded-lg border-[1.5px] border-slate-900 text-[9px] font-black uppercase shadow-[2px_2px_0_#1f2937] transition-all bg-white",
+                                                    selectedModel === '/3D/mieng_phat_am_L.glb' ? "text-[#49B6E5] bg-slate-50 border-[#49B6E5]" : "text-slate-500"
+                                                )}
+                                            >
+                                                Khớp âm Chữ L
+                                            </button>
+                                        </div>
+
+                                        {/* 3D Model viewer using web component */}
+                                        <model-viewer
+                                            key={selectedModel}
+                                            src={selectedModel}
+                                            alt="Mô hình phát âm 3D"
+                                            camera-controls
+                                            auto-rotate
+                                            shadow-intensity="1.5"
+                                            exposure="1.0"
+                                            style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
+                                        ></model-viewer>
+
+                                        {/* Helper tips overlay */}
+                                        <div className="absolute bottom-0 right-0 bg-slate-900/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg border border-slate-700 text-[9px] font-bold shadow-[2px_2px_0_rgba(0,0,0,0.5)]">
+                                            🖱️ Giữ chuột trái xoay • Cuộn để phóng to
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Controls */}
