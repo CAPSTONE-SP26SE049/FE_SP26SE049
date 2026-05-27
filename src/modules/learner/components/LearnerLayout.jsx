@@ -30,6 +30,7 @@ import {
   Landmark,
   Castle,
   Building2,
+  Gamepad2,
 } from "lucide-react";
 import mienbacImg from "../../../assets/mienbac.png";
 import mientrungImg from "../../../assets/mientrung.png";
@@ -245,6 +246,7 @@ export default function LearnerLayout() {
     { key: "/learner/roadmap", icon: Map, label: "Hành trình" },
     { key: "/learner/pronunciation", icon: Mic, label: "Phát âm" },
     { key: "/learner/custom-journey", icon: Sparkles, label: "Gợi ý học" },
+    { key: "/learner/minigames", icon: Gamepad2, label: "Minigame" },
     { key: "/learner/leaderboard", icon: Trophy, label: "Xếp hạng" },
     { key: "/learner/achievements", icon: Award, label: "Thành tựu" },
     { key: "/learner/friends", icon: Users, label: "Bạn bè" },
