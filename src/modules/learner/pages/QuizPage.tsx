@@ -9,13 +9,13 @@ import {
   MousePointer2,
   AlertTriangle,
   ChevronRight,
-  Sparkles,
   ArrowLeft,
   CheckCircle,
   XCircle,
   Trophy,
   ArrowRight,
-  Info
+  Info,
+  Sparkles
 } from 'lucide-react'
 import { Input, message } from 'antd'
 import clsx from 'clsx'
@@ -298,6 +298,157 @@ function MCOptions({ options, correct, answered, selected, onSelect }: {
   )
 }
 
+const DoodleFireworks: React.FC = () => {
+  useEffect(() => {
+    const canvas = document.getElementById('fireworksCanvas') as HTMLCanvasElement
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationFrameId: number
+    let width = (canvas.width = window.innerWidth)
+    let height = (canvas.height = window.innerHeight)
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth
+      height = canvas.height = window.innerHeight
+    }
+    window.addEventListener('resize', handleResize)
+
+    class Particle {
+      x: number
+      y: number
+      vx: number
+      vy: number
+      alpha: number
+      color: string
+      decay: number
+      gravity: number
+
+      constructor(x: number, y: number, color: string) {
+        this.x = x
+        this.y = y
+        const angle = Math.random() * Math.PI * 2
+        const speed = Math.random() * 5 + 2
+        this.vx = Math.cos(angle) * speed
+        this.vy = Math.sin(angle) * speed
+        this.alpha = 1
+        this.color = color
+        this.decay = Math.random() * 0.015 + 0.01
+        this.gravity = 0.06
+      }
+
+      update() {
+        this.vx *= 0.98
+        this.vy *= 0.98
+        this.vy += this.gravity
+        this.x += this.vx
+        this.y += this.vy
+        this.alpha -= this.decay
+      }
+
+      draw(c: CanvasRenderingContext2D) {
+        c.save()
+        c.globalAlpha = this.alpha
+        c.fillStyle = this.color
+        c.beginPath()
+        c.arc(this.x, this.y, Math.random() * 3 + 2, 0, Math.PI * 2)
+        c.fill()
+        c.restore()
+      }
+    }
+
+    class Firework {
+      x: number
+      y: number
+      tx: number
+      ty: number
+      vx: number
+      vy: number
+      color: string
+      exploded: boolean
+      particles: Particle[]
+
+      constructor() {
+        this.x = Math.random() * width
+        this.y = height
+        this.tx = Math.random() * width
+        this.ty = Math.random() * (height * 0.5) + height * 0.1
+        const angle = Math.atan2(this.ty - this.y, this.tx - this.x)
+        const speed = Math.random() * 10 + 10
+        this.vx = Math.cos(angle) * speed
+        this.vy = Math.sin(angle) * speed
+        const colors = ['#49B6E5', '#263D5B', '#16A34A', '#D97706', '#DC2626', '#FFC107', '#E040FB']
+        this.color = colors[Math.floor(Math.random() * colors.length)]
+        this.exploded = false
+        this.particles = []
+      }
+
+      update() {
+        if (!this.exploded) {
+          this.x += this.vx
+          this.y += this.vy
+          if (this.vy >= 0 || this.y <= this.ty) {
+            this.exploded = true
+            for (let i = 0; i < 60; i++) {
+              this.particles.push(new Particle(this.x, this.y, this.color))
+            }
+          }
+        } else {
+          this.particles.forEach(p => p.update())
+          this.particles = this.particles.filter(p => p.alpha > 0)
+        }
+      }
+
+      draw(c: CanvasRenderingContext2D) {
+        if (!this.exploded) {
+          c.save()
+          c.fillStyle = this.color
+          c.beginPath()
+          c.arc(this.x, this.y, 4, 0, Math.PI * 2)
+          c.fill()
+          c.restore()
+        } else {
+          this.particles.forEach(p => p.draw(c))
+        }
+      }
+    }
+
+    let fireworks: Firework[] = []
+
+    const loop = () => {
+      ctx.fillStyle = 'rgba(251, 246, 239, 0.2)'
+      ctx.fillRect(0, 0, width, height)
+
+      if (Math.random() < 0.05 && fireworks.length < 15) {
+        fireworks.push(new Firework())
+      }
+
+      fireworks.forEach(fw => {
+        fw.update()
+        fw.draw(ctx)
+      })
+
+      fireworks = fireworks.filter(fw => !fw.exploded || fw.particles.length > 0)
+      animationFrameId = requestAnimationFrame(loop)
+    }
+
+    loop()
+
+    return () => {
+      cancelAnimationFrame(animationFrameId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      id="fireworksCanvas"
+      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+    />
+  )
+}
+
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -413,15 +564,16 @@ const QuizPage: React.FC = () => {
         setFinished(true)
       } else {
         const res = await apiClient.post(`/users/quizzes/${quiz.id}/complete`, payload)
-        const data = res?.data || res
-        setResult(data)
+        const responseBody = res?.data || res
+        const actualData = responseBody?.data || responseBody
+        setResult(actualData)
         setFinished(true)
 
-        if (typeof updateSessionItem === 'function') {
+        if (typeof updateSessionItem === 'function' && actualData) {
           updateSessionItem({
-            totalStars: data.newTotalStars,
-            totalXp: data.newTotalXP,
-            totalExperience: data.newTotalXP
+            totalStars: actualData.newTotalStars,
+            totalXp: actualData.newTotalXP,
+            totalExperience: actualData.newTotalXP
           })
         }
       }
@@ -638,6 +790,7 @@ const QuizPage: React.FC = () => {
       asrFormData.append('audio', audioForAsr, uploadFileName)
       asrFormData.append('target', targetText)
 
+
       const asrStartTime = performance.now()
       const asrResponse = await fetch(ASR_BASE_URL, {
         method: 'POST',
@@ -819,105 +972,87 @@ const QuizPage: React.FC = () => {
     const reward = result?.earnedReward
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6 bg-[#fbf6ef] font-nunito">
+      <div className="flex flex-col items-center justify-center h-screen w-screen overflow-hidden bg-[#fbf6ef] font-nunito relative">
+        <DoodleFireworks />
+
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="bg-white rounded-[3rem] border-[2.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] p-8 sm:p-12 max-w-lg w-full text-center relative overflow-hidden"
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="bg-white rounded-[2rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937] p-6 max-w-sm w-full text-center relative overflow-hidden z-10 mx-4"
         >
-          {/* Status Header */}
-          <div className="relative mb-8 mx-auto w-40 h-40 flex items-center justify-center">
-            <div className={clsx(
-              "absolute inset-0 rounded-full blur-3xl opacity-20 animate-pulse",
-              passed ? "bg-amber-400" : "bg-rose-400"
-            )} />
-            <div className="text-9xl relative z-10 filter drop-shadow-[4px_4px_0_rgba(0,0,0,0.1)]">
-              {passed ? '🏆' : '💪'}
-            </div>
+          {/* Status Header (Emoji only, no icon) */}
+          <div className="text-6xl mb-2 filter drop-shadow-[2px_2px_0_rgba(0,0,0,0.1)]">
+            {passed ? '🏆' : '💪'}
           </div>
 
-          <h2 className="text-4xl font-black text-slate-900 mb-2 leading-tight italic">
+          <h2 className="text-2xl font-black text-slate-900 mb-1 leading-tight italic font-doodle">
             {passed ? 'Tuyệt đỉnh!' : 'Cố gắng lên!'}
           </h2>
 
-          <p className="text-slate-500 font-bold mb-10 text-lg">
-            Bạn đã hoàn thành <span className="text-[#49B6E5] underline decoration-[3px] decoration-slate-900 underline-offset-4">{quiz.name}</span>
+          <p className="text-slate-500 font-bold mb-4 text-sm leading-snug">
+            Bạn đã hoàn thành <span className="text-[#49B6E5] underline decoration-[2px] decoration-slate-900 underline-offset-2">{quiz.name}</span>
           </p>
 
-          {/* Stars System */}
-          <div className="flex justify-center gap-4 mb-10">
+          {/* Stars System (Emojis only, no lucide icon) */}
+          <div className="flex justify-center gap-3 mb-4">
             {[1, 2, 3].map(s => (
               <motion.div
                 key={s}
-                initial={{ scale: 0, rotate: -30 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.3 + s * 0.1, type: 'spring', bounce: 0.6 }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1 + s * 0.1, type: 'spring', bounce: 0.5 }}
+                className="text-4xl filter drop-shadow-[2px_2px_0_#1f2937]"
               >
-                <Sparkles
-                  size={56}
-                  strokeWidth={2.5}
-                  className={clsx(
-                    "transition-all filter drop-shadow-[3px_3px_0_#1f2937]",
-                    s <= stars ? "text-amber-400 fill-amber-400" : "text-slate-100 fill-slate-50"
-                  )}
-                />
+                {s <= stars ? '⭐' : '⚫'}
               </motion.div>
             ))}
           </div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-10">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className={clsx(
-              "rounded-[2rem] p-5 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937]",
+              "rounded-2xl p-3 border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]",
               passed ? "bg-emerald-50" : "bg-rose-50"
             )}>
-              <p className="text-[10px] uppercase font-black tracking-widest mb-1 opacity-50">Chính xác</p>
-              <p className="text-3xl font-black text-slate-900 italic">{score}<span className="text-sm opacity-30 not-italic"> / {total}</span></p>
+              <p className="text-[10px] uppercase font-black tracking-wider mb-0.5 opacity-50 text-slate-700">Chính xác</p>
+              <p className="text-xl font-black text-slate-900 italic">{score}<span className="text-xs opacity-30 not-italic">/{total}</span></p>
             </div>
-            <div className="rounded-[2rem] p-5 border-[2.5px] border-slate-900 bg-indigo-50 shadow-[4px_4px_0_#1f2937]">
-              <p className="text-[10px] uppercase font-black tracking-widest mb-1 opacity-50 text-indigo-600">Tỷ lệ</p>
-              <p className="text-3xl font-black text-slate-900 italic">{pct}<span className="text-lg opacity-40">%</span></p>
+            <div className="rounded-2xl p-3 border-[2px] border-slate-900 bg-indigo-50 shadow-[3px_3px_0_#1f2937]">
+              <p className="text-[10px] uppercase font-black tracking-wider mb-0.5 opacity-50 text-indigo-600">Tỷ lệ</p>
+              <p className="text-xl font-black text-slate-900 italic">{pct}<span className="text-sm opacity-40">%</span></p>
             </div>
           </div>
 
-          {/* Achievement Area */}
+          {/* Achievement Area (Compact, no icon) */}
           {(reward || result?.rewardAlreadyEarned) && (
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="mb-10 text-left"
+              className="mb-4 text-left"
             >
-              <div className="bg-amber-100 border-[2px] border-slate-900 rounded-[2rem] p-6 shadow-[5px_5px_0_#1f2937] relative overflow-hidden group">
-                <div className="absolute top-2 right-2 text-amber-500 opacity-30 group-hover:rotate-12 transition-transform">
-                  <Trophy size={48} />
+              <div className="bg-amber-50 border-[2px] border-slate-900 rounded-2xl p-3 shadow-[3px_3px_0_#1f2937] flex items-center gap-3">
+                <div className="w-12 h-12 bg-white border-[1.5px] border-slate-900 rounded-xl flex items-center justify-center p-1.5 shadow-[2px_2px_0_#1f2937] shrink-0 text-2xl">
+                  🎁
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-3 flex items-center gap-2">
-                  <Sparkles size={14} className="fill-amber-500 text-amber-500" /> {result?.rewardAlreadyEarned ? 'Thành tựu đã nhận' : 'Thành tựu mới mở khóa!'}
-                </p>
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 bg-white border-[2px] border-slate-900 rounded-2xl flex items-center justify-center p-3 shadow-[3px_3px_0_#1f2937] shrink-0">
-                    {reward?.iconUrl
-                      ? <img src={reward.iconUrl} alt="Reward" className="w-full h-full object-contain" />
-                      : <Trophy className="text-amber-500" size={32} />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-black text-slate-900 text-lg leading-tight truncate">{reward?.name || 'Huy chương danh dự'}</p>
-                    <p className="text-slate-600 text-xs font-bold leading-relaxed mt-1 line-clamp-2 italic">{reward?.description || 'Bạn đã hoàn thành bài tập một cách xuất sắc.'}</p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-amber-600 leading-none mb-1">
+                    {result?.rewardAlreadyEarned ? 'Thành tựu đã nhận' : 'Thành tựu mới!'}
+                  </p>
+                  <p className="font-black text-slate-900 text-sm leading-tight truncate">{reward?.name || 'Huy chương'}</p>
                 </div>
               </div>
             </motion.div>
           )}
 
           {/* Result Actions */}
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleExitQuiz}
-                className="h-16 rounded-2xl border-[2.5px] border-slate-900 bg-white font-black text-slate-900 transition-all hover:bg-slate-50 active:translate-y-0.5 shadow-[4px_4px_0_#1f2937] flex items-center justify-center gap-2"
+                className="h-12 rounded-xl border-[2px] border-slate-900 bg-white font-black text-slate-900 text-sm transition-all hover:bg-slate-50 active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
               >
-                <ArrowLeft size={20} strokeWidth={3} /> Thoát
+                Thoát
               </button>
               <button
                 onClick={() => {
@@ -925,9 +1060,9 @@ const QuizPage: React.FC = () => {
                   setFinished(false); setWritingInput(''); setWordPicked(null);
                   setResult(null); setTimeLeft(null); setNextQuizId(null);
                 }}
-                className="h-16 rounded-2xl border-[2.5px] border-slate-900 bg-slate-100 font-black text-slate-900 transition-all hover:bg-slate-200 active:translate-y-0.5 shadow-[4px_4px_0_#1f2937] flex items-center justify-center gap-2"
+                className="h-12 rounded-xl border-[2px] border-slate-900 bg-slate-100 font-black text-slate-900 text-sm transition-all hover:bg-slate-200 active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
               >
-                <RotateCcw size={20} strokeWidth={3} /> Chơi lại
+                Chơi lại
               </button>
             </div>
             {nextQuizId && (
@@ -939,9 +1074,9 @@ const QuizPage: React.FC = () => {
                     chapterId: fromState.chapterId,
                   }
                 })}
-                className="h-18 rounded-[1.5rem] border-[2.5px] border-slate-900 bg-[#49B6E5] font-black text-white text-xl transition-all hover:-translate-y-1 active:translate-y-0.5 shadow-[6px_6px_0_#1f2937] flex items-center justify-center gap-3 py-4"
+                className="h-12 rounded-xl border-[2px] border-slate-900 bg-[#49B6E5] font-black text-white text-base transition-all hover:translate-y-[-1px] active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center py-2"
               >
-                Tiếp tục hành trình <ChevronRight size={24} strokeWidth={3} />
+                Tiếp tục hành trình
               </button>
             )}
           </div>
@@ -953,6 +1088,23 @@ const QuizPage: React.FC = () => {
 
   // ── Current question ──────────────────────────────────────────────────────
   const ch = challenges[idx]
+  const isCurrentAnswerCorrect = (() => {
+    if (!answered) return false
+    if (!ch) return false
+    if (ch.mode === 'MULTIPLE_CHOICE') {
+      return selected === ch.correctAnswer
+    }
+    if (ch.mode === 'FIND_WRONG_WORD') {
+      return wordPicked === ch.errorIndex
+    }
+    if (ch.mode === 'WRITING_FILL') {
+      return ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
+    }
+    if (ch.mode === 'SPEAKING_READ') {
+      return ollamaResult?.isCorrect ?? false
+    }
+    return false
+  })()
 
   // ── Render interaction by mode ────────────────────────────────────────────
   const renderInteraction = () => {
@@ -962,7 +1114,7 @@ const QuizPage: React.FC = () => {
       case 'MULTIPLE_CHOICE': {
         const handleSelect = (opt: string) => {
           if (answered) return
-          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+          if ((ch.audioUrl || ch.transcript) && (audioPlays[idx] || 0) === 0) {
             message.warning('Bạn cần nghe âm thanh trước khi chọn đáp án!')
             return
           }
@@ -981,7 +1133,7 @@ const QuizPage: React.FC = () => {
       case 'FIND_WRONG_WORD': {
         const handleWordClick = (wordIdx: number) => {
           if (answered) return
-          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+          if ((ch.audioUrl || ch.transcript) && (audioPlays[idx] || 0) === 0) {
             message.warning('Bạn cần nghe âm thanh trước khi chọn đáp án!')
             return
           }
@@ -1025,7 +1177,7 @@ const QuizPage: React.FC = () => {
       case 'WRITING_FILL': {
         const handleWritingSubmit = () => {
           if (!writingInput.trim()) return
-          if (ch.audioUrl && (audioPlays[idx] || 0) === 0) {
+          if ((ch.audioUrl || ch.transcript) && (audioPlays[idx] || 0) === 0) {
             message.warning('Bạn cần nghe âm thanh trước khi trả lời!')
             return
           }
@@ -1052,7 +1204,7 @@ const QuizPage: React.FC = () => {
                             ? (isCorrect ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-rose-500 text-rose-500 bg-rose-50')
                             : 'border-[#49B6E5] text-[#49B6E5] bg-[#E1F5FE]'
                         )}>
-                          {answered ? writingInput : (writingInput || '...')}
+                          {answered ? (isCorrect ? writingInput : `${writingInput} (Đúng: ${ch.correctWords.join(' / ')})`) : (writingInput || '...')}
                         </span>
                       )}
                     </React.Fragment>
@@ -1079,7 +1231,7 @@ const QuizPage: React.FC = () => {
                   onClick={handleWritingSubmit}
                   className="px-10 h-20 bg-[#49B6E5] border-[3.5px] border-slate-900 rounded-[1.5rem] text-white text-xl font-black shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
                 >
-                  GỬI BIỂU MẪU
+                  KIỂM TRA
                 </button>
               )}
             </div>
@@ -1348,7 +1500,7 @@ const QuizPage: React.FC = () => {
         {/* Progress Bar */}
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex justify-between items-center px-1">
-            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">PROGRESS</span>
+            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">TIẾN TRÌNH</span>
             <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">{Math.round(((idx) / total) * 100)}%</span>
           </div>
           <div className="h-4 bg-white border-[3.5px] border-slate-900 rounded-full overflow-hidden p-0.5 shadow-[4px_4px_0_#1f2937]">
@@ -1380,7 +1532,7 @@ const QuizPage: React.FC = () => {
           {/* Question Card */}
           <div className="bg-white border-[4px] border-slate-900 rounded-[2.5rem] p-10 shadow-[inner_0_4px_12px_rgba(0,0,0,0.05),8px_8px_0_#1f2937] relative flex flex-col justify-center min-h-[300px]">
             <div className="absolute -top-6 -left-4 bg-[#FFC107] border-[3.5px] border-slate-900 px-6 py-2 rounded-2xl shadow-[4px_4px_0_#1f2937] rotate-[-2deg]">
-              <span className="text-lg font-black text-slate-900 uppercase tracking-widest font-doodle">QUESTION</span>
+              <span className="text-lg font-black text-slate-900 uppercase tracking-widest font-doodle">CÂU HỎI</span>
             </div>
 
             <div className="flex flex-col gap-6 items-center text-center">
@@ -1389,25 +1541,30 @@ const QuizPage: React.FC = () => {
               </h4>
 
               {/* Prominent Audio Button inside the card */}
-              {ch.audioUrl && (
+              {(ch.audioUrl || ch.transcript) && (
                 <div className="absolute bottom-4 right-4 flex flex-col items-center gap-2">
                   <button
-                    disabled={(audioPlays[idx] || 0) >= 2}
-                    onClick={() => {
+                    disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS === 'banmai'}
+                    onClick={async () => {
                       try {
                         const plays = audioPlays[idx] || 0;
                         if (plays < 2) {
-                          new Audio(ch.audioUrl!).play();
+                          if (ch.audioUrl) {
+                            new Audio(ch.audioUrl).play();
+                          } else if (ch.transcript) {
+                            await playRegionalTTS(ch.transcript, 'banmai');
+                          }
                           setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
                         }
                       } catch (_) { }
                     }}
                     className={clsx(
                       "w-16 h-16 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all group relative",
-                      (audioPlays[idx] || 0) >= 2 ? "opacity-50 grayscale cursor-not-allowed shadow-none" : ""
+                      (answered || (audioPlays[idx] || 0) >= 2) ? "opacity-50 grayscale cursor-not-allowed shadow-none" : "",
+                      playingTTS === 'banmai' ? "animate-pulse" : ""
                     )}
                   >
-                    <Volume2 className="text-slate-900 group-hover:scale-110 transition-transform" size={28} />
+                    <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS === 'banmai' ? "animate-spin" : "")} size={28} />
                     {(audioPlays[idx] || 0) > 0 && (
                       <div className="absolute -top-2 -right-2 bg-[#F43F5E] border-[2px] border-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-[1px_1px_0_#000]">
                         {audioPlays[idx]}
@@ -1415,7 +1572,7 @@ const QuizPage: React.FC = () => {
                     )}
                   </button>
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border-[1.5px] border-slate-200 shadow-sm">
-                    nghe âm thanh ({audioPlays[idx] || 0}/2)
+                    {playingTTS === 'banmai' ? "đang phát..." : `nghe âm thanh (${audioPlays[idx] || 0}/2)`}
                   </span>
                 </div>
               )}
@@ -1457,7 +1614,7 @@ const QuizPage: React.FC = () => {
                     </div>
                   ) : answered ? (
                     <div className="flex flex-col gap-6">
-                      <TypedText text={explanation || "Đáp án chính xác! Tiếp tục phát huy nhé."} />
+                      <TypedText text={explanation || (isCurrentAnswerCorrect ? "Đáp án chính xác! Tiếp tục phát huy nhé." : "Rất tiếc, câu trả lời chưa chính xác. Hãy cố gắng ở các câu sau nhé!")} />
 
                       {/* Regional TTS moved INSIDE the bubble */}
                       {!explaining && (
