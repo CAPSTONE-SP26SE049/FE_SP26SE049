@@ -93,11 +93,11 @@ export const learnerService = {
     },
 
     /**
-     * GET /api/v1/users/levels/{levelId}/progress
+     * GET /api/v1/levels/{levelId}/progress
      * Lấy danh sách Quiz của một Chapter (Level) kèm tiến trình người chơi
      */
     getQuizzesByLevel: async (levelId: string): Promise<Quiz[]> => {
-        const res: any = await apiClient.get(`/users/levels/${levelId}/progress`);
+        const res: any = await apiClient.get(`/levels/${levelId}/progress`);
         // Extract from LevelProgressResponse.quizzes
         const list: any[] = res?.data?.quizzes || res?.quizzes || [];
         return list.map(q => ({
