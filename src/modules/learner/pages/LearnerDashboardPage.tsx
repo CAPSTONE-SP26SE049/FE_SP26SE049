@@ -185,17 +185,41 @@ export default function Dashboard() {
         const loadDailyChallenges = async () => {
             try {
                 const todayStr = new Date().toISOString().split('T')[0];
-                const storedData = localStorage.getItem('speakvn_daily_completed');
-                if (storedData) {
-                    try {
-                        const parsed = JSON.parse(storedData);
-                        if (parsed.date === todayStr) {
-                            setDailyCompletedIds(parsed.ids || []);
-                        } else {
+                
+                // Try fetching from the database first
+                let completedIds: string[] = [];
+                let fetchedFromDb = false;
+                try {
+                    const completedRes = await apiClient.get('/daily-challenges/completed');
+                    const dbIds = completedRes?.data?.data ?? completedRes?.data ?? completedRes ?? [];
+                    if (Array.isArray(dbIds)) {
+                        completedIds = dbIds.map(String);
+                        fetchedFromDb = true;
+                    }
+                } catch (dbErr) {
+                    console.warn('Failed to load completed challenges from database, falling back to localStorage:', dbErr);
+                }
+
+                if (fetchedFromDb) {
+                    setDailyCompletedIds(completedIds);
+                    localStorage.setItem('speakvn_daily_completed', JSON.stringify({
+                        date: todayStr,
+                        ids: completedIds
+                    }));
+                } else {
+                    // LocalStorage fallback
+                    const storedData = localStorage.getItem('speakvn_daily_completed');
+                    if (storedData) {
+                        try {
+                            const parsed = JSON.parse(storedData);
+                            if (parsed.date === todayStr) {
+                                setDailyCompletedIds(parsed.ids || []);
+                            } else {
+                                localStorage.removeItem('speakvn_daily_completed');
+                            }
+                        } catch (e) {
                             localStorage.removeItem('speakvn_daily_completed');
                         }
-                    } catch (e) {
-                        localStorage.removeItem('speakvn_daily_completed');
                     }
                 }
                 
@@ -777,6 +801,41 @@ export default function Dashboard() {
                                         </p>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {selectedChallenge && dailyCompletedIds.includes(selectedChallenge.id) && (
+                            <div className="mt-6 flex flex-col items-center">
+                                <p className="text-sm font-black text-emerald-600 mb-3">🎉 Tuyệt vời! Bạn đã vượt qua câu hỏi này!</p>
+                                {dailyChallenges.find(c => c.id !== selectedChallenge.id && !dailyCompletedIds.includes(c.id)) ? (
+                                    <button
+                                        onClick={() => {
+                                            const nextChallenge = dailyChallenges.find(
+                                                c => c.id !== selectedChallenge.id && !dailyCompletedIds.includes(c.id)
+                                            );
+                                            if (nextChallenge) {
+                                                setSelectedChallenge(nextChallenge);
+                                                setEvaluationFeedback(null);
+                                                recorder.resetRecording();
+                                            }
+                                        }}
+                                        className="group w-full inline-flex items-center justify-center gap-3 rounded-2xl border-[3px] border-slate-900 bg-[#10b981] px-6 py-4 text-base font-black text-white shadow-[5px_5px_0_#1f2937] active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-transform"
+                                    >
+                                        CHUYỂN SANG CÂU TIẾP THEO
+                                        <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setSelectedChallenge(null);
+                                            setEvaluationFeedback(null);
+                                            recorder.resetRecording();
+                                        }}
+                                        className="w-full rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] py-4 text-base font-black text-slate-900 shadow-[5px_5px_0_#1f2937] hover:bg-[#7dd3fc] active:translate-y-0.5"
+                                    >
+                                        HOÀN THÀNH VÀ ĐÓNG THỬ THÁCH
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

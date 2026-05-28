@@ -95,28 +95,28 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-purple-900/90 via-purple-800/85 to-orange-900/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
-        className="w-full max-w-3xl mx-4 bg-white rounded-[2rem] shadow-2xl shadow-purple-900/40 overflow-hidden"
+        className="w-full max-w-3xl bg-[#fbf6ef] border-[3px] border-slate-900 rounded-[2.5rem] shadow-[10px_10px_0_#1f2937] overflow-hidden p-6 lg:p-8"
       >
         {/* Header */}
-        <div className="text-center px-8 pt-8 pb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
-            <MapPin size={28} className="text-white" />
+        <div className="text-center pb-6">
+          <div className="w-16 h-16 bg-[#49B6E5]/20 border-[3px] border-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_0_#1f2937]">
+            <MapPin size={28} className="text-slate-900" />
           </div>
-          <h2 className="text-2xl font-black text-gray-800 mb-1">
+          <h2 className="text-2xl lg:text-3xl font-black text-slate-900 uppercase">
             Chọn Vùng Miền Của Bạn
           </h2>
-          <p className="text-gray-400 text-sm font-medium max-w-md mx-auto">
+          <p className="text-slate-600 text-sm font-bold max-w-md mx-auto mt-2">
             Hệ thống cần biết bạn muốn học giọng vùng nào để cá nhân hoá lộ trình phù hợp nhất
           </p>
         </div>
 
         {/* Region Cards */}
-        <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="pb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {REGION_CHOICES.map((r, idx) => {
             const isChosen = selected === r.value;
             return (
@@ -127,39 +127,39 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
                 transition={{ delay: idx * 0.1, type: "spring", stiffness: 120 }}
                 whileHover={{ y: -4 }}
                 onClick={() => setSelected(r.value)}
-                className={`relative cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 group ${isChosen
-                  ? "border-purple-500 shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/30"
-                  : "border-gray-100 hover:border-purple-200 hover:shadow-md"
+                className={`relative cursor-pointer rounded-2xl overflow-hidden border-[3px] border-slate-900 transition-all duration-300 shadow-[4px_4px_0_#1f2937] group ${isChosen
+                  ? "bg-[#fef9c3] scale-105"
+                  : "bg-white hover:bg-slate-50"
                   }`}
               >
                 {/* Photo */}
-                <div className="relative h-28 overflow-hidden">
+                <div className="relative h-28 overflow-hidden border-b-[3px] border-slate-900">
                   <img
                     src={r.photo}
                     alt={r.label}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-                    <h3 className="text-lg font-black text-white drop-shadow leading-none">{r.label}</h3>
-                    <div className="text-white bg-white/20 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
-                      <r.icon size={18} strokeWidth={2.5} />
+                    <h3 className="text-base font-black text-white drop-shadow-[1px_1px_2px_rgba(0,0,0,0.8)] leading-none">{r.label}</h3>
+                    <div className="text-white bg-slate-900/80 p-1.5 rounded-lg border border-white/20">
+                      <r.icon size={16} strokeWidth={2.5} />
                     </div>
                   </div>
                   {isChosen && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center shadow-md"
+                      className="absolute top-2 right-2 w-7 h-7 bg-[#49B6E5] border-2 border-slate-900 rounded-full flex items-center justify-center shadow"
                     >
-                      <span className="text-white text-sm font-black">✓</span>
+                      <span className="text-slate-900 text-xs font-black">✓</span>
                     </motion.div>
                   )}
                 </div>
 
                 {/* Info */}
                 <div className="p-3.5">
-                  <p className="text-[10px] font-black text-purple-500 tracking-widest mb-1">{r.tagline}</p>
-                  <p className="text-xs text-gray-400 font-medium leading-relaxed line-clamp-2">{r.description}</p>
+                  <p className="text-[10px] font-black text-[#49B6E5] tracking-widest mb-1 uppercase">{r.tagline}</p>
+                  <p className="text-[11px] text-slate-600 font-bold leading-relaxed line-clamp-2">{r.description}</p>
                 </div>
               </motion.div>
             );
@@ -167,13 +167,13 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
         </div>
 
         {/* CTA */}
-        <div className="px-8 pb-8 pt-2">
+        <div className="space-y-4">
           <button
             onClick={handleConfirm}
             disabled={!selected || saving}
-            className={`w-full h-13 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all duration-300 ${selected
-              ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:-translate-y-0.5"
-              : "bg-gray-100 text-gray-300 cursor-not-allowed"
+            className={`w-full rounded-2xl border-[3px] border-slate-900 font-black text-base flex items-center justify-center gap-2 transition-all shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 ${selected
+              ? "bg-[#10b981] text-white"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}
             style={{ height: 52 }}
           >
@@ -187,13 +187,13 @@ const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
           <button
             onClick={onLogout}
             disabled={saving}
-            className="w-full mt-3 h-11 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 text-red-500 bg-red-50 hover:bg-red-100 transition-all duration-300 border border-red-100"
+            className="w-full h-12 rounded-xl font-black text-sm flex items-center justify-center gap-2 text-rose-500 bg-white border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all"
           >
             <LogOut size={16} />
             Đăng xuất
           </button>
 
-          <p className="text-center text-[11px] text-gray-300 mt-4 font-medium">
+          <p className="text-center text-[10px] text-slate-400 mt-4 font-bold">
             Bạn có thể thay đổi vùng miền sau trong phần Hồ sơ cá nhân
           </p>
         </div>
