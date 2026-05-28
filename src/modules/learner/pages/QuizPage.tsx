@@ -15,7 +15,10 @@ import {
   Trophy,
   ArrowRight,
   Info,
-  Sparkles
+  Sparkles,
+  Star,
+  Target,
+  Activity
 } from 'lucide-react'
 import { Input, message } from 'antd'
 import clsx from 'clsx'
@@ -24,7 +27,7 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { uploadToCloudinary } from '../../../services/cloudinaryService'
-import characterImg from '../../../assets/sprite-max-px-36.gif'
+import characterImg from '../../../assets/4df21173-ac6f-458e-b5b2-2d31d39b0d39-Photoroom.png'
 import { ASR_BASE_URL } from '../../../config'
 import { DoodleLoading } from '../../../components/ui/DoodleLoading'
 
@@ -972,113 +975,141 @@ const QuizPage: React.FC = () => {
     const reward = result?.earnedReward
 
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-screen overflow-hidden bg-[#fbf6ef] font-nunito relative">
+      <div className="flex flex-col items-center justify-center min-h-screen w-screen overflow-x-hidden bg-[#fbf6ef] font-nunito relative px-4 py-8">
         <DoodleFireworks />
 
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="bg-white rounded-[2rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937] p-6 max-w-sm w-full text-center relative overflow-hidden z-10 mx-4"
+          initial={{ scale: 0.9, opacity: 0, y: 40 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          className="bg-white rounded-[2.5rem] border-[4px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-lg relative z-10 flex flex-col overflow-visible mt-16"
         >
-          {/* Status Header (Emoji only, no icon) */}
-          <div className="text-6xl mb-2 filter drop-shadow-[2px_2px_0_rgba(0,0,0,0.1)]">
-            {passed ? '🏆' : '💪'}
-          </div>
-
-          <h2 className="text-2xl font-black text-slate-900 mb-1 leading-tight italic font-doodle">
-            {passed ? 'Tuyệt đỉnh!' : 'Cố gắng lên!'}
-          </h2>
-
-          <p className="text-slate-500 font-bold mb-4 text-sm leading-snug">
-            Bạn đã hoàn thành <span className="text-[#49B6E5] underline decoration-[2px] decoration-slate-900 underline-offset-2">{quiz.name}</span>
-          </p>
-
-          {/* Stars System (Emojis only, no lucide icon) */}
-          <div className="flex justify-center gap-3 mb-4">
-            {[1, 2, 3].map(s => (
-              <motion.div
-                key={s}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.1 + s * 0.1, type: 'spring', bounce: 0.5 }}
-                className="text-4xl filter drop-shadow-[2px_2px_0_#1f2937]"
-              >
-                {s <= stars ? '⭐' : '⚫'}
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Stat Cards */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className={clsx(
-              "rounded-2xl p-3 border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937]",
-              passed ? "bg-emerald-50" : "bg-rose-50"
-            )}>
-              <p className="text-[10px] uppercase font-black tracking-wider mb-0.5 opacity-50 text-slate-700">Chính xác</p>
-              <p className="text-xl font-black text-slate-900 italic">{score}<span className="text-xs opacity-30 not-italic">/{total}</span></p>
-            </div>
-            <div className="rounded-2xl p-3 border-[2px] border-slate-900 bg-indigo-50 shadow-[3px_3px_0_#1f2937]">
-              <p className="text-[10px] uppercase font-black tracking-wider mb-0.5 opacity-50 text-indigo-600">Tỷ lệ</p>
-              <p className="text-xl font-black text-slate-900 italic">{pct}<span className="text-sm opacity-40">%</span></p>
-            </div>
-          </div>
-
-          {/* Achievement Area (Compact, no icon) */}
-          {(reward || result?.rewardAlreadyEarned) && (
-            <motion.div
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="mb-4 text-left"
+          {/* Header Banner */}
+          <div className={clsx(
+            "relative pt-16 pb-12 px-6 text-center border-b-[4px] border-slate-900 rounded-t-[2.2rem]",
+            passed ? "bg-[#a7f3d0]" : "bg-[#fecdd3]"
+          )}>
+            <motion.div 
+              animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.1, 1] }}
+              transition={{ duration: 1, delay: 0.5, ease: "easeInOut" }}
+              className="absolute -top-16 left-1/2 -translate-x-1/2 w-32 h-32 bg-white rounded-full border-[4px] border-slate-900 shadow-[6px_6px_0_#1f2937] flex items-center justify-center z-20"
             >
-              <div className="bg-amber-50 border-[2px] border-slate-900 rounded-2xl p-3 shadow-[3px_3px_0_#1f2937] flex items-center gap-3">
-                <div className="w-12 h-12 bg-white border-[1.5px] border-slate-900 rounded-xl flex items-center justify-center p-1.5 shadow-[2px_2px_0_#1f2937] shrink-0 text-2xl">
-                  🎁
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-amber-600 leading-none mb-1">
-                    {result?.rewardAlreadyEarned ? 'Thành tựu đã nhận' : 'Thành tựu mới!'}
-                  </p>
-                  <p className="font-black text-slate-900 text-sm leading-tight truncate">{reward?.name || 'Huy chương'}</p>
-                </div>
-              </div>
+              {passed ? <Trophy size={60} className="text-[#f59e0b] fill-[#f59e0b]" /> : <Target size={60} className="text-[#f43f5e]" />}
             </motion.div>
-          )}
 
-          {/* Result Actions */}
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handleExitQuiz}
-                className="h-12 rounded-xl border-[2px] border-slate-900 bg-white font-black text-slate-900 text-sm transition-all hover:bg-slate-50 active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
-              >
-                Thoát
-              </button>
-              <button
-                onClick={() => {
-                  setIdx(0); setScore(0); setSelected(null); setAnswered(false);
-                  setFinished(false); setWritingInput(''); setWordPicked(null);
-                  setResult(null); setTimeLeft(null); setNextQuizId(null);
-                }}
-                className="h-12 rounded-xl border-[2px] border-slate-900 bg-slate-100 font-black text-slate-900 text-sm transition-all hover:bg-slate-200 active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
-              >
-                Chơi lại
-              </button>
+            <div>
+              <h2 className="text-4xl font-black text-slate-900 mb-3 font-doodle tracking-wide drop-shadow-sm">
+                {passed ? 'Tuyệt đỉnh!' : 'Cố gắng lên!'}
+              </h2>
+              <p className="text-slate-800 font-bold text-lg leading-relaxed">
+                Bạn đã hoàn thành <br />
+                <span className="inline-block mt-2 font-black bg-white/80 px-4 py-1.5 rounded-xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937]">{quiz.name}</span>
+              </p>
             </div>
-            {nextQuizId && (
-              <button
-                onClick={() => navigate(`/learner/quiz/${nextQuizId}`, {
-                  state: {
-                    fromRoadmap: fromState.fromRoadmap,
-                    dialectId: fromState.dialectId,
-                    chapterId: fromState.chapterId,
-                  }
-                })}
-                className="h-12 rounded-xl border-[2px] border-slate-900 bg-[#49B6E5] font-black text-white text-base transition-all hover:translate-y-[-1px] active:translate-y-0.5 shadow-[3px_3px_0_#1f2937] flex items-center justify-center py-2"
+          </div>
+
+          <div className="p-8 bg-white rounded-b-[2.5rem] relative z-10">
+            {/* Stars */}
+            <div className="flex justify-center gap-5 mb-8">
+              {[1, 2, 3].map(s => (
+                <motion.div
+                  key={s}
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.3 + s * 0.15, type: 'spring', bounce: 0.6 }}
+                  className={clsx(
+                    "w-16 h-16 rounded-2xl border-[3.5px] border-slate-900 flex items-center justify-center shadow-[4px_4px_0_#1f2937] transition-all",
+                    s <= stars ? "bg-[#fcd34d]" : "bg-slate-100"
+                  )}
+                >
+                  <Star 
+                    size={32} 
+                    className={clsx(
+                      "transition-all",
+                      s <= stars ? "text-[#b45309] fill-[#f59e0b]" : "text-slate-300 fill-slate-200"
+                    )} 
+                  />
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-5 mb-8">
+              <motion.div 
+                whileHover={{ y: -4 }}
+                className="bg-emerald-50 rounded-2xl p-5 border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center text-center group transition-all"
               >
-                Tiếp tục hành trình
-              </button>
+                <CheckCircle size={28} className="text-emerald-500 mb-3 group-hover:scale-110 transition-transform" strokeWidth={3} />
+                <p className="text-[11px] uppercase font-black tracking-widest text-emerald-700 opacity-80 mb-1">Chính xác</p>
+                <p className="text-4xl font-black text-slate-900 font-doodle">{score}<span className="text-xl text-slate-400 font-nunito">/{total}</span></p>
+              </motion.div>
+
+              <motion.div 
+                whileHover={{ y: -4 }}
+                className="bg-[#e0f2fe] rounded-2xl p-5 border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center text-center group transition-all"
+              >
+                <Activity size={28} className="text-[#0284c7] mb-3 group-hover:scale-110 transition-transform" strokeWidth={3} />
+                <p className="text-[11px] uppercase font-black tracking-widest text-[#0284c7] opacity-80 mb-1">Tỷ lệ</p>
+                <p className="text-4xl font-black text-slate-900 font-doodle">{pct}<span className="text-xl text-slate-400 font-nunito">%</span></p>
+              </motion.div>
+            </div>
+
+            {/* Achievement Area */}
+            {(reward || result?.rewardAlreadyEarned) && (
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="mb-8"
+              >
+                <div className="bg-amber-100 border-[3px] border-slate-900 rounded-[1.5rem] p-4 shadow-[4px_4px_0_#1f2937] flex items-center gap-5 hover:shadow-[6px_6px_0_#1f2937] hover:-translate-y-1 transition-all">
+                  <div className="w-16 h-16 bg-white border-[2.5px] border-slate-900 rounded-2xl flex items-center justify-center shadow-[3px_3px_0_#1f2937] shrink-0">
+                    <Sparkles size={28} className="text-amber-500 fill-amber-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">
+                      {result?.rewardAlreadyEarned ? 'ĐÃ NHẬN THÀNH TỰU' : '✨ THÀNH TỰU MỚI! ✨'}
+                    </p>
+                    <p className="font-black text-slate-900 text-lg leading-tight truncate">
+                      {reward?.name || 'Huy chương xuất sắc'}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
             )}
+
+            {/* Actions */}
+            <div className="flex flex-col gap-4">
+              {nextQuizId && passed && (
+                <button
+                  onClick={() => navigate(`/learner/quiz/${nextQuizId}`, {
+                    state: { fromRoadmap: fromState.fromRoadmap, dialectId: fromState.dialectId, chapterId: fromState.chapterId }
+                  })}
+                  className="w-full h-16 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] font-black text-white text-lg transition-all hover:bg-[#3ba0cc] hover:-translate-y-1 active:translate-y-0.5 shadow-[5px_5px_0_#1f2937] active:shadow-none flex items-center justify-center gap-3 group"
+                >
+                  Tiếp tục hành trình <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={handleExitQuiz}
+                  className="h-16 rounded-2xl border-[3px] border-slate-900 bg-white font-black text-slate-900 text-base transition-all hover:bg-slate-50 hover:-translate-y-1 active:translate-y-0.5 shadow-[5px_5px_0_#1f2937] active:shadow-none flex items-center justify-center"
+                >
+                  Thoát
+                </button>
+                <button
+                  onClick={() => {
+                    setIdx(0); setScore(0); setSelected(null); setAnswered(false);
+                    setFinished(false); setWritingInput(''); setWordPicked(null);
+                    setResult(null); setTimeLeft(null); setNextQuizId(null);
+                  }}
+                  className="h-16 rounded-2xl border-[3px] border-slate-900 bg-[#fde047] font-black text-slate-900 text-base transition-all hover:bg-[#facc15] hover:-translate-y-1 active:translate-y-0.5 shadow-[5px_5px_0_#1f2937] active:shadow-none flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={20} strokeWidth={3} /> Chơi lại
+                </button>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -1501,13 +1532,13 @@ const QuizPage: React.FC = () => {
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex justify-between items-center px-1">
             <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">TIẾN TRÌNH</span>
-            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">{Math.round(((idx) / total) * 100)}%</span>
+            <span className="text-xs font-black text-slate-900 uppercase tracking-widest opacity-50">{finished ? 100 : Math.round(((idx) / total) * 100)}%</span>
           </div>
           <div className="h-4 bg-white border-[3.5px] border-slate-900 rounded-full overflow-hidden p-0.5 shadow-[4px_4px_0_#1f2937]">
             <motion.div
               className="h-full bg-slate-900 rounded-full"
               initial={{ width: 0 }}
-              animate={{ width: `${Math.max(2, ((idx) / total) * 100)}%` }}
+              animate={{ width: `${Math.max(2, (finished ? 100 : ((idx) / total) * 100))}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
@@ -1565,14 +1596,14 @@ const QuizPage: React.FC = () => {
                     )}
                   >
                     <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS === 'banmai' ? "animate-spin" : "")} size={28} />
-                    {(audioPlays[idx] || 0) > 0 && (
+                    {true && (
                       <div className="absolute -top-2 -right-2 bg-[#F43F5E] border-[2px] border-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-[1px_1px_0_#000]">
-                        {audioPlays[idx]}
+                        {2 - (audioPlays[idx] || 0)}
                       </div>
                     )}
                   </button>
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border-[1.5px] border-slate-200 shadow-sm">
-                    {playingTTS === 'banmai' ? "đang phát..." : `nghe âm thanh (${audioPlays[idx] || 0}/2)`}
+                    {playingTTS === 'banmai' ? "đang phát..." : `nghe âm thanh (${2 - (audioPlays[idx] || 0)}/2)`}
                   </span>
                 </div>
               )}
