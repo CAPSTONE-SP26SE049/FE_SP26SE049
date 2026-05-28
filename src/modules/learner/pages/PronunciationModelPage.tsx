@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { Volume2, Play, RotateCcw, Lightbulb, AlertTriangle, Sparkles, Type, Pause } from 'lucide-react';
@@ -69,7 +69,18 @@ export default function PronunciationModelPage() {
     
     // 3D Model Viewer state hooks
     const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
-    const [selectedModel, setSelectedModel] = useState<string>('/3D/Pronunciation.glb');
+    const modelViewerRef = useRef<any>(null);
+
+    useEffect(() => {
+        const viewer = modelViewerRef.current;
+        if (!viewer) return;
+        const handleLoop = () => {
+            viewer.pause();
+            // Optional: viewer.currentTime = 0; if you want it to reset
+        };
+        viewer.addEventListener('loop', handleLoop);
+        return () => viewer.removeEventListener('loop', handleLoop);
+    }, [viewMode, activeSound]);
 
     const displayViseme = isPlaying ? currentViseme : manualViseme;
 
@@ -77,13 +88,6 @@ export default function PronunciationModelPage() {
         if (isPlaying) return;
         setActiveSound(sound);
         setManualViseme(sound.toLowerCase());
-        
-        // Auto select specific 3D model for 'L', general one for other sounds
-        if (sound === 'L') {
-            setSelectedModel('/3D/mieng_phat_am_L.glb');
-        } else {
-            setSelectedModel('/3D/Pronunciation.glb');
-        }
     }, [isPlaying]);
 
     const handlePlayWord = useCallback((word: string) => {
@@ -262,7 +266,10 @@ export default function PronunciationModelPage() {
                             </div>
 
                             {/* Viseme Viewport */}
-                            <div className="relative bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center p-6 h-[340px] md:h-[400px]">
+                            <div className={clsx(
+                                "relative bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center p-6 transition-all",
+                                viewMode === '2d' ? "h-[340px] md:h-[400px]" : "h-[450px] md:h-[550px]"
+                            )}>
                                 {viewMode === '2d' ? (
                                     <>
                                         <MouthViseme
@@ -287,37 +294,34 @@ export default function PronunciationModelPage() {
                                     </>
                                 ) : (
                                     <div className="w-full h-full relative flex items-center justify-center">
-                                        {/* Model selector buttons */}
-                                        <div className="absolute top-0 left-0 z-10 flex flex-col gap-2">
-                                            <button
-                                                onClick={() => setSelectedModel('/3D/Pronunciation.glb')}
-                                                className={clsx(
-                                                    "px-3 py-1.5 rounded-lg border-[1.5px] border-slate-900 text-[9px] font-black uppercase shadow-[2px_2px_0_#1f2937] transition-all bg-white",
-                                                    selectedModel === '/3D/Pronunciation.glb' ? "text-[#49B6E5] bg-slate-50 border-[#49B6E5]" : "text-slate-500"
-                                                )}
+                                        {/* 3D Action Controls */}
+                                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => {
+                                                    if (modelViewerRef.current) {
+                                                        modelViewerRef.current.currentTime = 0;
+                                                        modelViewerRef.current.play();
+                                                    }
+                                                }}
+                                                className="px-4 py-2 rounded-xl border-[2px] border-slate-900 bg-[#49B6E5] text-white font-black text-xs uppercase shadow-[3px_3px_0_#1f2937] flex items-center gap-2 transition-all"
                                             >
-                                                Mô hình 3D (Tổng quan)
-                                            </button>
-                                            <button
-                                                onClick={() => setSelectedModel('/3D/mieng_phat_am_L.glb')}
-                                                className={clsx(
-                                                    "px-3 py-1.5 rounded-lg border-[1.5px] border-slate-900 text-[9px] font-black uppercase shadow-[2px_2px_0_#1f2937] transition-all bg-white",
-                                                    selectedModel === '/3D/mieng_phat_am_L.glb' ? "text-[#49B6E5] bg-slate-50 border-[#49B6E5]" : "text-slate-500"
-                                                )}
-                                            >
-                                                Khớp âm Chữ L
-                                            </button>
+                                                <Play size={16} /> Phát hoạt ảnh
+                                            </motion.button>
                                         </div>
 
                                         {/* 3D Model viewer using web component */}
                                         <model-viewer
-                                            key={selectedModel}
-                                            src={selectedModel}
+                                            ref={modelViewerRef}
+                                            key={`model-${activeSound}`}
+                                            src="/3D/Pronunciation.glb"
                                             alt="Mô hình phát âm 3D"
                                             camera-controls
                                             auto-rotate
                                             shadow-intensity="1.5"
                                             exposure="1.0"
+                                            animation-name={activeSound}
                                             style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
                                         ></model-viewer>
 
@@ -330,115 +334,117 @@ export default function PronunciationModelPage() {
                             </div>
 
                             {/* Controls */}
-                            <div className="p-4 md:p-5 bg-white border-t-[2px] border-slate-900 space-y-4">
+                            {viewMode === '2d' && (
+                                <div className="p-4 md:p-5 bg-white border-t-[2px] border-slate-900 space-y-4">
 
-                                {/* Face Type Selector */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn nhân vật</span>
+                                    {/* Face Type Selector */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn nhân vật</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {([
+                                                { key: 'child' as FaceType, label: 'Trẻ em', emoji: '👶' },
+                                                { key: 'adult' as FaceType, label: 'Người lớn', emoji: '🧑' },
+                                                { key: 'elderly' as FaceType, label: 'Người già', emoji: '👴' },
+                                            ]).map(ft => (
+                                                <motion.button
+                                                    key={ft.key}
+                                                    whileHover={{ y: -2 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    onClick={() => setFaceType(ft.key)}
+                                                    className={clsx(
+                                                        "flex-1 py-2 px-3 rounded-xl border-[2px] font-black text-xs flex items-center justify-center gap-1.5 transition-all",
+                                                        faceType === ft.key
+                                                            ? "border-slate-900 bg-[#49B6E5] text-white shadow-[3px_3px_0_#1f2937]"
+                                                            : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-900 hover:shadow-[2px_2px_0_#1f2937]"
+                                                    )}
+                                                >
+                                                    <span className="text-base">{ft.emoji}</span> {ft.label}
+                                                </motion.button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        {([
-                                            { key: 'child' as FaceType, label: 'Trẻ em', emoji: '👶' },
-                                            { key: 'adult' as FaceType, label: 'Người lớn', emoji: '🧑' },
-                                            { key: 'elderly' as FaceType, label: 'Người già', emoji: '👴' },
-                                        ]).map(ft => (
+
+                                    {/* Word Input */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Type size={14} className="text-slate-400" />
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhập từ để mô phỏng</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                value={wordInput}
+                                                onChange={e => setWordInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') handlePlayInput(); }}
+                                                placeholder="Ví dụ: lá, nước, trường..."
+                                                className="flex-1 h-12 px-4 rounded-xl border-[2.5px] border-slate-900 bg-[#fbf6ef] shadow-[2px_2px_0_#1f2937] font-bold text-[#263D5B] placeholder:text-slate-300 focus:outline-none focus:border-[#49B6E5] transition-colors"
+                                            />
                                             <motion.button
-                                                key={ft.key}
                                                 whileHover={{ y: -2 }}
                                                 whileTap={{ scale: 0.95 }}
-                                                onClick={() => setFaceType(ft.key)}
+                                                onClick={handlePlayInput}
+                                                disabled={!wordInput.trim()}
                                                 className={clsx(
-                                                    "flex-1 py-2 px-3 rounded-xl border-[2px] font-black text-xs flex items-center justify-center gap-1.5 transition-all",
-                                                    faceType === ft.key
-                                                        ? "border-slate-900 bg-[#49B6E5] text-white shadow-[3px_3px_0_#1f2937]"
-                                                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-900 hover:shadow-[2px_2px_0_#1f2937]"
+                                                    "h-12 px-5 rounded-xl border-[2.5px] border-slate-900 font-black text-sm uppercase tracking-wider shadow-[3px_3px_0_#1f2937] flex items-center gap-2 transition-all disabled:opacity-40",
+                                                    isPlaying ? "bg-red-400 text-white" : "bg-[#49B6E5] text-white"
                                                 )}
                                             >
-                                                <span className="text-base">{ft.emoji}</span> {ft.label}
+                                                {isPlaying ? <><Pause size={16} /> Dừng</> : <><Play size={16} /> Phát</>}
                                             </motion.button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Word Input */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Type size={14} className="text-slate-400" />
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhập từ để mô phỏng</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            value={wordInput}
-                                            onChange={e => setWordInput(e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') handlePlayInput(); }}
-                                            placeholder="Ví dụ: lá, nước, trường..."
-                                            className="flex-1 h-12 px-4 rounded-xl border-[2.5px] border-slate-900 bg-[#fbf6ef] shadow-[2px_2px_0_#1f2937] font-bold text-[#263D5B] placeholder:text-slate-300 focus:outline-none focus:border-[#49B6E5] transition-colors"
-                                        />
-                                        <motion.button
-                                            whileHover={{ y: -2 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={handlePlayInput}
-                                            disabled={!wordInput.trim()}
-                                            className={clsx(
-                                                "h-12 px-5 rounded-xl border-[2.5px] border-slate-900 font-black text-sm uppercase tracking-wider shadow-[3px_3px_0_#1f2937] flex items-center gap-2 transition-all disabled:opacity-40",
-                                                isPlaying ? "bg-red-400 text-white" : "bg-[#49B6E5] text-white"
-                                            )}
-                                        >
-                                            {isPlaying ? <><Pause size={16} /> Dừng</> : <><Play size={16} /> Phát</>}
-                                        </motion.button>
-                                        <motion.button
-                                            whileHover={{ y: -2 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={handleReset}
-                                            className="h-12 w-12 rounded-xl border-[2.5px] border-slate-900 bg-white shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
-                                        >
-                                            <RotateCcw size={16} />
-                                        </motion.button>
-                                    </div>
-                                </div>
-
-                                {/* Phoneme sequence display */}
-                                {phonemes.length > 0 && wordInput && (
-                                    <div className="flex flex-wrap gap-1.5 items-center">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Chuỗi âm:</span>
-                                        {phonemes.map((p, idx) => (
-                                            <motion.span
-                                                key={idx}
-                                                animate={currentPhonemeIndex === idx ? { scale: 1.2, y: -2 } : { scale: 1, y: 0 }}
-                                                className={clsx(
-                                                    "px-2 py-1 rounded-lg border-[1.5px] text-xs font-black transition-colors",
-                                                    currentPhonemeIndex === idx
-                                                        ? "border-[#49B6E5] bg-[#49B6E5] text-white shadow-[2px_2px_0_#1f2937]"
-                                                        : currentPhonemeIndex > idx
-                                                            ? "border-emerald-400 bg-emerald-50 text-emerald-600"
-                                                            : "border-slate-200 bg-slate-50 text-slate-400"
-                                                )}
-                                            >
-                                                {p}
-                                            </motion.span>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Example words */}
-                                <div className="space-y-2">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Từ mẫu cho âm {activeSound}:</span>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(EXAMPLE_WORDS[activeSound] || []).map(word => (
                                             <motion.button
-                                                key={word}
                                                 whileHover={{ y: -2 }}
                                                 whileTap={{ scale: 0.95 }}
-                                                onClick={() => handlePlayWord(word)}
-                                                className="px-4 py-2 rounded-xl border-[2px] border-slate-900 bg-white shadow-[2px_2px_0_#1f2937] font-black text-sm text-[#263D5B] hover:bg-[#49B6E5] hover:text-white transition-colors"
+                                                onClick={handleReset}
+                                                className="h-12 w-12 rounded-xl border-[2.5px] border-slate-900 bg-white shadow-[3px_3px_0_#1f2937] flex items-center justify-center"
                                             >
-                                                {word}
+                                                <RotateCcw size={16} />
                                             </motion.button>
-                                        ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Phoneme sequence display */}
+                                    {phonemes.length > 0 && wordInput && (
+                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Chuỗi âm:</span>
+                                            {phonemes.map((p, idx) => (
+                                                <motion.span
+                                                    key={idx}
+                                                    animate={currentPhonemeIndex === idx ? { scale: 1.2, y: -2 } : { scale: 1, y: 0 }}
+                                                    className={clsx(
+                                                        "px-2 py-1 rounded-lg border-[1.5px] text-xs font-black transition-colors",
+                                                        currentPhonemeIndex === idx
+                                                            ? "border-[#49B6E5] bg-[#49B6E5] text-white shadow-[2px_2px_0_#1f2937]"
+                                                            : currentPhonemeIndex > idx
+                                                                ? "border-emerald-400 bg-emerald-50 text-emerald-600"
+                                                                : "border-slate-200 bg-slate-50 text-slate-400"
+                                                    )}
+                                                >
+                                                    {p}
+                                                </motion.span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Example words */}
+                                    <div className="space-y-2">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Từ mẫu cho âm {activeSound}:</span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(EXAMPLE_WORDS[activeSound] || []).map(word => (
+                                                <motion.button
+                                                    key={word}
+                                                    whileHover={{ y: -2 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    onClick={() => handlePlayWord(word)}
+                                                    className="px-4 py-2 rounded-xl border-[2px] border-slate-900 bg-white shadow-[2px_2px_0_#1f2937] font-black text-sm text-[#263D5B] hover:bg-[#49B6E5] hover:text-white transition-colors"
+                                                >
+                                                    {word}
+                                                </motion.button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </motion.div>
                     </div>
                 </div>

@@ -273,7 +273,7 @@ export default function LearnerLayout() {
     { key: "/learner/dashboard", label: "Trang chủ" },
     { key: "/learner/roadmap", label: "Hành trình" },
     { key: "/learner/pronunciation", label: "Phát âm" },
-    { key: "/learner/minigames", label: "Trò chơi" },
+    { key: "/learner/minigames", label: "Minigame" },
   ], []);
 
   const dropdownItems = React.useMemo(() => [
