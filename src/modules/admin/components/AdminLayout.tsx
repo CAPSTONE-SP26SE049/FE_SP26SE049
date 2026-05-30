@@ -18,7 +18,9 @@ import {
   MoreVertical,
   Tag,
   Cpu,
-  Database
+  Database,
+  MessageSquare,
+  Gamepad2
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -31,6 +33,8 @@ const NAV_ITEMS = [
   { key: '/admin/entry-test', icon: FlaskConical, label: 'Quản lý Entry Test' },
   { key: '/admin/users', icon: Users, label: 'Người dùng' },
   { key: '/admin/achievements', icon: Medal, label: 'Thành tựu' },
+  { key: '/admin/minigames', icon: Gamepad2, label: 'Minigame' },
+  { key: '/admin/feedbacks', icon: MessageSquare, label: 'Phản hồi' },
   { key: '/admin/ai-config', icon: Cpu, label: 'Cấu hình AI' },
   { key: '/admin/settings', icon: Settings, label: 'Cài đặt' },
 ]

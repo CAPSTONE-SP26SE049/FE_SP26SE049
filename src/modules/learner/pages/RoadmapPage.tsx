@@ -777,7 +777,7 @@ const RoadmapPage: React.FC = () => {
                 </>
               )}
             </div>
-            <h2 className="text-lg font-black text-slate-900 truncate font-serif">
+            <h2 className="text-lg font-black text-slate-900 truncate">
               {selectedChapter?.name}
             </h2>
           </div>

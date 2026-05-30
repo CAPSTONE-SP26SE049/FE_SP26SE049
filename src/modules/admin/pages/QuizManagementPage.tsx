@@ -19,7 +19,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
 const SKILL_CONFIG: Record<string, { label: string; color: string; icon: any; bg: string }> = {
-    READING: { label: 'Đọc hiểu', color: '#2563eb', icon: BookOpen, bg: 'bg-blue-50' },
     LISTENING: { label: 'Nghe hiểu', color: '#7c3aed', icon: Volume2, bg: 'bg-violet-50' },
     WRITING: { label: 'Viết', color: '#059669', icon: Edit3, bg: 'bg-emerald-50' },
     SPEAKING: { label: 'Nói', color: '#ea580c', icon: Mic, bg: 'bg-orange-50' },
@@ -258,7 +257,7 @@ const AdminQuizManagementPage: React.FC = () => {
     // --- Batch Editing Logic ---
     const addBatchQuestion = () => setBatchQuestions(prev => [...prev, {
         tempId: `new-${Date.now()}-${Math.random()}`, id: '', relationId: '', isExisting: false,
-        skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType : 'READING',
+        skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType : 'LISTENING',
         contentText: '', fullSentence: '', wrongWord: '', correctWord: '',
         options: ['', '', '', ''], correctAnswer: '', transcript: '', correctSentence: '', blankSentence: '', alternatives: '', hint: '', words: ''
     } as any]);
@@ -391,7 +390,7 @@ const AdminQuizManagementPage: React.FC = () => {
                 const meta = p.metadataJson || {};
                 return {
                     tempId: `ex-${p.id}-${idx}`, id: p.id, relationId: p.relationId || '', isExisting: true,
-                    skillType: p.skillType || quiz?.skillType || 'READING', contentText: p.contentText || '',
+                    skillType: p.skillType || quiz?.skillType || 'LISTENING', contentText: p.contentText || '',
                     fullSentence: Array.isArray(meta.words) ? meta.words.join(' ') : (p.contentText || ''),
                     wrongWord: (Array.isArray(meta.words) && meta.error_index != null) ? meta.words[meta.error_index] : '',
                     correctWord: meta.correct_word || meta.correctWord || '',
@@ -404,7 +403,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     hint: meta.hint || ''
                 } as any;
             }));
-        } else setBatchQuestions([{ tempId: 'new-1', id: '', relationId: '', isExisting: false, skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType || 'READING' : 'READING', options: ['', '', '', ''] } as any]);
+        } else setBatchQuestions([{ tempId: 'new-1', id: '', relationId: '', isExisting: false, skillType: quiz?.skillType !== 'MIXED' ? quiz?.skillType || 'LISTENING' : 'LISTENING', options: ['', '', '', ''] } as any]);
         setIsBatchQuestionsModalOpen(true);
     };
 
@@ -1071,7 +1070,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
                     <Row gutter={16}>
                         <Col span={14}>
-                            <Form.Item name="skillType" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Loại kỹ năng</span>} initialValue="READING">
+                            <Form.Item name="skillType" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Loại kỹ năng</span>} initialValue="LISTENING">
                                 <Select className="doodle-select">
                                     {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
                                 </Select>
@@ -1162,22 +1161,6 @@ const AdminQuizManagementPage: React.FC = () => {
                     </Form.Item>
 
                     <div className="bg-[#fafafa] p-6 rounded-[2rem] border-[2.5px] border-dashed border-slate-200">
-                        {activeSkillType === 'READING' && (
-                            <div className="space-y-4">
-                                <Form.Item name="fullSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Câu văn chứa lỗi</span>} rules={[{ required: true }]}>
-                                    <Input className="doodle-input" placeholder="Ví dụ: Trời lồm nên nhà bị lồm" />
-                                </Form.Item>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Form.Item name="wrongWord" label={<span className="text-[9px] font-black uppercase text-slate-400">Từ bị sai</span>} rules={[{ required: true }]}>
-                                        <Input className="doodle-input border-red-200" placeholder="lồm" />
-                                    </Form.Item>
-                                    <Form.Item name="correctWord" label={<span className="text-[9px] font-black uppercase text-slate-400">Từ sửa đúng</span>} rules={[{ required: true }]}>
-                                        <Input className="doodle-input border-emerald-200" placeholder="nồm" />
-                                    </Form.Item>
-                                </div>
-                            </div>
-                        )}
-
                         {activeSkillType === 'LISTENING' && (
                             <div className="space-y-4">
                                 <Form.Item name="correctSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Nội dung câu đọc chuẩn</span>} rules={[{ required: true }]}>
@@ -1486,18 +1469,6 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 {/* Skill Specific Inputs */}
-                                                {q.skillType === 'READING' && (
-                                                    <>
-                                                        <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Cả câu chứa lỗi</span>} className="mb-0">
-                                                            <Input className="doodle-input" placeholder="Mẹ đi chợ mua lồi cơm" value={q.fullSentence} onChange={e => updateBatchQuestionField(q.tempId, 'fullSentence', e.target.value)} />
-                                                        </Form.Item>
-                                                        <div className="grid grid-cols-2 gap-3">
-                                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Từ bị sai</span>} className="mb-0"><Input className="doodle-input border-red-200" placeholder="lồi" value={q.wrongWord} onChange={e => updateBatchQuestionField(q.tempId, 'wrongWord', e.target.value)} /></Form.Item>
-                                                            <Form.Item label={<span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Từ sửa đúng</span>} className="mb-0"><Input className="doodle-input border-emerald-200" placeholder="nồi" value={q.correctWord} onChange={e => updateBatchQuestionField(q.tempId, 'correctWord', e.target.value)} /></Form.Item>
-                                                        </div>
-                                                    </>
-                                                )}
-
                                                 {(q.skillType === 'LISTENING' || q.skillType === 'SPEAKING') && (
                                                     <>
                                                         <Form.Item className="md:col-span-2 mb-0" label={

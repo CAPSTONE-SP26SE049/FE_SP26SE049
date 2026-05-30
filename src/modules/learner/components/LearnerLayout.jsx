@@ -283,6 +283,7 @@ export default function LearnerLayout() {
     { key: "/learner/leaderboard", label: "Xếp hạng" },
     { key: "/learner/achievements", label: "Thành tựu" },
     { key: "/learner/friends", label: "Bạn bè" },
+    { key: "/learner/feedback", label: "Phản hồi" },
   ], []);
 
   const menuItems = React.useMemo(() => [

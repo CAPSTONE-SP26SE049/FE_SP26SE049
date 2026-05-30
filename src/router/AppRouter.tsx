@@ -32,6 +32,7 @@ import EntryTestManagementPage from '../modules/admin/pages/EntryTestManagementP
 import ErrorTagManagementPage from '../modules/admin/pages/ErrorTagManagementPage'
 import UserFeedbackManagementPage from '../modules/admin/pages/UserFeedbackManagementPage'
 import AiConfigManagementPage from '../modules/admin/pages/AiConfigManagementPage'
+import MinigameManagementPage from '../modules/admin/pages/MinigameManagementPage'
 import MinigamesPage from '../modules/learner/pages/MinigamesPage'
 import WordChallengePage from '../modules/learner/pages/minigames/WordChallengePage'
 import SentenceCompletionPage from '../modules/learner/pages/minigames/SentenceCompletionPage'
@@ -58,6 +59,7 @@ import CustomPathDesignerPage from '../modules/educator/pages/CustomPathDesigner
 import CustomJourneyPage from '../modules/learner/pages/CustomJourneyPage'
 import MailboxPage from '../modules/learner/pages/MailboxPage'
 import EntryTestPage from '../modules/learner/pages/EntryTestPage'
+import FeedbackPage from '../modules/learner/pages/FeedbackPage'
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -91,6 +93,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="error-tags" element={<ErrorTagManagementPage />} />
           <Route path="feedbacks" element={<UserFeedbackManagementPage />} />
           <Route path="challenge-bank" element={<ChallengeBankManagementPage />} />
+          <Route path="minigames" element={<MinigameManagementPage />} />
         </Route>
       </Route>
 
@@ -139,6 +142,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="minigames/word-guess" element={<WordGuessPage />} />
           <Route path="minigames/sentence-completion" element={<SentenceCompletionPage />} />
           <Route path="minigames/conversation" element={<ConversationSimPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
         </Route>
       </Route>
 

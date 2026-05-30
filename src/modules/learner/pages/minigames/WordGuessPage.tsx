@@ -1,57 +1,15 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, RotateCcw, Trophy, Heart, HelpCircle, Lightbulb, Search } from 'lucide-react'
 import clsx from 'clsx'
 import GameRulesModal from '../../components/GameRulesModal'
+import { minigameService } from '../../services/minigameService'
 
 interface WordData {
     word: string
     hint: string
     category: string
-}
-
-const MOCK_WORDS: Record<string, WordData[]> = {
-    N_L: [
-        { word: 'nắng', hint: 'Ánh mặt trời chiếu xuống', category: 'Thời tiết' },
-        { word: 'lạnh', hint: 'Cảm giác khi mùa đông đến', category: 'Thời tiết' },
-        { word: 'nước', hint: 'Chất lỏng uống hàng ngày', category: 'Tự nhiên' },
-        { word: 'lửa', hint: 'Cháy sáng, tỏa nhiệt', category: 'Tự nhiên' },
-        { word: 'nồi', hint: 'Dụng cụ nấu ăn', category: 'Nhà bếp' },
-        { word: 'lưỡi', hint: 'Bộ phận trong miệng giúp nếm', category: 'Cơ thể' },
-        { word: 'nấm', hint: 'Mọc ở nơi ẩm ướt, có thể ăn được', category: 'Thực phẩm' },
-        { word: 'lồng', hint: 'Dùng để nhốt chim', category: 'Đồ vật' },
-    ],
-    S_X: [
-        { word: 'sáng', hint: 'Buổi đầu tiên trong ngày', category: 'Thời gian' },
-        { word: 'xanh', hint: 'Màu của lá cây', category: 'Màu sắc' },
-        { word: 'sông', hint: 'Dòng nước chảy dài', category: 'Tự nhiên' },
-        { word: 'xuân', hint: 'Mùa đầu tiên trong năm', category: 'Thời gian' },
-        { word: 'sách', hint: 'Đọc để học kiến thức', category: 'Đồ vật' },
-        { word: 'xóm', hint: 'Khu dân cư nhỏ', category: 'Địa điểm' },
-        { word: 'sợi', hint: 'Dùng để dệt vải', category: 'Đồ vật' },
-        { word: 'xương', hint: 'Bộ khung bên trong cơ thể', category: 'Cơ thể' },
-    ],
-    D_GI_R: [
-        { word: 'dừa', hint: 'Cây nhiệt đới, quả có nước ngọt', category: 'Thực vật' },
-        { word: 'gió', hint: 'Không khí chuyển động', category: 'Tự nhiên' },
-        { word: 'rừng', hint: 'Nơi có nhiều cây cối', category: 'Tự nhiên' },
-        { word: 'dạy', hint: 'Giáo viên làm việc này', category: 'Hành động' },
-        { word: 'giày', hint: 'Đi ở chân khi ra ngoài', category: 'Đồ vật' },
-        { word: 'rắn', hint: 'Loài bò sát không chân', category: 'Động vật' },
-        { word: 'dầu', hint: 'Chất lỏng dùng để chiên', category: 'Nhà bếp' },
-        { word: 'giấc', hint: '... mơ — khi ngủ', category: 'Sinh hoạt' },
-    ],
-    TR_CH: [
-        { word: 'trăng', hint: 'Sáng trên bầu trời đêm', category: 'Tự nhiên' },
-        { word: 'chim', hint: 'Loài có cánh, biết bay', category: 'Động vật' },
-        { word: 'trường', hint: 'Nơi học sinh đến học', category: 'Địa điểm' },
-        { word: 'chợ', hint: 'Nơi mua bán hàng hóa', category: 'Địa điểm' },
-        { word: 'trẻ', hint: 'Người còn nhỏ tuổi', category: 'Con người' },
-        { word: 'chạy', hint: 'Di chuyển nhanh bằng chân', category: 'Hành động' },
-        { word: 'trái', hint: 'Quả cây, hoặc hướng ngược phải', category: 'Tự nhiên' },
-        { word: 'cháo', hint: 'Món ăn nấu từ gạo loãng', category: 'Thực phẩm' },
-    ],
 }
 
 const PAIR_LABELS: Record<string, string> = {
@@ -108,11 +66,23 @@ const WordGuessPage: React.FC = () => {
     const [gameOver, setGameOver] = useState(false)
     const [lostLife, setLostLife] = useState(false)
     const [correctGuess, setCorrectGuess] = useState(false)
+    const [apiWords, setApiWords] = useState<WordData[]>([])
+
+    useEffect(() => {
+        minigameService.getWordGuess(pairType).then(data => {
+            const mapped = data.map((item: any) => ({
+                word: item.questionData?.word || '',
+                hint: item.questionData?.hint || '',
+                category: item.questionData?.category || '',
+            })).filter((w: WordData) => w.word)
+            setApiWords(mapped)
+        })
+    }, [pairType])
 
     const currentWord = words[currentWordIndex]
 
     const initGame = useCallback(() => {
-        const allWords = MOCK_WORDS[pairType] || MOCK_WORDS.N_L
+        const allWords = apiWords.length > 0 ? apiWords : []
         const shuffled = [...allWords].sort(() => Math.random() - 0.5)
         setWords(shuffled)
         setCurrentWordIndex(0)
@@ -123,7 +93,7 @@ const WordGuessPage: React.FC = () => {
         setWordCompleted(false)
         setWordFailed(false)
         setGameOver(false)
-    }, [pairType])
+    }, [apiWords])
 
     const startGame = () => {
         setShowRules(false)

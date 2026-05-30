@@ -31,6 +31,9 @@ const SCENARIOS: Record<string, string[]> = {
     TR_CH: ['Bạn kể về trường học', 'Bạn mua trái cây ở chợ', 'Bạn mô tả trẻ em chơi đùa'],
 }
 
+// Fallback used only when API returns empty
+const SCENARIOS_FALLBACK = SCENARIOS
+
 const GAME_RULES_CONFIG = {
     title: 'Mô phỏng hội thoại',
     icon: MessageCircle,
@@ -90,9 +93,17 @@ const ConversationSimPage: React.FC = () => {
     const [turnCount, setTurnCount] = useState(0)
     const [targetWordCount, setTargetWordCount] = useState(0)
     const [score, setScore] = useState(0)
+    const [apiScenarios, setApiScenarios] = useState<string[]>([])
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    const scenarios = SCENARIOS[pairType] || SCENARIOS.N_L
+    useEffect(() => {
+        minigameService.getScenarios(pairType).then(data => {
+            const mapped = data.map((item: any) => item.questionData?.scenario || '').filter(Boolean)
+            setApiScenarios(mapped.length > 0 ? mapped : SCENARIOS_FALLBACK[pairType] || [])
+        })
+    }, [pairType])
+
+    const scenarios = apiScenarios.length > 0 ? apiScenarios : (SCENARIOS[pairType] || SCENARIOS.N_L)
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

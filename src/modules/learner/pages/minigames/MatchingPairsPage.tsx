@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, RotateCcw, Trophy, Timer, Zap, Layers } from 'lucide-react'
 import clsx from 'clsx'
 import GameRulesModal from '../../components/GameRulesModal'
+import { minigameService } from '../../services/minigameService'
 
 interface Card {
     id: number
@@ -11,41 +12,6 @@ interface Card {
     pairId: number
     flipped: boolean
     matched: boolean
-}
-
-const MOCK_PAIRS: Record<string, { word1: string; word2: string }[]> = {
-    N_L: [
-        { word1: 'nón', word2: 'lón' },
-        { word1: 'nước', word2: 'lước' },
-        { word1: 'nấm', word2: 'lấm' },
-        { word1: 'nỗi', word2: 'lỗi' },
-        { word1: 'nắng', word2: 'lắng' },
-        { word1: 'nụ', word2: 'lụ' },
-    ],
-    S_X: [
-        { word1: 'sáng', word2: 'xáng' },
-        { word1: 'sắc', word2: 'xắc' },
-        { word1: 'sơn', word2: 'xơn' },
-        { word1: 'sung', word2: 'xung' },
-        { word1: 'sấu', word2: 'xấu' },
-        { word1: 'sót', word2: 'xót' },
-    ],
-    D_GI_R: [
-        { word1: 'da', word2: 'gia' },
-        { word1: 'dạy', word2: 'giạy' },
-        { word1: 'dòng', word2: 'ròng' },
-        { word1: 'dỗ', word2: 'giỗ' },
-        { word1: 'dán', word2: 'rán' },
-        { word1: 'dầu', word2: 'giầu' },
-    ],
-    TR_CH: [
-        { word1: 'trăng', word2: 'chăng' },
-        { word1: 'trời', word2: 'chời' },
-        { word1: 'trẻ', word2: 'chẻ' },
-        { word1: 'trung', word2: 'chung' },
-        { word1: 'trà', word2: 'chà' },
-        { word1: 'trắng', word2: 'chắng' },
-    ],
 }
 
 const PAIR_LABELS: Record<string, string> = {
@@ -101,13 +67,23 @@ const MatchingPairsPage: React.FC = () => {
     const [won, setWon] = useState(false)
     const [shakeWrong, setShakeWrong] = useState(false)
     const [showConfetti, setShowConfetti] = useState(false)
+    const [apiPairs, setApiPairs] = useState<{ word1: string; word2: string }[]>([])
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const lockRef = useRef(false)
 
+    useEffect(() => {
+        minigameService.getMatchingPairs(pairType).then(data => {
+            const pairs = data.map((item: any) => ({
+                word1: item.questionData?.word1 || '',
+                word2: item.questionData?.word2 || '',
+            })).filter((p: any) => p.word1 && p.word2)
+            setApiPairs(pairs)
+        })
+    }, [pairType])
+
     const initGame = useCallback(() => {
-        const pairs = MOCK_PAIRS[pairType] || MOCK_PAIRS.N_L
         const cardList: Card[] = []
-        pairs.forEach((pair, idx) => {
+        apiPairs.forEach((pair, idx) => {
             cardList.push({ id: idx * 2, word: pair.word1, pairId: idx, flipped: false, matched: false })
             cardList.push({ id: idx * 2 + 1, word: pair.word2, pairId: idx, flipped: false, matched: false })
         })
@@ -121,7 +97,7 @@ const MatchingPairsPage: React.FC = () => {
         setWon(false)
         setShowConfetti(false)
         lockRef.current = false
-    }, [pairType])
+    }, [apiPairs])
 
     const startGame = () => {
         setShowRules(false)
