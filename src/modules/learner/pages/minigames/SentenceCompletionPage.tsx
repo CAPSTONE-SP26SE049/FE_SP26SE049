@@ -65,7 +65,12 @@ const SentenceCompletionPage: React.FC = () => {
         setLoading(true)
         try {
             const res: any = await minigameService.getSentenceCompletions(pairType)
-            const data = res?.data || (Array.isArray(res) ? res : [])
+            const raw = res?.data || (Array.isArray(res) ? res : [])
+            const data = raw.map((item: any) => ({
+                id: item.id,
+                pairType: item.pairType,
+                ...item.questionData,
+            }))
             setChallenges(data)
         } catch {
             message.error('Không thể tải câu hỏi')

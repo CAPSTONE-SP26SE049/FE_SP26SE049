@@ -15,6 +15,7 @@ export default {
       },
       fontFamily: {
         nunito: ['Nunito', 'sans-serif'],
+        delius: ['"Delius Swash Caps"', 'cursive'],
       },
       borderRadius: {
         'xl': '1rem',

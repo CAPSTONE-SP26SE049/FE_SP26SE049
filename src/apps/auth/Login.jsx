@@ -178,7 +178,7 @@ function LoginForm() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-[900px] h-full max-h-[620px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] flex flex-col md:flex-row overflow-hidden relative z-10"
+        className="w-full max-w-[900px] h-full max-h-[620px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] flex flex-col md:flex-row overflow-y-auto relative z-10"
       >
 
         {/* ==================== LEFT SIDE - DOODLE POSTER ==================== */}

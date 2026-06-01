@@ -237,7 +237,7 @@ export default function Register() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-[550px] h-full max-h-[620px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] p-6 md:p-8 relative z-10"
+        className="w-full max-w-[550px] h-full max-h-[620px] bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] p-6 md:p-8 relative z-10 overflow-y-auto"
       >
         <div className="text-center mb-6">
           <div className="mx-auto w-10 h-10 rounded-2xl bg-orange-400 border-[2.5px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center mb-3">

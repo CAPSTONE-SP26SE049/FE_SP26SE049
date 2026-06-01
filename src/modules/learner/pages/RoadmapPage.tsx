@@ -473,7 +473,24 @@ const RoadmapNode = ({ node, index, onClick }: { node: any; index: number; onCli
         )}
       </motion.div>
 
-      <h3 className={clsx('mt-6 font-black text-[13px] text-center leading-tight max-w-[130px] font-nunito',
+      {node.type === 'completed' && node.stars > 0 ? (
+        <div className="flex gap-1 mt-3 justify-center">
+          {[...Array(3)].map((_, i) => (
+            <Star
+              key={i}
+              size={13}
+              strokeWidth={2.5}
+              className={clsx(
+                i < node.stars ? "fill-yellow-400 text-slate-900" : "fill-slate-100 text-slate-300"
+              )}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="h-[13px] mt-3" />
+      )}
+
+      <h3 className={clsx('mt-1.5 font-black text-[13px] text-center leading-tight max-w-[130px] font-nunito',
         node.type === 'locked' ? 'text-slate-300' : 'text-slate-900'
       )}>
         {node.title}

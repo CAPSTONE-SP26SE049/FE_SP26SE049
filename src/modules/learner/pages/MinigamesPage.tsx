@@ -19,7 +19,6 @@ const GAMES = [
         icon: Puzzle,
         color: 'bg-[#49B6E5]',
         gradient: 'from-[#49B6E5] to-blue-500',
-        isNew: false,
         difficulty: 'Dễ',
     },
     {
@@ -29,7 +28,6 @@ const GAMES = [
         icon: Layers,
         color: 'bg-gradient-to-br from-pink-400 to-rose-500',
         gradient: 'from-pink-400 to-rose-500',
-        isNew: true,
         difficulty: 'Trung bình',
     },
     {
@@ -39,7 +37,6 @@ const GAMES = [
         icon: Search,
         color: 'bg-gradient-to-br from-violet-400 to-purple-600',
         gradient: 'from-violet-400 to-purple-600',
-        isNew: true,
         difficulty: 'Khó',
     },
     {
@@ -49,7 +46,6 @@ const GAMES = [
         icon: Sparkles,
         color: 'bg-amber-500',
         gradient: 'from-amber-400 to-orange-500',
-        isNew: false,
         difficulty: 'Trung bình',
     },
     {
@@ -59,7 +55,6 @@ const GAMES = [
         icon: MessageCircle,
         color: 'bg-emerald-500',
         gradient: 'from-emerald-400 to-green-500',
-        isNew: false,
         difficulty: 'Nâng cao',
     },
 ]
@@ -204,17 +199,6 @@ const MinigamesPage: React.FC = () => {
                                     >
                                         {/* Background decoration */}
                                         <div className={clsx("absolute -bottom-8 -right-8 w-32 h-32 rounded-full opacity-[0.04] bg-gradient-to-br", game.gradient)} />
-
-                                        {/* New badge */}
-                                        {game.isNew && (
-                                            <motion.div
-                                                initial={{ scale: 0, rotate: -10 }}
-                                                animate={{ scale: 1, rotate: 0 }}
-                                                className="absolute -top-1 -right-1 px-2.5 py-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[9px] font-black uppercase tracking-wider rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
-                                            >
-                                                Mới
-                                            </motion.div>
-                                        )}
 
                                         <div className="relative z-10">
                                             {/* Icon */}

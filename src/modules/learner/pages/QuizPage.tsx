@@ -20,7 +20,11 @@ import {
   Target,
   Activity,
   Play,
-  X
+  X,
+  Smile,
+  Baby,
+  User,
+  Heart
 } from 'lucide-react'
 import { Input, message } from 'antd'
 import clsx from 'clsx'
@@ -216,7 +220,12 @@ function parseChallenge(raw: any): ParsedChallenge {
   // Normalize Writing fields
   let cWords: string[] = []
   if (meta.correctAnswer) cWords = [meta.correctAnswer]
-  else if (Array.isArray(meta.correctWords)) cWords = meta.correctWords
+  else if (Array.isArray(meta.correctWords) && meta.correctWords.length > 0) cWords = meta.correctWords
+  // Fallback: dùng contentText hoặc sentence làm đáp án đúng nếu không có field nào
+  if (cWords.length === 0) {
+    const fallback = ch.contentText ?? meta.content_text ?? meta.sentence ?? ''
+    if (fallback) cWords = [fallback]
+  }
 
   let dtrs: string[] = []
   if (Array.isArray(meta.alternatives)) dtrs = meta.alternatives
@@ -471,14 +480,61 @@ const QuizPage: React.FC = () => {
   const [showPronModel, setShowPronModel] = useState(false)
   const [pronWord, setPronWord] = useState('')
   const [pronFaceType, setPronFaceType] = useState<FaceType>('child')
-  const [pronViewMode, setPronViewMode] = useState<'2d' | '3d'>('2d')
+  const [selectedVoice, setSelectedVoice] = useState<string>('banmai')
+  const popupAudioRef = useRef<HTMLAudioElement | null>(null)
   const modelViewerRef = useRef<any>(null)
   const { currentViseme, isPlaying: pronIsPlaying, playWord: pronPlayWord, stop: pronStop } = useWordAnimation()
 
   const openPronModel = useCallback((word: string) => {
     setPronWord(word)
+    setSelectedVoice('banmai')
     setShowPronModel(true)
   }, [])
+
+  const handlePopupPronounce = async () => {
+    if (pronIsPlaying || playingTTS) {
+      pronStop()
+      if (popupAudioRef.current) {
+        popupAudioRef.current.pause()
+        popupAudioRef.current = null
+      }
+      setPlayingTTS(null)
+      return
+    }
+
+    setPlayingTTS(selectedVoice)
+    try {
+      const res = await apiClient.post('/ai/tts', { text: pronWord, voice: selectedVoice })
+      const data = res?.data || res
+      if (data.async) {
+        const audio = new Audio(data.async)
+        popupAudioRef.current = audio
+        
+        audio.onplay = () => {
+          pronPlayWord(pronWord, 320)
+        }
+        
+        audio.onended = () => {
+          pronStop()
+          setPlayingTTS(null)
+          popupAudioRef.current = null
+        }
+
+        audio.onerror = () => {
+          pronStop()
+          setPlayingTTS(null)
+          popupAudioRef.current = null
+        }
+
+        await audio.play()
+      } else {
+        pronPlayWord(pronWord, 320)
+      }
+    } catch (err) {
+      console.error('[QuizPage] Popup pronunciation failed:', err)
+      pronPlayWord(pronWord, 320)
+    }
+  }
 
   // ── Context from RoadmapPage (via navigation state) ──────────────────────
   const navState = (location.state as any) || {}
@@ -514,7 +570,29 @@ const QuizPage: React.FC = () => {
     transcription?: string
     wordDetails?: any[]
   } | null>(null)
-  const [consentGiven, setConsentGiven] = useState<boolean | null>(null) // null = not decided yet
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(() => {
+    const remember = localStorage.getItem('speakvn_consent_remember') === 'true'
+    if (remember) {
+      const savedVal = localStorage.getItem('speakvn_consent_given')
+      if (savedVal === 'true') return true
+      if (savedVal === 'false') return false
+    }
+    return null
+  })
+  const [rememberConsent, setRememberConsent] = useState(() => {
+    return localStorage.getItem('speakvn_consent_remember') === 'true'
+  })
+
+  const handleConsentChoice = (choice: boolean) => {
+    setConsentGiven(choice)
+    if (rememberConsent) {
+      localStorage.setItem('speakvn_consent_remember', 'true')
+      localStorage.setItem('speakvn_consent_given', choice ? 'true' : 'false')
+    } else {
+      localStorage.removeItem('speakvn_consent_remember')
+      localStorage.removeItem('speakvn_consent_given')
+    }
+  }
   const [showFullSuggestion, setShowFullSuggestion] = useState(false)
   const [explanation, setExplanation] = useState<string | null>(null)
   const [explaining, setExplaining] = useState(false)
@@ -538,16 +616,17 @@ const QuizPage: React.FC = () => {
     }
   }
 
-  const explainAnswer = async (ch: ParsedChallenge, selected: string) => {
+  const explainAnswer = async (ch: ParsedChallenge, selected: string, isCorrect?: boolean) => {
     setExplaining(true)
     try {
       const res = await apiClient.post('/ai/explain-quiz-answer', {
         question: ch.content,
         selectedAnswer: selected,
-        correctAnswer: ch.correctAnswer || ch.correctWord || ch.correctWords?.[0] || 'Unknown',
+        correctAnswer: ch.correctAnswer || ch.correctWord || ch.correctWords?.[0] || ch.sentence || ch.content || 'Unknown',
         skillType: ch.skillType || 'READING',
         transcript: ch.transcript || '',
-        correctSentence: ch.correctSentence || ''
+        correctSentence: ch.correctSentence || '',
+        isCorrect: isCorrect
       })
       const data = res?.data || res
       setExplanation(data.explanation || data.reply)
@@ -637,7 +716,7 @@ const QuizPage: React.FC = () => {
       return () => clearInterval(timer)
     } else if (timeLeft === 0 && !answered) {
       setAnswered(true)
-      explainAnswer(ch, 'Người dùng chưa chọn đáp án (Hết thời gian)')
+      explainAnswer(ch, 'Người dùng chưa chọn đáp án (Hết thời gian)', false)
     }
   }, [idx, timeLeft, answered, finished, loading, quiz])
 
@@ -808,11 +887,22 @@ const QuizPage: React.FC = () => {
         uploadFileName = 'recording.webm'
       }
 
-      // 2. Call Local ASR Server
+      // 2. Call ASR + Cloudinary upload in parallel (both only need audioForAsr)
       const asrFormData = new FormData()
       asrFormData.append('audio', audioForAsr, uploadFileName)
       asrFormData.append('target', targetText)
 
+      const cloudinaryPromise = consentGiven && audioForAsr
+        ? (async () => {
+            const fileType = (audioForAsr.type || '').includes('wav') ? 'audio/wav' : (audioForAsr.type || 'audio/webm')
+            const fileExt = fileType.includes('wav') ? 'wav' : 'webm'
+            const file = new File([audioForAsr], `attempt_${Date.now()}.${fileExt}`, { type: fileType })
+            return uploadToCloudinary(file, 'video').catch((error) => {
+              console.error("Lỗi upload Cloudinary từ frontend:", error)
+              return null
+            })
+          })()
+        : Promise.resolve(null)
 
       const asrStartTime = performance.now()
       const asrResponse = await fetch(ASR_BASE_URL, {
@@ -831,19 +921,8 @@ const QuizPage: React.FC = () => {
       const asrScore = apiResult.score || 0
       const wordDetails = apiResult.word_details || []
 
-      // 3. Call Backend Groq Feedback (kèm metadata cho dataset)
-      // Upload audio thẳng lên Cloudinary từ Frontend nếu được phép
-      let audioUrl = null
-      if (consentGiven && audioForAsr) {
-        try {
-          const fileType = (audioForAsr.type || '').includes('wav') ? 'audio/wav' : (audioForAsr.type || 'audio/webm')
-          const fileExt = fileType.includes('wav') ? 'wav' : 'webm'
-          const file = new File([audioForAsr], `attempt_${Date.now()}.${fileExt}`, { type: fileType })
-          audioUrl = await uploadToCloudinary(file, 'video')
-        } catch (error) {
-          console.error("Lỗi upload Cloudinary từ frontend:", error)
-        }
-      }
+      // 3. Wait for Cloudinary (likely already done while ASR was running)
+      const audioUrl = await cloudinaryPromise
 
       const currentChallenge = quiz?.challenges[idx]
       const feedbackResponse = await apiClient.post('/ai/feedback', {
@@ -915,18 +994,21 @@ const QuizPage: React.FC = () => {
         wordDetails: wordDetails // Lưu thêm chi tiết từ
       })
 
+      setExplanation(safeSuggestion)
       setAnswered(true)
       if (normalizedIsCorrect) setScore(s => s + 1)
 
     } catch (err: any) {
       console.error('[Speaking Quiz Support] Failed:', err)
+      const errSuggestion = 'Kiểm tra ASR Server (8000) và Groq API Key ở Backend.'
       setOllamaResult({
         score: 0,
         isCorrect: false,
         transcription: "Lỗi hệ thống",
         errorDetail: String(err?.response?.data?.message || err?.message || 'Lỗi hệ thống'),
-        suggestion: 'Kiểm tra ASR Server (8000) và Groq API Key ở Backend.'
+        suggestion: errSuggestion
       })
+      setExplanation(errSuggestion)
       setAnswered(true)
     } finally {
       setIsAnalyzing(false)
@@ -1161,8 +1243,9 @@ const QuizPage: React.FC = () => {
             return
           }
           setSelected(opt); setAnswered(true)
-          if (opt === ch.correctAnswer) setScore(s => s + 1)
-          explainAnswer(ch, opt)
+          const isCorrect = opt === ch.correctAnswer
+          if (isCorrect) setScore(s => s + 1)
+          explainAnswer(ch, opt, isCorrect)
         }
         return (
           <>
@@ -1226,7 +1309,7 @@ const QuizPage: React.FC = () => {
           setAnswered(true)
           const isCorrect = ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
           if (isCorrect) setScore(s => s + 1)
-          explainAnswer(ch, writingInput.trim())
+          explainAnswer(ch, writingInput.trim(), isCorrect)
         }
         const isCorrect = answered && ch.correctWords.some(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === writingInput.trim().toLowerCase().replace(/[.,!?;:]/g, ''))
 
@@ -1256,26 +1339,43 @@ const QuizPage: React.FC = () => {
               </div>
             )}
 
-            <div className="relative group flex gap-4">
-              <Input
-                placeholder="Viết đáp án của bạn vào đây..."
-                size="large"
-                value={writingInput}
-                onChange={e => setWritingInput(e.target.value)}
-                disabled={answered}
-                className="rounded-[1.5rem] text-2xl h-20 px-8 border-[3.5px] border-slate-900 focus:border-[#49B6E5] shadow-[4px_4px_0_#1f2937] font-black italic bg-white flex-1"
-                onPressEnter={handleWritingSubmit}
-                autoFocus
-              />
-              {!answered && (
-                <button
-                  disabled={!writingInput.trim()}
-                  onClick={handleWritingSubmit}
-                  className="px-10 h-20 bg-[#49B6E5] border-[3.5px] border-slate-900 rounded-[1.5rem] text-white text-xl font-black shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
-                >
-                  KIỂM TRA
-                </button>
-              )}
+            <div className="relative group flex flex-col gap-3">
+              <div className="flex gap-4 w-full">
+                <Input
+                  placeholder="Viết đáp án của bạn vào đây..."
+                  size="large"
+                  value={
+                    answered
+                      ? (isCorrect
+                          ? writingInput
+                          : (writingInput
+                              ? `${writingInput} (Đúng: ${ch.correctWords.join(' / ')})`
+                              : `Đúng: ${ch.correctWords.join(' / ')}`))
+                      : writingInput
+                  }
+                  onChange={e => setWritingInput(e.target.value)}
+                  disabled={answered}
+                  className={clsx(
+                    "rounded-[1.5rem] text-2xl h-20 px-8 border-[3.5px] shadow-[4px_4px_0_#1f2937] font-black italic flex-1",
+                    answered
+                      ? (isCorrect 
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700' 
+                          : 'border-rose-500 bg-rose-50 text-rose-700')
+                      : 'border-slate-900 focus:border-[#49B6E5] bg-white text-slate-800'
+                  )}
+                  onPressEnter={handleWritingSubmit}
+                  autoFocus
+                />
+                {!answered && (
+                  <button
+                    disabled={!writingInput.trim()}
+                    onClick={handleWritingSubmit}
+                    className="px-10 h-20 bg-[#49B6E5] border-[3.5px] border-slate-900 rounded-[1.5rem] text-white text-xl font-black shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
+                  >
+                    KIỂM TRA
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )
@@ -1284,144 +1384,61 @@ const QuizPage: React.FC = () => {
 
       // ═══════════════ SPEAKING ══════════════════════════════════════════════
       case 'SPEAKING_READ': {
-        const { noiseCancellation, setNoiseCancellation } = recorder
-
         return (
-          <div className="space-y-4">
-            {/* Consent Banner — shown before user decides */}
-              {consentGiven === null && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="w-full bg-white border-[2.5px] border-slate-900 rounded-[2rem] p-6 shadow-[5px_5px_0_#1f2937]"
-                >
-                  <div className="flex gap-4 items-start mb-4">
-                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
-                      <Mic size={24} strokeWidth={3} />
-                    </div>
-                    <div>
-                      <p className="font-black text-slate-900 text-lg italic tracking-tight">Quyền ghi âm</p>
-                      <p className="text-slate-500 text-sm font-bold leading-relaxed">Chúng tôi sử dụng đoạn âm thanh của bạn để cải thiện AI. Dữ liệu hoàn toàn bảo mật.</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setConsentGiven(true)} className="bg-slate-900 text-white font-black py-4 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#49B6E5] active:translate-y-0.5 active:shadow-none transition-all">Đồng ý</button>
-                    <button onClick={() => setConsentGiven(false)} className="bg-white text-slate-900 font-black py-4 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] active:translate-y-0.5 active:shadow-none transition-all">Để sau</button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Noise Cancellation Toggle */}
-              {consentGiven !== null && !answered && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 bg-white border-[2.5px] border-slate-900 rounded-full px-5 py-2.5 shadow-[4px_4px_0_#1f2937] hover:shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 transition-all cursor-pointer select-none"
-                  onClick={() => setNoiseCancellation(prev => !prev)}
-                >
-                  <div className={clsx(
-                    "w-5 h-5 rounded-full flex items-center justify-center transition-all",
-                    noiseCancellation ? "bg-emerald-500 text-white animate-pulse" : "bg-slate-300 text-slate-500"
-                  )}>
-                    <Sparkles size={11} strokeWidth={3} />
-                  </div>
-                  <span className="text-[11px] font-black text-slate-800 tracking-wide uppercase italic">
-                    {noiseCancellation ? "🔇 Chống ồn: BẬT" : "🔈 Chống ồn: TẮT"}
-                  </span>
-                  <div className={clsx(
-                    "w-8 h-4 rounded-full p-0.5 transition-colors duration-200 flex items-center",
-                    noiseCancellation ? "bg-emerald-500" : "bg-slate-300"
-                  )}>
-                    <motion.div
-                      layout
-                      className="w-3 h-3 bg-white rounded-full shadow-md"
-                      animate={{ x: noiseCancellation ? 14 : 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  </div>
-                </motion.div>
-              )}
+          <div className="space-y-4 w-full">
+            {/* Consent Placeholder */}
+            {consentGiven === null && (
+              <div className="w-full bg-slate-50 border-[2.5px] border-slate-900 border-dashed rounded-[2rem] p-8 text-center text-slate-400 font-bold text-sm">
+                Vui lòng hoàn thành lựa chọn quyền ghi âm trong bảng thông báo để bắt đầu.
+              </div>
+            )}
 
               {/* AI Result after speaking */}
               {answered && ollamaResult && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                  className="w-full bg-white border-[2.5px] border-slate-900 rounded-[2.5rem] p-8 shadow-[10px_10px_0_#1f2937] overflow-hidden"
+                  className="w-full bg-white border-[2.5px] border-slate-900 rounded-[2.5rem] p-5 shadow-[10px_10px_0_#1f2937] overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className={clsx(
-                        "w-14 h-14 rounded-2xl border-[2px] border-slate-900 flex items-center justify-center text-white",
+                        "w-12 h-12 rounded-2xl border-[2px] border-slate-900 flex items-center justify-center text-white",
                         ollamaResult.isCorrect ? "bg-emerald-500" : "bg-rose-500"
                       )}>
-                        {ollamaResult.isCorrect ? <CheckCircle size={28} strokeWidth={3} /> : <XCircle size={28} strokeWidth={3} />}
+                        {ollamaResult.isCorrect ? <CheckCircle size={24} strokeWidth={3} /> : <XCircle size={24} strokeWidth={3} />}
                       </div>
                       <div>
-                        <h4 className="font-black text-xl text-slate-900 italic tracking-tight">Kết quả AI</h4>
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-0.5 italic">Chấm điểm tự động</p>
+                        <h4 className="font-black text-lg text-slate-900 italic tracking-tight leading-tight">Kết quả AI</h4>
+                        <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-0.5 italic">Chấm điểm tự động</p>
                       </div>
                     </div>
-                    <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl border-[2px] border-slate-900 shadow-[4px_4px_0_#49B6E5]">
-                      <span className="text-3xl font-black italic">{ollamaResult.score}</span>
-                      <span className="text-xs opacity-50 font-bold ml-1">/100</span>
+                    <div className="flex items-center gap-3">
+                      {!ollamaResult.isCorrect && (
+                        <button
+                          onClick={() => { setAnswered(false); setOllamaResult(null); setShowFullSuggestion(false); }}
+                          className="h-10 px-4 bg-white border-[2px] border-slate-900 rounded-xl font-black text-slate-900 text-xs shadow-[2.5px_2.5px_0_#1f2937] hover:bg-slate-50 active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <RotateCcw size={14} strokeWidth={3} /> Thử lại
+                        </button>
+                      )}
+                      <div className="bg-slate-900 text-white px-3 py-1.5 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#49B6E5]">
+                        <span className="text-2xl font-black italic">{ollamaResult.score}</span>
+                        <span className="text-[10px] opacity-50 font-bold ml-1">/100</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {ollamaResult.transcription && (
-                      <div className="bg-slate-50 border-[2px] border-slate-200 rounded-2xl p-4">
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 italic">Văn bản nhận diện:</p>
-                        <p className="text-slate-800 font-black text-xl italic leading-tight">
+                      <div className="bg-slate-50 border-[2px] border-slate-200 rounded-2xl p-3">
+                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 italic">Văn bản nhận diện:</p>
+                        <p className="text-slate-800 font-black text-lg italic leading-tight">
                           "{String(ollamaResult.transcription).replace(/[.。！？!?.]+$/g, '')}"
                         </p>
                       </div>
                     )}
 
-                    {ollamaResult.wordDetails && ollamaResult.wordDetails.length > 0 && (
-                      <div className="flex flex-wrap gap-x-3 gap-y-2">
-                        {ollamaResult.wordDetails.map((item: any, i: number) => {
-                          const isWrong = item.status === 'wrong';
-                          const textColor = item.status === 'correct' ? 'text-emerald-500' :
-                            item.status === 'near' ? 'text-amber-500' : 'text-rose-500';
-                          return (
-                            <span key={i} className={clsx("font-black text-xl italic", textColor, isWrong && "underline decoration-[3px] decoration-slate-900 underline-offset-6")}>
-                              {item.word}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    <div className="bg-[#49B6E5]/10 border-[2px] border-[#49B6E5]/20 rounded-2xl p-4 flex gap-3">
-                      <Lightbulb className="text-[#49B6E5] shrink-0 mt-0.5" size={20} strokeWidth={3} />
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-[#49B6E5] font-black uppercase tracking-widest mb-1 italic">Lời khuyên từ AI</p>
-                        <div className="text-slate-700 font-bold leading-relaxed text-sm whitespace-pre-wrap">
-                          {(() => {
-                            const sugg = String(ollamaResult.suggestion);
-                            const shouldCollapse = sugg.length > 200;
-                            return (
-                              <>
-                                <p>{shouldCollapse && !showFullSuggestion ? `${sugg.slice(0, 200)}...` : sugg}</p>
-                                {shouldCollapse && (
-                                  <button onClick={() => setShowFullSuggestion(!showFullSuggestion)} className="mt-2 text-[#49B6E5] uppercase text-[10px] font-black hover:underline underline-offset-2 tracking-widest">
-                                    {showFullSuggestion ? 'Thu gọn' : 'Xem thêm'}
-                                  </button>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {!ollamaResult.isCorrect && (
-                      <button
-                        onClick={() => { setAnswered(false); setOllamaResult(null); setShowFullSuggestion(false); }}
-                        className="w-full h-12 bg-white border-[2.5px] border-slate-900 rounded-2xl font-black text-slate-900 shadow-[4px_4px_0_#1f2937] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        <RotateCcw size={18} strokeWidth={3} /> Thử lại
-                      </button>
-                    )}
+                    {/* Lời khuyên từ AI đã được chuyển sang speech bubble bên phải */}
                   </div>
                 </motion.div>
               )}
@@ -1435,14 +1452,19 @@ const QuizPage: React.FC = () => {
         return (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-6 text-yellow-700 text-sm">
             <p className="font-semibold">Câu hỏi dạng mở</p>
-            {ch.hint && <p className="mt-1 text-gray-600">💡 Gợi ý: {ch.hint}</p>}
+            {ch.hint && (
+              <p className="mt-1 text-gray-600 flex items-center gap-1">
+                <Lightbulb size={14} className="text-amber-500 shrink-0" />
+                <span>Gợi ý: {ch.hint}</span>
+              </p>
+            )}
           </div>
         )
     }
   }
 
   return (
-    <div className="quiz-page h-screen w-screen bg-[#FDF5E6] overflow-hidden flex flex-col p-6 gap-6 relative">
+    <div className="quiz-page h-screen w-screen bg-[#FDF5E6] overflow-hidden flex flex-col p-4 md:p-5 gap-4 md:gap-5 relative">
       <style>{PAGE_STYLES}</style>
 
       {/* ─── Pronunciation Model Popup ─── */}
@@ -1453,14 +1475,22 @@ const QuizPage: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => { setShowPronModel(false); pronStop(); }}
+            onClick={() => {
+              setShowPronModel(false)
+              pronStop()
+              if (popupAudioRef.current) {
+                popupAudioRef.current.pause()
+                popupAudioRef.current = null
+              }
+              setPlayingTTS(null)
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 20 }}
-              className="bg-white rounded-[2rem] border-[3.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-md overflow-hidden"
+              className="bg-white rounded-[2rem] border-[3.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
@@ -1470,108 +1500,88 @@ const QuizPage: React.FC = () => {
                   <h3 className="text-white font-black text-2xl italic">"{pronWord}"</h3>
                 </div>
                 <button
-                  onClick={() => { setShowPronModel(false); pronStop(); }}
+                  onClick={() => {
+                    setShowPronModel(false)
+                    pronStop()
+                    if (popupAudioRef.current) {
+                      popupAudioRef.current.pause()
+                      popupAudioRef.current = null
+                    }
+                    setPlayingTTS(null)
+                  }}
                   className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all"
                 >
                   <X size={20} className="text-white" strokeWidth={3} />
                 </button>
               </div>
 
-              {/* View Mode Toggle */}
-              <div className="flex gap-1 bg-slate-100 p-1 mx-6 mt-4 rounded-xl border-[2px] border-slate-900">
-                <button
-                  onClick={() => setPronViewMode('2d')}
-                  className={clsx(
-                    "flex-1 py-2 rounded-lg text-[11px] font-black uppercase transition-all",
-                    pronViewMode === '2d' ? "bg-[#49B6E5] text-white shadow-[2px_2px_0_#1f2937]" : "text-slate-500 hover:text-slate-900"
-                  )}
-                >Hình 2D</button>
-                <button
-                  onClick={() => setPronViewMode('3d')}
-                  className={clsx(
-                    "flex-1 py-2 rounded-lg text-[11px] font-black uppercase transition-all",
-                    pronViewMode === '3d' ? "bg-[#49B6E5] text-white shadow-[2px_2px_0_#1f2937]" : "text-slate-500 hover:text-slate-900"
-                  )}
-                >Mô hình 3D</button>
-              </div>
-
-              {/* Viewport */}
-              <div className="mx-6 mt-4 rounded-2xl border-[2.5px] border-slate-900 overflow-hidden bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center"
-                style={{ height: pronViewMode === '2d' ? 260 : 320 }}>
-                {pronViewMode === '2d' ? (
-                  <div className="relative flex items-center justify-center w-full h-full">
-                    <MouthViseme
-                      viseme={pronIsPlaying ? currentViseme : 'rest'}
-                      faceType={pronFaceType}
-                      className="w-[220px] h-[220px]"
-                    />
-                    {pronIsPlaying && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/90 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
-                      >
-                        <span className="font-black text-[#49B6E5] text-xs uppercase">{currentViseme}</span>
-                      </motion.div>
-                    )}
-                  </div>
-                ) : (
-                  <model-viewer
-                    ref={modelViewerRef}
-                    src="/3D/Pronunciation.glb"
-                    alt="Mô hình phát âm 3D"
-                    camera-controls
-                    auto-rotate
-                    shadow-intensity="1.5"
-                    exposure="1.0"
-                    style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
+              {/* Viewport — 2D only */}
+              <div className="mx-6 mt-4 rounded-2xl border-[2.5px] border-slate-900 overflow-hidden bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center" style={{ height: 260 }}>
+                <div className="relative flex items-center justify-center w-full h-full">
+                  <MouthViseme
+                    viseme={pronIsPlaying ? currentViseme : 'rest'}
+                    faceType={pronFaceType}
+                    className="w-[220px] h-[220px]"
                   />
-                )}
+                  {pronIsPlaying && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/90 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
+                    >
+                      <span className="font-black text-[#49B6E5] text-xs uppercase">{currentViseme}</span>
+                    </motion.div>
+                  )}
+                </div>
               </div>
 
               {/* Face type + controls */}
               <div className="px-6 py-4 space-y-3">
-                {pronViewMode === '2d' && (
+
+                {/* Phát âm 2D */}
+                <button
+                  onClick={handlePopupPronounce}
+                  className="w-full h-12 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl text-white font-black text-sm shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
+                >
+                  {(pronIsPlaying || playingTTS) ? <><RotateCcw size={16} strokeWidth={3} /> Dừng</> : <><Play size={16} strokeWidth={3} /> Phát âm</>}
+                </button>
+
+                {/* Nghe giọng 3 miền */}
+                <div className="border-t-[2px] border-slate-100 pt-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nghe giọng vùng miền</p>
                   <div className="flex gap-2">
                     {([
-                      { key: 'child' as FaceType, label: 'Trẻ em', emoji: '👶' },
-                      { key: 'adult' as FaceType, label: 'Người lớn', emoji: '🧑' },
-                      { key: 'elderly' as FaceType, label: 'Người già', emoji: '👴' },
-                    ]).map(ft => (
-                      <button
-                        key={ft.key}
-                        onClick={() => setPronFaceType(ft.key)}
-                        className={clsx(
-                          "flex-1 py-2 rounded-xl border-[2px] font-black text-xs flex items-center justify-center gap-1 transition-all",
-                          pronFaceType === ft.key
-                            ? "border-slate-900 bg-[#49B6E5] text-white shadow-[2px_2px_0_#1f2937]"
-                            : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-900"
-                        )}
-                      >
-                        <span>{ft.emoji}</span> {ft.label}
-                      </button>
-                    ))}
+                      { voice: 'banmai', label: 'BẮC', flag: '🔵' },
+                      { voice: 'myan',   label: 'TRUNG', flag: '🟡' },
+                      { voice: 'linhsan',label: 'NAM',  flag: '🔴' },
+                    ]).map(({ voice, label, flag }) => {
+                      const isSelected = selectedVoice === voice
+                      return (
+                        <button
+                          key={voice}
+                          onClick={() => {
+                            setSelectedVoice(voice)
+                            if (pronIsPlaying || playingTTS) {
+                              pronStop()
+                              if (popupAudioRef.current) {
+                                popupAudioRef.current.pause()
+                                popupAudioRef.current = null
+                              }
+                              setPlayingTTS(null)
+                            }
+                          }}
+                          className={clsx(
+                            "flex-1 py-2.5 rounded-xl border-[2px] border-slate-900 font-black text-xs flex items-center justify-center gap-1 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all",
+                            isSelected
+                              ? "bg-[#49B6E5] text-white shadow-[1px_1px_0_#1f2937] translate-y-0.5"
+                              : "bg-white text-slate-700 hover:bg-slate-50"
+                          )}
+                        >
+                          <span>{flag}</span> {label}
+                        </button>
+                      )
+                    })}
                   </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      if (pronIsPlaying) { pronStop(); return; }
-                      pronPlayWord(pronWord, 350)
-                    }}
-                    className="flex-1 h-12 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl text-white font-black text-sm shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
-                  >
-                    {pronIsPlaying ? <><RotateCcw size={16} strokeWidth={3} /> Dừng</> : <><Play size={16} strokeWidth={3} /> Phát âm</>}
-                  </button>
-                  {pronViewMode === '3d' && (
-                    <button
-                      onClick={() => { if (modelViewerRef.current) { modelViewerRef.current.currentTime = 0; modelViewerRef.current.play(); } }}
-                      className="flex-1 h-12 bg-white border-[2.5px] border-slate-900 rounded-2xl text-slate-900 font-black text-sm shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
-                    >
-                      <Play size={16} strokeWidth={3} /> Hoạt ảnh
-                    </button>
-                  )}
                 </div>
               </div>
             </motion.div>
@@ -1617,36 +1627,62 @@ const QuizPage: React.FC = () => {
         <div className="col-span-8 flex flex-col gap-6 min-h-0">
 
           {/* Question Card */}
-          <div className="bg-white border-[4px] border-slate-900 rounded-[2.5rem] p-10 shadow-[inner_0_4px_12px_rgba(0,0,0,0.05),8px_8px_0_#1f2937] relative flex flex-col justify-center min-h-[300px]">
-            <div className="absolute -top-6 -left-4 bg-[#FFC107] border-[3.5px] border-slate-900 px-6 py-2 rounded-2xl shadow-[4px_4px_0_#1f2937] rotate-[-2deg]">
+          <div className="bg-white border-[4px] border-slate-900 rounded-[2.5rem] p-6 md:p-8 shadow-[inner_0_4px_12px_rgba(0,0,0,0.05),8px_8px_0_#1f2937] relative flex flex-col justify-center flex-1 min-h-[220px]">
+            <div className="absolute -top-5 -left-4 bg-[#FFC107] border-[3.5px] border-slate-900 px-5 py-1.5 rounded-2xl shadow-[4px_4px_0_#1f2937] rotate-[-2deg]">
               <span className="text-lg font-black text-slate-900 uppercase tracking-widest">CÂU HỎI</span>
             </div>
+
+            {timeLeft !== null && !answered && (
+              <div className="absolute -top-6 -right-4">
+                <motion.div
+                  animate={(timeLeft ?? 0) < 10 ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ repeat: Infinity, duration: 0.5 }}
+                  className={clsx(
+                    "w-16 h-16 rounded-full border-[3.5px] border-slate-900 flex items-center justify-center shadow-[4px_4px_0_#1f2937] text-2xl font-black italic",
+                    (timeLeft ?? 0) < 10 ? "bg-[#F43F5E] text-white" : "bg-[#49B6E5] text-white"
+                  )}
+                >
+                  {timeLeft}
+                </motion.div>
+              </div>
+            )}
 
             <div className="flex flex-col gap-4 items-center text-center">
 
               {/* Đề bài theo skill type */}
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
-                  : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
-                  : ch.mode === 'WRITING_FILL' ? 'Nghe và viết lại:'
-                  : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
-                  : 'Câu hỏi:'}
-              </p>
+              {ch.mode === 'WRITING_FILL' ? (
+                <div className="flex flex-col items-center mb-2">
+                  <p className="text-3xl font-black uppercase tracking-[0.1em] text-slate-800">
+                    Nghe và viết lại:
+                  </p>
+                </div>
+              ) : (
+                <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
+                  {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
+                    : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
+                    : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
+                    : 'Câu hỏi:'}
+                </p>
+              )}
 
-              <h4 className="text-4xl font-black text-slate-900 leading-snug max-w-2xl">
-                {ch.content}
-              </h4>
+              {ch.mode !== 'WRITING_FILL' && (
+                <h4 className="text-4xl font-black text-slate-900 leading-snug max-w-2xl">
+                  {ch.content}
+                </h4>
+              )}
 
               {/* Nút mở popup mô hình phát âm 2.5D */}
-              <button
-                onClick={() => { setPronWord(ch.content); setShowPronModel(true); }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#FDF5E6] border-[2px] border-slate-900 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
-              >
-                <span>🫦</span> Xem mô hình phát âm
-              </button>
-
-              {/* Audio button — only for non-SPEAKING (SPEAKING has mic, not listen) */}
-              {ch.mode !== 'SPEAKING_READ' && (ch.audioUrl || ch.transcript) && (
+              {answered && (
+                <button
+                  onClick={() => { setPronWord(ch.content); setShowPronModel(true); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#FDF5E6] border-[2px] border-slate-900 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
+                >
+                  <Smile size={14} className="text-slate-700" /> Xem mô hình phát âm
+                </button>
+              )}
+              {/* Audio button — placed at the bottom right corner */}
+              {((ch.mode !== 'SPEAKING_READ' && (ch.audioUrl || ch.transcript)) ||
+                (ch.mode === 'SPEAKING_READ' && consentGiven !== null && !answered && !isAnalyzing)) && (
                 <div className="absolute bottom-4 right-4 flex flex-col items-center gap-2">
                   <button
                     disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS === 'banmai'}
@@ -1656,8 +1692,8 @@ const QuizPage: React.FC = () => {
                         if (plays < 2) {
                           if (ch.audioUrl) {
                             new Audio(ch.audioUrl).play();
-                          } else if (ch.transcript) {
-                            await playRegionalTTS(ch.transcript, 'banmai');
+                          } else {
+                            await playRegionalTTS(ch.transcript || ch.content, 'banmai');
                           }
                           setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
                         }
@@ -1680,39 +1716,8 @@ const QuizPage: React.FC = () => {
                 </div>
               )}
 
-              {/* For SPEAKING: mic button + listen button + model button */}
               {ch.mode === 'SPEAKING_READ' && consentGiven !== null && !answered && !isAnalyzing && (
-                <div className="flex items-center gap-4 mt-2">
-                  {/* Listen button */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const plays = audioPlays[idx] || 0;
-                        if (plays < 2) {
-                          if (ch.audioUrl) {
-                            new Audio(ch.audioUrl).play();
-                          } else {
-                            await playRegionalTTS(ch.transcript || ch.content, 'banmai');
-                          }
-                          setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
-                        }
-                      } catch (_) { }
-                    }}
-                    disabled={(audioPlays[idx] || 0) >= 2 || playingTTS === 'banmai'}
-                    className={clsx(
-                      "w-14 h-14 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[3px_3px_0_#1f2937] flex flex-col items-center justify-center hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all relative",
-                      (audioPlays[idx] || 0) >= 2 ? "opacity-40 grayscale cursor-not-allowed" : ""
-                    )}
-                  >
-                    <Volume2 size={22} strokeWidth={3} className="text-slate-700" />
-                    <span className="text-[8px] font-black text-slate-400 mt-0.5">{2 - (audioPlays[idx] || 0)}/2</span>
-                    {(audioPlays[idx] || 0) < 2 && (
-                      <div className="absolute -top-1.5 -right-1.5 bg-[#F43F5E] border-[1.5px] border-slate-900 w-5 h-5 rounded-full flex items-center justify-center text-white font-black text-[9px]">
-                        {2 - (audioPlays[idx] || 0)}
-                      </div>
-                    )}
-                  </button>
-
+                <div className="flex flex-col items-center gap-3 mt-2">
                   {/* Mic button */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -1720,13 +1725,13 @@ const QuizPage: React.FC = () => {
                     onMouseDown={recorder.startRecording}
                     onMouseUp={async () => {
                       const blob = await recorder.stopRecording()
-                      if (blob) evaluateWithOllama(blob, ch.transcript || ch.content)
+                      if (blob) evaluateSpeaking(blob, ch.transcript || ch.content)
                     }}
                     onMouseLeave={() => { if (recorder.isRecording) recorder.stopRecording() }}
                     onTouchStart={recorder.startRecording}
                     onTouchEnd={async () => {
                       const blob = await recorder.stopRecording()
-                      if (blob) evaluateWithOllama(blob, ch.transcript || ch.content)
+                      if (blob) evaluateSpeaking(blob, ch.transcript || ch.content)
                     }}
                     className={clsx(
                       "w-24 h-24 rounded-[2rem] border-[3px] flex flex-col items-center justify-center shadow-[6px_6px_0_#1f2937] transition-all relative",
@@ -1747,16 +1752,37 @@ const QuizPage: React.FC = () => {
                     </span>
                   </motion.button>
 
-                  {/* Pronunciation model button */}
-                  <button
-                    onClick={() => openPronModel(ch.content || ch.transcript)}
-                    className="w-14 h-14 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[3px_3px_0_#1f2937] flex flex-col items-center justify-center hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
+                  {/* Noise Cancellation Toggle — inline dưới mic */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 bg-slate-50 border-[2px] border-slate-200 rounded-full px-4 py-2 cursor-pointer select-none hover:bg-slate-100 transition-all"
+                    onClick={() => recorder.setNoiseCancellation((prev: boolean) => !prev)}
                   >
-                    <span className="text-xl">👄</span>
-                    <span className="text-[8px] font-black text-slate-400 mt-0.5">MÔ HÌNH</span>
-                  </button>
+                    <div className={clsx(
+                      "w-4 h-4 rounded-full flex items-center justify-center transition-all",
+                      recorder.noiseCancellation ? "bg-emerald-500 text-white animate-pulse" : "bg-slate-300 text-slate-500"
+                    )}>
+                      <Sparkles size={9} strokeWidth={3} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-600 tracking-wide uppercase italic">
+                      {recorder.noiseCancellation ? "🔇 Chống ồn: BẬT" : "🔈 Chống ồn: TẮT"}
+                    </span>
+                    <div className={clsx(
+                      "w-7 h-3.5 rounded-full p-0.5 transition-colors duration-200 flex items-center",
+                      recorder.noiseCancellation ? "bg-emerald-500" : "bg-slate-300"
+                    )}>
+                      <motion.div
+                        layout
+                        className="w-2.5 h-2.5 bg-white rounded-full shadow-md"
+                        animate={{ x: recorder.noiseCancellation ? 12 : 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    </div>
+                  </motion.div>
                 </div>
               )}
+
 
               {ch.mode === 'SPEAKING_READ' && isAnalyzing && (
                 <div className="mt-2">
@@ -1766,13 +1792,10 @@ const QuizPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Interaction Area - No scroll as requested */}
-          <div className="overflow-hidden no-scrollbar pb-4">
+          {/* Interaction Area - expands only when answered */}
+          <div className={clsx("overflow-visible px-2 shrink-0 flex items-end", answered ? "h-1/3 pb-6" : "pb-0")}>
             {renderInteraction()}
           </div>
-
-          {/* Action Button Area removed from here */}
-          <div className="h-6 shrink-0" />
 
         </div>
 
@@ -1794,36 +1817,29 @@ const QuizPage: React.FC = () => {
                   <Lightbulb size={24} className="text-white" />
                 </div>
 
-                <div className="overflow-hidden no-scrollbar font-bold text-lg text-slate-800 leading-relaxed italic pr-2">
-                  {explaining ? (
-                    <div className="flex flex-col items-center gap-4 py-4">
-                      <DoodleLoading message="Đang suy nghĩ..." />
-                    </div>
-                  ) : answered ? (
+                <div className="overflow-y-auto max-h-[300px] font-bold text-lg text-slate-800 leading-relaxed italic pr-2">
+                  {answered ? (
                     <div className="flex flex-col gap-6">
-                      <TypedText text={explanation || (isCurrentAnswerCorrect ? "Đáp án chính xác! Tiếp tục phát huy nhé." : "Rất tiếc, câu trả lời chưa chính xác. Hãy cố gắng ở các câu sau nhé!")} />
+                      <div className="flex items-center gap-2">
+                        {isCurrentAnswerCorrect ? (
+                          <span className="text-emerald-600 font-black text-xl flex items-center gap-2 not-italic">
+                            <CheckCircle size={24} className="text-emerald-500" strokeWidth={3} />
+                            Đúng rồi!
+                          </span>
+                        ) : (
+                          <span className="text-rose-600 font-black text-xl flex items-center gap-2 not-italic">
+                            <XCircle size={24} className="text-rose-500" strokeWidth={3} />
+                            Chưa chính xác!
+                          </span>
+                        )}
+                      </div>
 
-                      {/* Regional TTS moved INSIDE the bubble */}
-                      {!explaining && (
-                        <div className="mt-2 border-t-[3px] border-slate-100 pt-6 flex flex-col gap-3">
-                          <p className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">
-                            Bạn muốn nghe giọng vùng miền khác?
-                          </p>
-                          <div className="flex gap-3">
-                            {['banmai', 'myan', 'linhsan'].map((voice, i) => (
-                              <button
-                                key={voice}
-                                onClick={() => playRegionalTTS(ch.correctSentence || ch.content, voice)}
-                                className={clsx(
-                                  "px-5 py-3 bg-white border-[3.5px] border-slate-900 rounded-xl shadow-[4px_4px_0_#1f2937] text-xs font-black transition-all hover:-translate-y-1 active:translate-y-0",
-                                  playingTTS === voice ? "bg-[#FFC107]" : "hover:bg-slate-50"
-                                )}
-                              >
-                                {['BẮC', 'TRUNG', 'NAM'][i]}
-                              </button>
-                            ))}
-                          </div>
+                      {explaining ? (
+                        <div className="flex flex-col items-center gap-2 py-2">
+                          <DoodleLoading message="AI đang suy nghĩ..." />
                         </div>
+                      ) : (
+                        <TypedText text={explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!")} />
                       )}
                     </div>
                   ) : (
@@ -1872,29 +1888,64 @@ const QuizPage: React.FC = () => {
               <img src={characterImg} alt="Character" className="h-[28vh] object-contain drop-shadow-xl" />
             </motion.div>
           </div>
-
         </div>
-
       </div>
 
+      {/* Speaking Consent Modal Pop-up */}
+      <AnimatePresence>
+        {consentGiven === null && ch?.mode === 'SPEAKING_READ' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="w-full max-w-md bg-white border-[3.5px] border-slate-900 rounded-[2.5rem] p-6 md:p-8 shadow-[8px_8px_0_#1f2937] space-y-6"
+            >
+              <div className="flex gap-4 items-start">
+                <div className="w-14 h-14 bg-indigo-50 border-[2.5px] border-indigo-200 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
+                  <Mic size={28} strokeWidth={3} className="text-[#49B6E5]" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-black text-slate-900 text-xl italic tracking-tight leading-none pt-1">Quyền ghi âm</p>
+                  <p className="text-slate-500 text-sm font-bold leading-relaxed pt-1">
+                    Chúng tôi sử dụng đoạn âm thanh của bạn để cải thiện AI. Dữ liệu hoàn toàn bảo mật.
+                  </p>
+                </div>
+              </div>
 
+              {/* Remember Choice Checkbox */}
+              <div className="p-4 bg-slate-50 rounded-2xl border-[2px] border-slate-200">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberConsent}
+                    onChange={(e) => setRememberConsent(e.target.checked)}
+                    className="w-5 h-5 rounded-[6px] border-[2px] border-slate-900 text-[#49B6E5] focus:ring-[#49B6E5] cursor-pointer"
+                  />
+                  <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Ghi nhớ lựa chọn cho lần sau</span>
+                </label>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => handleConsentChoice(true)}
+                  className="bg-slate-900 text-white font-black py-4 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#49B6E5] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all text-sm uppercase tracking-wider"
+                >
+                  Đồng ý
+                </button>
+                <button
+                  onClick={() => handleConsentChoice(false)}
+                  className="bg-white text-slate-900 font-black py-4 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all text-sm uppercase tracking-wider"
+                >
+                  Để sau
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-      {/* Timer Overlays */}
-      {timeLeft !== null && !answered && (
-        <div className="absolute top-1/2 left-6 -translate-y-1/2 flex flex-col items-center gap-2">
-          <motion.div
-            animate={(timeLeft ?? 0) < 10 ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 0.5 }}
-            className={clsx(
-              "w-20 h-20 rounded-full border-[3.5px] flex items-center justify-center shadow-[6px_6px_0_#1f2937] text-3xl font-black italic",
-              (timeLeft ?? 0) < 10 ? "bg-[#F43F5E] text-white border-slate-900" : "bg-[#49B6E5] text-white border-slate-900"
-            )}
-          >
-            {timeLeft}
-          </motion.div>
-        </div>
-      )}
     </div>
   )
 }

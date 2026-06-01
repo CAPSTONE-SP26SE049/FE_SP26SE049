@@ -558,16 +558,17 @@ export function useWordAnimation() {
         timeoutRef.current = []
 
         const phonemes = textToVisemeKeys(word)
+
+        // Always start from rest so the transition is visible
         setIsPlaying(true)
-        setCurrentPhonemeIndex(0)
-        setCurrentViseme(phonemes[0])
+        setCurrentPhonemeIndex(-1)
+        setCurrentViseme('rest')
 
         phonemes.forEach((phoneme, idx) => {
-            if (idx === 0) return
             const t = setTimeout(() => {
                 setCurrentViseme(phoneme)
                 setCurrentPhonemeIndex(idx)
-            }, idx * speed)
+            }, (idx + 1) * speed)
             timeoutRef.current.push(t)
         })
 
@@ -576,7 +577,7 @@ export function useWordAnimation() {
             setCurrentViseme('rest')
             setIsPlaying(false)
             setCurrentPhonemeIndex(-1)
-        }, phonemes.length * speed + 300)
+        }, (phonemes.length + 1) * speed + 300)
         timeoutRef.current.push(endT)
     }, [])
 
