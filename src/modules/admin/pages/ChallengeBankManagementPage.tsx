@@ -41,6 +41,18 @@ export default function ChallengeBankManagementPage() {
   const [importing, setImporting] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+  // Custom Delete Confirm & Notification States
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [toast, setToast] = React.useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => {
+      setToast(null)
+    }, 3000)
+  }
+
   const loadChallenges = async () => {
     try {
       setLoading(true)
@@ -76,22 +88,47 @@ export default function ChallengeBankManagementPage() {
     setIsAddEditModalOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa câu hỏi này khỏi kho câu hỏi?')) return
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deletingId) return
+    setSubmitting(true)
     try {
-      await adminService.deleteChallengeBankItem(id)
-      alert('Xóa câu hỏi thành công!')
+      await adminService.deleteChallengeBankItem(deletingId)
+      showToast('Xóa câu hỏi thành công!', 'success')
       loadChallenges()
     } catch (err: any) {
       console.error('Failed to delete challenge:', err)
-      alert('Không thể xóa câu hỏi: ' + (err?.message || 'Lỗi không xác định.'))
+      const rawError = (err?.response?.data?.message || err?.message || '').toString()
+      
+      let friendlyMessage = 'Lỗi không xác định.'
+      if (rawError.includes('fk_dca_challenge') || rawError.includes('daily_challenge_attempt')) {
+        friendlyMessage = 'Câu hỏi này đang được sử dụng trong các lượt tham gia Thử Thách Hàng Ngày (Mùa Giải của học viên). Không thể xóa!'
+      } else if (rawError.includes('quiz_challenge_item') || rawError.includes('fk_quiz_challenge_item') || rawError.includes('quiz_challenge')) {
+        friendlyMessage = 'Câu hỏi này đang được sử dụng trong các Bài Luyện Tập (Quiz). Vui lòng gỡ câu hỏi khỏi Quiz trước khi xóa!'
+      } else if (rawError.includes('speaking_attempt') || rawError.includes('fk_speaking_attempt')) {
+        friendlyMessage = 'Câu hỏi này đã có học viên thực hiện bài làm (phát âm). Không thể xóa để bảo toàn lịch sử học tập!'
+      } else if (rawError.includes('foreign key constraint') || rawError.includes('violates foreign key')) {
+        friendlyMessage = 'Câu hỏi này đang được liên kết với dữ liệu học tập hoặc giải đấu khác của hệ thống. Không thể xóa!'
+      } else if (rawError) {
+        friendlyMessage = rawError
+      }
+      
+      showToast('Không thể xóa câu hỏi: ' + friendlyMessage, 'error')
+    } finally {
+      setSubmitting(false)
+      setDeleteConfirmOpen(false)
+      setDeletingId(null)
     }
   }
 
   const handleSaveChallenge = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formContentText.trim()) {
-      alert('Vui lòng điền nội dung câu hỏi!')
+      showToast('Vui lòng điền nội dung câu hỏi!', 'error')
       return
     }
 
@@ -107,16 +144,16 @@ export default function ChallengeBankManagementPage() {
 
       if (editingChallenge) {
         await adminService.updateChallengeBankItem(editingChallenge.id, payload)
-        alert('Cập nhật câu hỏi thành công!')
+        showToast('Cập nhật câu hỏi thành công!', 'success')
       } else {
         await adminService.createChallengeBankItem(payload)
-        alert('Tạo mới câu hỏi thành công!')
+        showToast('Tạo mới câu hỏi thành công!', 'success')
       }
       setIsAddEditModalOpen(false)
       loadChallenges()
     } catch (err: any) {
       console.error('Failed to save challenge:', err)
-      alert('Lỗi: ' + (err?.response?.data?.message || err?.message || 'Không thể lưu câu hỏi.'))
+      showToast('Lỗi: ' + (err?.response?.data?.message || err?.message || 'Không thể lưu câu hỏi.'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -136,7 +173,7 @@ export default function ChallengeBankManagementPage() {
       link.parentNode?.removeChild(link)
     } catch (err) {
       console.error('Failed to download template:', err)
-      alert('Lỗi tải file mẫu Excel.')
+      showToast('Lỗi tải file mẫu Excel.', 'error')
     }
   }
 
@@ -155,7 +192,7 @@ export default function ChallengeBankManagementPage() {
       link.parentNode?.removeChild(link)
     } catch (err) {
       console.error('Failed to export Excel:', err)
-      alert('Lỗi xuất dữ liệu Excel.')
+      showToast('Lỗi xuất dữ liệu Excel.', 'error')
     }
   }
 
@@ -166,11 +203,11 @@ export default function ChallengeBankManagementPage() {
     setImporting(true)
     try {
       await adminService.importChallengeBankFromExcel(file)
-      alert('Nhập dữ liệu kho câu hỏi bằng file Excel thành công!')
+      showToast('Nhập dữ liệu kho câu hỏi bằng file Excel thành công!', 'success')
       loadChallenges()
     } catch (err: any) {
       console.error('Failed to import Excel:', err)
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'))
+      showToast('Lỗi nhập Excel: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'), 'error')
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -320,7 +357,7 @@ export default function ChallengeBankManagementPage() {
               onChange={(e) => setFilterRegion(e.target.value)}
               className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black text-slate-800 shadow-[2px_2px_0_#1f2937] focus:outline-none"
             >
-              <option value="ALL">TẤT CẢ PHƯƠNG NGỮ</option>
+              <option value="ALL">TẤT CẢ GIỌNG VÙNG MIỀN</option>
               <option value="NAM">GIỌNG NAM</option>
               <option value="BAC">GIỌNG BẮC</option>
               <option value="TRUNG">GIỌNG TRUNG</option>
@@ -360,7 +397,7 @@ export default function ChallengeBankManagementPage() {
               <thead>
                 <tr className="border-b-[3px] border-slate-900/5 text-left">
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-[60%]">Mẫu câu phát âm (Tiếng Việt)</th>
-                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Phương ngữ</th>
+                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Giọng vùng miền</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Độ khó</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right pr-4">Hành động</th>
                 </tr>
@@ -414,7 +451,7 @@ export default function ChallengeBankManagementPage() {
                             <Edit2 size={13} strokeWidth={3} />
                           </button>
                           <button
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => handleDeleteClick(item.id)}
                             className="p-2 rounded-xl border-2 border-slate-900 bg-white text-rose-500 shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all"
                             title="Xóa câu hỏi"
                           >
@@ -534,7 +571,7 @@ export default function ChallengeBankManagementPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">Phương ngữ vùng miền</label>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">Giọng vùng miền</label>
                     <select
                       value={formRegion}
                       onChange={(e) => setFormRegion(e.target.value)}
@@ -579,6 +616,86 @@ export default function ChallengeBankManagementPage() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🗑️ POPUP MODAL: XÁC NHẬN XÓA CÂU HỎI */}
+      <AnimatePresence>
+        {deleteConfirmOpen && (
+          <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fbf6ef] p-8 shadow-[8px_8px_0_#1f2937]"
+            >
+              <button
+                onClick={() => {
+                  setDeleteConfirmOpen(false)
+                  setDeletingId(null)
+                }}
+                className="absolute right-6 top-6 grid h-10 w-10 place-items-center rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[3px_3px_0_#1f2937] active:translate-y-0.5"
+              >
+                X
+              </button>
+
+              <div className="text-center space-y-5 pt-4">
+                <div className="w-16 h-16 rounded-full border-[3px] border-slate-900 bg-rose-100 flex items-center justify-center mx-auto shadow-[4px_4px_0_#1f2937]">
+                  <Trash2 size={26} className="text-rose-500" strokeWidth={2.5} />
+                </div>
+                
+                <div className="space-y-2">
+                  <span className="inline-block rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1 text-[10px] font-black uppercase text-rose-700">
+                    Cảnh báo quản trị
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-wide">
+                    Xác nhận xóa câu hỏi
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 leading-relaxed px-2">
+                    Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này khỏi kho dữ liệu? Thao tác này không thể hoàn tác.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteConfirmOpen(false)
+                      setDeletingId(null)
+                    }}
+                    className="w-1/2 rounded-2xl border-[3px] border-slate-900 bg-white py-3.5 text-xs font-black text-slate-700 shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+                  >
+                    HUỶ BỎ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    disabled={submitting}
+                    className="w-1/2 rounded-2xl border-[3px] border-slate-900 bg-rose-500 py-3.5 text-xs font-black text-white shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
+                  >
+                    {submitting ? 'ĐANG XÓA...' : 'ĐỒNG Ý XÓA'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔔 CUSTOM NEO-BRUTALIST TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-3 px-6 py-4 rounded-2xl border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] font-black text-xs uppercase tracking-wider ${
+              toast.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }`}
+          >
+            <AlertCircle size={16} strokeWidth={3} />
+            <span>{toast.message}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

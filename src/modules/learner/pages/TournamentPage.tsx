@@ -67,8 +67,14 @@ export default function TournamentPage() {
     wordDetails?: any[]
   } | null>(null)
 
-  const loadData = async () => {
-    setLoading(true)
+  const [submitStatus, setSubmitStatus] = useState<{
+    updated: boolean
+    finalScore: number
+    previousHighScore: number
+  } | null>(null)
+
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(false)
     try {
       // 1. Fetch active tournament details (challenges + user progress)
@@ -86,7 +92,7 @@ export default function TournamentPage() {
       console.error('[TournamentPage] Failed to fetch active tournament:', err)
       setError(true)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   };
 
@@ -272,16 +278,54 @@ export default function TournamentPage() {
         score: finalScore
       })
 
-      if (submitRes.data?.data?.updated) {
+      const isUpdated = !!submitRes.data?.data?.updated
+      const prevHighScore = submitRes.data?.data?.previousHighScore ?? 0
+
+      setSubmitStatus({
+        updated: isUpdated,
+        finalScore,
+        previousHighScore: prevHighScore
+      })
+
+      // Update active challenge high score locally so the modal header reflects it immediately
+      setActiveChallenge((prev: any) => prev ? {
+        ...prev,
+        userHighScore: Math.max(prev.userHighScore ?? 0, finalScore)
+      } : null)
+
+      // Update parent tournament challenges locally so the background table updates instantly
+      setTournament((prev: any) => {
+        if (!prev) return prev
+        const updatedChallenges = prev.challenges?.map((c: any) => {
+          if (c.id === activeChallenge.id) {
+            return { ...c, userHighScore: Math.max(c.userHighScore ?? 0, finalScore) }
+          }
+          return c
+        })
+        const wasCompleted = (activeChallenge.userHighScore ?? 0) > 0
+        const isNowCompleted = Math.max(activeChallenge.userHighScore ?? 0, finalScore) > 0
+        const newlyCompletedCount = (!wasCompleted && isNowCompleted) ? 1 : 0
+
+        const updatedProgress = prev.userProgress ? {
+          ...prev.userProgress,
+          challengesCompleted: (prev.userProgress.challengesCompleted ?? 0) + newlyCompletedCount
+        } : prev.userProgress
+
+        return {
+          ...prev,
+          challenges: updatedChallenges,
+          userProgress: updatedProgress
+        }
+      })
+
+      if (isUpdated) {
         message.success(`Kỷ lục mới! Ghi nhận ${finalScore} điểm giải đấu!`)
       } else {
-        message.info(`Hoàn thành thử thách. Kỷ lục hiện tại của bạn là: ${submitRes.data?.data?.previousHighScore ?? finalScore} điểm.`)
+        message.info(`Hoàn thành thử thách! Kỷ lục của bạn là: ${prevHighScore || finalScore} điểm.`)
       }
 
-      // Refresh data to update scoreboard and leaderboard
-      setTimeout(() => {
-        loadData()
-      }, 1000)
+      // Refresh data silently to sync with server (leaderboard, scoreboard, history)
+      loadData(true)
 
     } catch (err: any) {
       console.error('[TournamentPage] Evaluation failed:', err)
@@ -294,6 +338,7 @@ export default function TournamentPage() {
   const startPractice = (challenge: any) => {
     setActiveChallenge(challenge)
     setAiResult(null)
+    setSubmitStatus(null)
     recorder.resetRecording()
     setIsModalOpen(true)
   }
@@ -334,7 +379,7 @@ export default function TournamentPage() {
         <div className="text-6xl mb-6">🏜️</div>
         <h3 className="text-2xl font-black text-slate-900 mb-2">Ối! Có lỗi rồi</h3>
         <p className="text-slate-500 font-bold mb-8 text-center max-w-sm">Không thể kết nối tới máy chủ giải đấu lúc này. Vui lòng thử lại sau.</p>
-        <button onClick={loadData} className="px-8 py-3 bg-[#49B6E5] text-white font-black rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-1 active:shadow-none transition-all">Thử lại ngay</button>
+        <button onClick={() => loadData()} className="px-8 py-3 bg-[#49B6E5] text-white font-black rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-1 active:shadow-none transition-all">Thử lại ngay</button>
       </div>
     )
   }
@@ -353,7 +398,7 @@ export default function TournamentPage() {
               <div>
                 <p className="text-xs font-black uppercase text-amber-700 tracking-wider">Thông báo giải đấu</p>
                 <p className="text-sm font-black text-slate-800 mt-0.5">
-                  Hệ thống đã chốt giải cho kỳ đấu tuần trước ({history[0]?.name || 'kỳ vừa qua'})! Bảng xếp hạng vinh danh và phần thưởng XP đã được trao cho các học viên đạt giải.
+                  Hệ thống đã chốt giải cho kỳ đấu tuần trước ({history[0]?.name || 'kỳ vừa qua'})! Bảng xếp hạng vinh danh và các danh hiệu danh giá đã được trao cho các học viên đạt giải.
                 </p>
               </div>
             </div>
@@ -381,7 +426,7 @@ export default function TournamentPage() {
             <div>
               <span className="text-xs font-black bg-purple-100 text-purple-700 px-3 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] uppercase tracking-wider">Giải Đấu Tuần Mới</span>
               <h1 className="text-3xl lg:text-4xl font-black text-slate-900 mt-2 mb-1">{tournament.name}</h1>
-              <p className="text-sm font-bold text-slate-500">{tournament.description || 'Tham gia luyện tập bộ 5 câu hỏi để vinh danh và nhận thưởng XP cực khủng.'}</p>
+              <p className="text-sm font-bold text-slate-500">{tournament.description || `Tham gia luyện tập bộ ${tournament.challenges?.length ?? 10} câu hỏi để vinh danh và tích lũy điểm số cực khủng.`}</p>
             </div>
           </div>
 
@@ -403,11 +448,11 @@ export default function TournamentPage() {
           <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-6 lg:p-8 shadow-[6px_6px_0_#1f2937]">
             <div className="flex items-center justify-between border-b-[2px] border-slate-100 pb-4 mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center font-black text-blue-700 text-sm">5</div>
+                <div className="w-8 h-8 rounded-lg bg-blue-100 border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] flex items-center justify-center font-black text-blue-700 text-sm">{tournament.challenges?.length ?? 10}</div>
                 <h3 className="text-xl font-black text-slate-900">Bộ Câu Hỏi Phát Âm Tuần Này</h3>
               </div>
               <span className="text-xs font-black bg-slate-100 border-[1.5px] border-slate-900 px-3 py-1 rounded-full shadow-[2px_2px_0_#1f2937] text-slate-700">
-                {tournament.userProgress?.challengesCompleted ?? 0}/5 Hoàn thành
+                {tournament.userProgress?.challengesCompleted ?? 0}/{tournament.challenges?.length ?? 10} Hoàn thành
               </span>
             </div>
 
@@ -454,15 +499,18 @@ export default function TournamentPage() {
 
                       {/* CTA Button */}
                       <button
-                        onClick={() => startPractice(c)}
+                        onClick={() => !isCompleted && startPractice(c)}
+                        disabled={isCompleted}
                         className={clsx(
-                          "px-5 py-2.5 rounded-xl border-[2px] border-slate-900 font-black text-xs shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 active:shadow-none transition-all flex items-center gap-1.5",
+                          "px-5 py-2.5 rounded-xl border-[2px] border-slate-900 font-black text-xs transition-all flex items-center gap-1.5",
                           isCompleted
-                            ? "bg-slate-50 text-slate-800 hover:bg-slate-100"
-                            : "bg-[#49B6E5] text-white hover:bg-[#3FA1CD]"
+                            ? "bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed shadow-none"
+                            : "bg-[#49B6E5] text-white hover:bg-[#3FA1CD] shadow-[2px_2px_0_#1f2937] active:translate-y-0.5 active:shadow-none"
                         )}
                       >
-                        {isCompleted ? 'Luyện lại' : 'Luyện ngay'} <Play size={12} fill="currentColor" />
+                        {isCompleted ? 'Đã hoàn thành' : 'Luyện ngay'}{' '}
+                        {!isCompleted && <Play size={12} fill="currentColor" />}
+                        {isCompleted && <CheckCircle size={12} className="text-emerald-500" />}
                       </button>
                     </div>
                   </div>
@@ -478,12 +526,12 @@ export default function TournamentPage() {
             </div>
             <div className="space-y-2 z-10 text-center md:text-left">
               <h4 className="text-2xl font-black italic">Điểm Thi Đấu Của Bạn</h4>
-              <p className="text-indigo-100 text-xs font-bold">Hãy tối đa điểm số của cả 5 câu để vươn lên đứng đầu bảng xếp hạng tuần!</p>
+              <p className="text-indigo-100 text-xs font-bold">Hãy tối đa điểm số của cả 10 câu để vươn lên đứng đầu bảng xếp hạng tuần!</p>
             </div>
             <div className="flex gap-4 z-10 w-full md:w-auto">
               <div className="flex-1 bg-white/10 backdrop-blur-sm border-[2px] border-white/20 rounded-2xl p-4 text-center">
                 <p className="text-[9px] font-black uppercase text-indigo-200 tracking-wider">Tổng điểm tuần</p>
-                <p className="text-3xl font-black italic text-amber-300">{tournament.userProgress?.totalXp ?? 0} XP</p>
+                <p className="text-3xl font-black italic text-amber-300">{tournament.userProgress?.totalXp ?? 0}</p>
               </div>
               <div className="flex-1 bg-white/10 backdrop-blur-sm border-[2px] border-white/20 rounded-2xl p-4 text-center">
                 <p className="text-[9px] font-black uppercase text-indigo-200 tracking-wider">Độ chính xác TB</p>
@@ -572,7 +620,7 @@ export default function TournamentPage() {
                               cfg.podH
                             )}>
                               <span className="font-black text-slate-900 text-xl md:text-2xl leading-none">#{e.rankPosition}</span>
-                              <span className="text-[10px] font-black text-slate-500 mt-1 tabular-nums">{e.totalXp} XP</span>
+                              <span className="text-[10px] font-black text-slate-500 mt-1 tabular-nums">{e.totalXp}</span>
                             </div>
                           </div>
                         )
@@ -601,11 +649,10 @@ export default function TournamentPage() {
                           <Avatar src={e.avatarUrl} size={32} className="border-[1.5px] border-slate-900 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-black text-slate-800 text-xs truncate">{e.fullName || 'Học viên'}</p>
-                            <p className="text-[9px] text-slate-400 font-bold">Hoàn thành: {e.challengesCompleted}/5 câu</p>
+                            <p className="text-[9px] text-slate-400 font-bold">Hoàn thành: {e.challengesCompleted}/{tournament.challenges?.length ?? 10} câu</p>
                           </div>
                           <div className="flex items-center gap-1 bg-amber-50 border-[1.5px] border-slate-900 px-2 py-1 rounded-xl shadow-[1.5px_1.5px_0_#1f2937] shrink-0">
-                            <Star size={10} className="text-yellow-600 fill-yellow-600" />
-                            <span className="font-black text-slate-800 text-xs tabular-nums">{e.totalXp} XP</span>
+                            <span className="font-black text-slate-800 text-xs tabular-nums">{e.totalXp}</span>
                           </div>
                         </div>
                       )
@@ -676,7 +723,7 @@ export default function TournamentPage() {
                                     "font-black text-[10px] px-2.5 py-0.5 rounded-full border border-slate-900 shadow-[1px_1px_0_#1f2937] tabular-nums shrink-0",
                                     isGold ? "bg-yellow-100 text-yellow-800" : isSilver ? "bg-slate-100 text-slate-700" : "bg-orange-100 text-orange-800"
                                   )}>
-                                    {winner.totalXp} XP
+                                    {winner.totalXp} Điểm
                                   </span>
                                 </div>
                               )
@@ -783,15 +830,46 @@ export default function TournamentPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
+                  {/* Custom Brutalist Event Banner for Submit Status */}
+                  {submitStatus && (
+                    <div className={clsx(
+                      "p-4 rounded-[1.5rem] border-[2px] border-slate-900 flex items-center gap-3.5 shadow-[3px_3px_0_#1f2937]",
+                      submitStatus.updated 
+                        ? "bg-amber-100 text-amber-950 border-amber-500" 
+                        : "bg-sky-50 text-sky-950 border-sky-400"
+                    )}>
+                      <div className={clsx(
+                        "w-10 h-10 rounded-xl border-[2px] border-slate-900 flex items-center justify-center shrink-0 shadow-[2px_2px_0_#1f2937]",
+                        submitStatus.updated ? "bg-amber-400 text-white" : "bg-sky-400 text-white"
+                      )}>
+                        {submitStatus.updated ? (
+                          <Sparkles size={20} className="animate-bounce" />
+                        ) : (
+                          <Trophy size={20} />
+                        )}
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        {submitStatus.updated ? (
+                          <>
+                            <p className="text-xs font-black uppercase text-amber-700 tracking-wider">Kỷ Lục Mới! 🎉</p>
+                            <p className="text-xs font-bold mt-0.5">Tuyệt vời! Bạn vừa phá kỷ lục cá nhân với <span className="font-black text-amber-600">{submitStatus.finalScore} điểm</span> giải đấu!</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs font-black uppercase text-sky-700 tracking-wider">Thử Thách Hoàn Thành! 💪</p>
+                            <p className="text-xs font-bold mt-0.5">Kỷ lục hiện tại của bạn: <span className="font-black text-slate-800">{submitStatus.previousHighScore || submitStatus.finalScore} điểm</span> (Lần này đạt {submitStatus.finalScore} điểm).</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-slate-50 border-[2.5px] border-slate-900 rounded-[2rem] p-6 shadow-[4px_4px_0_#1f2937]">
                     <div className="flex items-center justify-between border-b-[2px] border-slate-200/50 pb-3 mb-4">
                       <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Kết quả phân tích từ AI</span>
                       
-                      <span className={clsx(
-                        "text-xs font-black px-3.5 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] uppercase",
-                        aiResult.isCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                      )}>
-                        {aiResult.isCorrect ? 'Đạt' : 'Chưa Đạt'}
+                      <span className="text-xs font-black px-3.5 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] uppercase bg-emerald-100 text-emerald-800">
+                        Đã Hoàn Thành
                       </span>
                     </div>
 

@@ -44,7 +44,7 @@ const DIALECT_META: Record<string, {
     CENTRAL: {
         viName: 'Miền Trung',
         tagline: 'Nồng hậu & Di sản',
-        emoji: '🏯',
+        emoji: '',
         description: 'Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.',
         photo: '/region_mien_trung.png',
         gradient: 'from-orange-500/90 to-amber-500/90',
@@ -54,7 +54,7 @@ const DIALECT_META: Record<string, {
     SOUTH: {
         viName: 'Miền Nam',
         tagline: 'Sôi động & Cởi mở',
-        emoji: '🌆',
+        emoji: '',
         description: 'Làm quen với giọng Nam năng động, cởi mở và thân thiện.',
         photo: '/region_mien_nam.png',
         gradient: 'from-emerald-500/90 to-teal-500/90',
@@ -317,7 +317,7 @@ const EntryTestPage: React.FC = () => {
     const detectRegionalError = (errorType: string): boolean => {
         if (!errorType) return false
         const lower = errorType.toLowerCase()
-        
+
         // 1. Đối chiếu động với danh sách error tags từ database
         const matchesDbTag = errorTags.some(tag => {
             const code = (tag.tagCode || '').toLowerCase()
@@ -449,24 +449,24 @@ const EntryTestPage: React.FC = () => {
             stepResults.forEach(res => {
                 if (res.isRegional && res.detectedError) {
                     let code = res.detectedError.toUpperCase().trim()
-                    
+
                     // Localization mapping for system codes
                     if (code === 'REGIONAL_ERROR' || code === 'REGIONAL') {
                         code = 'VÙNG MIỀN'
                     } else if (code === 'PRONUNCIATION_MISMATCH' || code === 'MISMATCH') {
                         code = 'LỆCH ÂM'
                     }
-                    
-                    const matchingTag = errorTags.find(t => 
-                        (t.tagCode || '').toUpperCase() === code || 
+
+                    const matchingTag = errorTags.find(t =>
+                        (t.tagCode || '').toUpperCase() === code ||
                         (t.name || '').toUpperCase().includes(code)
                     )
-                    
+
                     let name = matchingTag?.name || `Lỗi phát âm ${code}`
                     if (code === 'VÙNG MIỀN' && !matchingTag) {
                         name = 'Lỗi phát âm đặc trưng vùng miền'
                     }
-                    
+
                     const key = matchingTag?.tagCode || code
                     if (!counts[key]) {
                         counts[key] = { code: key, count: 0, name }
@@ -503,7 +503,7 @@ const EntryTestPage: React.FC = () => {
                 >
                     {/* LEFT COLUMN (SVG Circle + AI Summary) - Span 5 */}
                     <div className="md:col-span-5 flex flex-col bg-white p-8 rounded-[2.5rem] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937] text-center w-full">
-                        <h2 className="text-2xl font-black text-slate-900 mb-1">Entry Test Hoàn Tất!</h2>
+                        <h2 className="text-2xl font-black text-slate-900 mb-1">Hoàn Tất Kiểm Tra Đầu Vào!</h2>
                         <p className="text-slate-500 font-bold text-xs mb-8">
                             Dưới đây là chẩn đoán giọng nói của bạn.
                         </p>
@@ -628,11 +628,11 @@ const EntryTestPage: React.FC = () => {
                                 <ThunderboltFilled className="text-2xl text-yellow-500" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 leading-none">Entry Test</h2>
+                                <h2 className="text-xl font-black text-slate-900 leading-none">Kiểm tra đầu vào</h2>
                                 <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-1">Chẩn Đoán Năng Lực</p>
                             </div>
                         </div>
-                        
+
                         <button
                             onClick={() => navigate(-1)}
                             className="px-4 py-2 bg-white border-[2.5px] border-slate-900 rounded-xl shadow-[3px_3px_0_#1f2937] text-xs font-black text-slate-900 transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
@@ -680,9 +680,8 @@ const EntryTestPage: React.FC = () => {
                                 <motion.div
                                     initial={{ scale: 0.9, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    className={`p-6 rounded-[2rem] mb-10 text-left border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] ${
-                                        isGood ? 'bg-emerald-50' : 'bg-orange-50'
-                                    }`}
+                                    className={`p-6 rounded-[2rem] mb-10 text-left border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] ${isGood ? 'bg-emerald-50' : 'bg-orange-50'
+                                        }`}
                                 >
                                     <div className="flex items-center gap-4 mb-2">
                                         {isGood ? (
@@ -703,8 +702,8 @@ const EntryTestPage: React.FC = () => {
                                             {currentStepResult.wordDetails.map((item: any, i: number) => {
                                                 const isWrong = item.status === 'wrong';
                                                 const textColor = item.status === 'correct' ? 'text-green-600' :
-                                                                  item.status === 'near' ? 'text-yellow-600' :
-                                                                  'text-red-600';
+                                                    item.status === 'near' ? 'text-yellow-600' :
+                                                        'text-red-600';
                                                 return (
                                                     <span key={i} className={`font-black text-lg ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-4' : ''}`}>
                                                         {item.word}
@@ -770,13 +769,12 @@ const EntryTestPage: React.FC = () => {
                                         </AnimatePresence>
 
                                         <button
-                                            className={`w-24 h-24 flex items-center justify-center rounded-full border-[3px] border-slate-900 relative z-10 transition-all duration-300 outline-none shadow-[6px_6px_0_#1f2937] active:translate-y-0.5 active:shadow-[2px_2px_0_#1f2937] ${
-                                                recorder.isRecording
-                                                    ? 'bg-rose-500 text-white'
-                                                    : analyzing
-                                                        ? 'bg-slate-200 cursor-not-allowed text-slate-400'
-                                                        : 'bg-[#49B6E5] hover:bg-[#3ba2cf] text-white'
-                                            }`}
+                                            className={`w-24 h-24 flex items-center justify-center rounded-full border-[3px] border-slate-900 relative z-10 transition-all duration-300 outline-none shadow-[6px_6px_0_#1f2937] active:translate-y-0.5 active:shadow-[2px_2px_0_#1f2937] ${recorder.isRecording
+                                                ? 'bg-rose-500 text-white'
+                                                : analyzing
+                                                    ? 'bg-slate-200 cursor-not-allowed text-slate-400'
+                                                    : 'bg-[#49B6E5] hover:bg-[#3ba2cf] text-white'
+                                                }`}
                                             onClick={async () => {
                                                 if (analyzing) return
                                                 if (recorder.isRecording) {

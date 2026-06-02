@@ -1294,7 +1294,7 @@ const AdminDashboardPage = () => {
                       <p className="text-[10px] font-semibold text-slate-400">
                         {activeTournamentStatus === 'ACTIVE' 
                           ? 'Danh sách câu hỏi thi đấu hiện tại của tuần này.'
-                          : 'Chọn tối thiểu 1 câu, tốt nhất là 5 câu phát âm.'}
+                          : 'Chọn tối thiểu 1 câu, tốt nhất là 10 câu phát âm.'}
                       </p>
                     </div>
 
@@ -1614,7 +1614,7 @@ const AdminDashboardPage = () => {
                         <tr className="border-b-2 border-slate-950 bg-slate-50 text-left">
                           <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center w-12">Hạng</th>
                           <th className="p-3 font-black text-[10px] uppercase text-slate-400">Học viên</th>
-                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center">XP Tích Lũy</th>
+                          <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center">Tổng Điểm</th>
                           <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-center">Phát âm hoàn thành</th>
                           <th className="p-3 font-black text-[10px] uppercase text-slate-400 text-right pr-4">Độ chính xác</th>
                         </tr>
@@ -1648,10 +1648,10 @@ const AdminDashboardPage = () => {
                                 </div>
                               </td>
                               <td className="p-3 text-center font-black text-slate-800">
-                                {p.totalXp} XP ⭐
+                                {p.totalXp}
                               </td>
                               <td className="p-3 text-center text-slate-500">
-                                {p.challengesCompleted} câu 🎯
+                                {p.challengesCompleted}/10 câu
                               </td>
                               <td className="p-3 text-right pr-4">
                                 <span className="inline-block px-2.5 py-0.5 rounded-full border-[1.5px] border-emerald-200 bg-emerald-50 text-[10px] font-black text-emerald-600">
