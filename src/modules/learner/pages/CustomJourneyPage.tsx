@@ -249,29 +249,32 @@ const CustomJourneyPage: React.FC = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="relative bg-white rounded-[2.5rem] border-[3px] border-slate-900 shadow-[10px_10px_0_#1f2937] overflow-hidden p-8 md:p-10 flex flex-col md:flex-row items-center gap-8"
+                        className="relative bg-white rounded-[2rem] border-[3px] border-slate-900 shadow-[7px_7px_0_#1f2937] overflow-hidden p-5 md:p-6 flex flex-col md:flex-row items-center gap-4 md:gap-5"
                     >
-                        <div className="w-24 h-24 bg-gradient-to-br from-[#49B6E5] to-indigo-500 rounded-[2rem] border-[3px] border-slate-900 shadow-[6px_6px_0_#1f2937] flex items-center justify-center flex-shrink-0 transform -rotate-3 overflow-hidden transition-transform hover:rotate-0">
-                            <Sparkles size={40} className="text-white" strokeWidth={2.5} />
-                            <div className="absolute inset-0 bg-white/10 opacity-50" />
+                        <div className="w-16 h-16 md:w-18 md:h-18 bg-[#49B6E5] rounded-[1.5rem] border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center flex-shrink-0 -rotate-2 transition-transform hover:rotate-0">
+                            <Sparkles size={28} className="text-white" strokeWidth={2.8} />
                         </div>
 
-                        <div className="flex-1 text-center md:text-left space-y-4">
+                        <div className="flex-1 text-center md:text-left space-y-2.5">
                             <div>
-                                <p className="text-[#49B6E5] text-xs font-black tracking-[0.3em] uppercase mb-1">Cá Nhân Hóa</p>
-                                <h3 className="text-2xl md:text-3xl font-black text-slate-900 uppercase leading-none tracking-tight">Hành Trình Chinh Phục Của Bạn</h3>
+                                <p className="text-[#49B6E5] text-[10px] font-black tracking-[0.22em] uppercase mb-1">Cá Nhân Hóa</p>
+                                <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase leading-none tracking-tight">Hành Trình Chinh Phục Của Bạn</h3>
                             </div>
-                            <p className="text-slate-500 font-bold italic leading-relaxed text-sm md:text-base border-l-[4px] border-[#49B6E5]/20 pl-4 py-1">
+                            <p className="text-slate-600 font-bold italic leading-relaxed text-xs md:text-sm border-l-[3px] border-[#49B6E5]/30 pl-3 py-0.5">
                                 "{path.description}"
                             </p>
                         </div>
 
                         <div className="flex-shrink-0 flex flex-col items-center gap-2">
-                            <div className="px-6 py-3 rounded-2xl bg-slate-50 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#00000010] flex flex-col items-center">
-                                <span className="text-3xl font-black text-slate-900 leading-none">{roadmapNodes.length}</span>
+                            <div className="px-4 py-2 rounded-xl bg-[#fffef8] border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex flex-col items-center -rotate-1">
+                                <span className="text-2xl font-black text-slate-900 leading-none">{roadmapNodes.length}</span>
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Bài Học</span>
                             </div>
                         </div>
+
+                        {/* Doodle strokes */}
+                        <div className="pointer-events-none absolute top-3 right-24 w-8 h-[3px] rounded-full bg-slate-900/50 -rotate-12" />
+                        <div className="pointer-events-none absolute top-5 right-20 w-4 h-[3px] rounded-full bg-slate-900/40 rotate-[18deg]" />
                     </motion.div>
                 </div>
 
