@@ -60,55 +60,55 @@ export default function ChatBox({
 
   return (
     <div className={clsx(
-      "bg-white flex flex-col overflow-hidden",
+      "bg-[#fbf6ef] flex flex-col overflow-hidden font-nunito",
       integrated
-        ? "w-full h-full"
-        : "fixed bottom-4 right-4 w-80 h-[450px] shadow-2xl rounded-2xl border border-purple-100 z-50 transition-all hover:shadow-purple-500/10"
+        ? "w-full h-full border-[3px] border-[#263D5B] rounded-[2rem] shadow-[6px_6px_0_#263D5B]"
+        : "fixed bottom-4 right-4 w-85 h-[460px] shadow-[8px_8px_0_#263D5B] rounded-[2rem] border-[3px] border-[#263D5B] z-50 transition-all"
     )}>
+      {/* Header */}
       <div className={clsx(
-        "flex items-center justify-between px-4 z-10 transition-colors",
-        integrated
-          ? "h-16 bg-white border-b border-gray-100 text-gray-800"
-          : "h-14 bg-gradient-to-r from-purple-600 to-purple-500 text-white"
+        "flex items-center justify-between px-5 z-10 border-b-[3px] border-[#263D5B]",
+        integrated ? "h-16 bg-white text-[#263D5B]" : "h-14 bg-[#49B6E5] text-white"
       )}>
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar
-            src={friendAvatar}
-            icon={!friendAvatar && <UserOutlined />}
-            size={integrated ? 42 : 32}
-            className={integrated ? "bg-purple-100 text-purple-600 border-2 border-purple-100" : "bg-white/15 text-white border border-white/20 shadow-sm"}
-          />
+          <div className="p-0.5 bg-white rounded-xl border-[1.5px] border-[#263D5B] shadow-[2px_2px_0_#263D5B] flex-shrink-0">
+            <Avatar
+              src={friendAvatar}
+              icon={!friendAvatar && <UserOutlined />}
+              size={integrated ? 36 : 30}
+              className="bg-sky-50 rounded-lg"
+            />
+          </div>
           <div className="flex flex-col min-w-0">
-            <div className={clsx("font-extrabold truncate", integrated ? "text-base" : "text-sm")}>{friendName}</div>
+            <div className={clsx("font-black uppercase tracking-wider font-nunito text-[#263D5B] truncate", integrated ? "text-base" : "text-sm")}>
+              {friendName}
+            </div>
           </div>
         </div>
         <Tooltip title="Đóng">
           <button
             onClick={onClose}
-            className={clsx(
-              "w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95",
-              integrated
-                ? "text-gray-400 hover:bg-gray-100 hover:text-red-500"
-                : "hover:bg-white/15 text-white"
-            )}
+            className="w-8 h-8 rounded-xl bg-white border-[2px] border-[#263D5B] shadow-[2px_2px_0_#263D5B] text-[#263D5B] flex items-center justify-center transition-all hover:bg-red-50 hover:text-[#DC2626] active:translate-y-0.5 active:shadow-none"
           >
-            <X size={18} />
+            <X size={16} strokeWidth={3} />
           </button>
         </Tooltip>
       </div>
 
-      <div className={clsx("flex-1 overflow-y-auto px-4 py-4 space-y-3", integrated ? "bg-gray-50/50" : "bg-white")}>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#fbf6ef] relative"
+           style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(38,61,91,0.02) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
         {isLoadingHistory ? (
-          <div className="text-center text-xs text-gray-400 mt-8 font-medium">
+          <div className="text-center text-xs text-[#263D5B]/50 mt-8 font-black uppercase tracking-wider">
             Đang tải tin nhắn cũ...
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center mt-[-20px] opacity-70">
-            <div className={clsx("w-16 h-16 rounded-3xl flex items-center justify-center mb-3", integrated ? "bg-white border border-gray-100" : "bg-purple-50")}>
-              <Send size={24} className="text-purple-400" />
+          <div className="flex flex-col items-center justify-center h-full text-center mt-[-10px] opacity-90">
+            <div className="w-16 h-16 rounded-2xl bg-white border-[2px] border-[#263D5B] shadow-[4px_4px_0_#263D5B] flex items-center justify-center mb-4">
+              <Send size={24} className="text-[#49B6E5]" />
             </div>
-            <div className="text-sm font-bold text-gray-500">Bắt đầu trò chuyện</div>
-            <div className="text-xs text-gray-400 mt-1 max-w-[200px]">Hãy gửi lời chào đến {friendName}</div>
+            <div className="text-sm font-black text-[#263D5B] uppercase tracking-wide">Bắt đầu trò chuyện</div>
+            <div className="text-xs text-[#263D5B]/50 mt-1 max-w-[200px] font-bold">Hãy gửi lời chào đến {friendName}</div>
           </div>
         ) : (
           messages.map((m, idx) => {
@@ -126,28 +126,28 @@ export default function ChatBox({
               >
                 <div
                   className={clsx(
-                    "max-w-[75%] flex flex-col",
+                    "max-w-[78%] flex flex-col",
                     isMine ? "items-end" : "items-start",
                   )}
                 >
                   <div
                     className={clsx(
-                      "px-3.5 py-2.5 text-sm leading-relaxed break-words shadow-sm",
+                      "px-3.5 py-2.5 text-sm font-black leading-relaxed break-words border-[2.5px] border-[#263D5B] shadow-[3px_3px_0_#263D5B] transition-transform duration-200",
                       isMine
-                        ? "bg-purple-600 text-white rounded-2xl rounded-tr-sm"
-                        : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100",
+                        ? "bg-[#49B6E5] text-white rounded-2xl rounded-tr-sm"
+                        : "bg-white text-[#263D5B] rounded-2xl rounded-tl-sm",
                     )}
                   >
                     {m.content}
                   </div>
                   {timeLabel && (
-                    <div className="mt-1 text-[11px] text-gray-400 font-medium">
+                    <div className="mt-1 text-[9px] text-[#263D5B]/50 font-black uppercase tracking-widest">
                       {timeLabel}
                     </div>
                   )}
                   {showRead && (
-                    <div className="text-[10px] text-purple-600 font-bold text-right mt-0.5 flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-purple-100 flex items-center justify-center">✓</span> Đã xem
+                    <div className="text-[9px] text-[#16A34A] font-black text-right mt-1 flex items-center gap-1">
+                      <span className="w-3.5 h-3.5 rounded-full bg-green-50 border-[1.5px] border-[#263D5B] flex items-center justify-center text-[#263D5B] font-black text-[8px]">✓</span> Đã xem
                     </div>
                   )}
                 </div>
@@ -158,8 +158,9 @@ export default function ChatBox({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 lg:p-4 border-t border-gray-100 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
-        <div className="flex gap-2 items-center">
+      {/* Input / Footer */}
+      <div className="p-3 lg:p-4 border-t-[3px] border-[#263D5B] bg-white">
+        <div className="flex gap-2.5 items-center">
           <input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -177,19 +178,19 @@ export default function ChatBox({
                   ? "Kết nối thất bại"
                   : "Đang kết nối..."
             }
-            className="flex-1 h-12 px-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 disabled:bg-gray-50 disabled:text-gray-400 transition-all font-medium text-sm"
+            className="flex-1 h-12 px-4 rounded-xl border-[2px] border-[#263D5B] bg-slate-50 focus:bg-white focus:outline-none focus:ring-0 shadow-[2px_2px_0_#263D5B] disabled:bg-slate-100 disabled:text-slate-400 transition-all font-black text-sm text-[#263D5B] placeholder:text-[#263D5B]/30"
           />
           <button
             onClick={handleSend}
             disabled={!isConnected || inputValue.trim().length === 0}
-            className="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white flex items-center justify-center hover:opacity-90 disabled:opacity-50 disabled:grayscale shadow-md shadow-purple-500/20 active:scale-95 transition-all"
+            className="h-12 w-12 rounded-xl bg-[#49B6E5] text-white border-[2px] border-[#263D5B] shadow-[3px_3px_0_#263D5B] flex items-center justify-center hover:opacity-95 disabled:opacity-50 disabled:grayscale transition-all active:translate-y-0.5 active:shadow-none"
           >
-            <Send size={18} className={clsx(inputValue.trim().length > 0 && "translate-x-0.5 -translate-y-0.5 transition-transform")} />
+            <Send size={18} className={clsx(inputValue.trim().length > 0 && "translate-x-0.5 -translate-y-0.5 transition-transform")} strokeWidth={3} />
           </button>
         </div>
         {!isConnected && (
-          <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 font-medium px-1">
-            <span className={clsx("inline-block w-1.5 h-1.5 rounded-full animate-pulse", connectionState === "error" ? "bg-red-400" : "bg-purple-400")} />
+          <div className="mt-2 text-[9px] text-[#263D5B]/50 flex items-center gap-1.5 font-black uppercase tracking-widest px-1">
+            <span className={clsx("inline-block w-2.5 h-2.5 rounded-full border-[1.5px] border-[#263D5B] animate-pulse", connectionState === "error" ? "bg-[#DC2626]" : "bg-[#D97706]")} />
             {connectionState === "error"
               ? "Kết nối thất bại. Đang thử lại..."
               : "Đang kết nối theo thời gian thực..."}

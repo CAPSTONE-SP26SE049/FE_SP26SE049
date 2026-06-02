@@ -48,6 +48,7 @@ export {
   FaPaperPlane as Send,
   FaPenNib as PenTool,
   FaPen as Edit,
+  FaPhone as Phone,
   FaPlay as Play,
   FaPlus as Plus,
   FaCirclePlus as PlusCircle,

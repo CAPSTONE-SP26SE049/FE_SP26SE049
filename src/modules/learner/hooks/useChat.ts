@@ -9,6 +9,8 @@ import {
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { getChatHistory } from "../../../services/apiClient";
+import { API_BASE_URL } from "../../../config";
+
 
 export type ChatMessage = {
   senderId: string;
@@ -144,17 +146,7 @@ export function useChat({
   );
 
   const sockJsUrl = useMemo(() => {
-    const apiUrl = import.meta.env.VITE_API_URL;
-    if (apiUrl) {
-      const resolved = new URL(apiUrl, window.location.origin);
-      const wsHttp =
-        `${resolved.protocol}//${resolved.host}${resolved.pathname}`.replace(
-          "/api/v1",
-          "/ws",
-        );
-      return wsHttp;
-    }
-    return "https://speakvn-backend-221596280724.asia-southeast1.run.app/ws";
+    return API_BASE_URL.replace("/api/v1", "/ws");
   }, []);
 
   const sendReadReceipt = useCallback(() => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Avatar, Input, Popconfirm, Tooltip, message, Modal } from 'antd';
 import apiClient, { getUnreadCounts } from '../../../services/apiClient';
+import { API_BASE_URL } from '../../../config';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuth } from '../../../core/auth/AuthContext';
@@ -271,11 +272,12 @@ const FriendCard = ({
             <div className="flex gap-2">
                 <Popconfirm
                     title="Hủy kết bạn?"
-                    description="Bạn chắc chứ?"
+                    description="Bạn chắc chắn muốn hủy kết bạn chứ?"
                     onConfirm={() => onUnfriend(item.friendshipId)}
-                    okText="Hủy"
-                    cancelText="Hủy bỏ"
+                    okText="Hủy kết bạn"
+                    cancelText="Thôi"
                     okButtonProps={{ danger: true }}
+                    overlayClassName="doodle-popconfirm"
                 >
                     <Tooltip title="Hủy kết bạn">
                         <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
@@ -285,11 +287,13 @@ const FriendCard = ({
                 </Popconfirm>
 
                 <Popconfirm
-                    title="Chặn?"
+                    title="Chặn người này?"
+                    description="Bạn sẽ không thể nhận tin nhắn hay tương tác từ người này nữa."
                     onConfirm={() => onBlock(item.friendshipId)}
                     okText="Chặn"
                     cancelText="Thôi"
                     okButtonProps={{ danger: true }}
+                    overlayClassName="doodle-popconfirm"
                 >
                     <Tooltip title="Chặn">
                         <button className="w-11 h-11 rounded-xl bg-white border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all active:translate-y-0.5 active:shadow-none">
@@ -449,12 +453,7 @@ export default function LearnerFriendsPage() {
     }, [session?.accessToken]);
 
     const sockJsUrl = useMemo(() => {
-        const apiUrl = import.meta.env.VITE_API_URL;
-        if (apiUrl) {
-            const resolved = new URL(apiUrl, window.location.origin);
-            return `${resolved.protocol}//${resolved.host}${resolved.pathname}`.replace('/api/v1', '/ws');
-        }
-        return 'https://speakvn-backend-221596280724.asia-southeast1.run.app/ws';
+        return API_BASE_URL.replace('/api/v1', '/ws');
     }, []);
 
     useEffect(() => {
@@ -696,6 +695,83 @@ export default function LearnerFriendsPage() {
 
     return (
         <div className="bg-[#fbf6ef] min-h-screen">
+            <style>{`
+                .doodle-popconfirm .ant-popover-inner {
+                    border-radius: 1.5rem !important;
+                    border: 3.5px solid #263D5B !important;
+                    box-shadow: 4px 4px 0 #263D5B !important;
+                    background-color: #fbf6ef !important;
+                    padding: 18px !important;
+                }
+                .doodle-popconfirm .ant-popover-message {
+                    padding: 0 !important;
+                }
+                .doodle-popconfirm .ant-popover-message-title {
+                    font-family: 'Nunito', sans-serif !important;
+                    font-weight: 900 !important;
+                    color: #263D5B !important;
+                    font-size: 14px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.05em !important;
+                }
+                .doodle-popconfirm .ant-popover-description {
+                    font-family: 'Nunito', sans-serif !important;
+                    font-weight: 700 !important;
+                    color: #263D5B/70 !important;
+                    font-size: 12px !important;
+                    margin-top: 4px !important;
+                }
+                .doodle-popconfirm .ant-popover-buttons {
+                    display: flex !important;
+                    justify-content: flex-end !important;
+                    gap: 8px !important;
+                    margin-top: 14px !important;
+                }
+                /* Style Cancel button */
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-default {
+                    border-radius: 0.8rem !important;
+                    border: 2px solid #263D5B !important;
+                    box-shadow: 2px 2px 0 #263D5B !important;
+                    font-family: 'Nunito', sans-serif !important;
+                    font-weight: 900 !important;
+                    color: #263D5B !important;
+                    background-color: #ffffff !important;
+                    transition: all 0.2s !important;
+                    height: 32px !important;
+                    font-size: 11px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.05em !important;
+                }
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-default:hover {
+                    transform: translate(-1px, -1px) !important;
+                    box-shadow: 3px 3px 0 #263D5B !important;
+                    color: #263D5B !important;
+                    border-color: #263D5B !important;
+                }
+                /* Style OK / Confirm / Danger button */
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-primary,
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-dangerous {
+                    border-radius: 0.8rem !important;
+                    border: 2px solid #263D5B !important;
+                    box-shadow: 2px 2px 0 #263D5B !important;
+                    font-family: 'Nunito', sans-serif !important;
+                    font-weight: 900 !important;
+                    color: #ffffff !important;
+                    background-color: #DC2626 !important;
+                    transition: all 0.2s !important;
+                    height: 32px !important;
+                    font-size: 11px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.05em !important;
+                }
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-primary:hover,
+                .doodle-popconfirm .ant-popover-buttons .ant-btn-dangerous:hover {
+                    background-color: #b91c1c !important;
+                    transform: translate(-1px, -1px) !important;
+                    box-shadow: 3px 3px 0 #263D5B !important;
+                    color: #ffffff !important;
+                }
+            `}</style>
             <div className="p-6 lg:p-10 max-w-none mx-auto space-y-8 font-nunito px-6 lg:px-12">
 
                 {/* ── Header ── */}

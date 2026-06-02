@@ -1,6 +1,7 @@
-import { Flame, Target, Zap, Lock, Shield, Settings } from '../lib/icons';
-import { Button } from '../components/ui/Button';
-import { ProgressBar } from '../components/ui/ProgressBar';
+import { Flame, Target, Zap, Lock, Shield, Settings, User as UserIcon, Phone } from '../lib/icons'
+import { Button } from '../components/ui/Button'
+import { ProgressBar } from '../components/ui/ProgressBar'
+import { useAuth } from '../core/auth/AuthContext'
 
 const Badge = ({ icon: Icon, title, level, locked }: any) => (
     <div className={`flex flex-col items-center p-4 rounded-2xl border-2 ${locked ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-white border-yellow-400 shadow-sm'}`}>
@@ -10,9 +11,26 @@ const Badge = ({ icon: Icon, title, level, locked }: any) => (
         <div className="font-bold text-gray-700 text-sm text-center">{title}</div>
         <div className="text-xs text-gray-400 font-bold uppercase mt-1">Cấp độ {level}</div>
     </div>
-);
+)
+
+const formatJoinDate = (value?: string) => {
+    if (!value) return 'Chưa có dữ liệu'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'Chưa có dữ liệu'
+    return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    }).format(date)
+}
 
 const Profile = () => {
+    const { session } = useAuth()
+    const user = session?.user
+    const displayName = user?.fullName || user?.email || 'Tài khoản của bạn'
+    const displayPhone = user?.phoneNumber || user?.phone || 'Chưa cập nhật'
+    const joinDate = formatJoinDate(user?.createdAt)
+
     return (
         <div className="max-w-4xl mx-auto pt-10 pb-20 px-6">
             <div className="flex flex-col md:flex-row gap-8 pb-8 border-b border-gray-200 mb-8">
@@ -20,24 +38,41 @@ const Profile = () => {
                     😎
                 </div>
                 <div className="flex-1">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                         <div>
-                            <h1 className="text-3xl font-extrabold text-gray-800 mb-2">PenPen123</h1>
-                            <p className="text-gray-500 font-medium">Tham gia từ tháng 2 năm 2026</p>
+                            <h1 className="text-3xl font-extrabold text-gray-800 mb-2">{displayName}</h1>
+                            <p className="text-gray-500 font-medium">Ngày tham gia: {joinDate}</p>
                         </div>
-                        <Button variant="secondary" size="sm"><Settings size={18} className="mr-2" /> Cài đặt</Button>
+                        <Button variant="secondary" size="sm" className="inline-flex items-center self-start opacity-100 visible">
+                            <Settings size={18} className="mr-2" /> Chỉnh sửa hồ sơ
+                        </Button>
                     </div>
 
-                    <div className="flex gap-12 mt-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                            <div className="flex items-center gap-2 text-gray-800 font-bold mb-1">
+                                <Phone className="text-brand-blue" /> {displayPhone}
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Số điện thoại</div>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                            <div className="flex items-center gap-2 text-gray-800 font-bold mb-1">
+                                <UserIcon className="text-brand-green" /> {user?.email || 'Chưa có email'}
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Email</div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-12 mt-6 flex-wrap">
                         <div>
                             <div className="flex items-center gap-2 text-gray-800 font-bold mb-1">
-                                <Flame className="text-brand-orange" /> 12
+                                <Flame className="text-brand-orange" /> {user?.streak ?? 0}
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Chuỗi ngày</div>
                         </div>
                         <div>
                             <div className="flex items-center gap-2 text-gray-800 font-bold mb-1">
-                                <Zap className="text-brand-yellow" /> 1432
+                                <Zap className="text-brand-yellow" /> {user?.totalXp ?? user?.totalExperience ?? 0}
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tổng XP</div>
                         </div>
@@ -52,7 +87,6 @@ const Profile = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Section 1: Progress */}
                 <div className="space-y-6">
                     <h2 className="text-xl font-extrabold text-gray-800">Tiến độ ngôn ngữ</h2>
                     <div className="bg-white p-6 rounded-2xl border-2 border-gray-200 shadow-sm">
@@ -73,7 +107,6 @@ const Profile = () => {
                     </div>
                 </div>
 
-                {/* Section 2: Achievements */}
                 <div className="space-y-6">
                     <h2 className="text-xl font-extrabold text-gray-800">Thành tích</h2>
                     <div className="bg-white p-6 rounded-2xl border-2 border-gray-200 shadow-sm">
@@ -89,7 +122,7 @@ const Profile = () => {
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default Profile;
+export default Profile

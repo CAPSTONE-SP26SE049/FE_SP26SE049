@@ -547,7 +547,7 @@ const QuizRoadmapStep = ({
         quiz,
         position: {
           x: index,
-          y: index % 2 === 0 ? 50 : (index % 4 === 1 ? 25 : 75),
+          y: index % 2 === 0 ? 50 : (index % 4 === 1 ? 35 : 65),
         },
       }
     })
@@ -562,26 +562,26 @@ const QuizRoadmapStep = ({
   )
 
   return (
-    <div className="w-full mx-auto pb-20 fade-in">
+    <div className="w-full mx-auto pb-10 fade-in">
       {dialectMeta && (
-        <div className="max-w-4xl mx-auto px-6 mb-8 mt-4">
-          <div className="relative bg-white rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] overflow-hidden flex flex-col md:flex-row items-center p-6 md:p-8 gap-6 md:gap-10">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] overflow-hidden relative flex-shrink-0">
+        <div className="max-w-4xl mx-auto px-6 mb-4 mt-2">
+          <div className="relative bg-white rounded-3xl border-[2.5px] border-slate-900 shadow-[6px_6px_0_#1f2937] overflow-hidden flex flex-col md:flex-row items-center p-4 md:p-5 gap-4 md:gap-8">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-[2.5px] border-slate-900 shadow-[3px_3px_0_#1f2937] overflow-hidden relative flex-shrink-0">
               <img src={dialectMeta.photo} className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
-                <span className="inline-block px-3 py-1 bg-white border-[2px] border-slate-900 text-slate-900 rounded-xl text-[11px] font-black tracking-widest uppercase shadow-[2px_2px_0_#1f2937]">
+              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1.5">
+                <span className="inline-block px-2 py-0.5 bg-white border-[2px] border-slate-900 text-slate-900 rounded-lg text-[10px] font-black tracking-widest uppercase shadow-[1px_1px_0_#1f2937]">
                   Lộ trình học tập
                 </span>
                 <span className="text-[#49B6E5] hidden md:block">
-                  <dialectMeta.icon size={28} strokeWidth={3} />
+                  <dialectMeta.icon size={24} strokeWidth={3} />
                 </span>
               </div>
-              <h3 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 font-nunito">
+              <h3 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 font-nunito">
                 Hành Trình {dialectMeta.viName}
               </h3>
-              <p className="text-slate-500 font-bold text-sm md:text-base leading-relaxed max-w-2xl">
+              <p className="text-slate-500 font-bold text-xs md:text-sm leading-relaxed max-w-2xl">
                 {chapter.description || 'Chinh phục từng thử thách để làm chủ giọng nói địa phương đặc trưng. Mỗi vì sao đạt được là một bước tiến gần hơn đến sự hoàn hảo.'}
               </p>
             </div>
@@ -593,11 +593,11 @@ const QuizRoadmapStep = ({
         __html: `
          .roadmap-scroll { overflow-x: auto; overflow-y: hidden; }
          .roadmap-scroll::-webkit-scrollbar { height: 10px; }
-         .roadmap-scroll::-webkit-scrollbar-track { background: #f3e8ff; border-radius: 8px; margin: 0 24px; }
-         .roadmap-scroll::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 8px; border: 2px solid #f3e8ff; }
-         .roadmap-scroll::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+         .roadmap-scroll::-webkit-scrollbar-track { background: #f1e9db; border-radius: 8px; margin: 0 24px; }
+         .roadmap-scroll::-webkit-scrollbar-thumb { background: #49B6E5; border-radius: 8px; border: 2px solid #f1e9db; }
+         .roadmap-scroll::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
       `}} />
-      <div className="roadmap-scroll w-full pt-16 pb-20 px-6 mt-4">
+      <div className="roadmap-scroll w-full pt-8 pb-10 px-6 mt-2">
         <div className="relative h-[300px] inline-flex items-center" style={{ width: `${roadmapNodes.length * 200 + 200}px`, minWidth: '100%' }}>
           <svg
             className="absolute top-0 left-0 pointer-events-none z-0"
@@ -854,7 +854,7 @@ const RoadmapPage: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.35 }}
-            className="mt-4"
+            className="mt-1"
           >
             <QuizRoadmapStep
               chapter={selectedChapter!}
