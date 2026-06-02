@@ -11,6 +11,7 @@ interface ChatMessage {
     role: 'user' | 'assistant' | 'system'
     content: string
     highlightedWords?: string[]
+    incorrectWords?: string[]
 }
 
 const PAIR_LABELS: Record<string, string> = {
@@ -27,7 +28,7 @@ const TARGET_SOUNDS: Record<string, string[]> = {
 const SCENARIOS: Record<string, string[]> = {
     N_L: ['Bạn đang mua nước mắm ở chợ', 'Bạn hỏi đường đến nhà sách', 'Bạn gọi món ăn có nhiều từ N/L'],
     S_X: ['Bạn đang hỏi mua xe đạp', 'Bạn xin phép thầy giáo', 'Bạn mô tả buổi sáng của mình'],
-    D_GI_R: ['Bạn giới thiệu gia đình', 'Bạn hỏi đường đến rừng', 'Bạn kể về giáo viên yêu thích'],
+    D_GI_R: ['Bạn giới thiệu gia dịch', 'Bạn hỏi đường đến rừng', 'Bạn kể về giáo viên yêu thích'],
     TR_CH: ['Bạn kể về trường học', 'Bạn mua trái cây ở chợ', 'Bạn mô tả trẻ em chơi đùa'],
 }
 
@@ -43,7 +44,7 @@ const GAME_RULES_CONFIG = {
         'Chọn 1 kịch bản hội thoại để bắt đầu',
         'Trò chuyện tự nhiên với AI trong 10 lượt',
         'Cố gắng dùng nhiều từ có âm đang luyện',
-        'Từ đúng âm sẽ được highlight trong tin nhắn của bạn',
+        'Từ đúng âm sẽ được highlight xanh, từ ngọng/sai âm sẽ bị highlight đỏ',
     ],
     scoring: [
         'Mỗi từ đúng âm bạn dùng: +2 điểm',
@@ -56,20 +57,33 @@ const GAME_RULES_CONFIG = {
     ],
 }
 
-function findTargetWords(text: string, pairType: string): string[] {
+function isValidTargetWord(word: string, pairType: string): boolean {
     const sounds = TARGET_SOUNDS[pairType] || []
-    const words = text.toLowerCase().split(/\s+/)
-    return words.filter(word => sounds.some(s => word.startsWith(s)))
+    const clean = word.toLowerCase().replace(/[.,!?;:]/g, '')
+    return sounds.some(s => clean.startsWith(s))
 }
 
-function highlightText(text: string, targetWords: string[]): React.ReactNode {
-    if (targetWords.length === 0) return text
+function findTargetWords(text: string, pairType: string): string[] {
+    const words = text.toLowerCase().split(/\s+/)
+    return words.filter(word => isValidTargetWord(word, pairType))
+}
+
+function highlightText(text: string, targetWords: string[], incorrectWords: string[] = []): React.ReactNode {
+    if (targetWords.length === 0 && incorrectWords.length === 0) return text
     const words = text.split(/(\s+)/)
     return words.map((word, idx) => {
-        const isTarget = targetWords.some(tw =>
-            word.toLowerCase().replace(/[.,!?;:]/g, '') === tw
-        )
-        if (isTarget) {
+        const cleanWord = word.toLowerCase().replace(/[.,!?;:]/g, '')
+        const isCorrect = targetWords.some(tw => cleanWord === tw.toLowerCase().replace(/[.,!?;:]/g, ''))
+        const isIncorrect = incorrectWords.some(iw => cleanWord === iw.toLowerCase().replace(/[.,!?;:]/g, ''))
+        
+        if (isIncorrect) {
+            return (
+                <span key={idx} className="bg-rose-200 text-rose-800 px-1 rounded font-black border border-rose-300">
+                    {word}
+                </span>
+            )
+        }
+        if (isCorrect) {
             return (
                 <span key={idx} className="bg-emerald-200 text-emerald-800 px-1 rounded font-black">
                     {word}
@@ -93,6 +107,7 @@ const ConversationSimPage: React.FC = () => {
     const [turnCount, setTurnCount] = useState(0)
     const [targetWordCount, setTargetWordCount] = useState(0)
     const [score, setScore] = useState(0)
+    const [scoreEffect, setScoreEffect] = useState<{ text: string; id: number; isNegative?: boolean } | null>(null)
     const [apiScenarios, setApiScenarios] = useState<string[]>([])
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -140,15 +155,8 @@ const ConversationSimPage: React.FC = () => {
         const trimmed = inputValue.trim()
         if (!trimmed || loading) return
 
-        const foundWords = findTargetWords(trimmed, pairType)
-        const wordsCount = foundWords.length
-        setTargetWordCount(prev => prev + wordsCount)
-
-        let pointsEarned = wordsCount * 2
-        if (wordsCount >= 3) pointsEarned += 5
-        setScore(prev => prev + pointsEarned)
-
-        const newMessages = [...messages, { role: 'user' as const, content: trimmed, highlightedWords: foundWords }]
+        // Push the user message with empty highlights first while waiting for AI validation
+        const newMessages = [...messages, { role: 'user' as const, content: trimmed, highlightedWords: [] }]
         setMessages(newMessages)
         setInputValue('')
         setLoading(true)
@@ -157,11 +165,66 @@ const ConversationSimPage: React.FC = () => {
             const history = newMessages.map(m => ({ role: m.role, content: m.content }))
             const res: any = await minigameService.conversationReply(pairType, trimmed, history.slice(0, -1))
             const reply = res?.data?.reply || res?.reply || 'Tôi không hiểu lắm, bạn nói lại được không?'
-            setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+            
+            // Extract AI-validated correctWords and incorrectWords, falling back to local heuristic if needed
+            const incorrectWords = res?.data?.incorrectWords || res?.incorrectWords || []
+
+            // Find all words in the user's message that start with the target sounds
+            const userTargetWords = findTargetWords(trimmed, pairType)
+
+            // Exclude any incorrect/swapped words flagged by AI to get the exact correct words
+            const finalCorrectWords = userTargetWords.filter(
+                (w: string) => !incorrectWords.some((iw: string) => iw.toLowerCase().replace(/[.,!?;:]/g, '') === w.toLowerCase().replace(/[.,!?;:]/g, ''))
+            )
+
+            // Update user message highlights with the AI-validated words
+            setMessages(prev => {
+                const updated = [...prev]
+                const userMsgIndex = updated.length - 1
+                if (userMsgIndex >= 0 && updated[userMsgIndex].role === 'user') {
+                    updated[userMsgIndex] = {
+                        ...updated[userMsgIndex],
+                        highlightedWords: finalCorrectWords,
+                        incorrectWords: incorrectWords
+                    }
+                }
+                return [...updated, { role: 'assistant', content: reply }]
+            })
+
+            // Calculate points and word counts based on AI-validated words
+            const wordsCount = finalCorrectWords.length
+            setTargetWordCount(prev => prev + wordsCount)
+
+            // Calculate score change (+2 per correct word, -2 per incorrect word penalty!)
+            const incorrectCount = incorrectWords.length
+            let pointsEarned = (wordsCount * 2) - (incorrectCount * 2)
+            if (wordsCount >= 3) pointsEarned += 5
+            
+            if (pointsEarned > 0) {
+                setScoreEffect({
+                    text: `+${pointsEarned} điểm!${wordsCount >= 3 ? ' (Bonus +5)' : ''}`,
+                    id: Date.now(),
+                    isNegative: false
+                })
+            } else if (pointsEarned < 0) {
+                setScoreEffect({
+                    text: `${pointsEarned} điểm! (Sai âm)`,
+                    id: Date.now(),
+                    isNegative: true
+                })
+            }
+
+            setScore(prev => Math.max(0, prev + pointsEarned))
+
             setTurnCount(prev => {
                 const newTurn = prev + 1
                 if (newTurn >= 10) {
                     setScore(s => s + 10)
+                    setScoreEffect({
+                        text: `+${(pointsEarned > 0 ? pointsEarned : 0) + 10} điểm! (Bonus hoàn thành +10)`,
+                        id: Date.now(),
+                        isNegative: false
+                    })
                 }
                 return newTurn
             })
@@ -223,9 +286,28 @@ const ConversationSimPage: React.FC = () => {
 
                 {/* Score bar */}
                 {started && (
-                    <div className="flex items-center justify-between px-4 py-2 bg-white rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
+                    <div className="relative flex items-center justify-between px-4 py-2 bg-white rounded-xl border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]">
                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Điểm</span>
-                        <span className="font-black text-[#49B6E5]">{score}</span>
+                        <span className="font-black text-[#49B6E5] text-base">{score}</span>
+                        
+                        {scoreEffect && (
+                            <motion.div
+                                key={scoreEffect.id}
+                                initial={{ opacity: 0, y: 15, scale: 0.8 }}
+                                animate={{ opacity: 1, y: -25, scale: 1.2 }}
+                                exit={{ opacity: 0, y: -45 }}
+                                transition={{ duration: 1.0, ease: "easeOut" }}
+                                onAnimationComplete={() => setScoreEffect(null)}
+                                className={clsx(
+                                    "absolute right-4 top-0 font-black text-xs px-2 py-0.5 rounded-full z-20 pointer-events-none border-[2px]",
+                                    scoreEffect.isNegative
+                                        ? "text-rose-600 bg-rose-50 border-rose-500 shadow-[2px_2px_0_#f43f5e]"
+                                        : "text-emerald-600 bg-emerald-50 border-emerald-500 shadow-[2px_2px_0_#10b981]"
+                                )}
+                            >
+                                {scoreEffect.text}
+                            </motion.div>
+                        )}
                     </div>
                 )}
 
@@ -283,8 +365,8 @@ const ConversationSimPage: React.FC = () => {
                                             ? "bg-[#49B6E5] text-white rounded-2xl rounded-tr-sm border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
                                             : "bg-white text-[#263D5B] rounded-2xl rounded-tl-sm border-[1.5px] border-slate-900 shadow-[2px_2px_0_#1f293710]"
                                     )}>
-                                        {msg.role === 'user' && msg.highlightedWords && msg.highlightedWords.length > 0
-                                            ? highlightText(msg.content, msg.highlightedWords)
+                                        {msg.role === 'user' && ((msg.highlightedWords && msg.highlightedWords.length > 0) || (msg.incorrectWords && msg.incorrectWords.length > 0))
+                                            ? highlightText(msg.content, msg.highlightedWords || [], msg.incorrectWords || [])
                                             : msg.content
                                         }
                                     </div>

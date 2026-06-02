@@ -137,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             totalStars: data.user.totalStars ?? 0,
             totalExperience: data.user.totalExperience ?? 0,
             totalXp: data.user.totalExperience ?? 0,
+            createdAt: data.user.createdAt || data.user.created_at,
           },
 
         }
@@ -160,10 +161,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             region: data.user.region,
             hasDoneEntryTest: Boolean(data.user.hasDoneEntryTest),
             avatar: data.user.avatar_url || data.user.avatar,
+            phone: data.user.phone,
+            phoneNumber: data.user.phoneNumber || data.user.phone,
             streak: data.user.currentStreakDays ?? 0,
             totalStars: data.user.totalStars ?? 0,
             totalExperience: data.user.totalExperience ?? 0,
             totalXp: data.user.totalExperience ?? 0,
+            createdAt: data.user.createdAt || data.user.created_at,
           },
 
         }
@@ -216,6 +220,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               hasDoneEntryTest: Boolean(profile.hasDoneEntryTest ?? prev.user.hasDoneEntryTest),
               fullName: (profile.fullName as string) ?? prev.user.fullName,
               avatar: (profile.avatar_url as string) ?? (profile.avatarUrl as string) ?? prev.user.avatar,
+              phone: (profile.phone as string) ?? prev.user.phone,
+              phoneNumber: (profile.phoneNumber as string) ?? (profile.phone as string) ?? prev.user.phoneNumber,
+              createdAt: (profile.createdAt as string) ?? (profile.created_at as string) ?? prev.user.createdAt,
             },
           }
           const isRemembered = window.localStorage.getItem(SESSION_KEY) !== null
