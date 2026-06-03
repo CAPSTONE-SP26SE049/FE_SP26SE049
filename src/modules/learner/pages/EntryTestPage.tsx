@@ -15,7 +15,7 @@ import { Spin, Button, Progress, message } from 'antd'
 import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
-import { ASR_BASE_URL } from '../../../config'
+import { ENTRY_TEST_ASR_URL } from '../../../config'
 import { Globe, Play, ChevronRight, MapPin, Sparkles, LogOut } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ const EntryTestPage: React.FC = () => {
             const targetText = questions[idx]?.targetText || ''
             asrFormData.append('target', targetText)
 
-            const asrResponse = await fetch(ASR_BASE_URL, {
+            const asrResponse = await fetch(ENTRY_TEST_ASR_URL, {
                 method: 'POST',
                 body: asrFormData,
             })
