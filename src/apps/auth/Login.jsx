@@ -8,7 +8,7 @@ import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import { motion } from 'framer-motion'
 import { DoodleLoading } from '../../components/ui/DoodleLoading'
 
-const GOOGLE_CLIENT_ID = '379382117476-74d7popbjgnnsas791poubafuc472hjr.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = '1086072031174-fk0iepl3k13dol2u53tjsueo3c3vq70j.apps.googleusercontent.com'
 const FACEBOOK_APP_ID = '1169205748542841'
 const FB_REDIRECT_URI = `${window.location.origin}/auth/facebook/callback`
 
