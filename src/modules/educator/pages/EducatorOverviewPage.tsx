@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Progress, List, Avatar } from 'antd';
-import { Users, CheckCircle, MessageSquare, Target, Zap, Clock, TrendingUp, ChevronRight } from 'lucide-react';
+import { Card, Progress, List, Avatar, Tooltip } from 'antd';
+import { Users, CheckCircle, MessageSquare, Target, Zap, Clock, TrendingUp, ChevronRight, Info } from 'lucide-react';
 import { educatorService } from '../services/educatorService';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
@@ -43,10 +43,10 @@ const EducatorOverviewPage = () => {
   }
 
   const stats = [
-    { title: 'Tổng học viên', value: summary?.totalStudents || 0, icon: Users, color: '#49B6E5', bg: 'bg-blue-50' },
-    { title: 'Học viên online', value: summary?.activeStudents || 0, icon: Clock, color: '#10b981', bg: 'bg-emerald-50' },
-    { title: 'Độ chính xác TB', value: `${summary?.averagePronunciationScore || 0}%`, icon: Target, color: '#f59e0b', bg: 'bg-amber-50' },
-    { title: 'Yêu cầu hỗ trợ', value: summary?.pendingFeedbackCount || 0, icon: Zap, color: '#ef4444', bg: 'bg-rose-50' },
+    { title: 'Tổng học viên', value: summary?.totalStudents || 0, icon: Users, color: '#49B6E5', bg: 'bg-blue-50', tooltip: 'Tổng số tài khoản học viên trong hệ thống' },
+    { title: 'Học viên online', value: summary?.activeStudents || 0, icon: Clock, color: '#10b981', bg: 'bg-emerald-50', tooltip: 'Số lượng học viên đang có trạng thái hoạt động' },
+    { title: 'Độ chính xác TB', value: `${summary?.averagePronunciationScore || 0}%`, icon: Target, color: '#f59e0b', bg: 'bg-amber-50', tooltip: 'Điểm phát âm trung bình của toàn bộ các học viên' },
+    { title: 'Yêu cầu hỗ trợ', value: summary?.pendingFeedbackCount || 0, icon: Zap, color: '#ef4444', bg: 'bg-rose-50', tooltip: 'Số lượng yêu cầu chờ phản hồi từ giáo viên' },
   ];
 
   return (
@@ -64,8 +64,15 @@ const EducatorOverviewPage = () => {
           </div>
           <div className="flex gap-4">
             <div className="px-6 py-3 bg-white/10 rounded-2xl border-[2px] border-white/20 backdrop-blur-md">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hiệu suất tuần</div>
-              <div className="text-xl font-black text-emerald-400">+{summary?.weeklyProgressRate || 0}%</div>
+              <Tooltip title="Tỷ lệ tăng/giảm số lượt hoàn thành bài tập của học viên so với tuần trước" placement="bottom">
+                <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-help">
+                  Hiệu suất tuần
+                  <Info size={12} />
+                </div>
+              </Tooltip>
+              <div className={clsx("text-xl font-black", (summary?.weeklyProgressRate || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                {(summary?.weeklyProgressRate || 0) > 0 ? '+' : ''}{summary?.weeklyProgressRate || 0}%
+              </div>
             </div>
           </div>
         </div>
@@ -90,7 +97,12 @@ const EducatorOverviewPage = () => {
               <div className={clsx("w-14 h-14 rounded-2xl border-[3px] border-slate-900 flex items-center justify-center mb-6 shadow-[4px_4px_0_#1f2937] transition-transform group-hover:-rotate-6", item.bg)}>
                 <Icon size={24} style={{ color: item.color }} strokeWidth={3} />
               </div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{item.title}</div>
+              <div className="flex items-center gap-1 mb-1">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{item.title}</div>
+                <Tooltip title={item.tooltip} placement="top">
+                  <Info size={12} className="text-slate-400 cursor-help" />
+                </Tooltip>
+              </div>
               <div className="text-3xl font-black text-slate-900 tracking-tight">{item.value}</div>
             </motion.div>
           );
@@ -104,7 +116,12 @@ const EducatorOverviewPage = () => {
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 bg-slate-900 rounded-full" />
-                <h3 className="text-xl font-black uppercase tracking-tight">Kỹ năng mục tiêu</h3>
+                <Tooltip title="Phân tích điểm số dựa theo các kỹ năng phát âm (tính từ các lượt làm bài thực tế)">
+                  <h3 className="text-xl font-black uppercase tracking-tight cursor-help flex items-center gap-2">
+                    Kỹ năng mục tiêu
+                    <Info size={16} className="text-slate-400" />
+                  </h3>
+                </Tooltip>
               </div>
               <button className="text-[10px] font-black uppercase tracking-widest text-[#49B6E5] hover:underline flex items-center gap-1">Chi tiết <ChevronRight size={14} /></button>
             </div>

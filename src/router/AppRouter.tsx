@@ -100,15 +100,13 @@ export const AppRoutes: React.FC = () => {
       {/* Educator routes - chỉ EDUCATOR */}
       <Route element={<ProtectedRoute allowedRoles={['EDUCATOR']} />}>
         <Route path="/educator" element={<EducatorLayout />}>
-          <Route index element={<EducatorOverviewPage />} />
+          <Route index element={<Navigate to="students" replace />} />
           <Route path="students" element={<StudentsPage />} />
           <Route path="students/profile/:studentId" element={<ProfilePage />} />
           <Route path="design-path" element={<CustomPathSelectionPage />} />
           <Route path="design-path/:studentId" element={<CustomPathDesignerPage />} />
-          <Route path="progress" element={<ChapterManagementPage />} />
           <Route path="lessons" element={<ChallengeBankPage />} />
           <Route path="messages" element={<InteractionsPage />} />
-          <Route path="analytics" element={<EducatorOverviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="challenges" element={<ChallengeBankPage />} />
           <Route path="chapters" element={<ChapterManagementPage />} />

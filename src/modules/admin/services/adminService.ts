@@ -176,6 +176,9 @@ export const adminService = {
     deleteChallengeBankItem: async (id: string) => {
         return apiClient.delete(`/admin/content/challenge-bank/${id}`);
     },
+    batchUpsertChallengeBankItems: async (payloads: any[]) => {
+        return apiClient.post('/admin/content/challenge-bank/batch', payloads);
+    },
 
     // --- Quiz Management ---
     getQuizzes: async () => {

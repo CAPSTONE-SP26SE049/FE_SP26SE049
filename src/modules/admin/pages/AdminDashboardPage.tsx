@@ -77,6 +77,7 @@ const AdminDashboardPage = () => {
   // Search & Filter States for Learner Table
   const [userSearch, setUserSearch] = React.useState('')
   const [performanceFilter, setPerformanceFilter] = React.useState('ALL')
+  const [learnerCurrentPage, setLearnerCurrentPage] = React.useState(1)
 
   const executeFinalize = async () => {
     setFinalizingTournament(true)
@@ -489,16 +490,16 @@ const AdminDashboardPage = () => {
     }
   }
 
-  const radarOptions: ChartOptions<'radar'> = {
+    const radarOptions: ChartOptions<'radar'> = {
     scales: {
       r: {
         beginAtZero: true,
-        max: 100,
+        // Removed max: 100 to auto-scale based on the actual values
         ticks: { display: false },
         grid: { color: 'rgba(31, 41, 55, 0.1)', lineWidth: 1.5 },
         angleLines: { color: 'rgba(31, 41, 55, 0.1)' },
         pointLabels: {
-          font: { size: 11, weight: 'bold', family: 'Nunito' },
+          font: { size: 10, weight: 'bold', family: 'Nunito' },
           color: '#1f2937',
         },
       },
@@ -605,6 +606,17 @@ const AdminDashboardPage = () => {
     })
   }, [userProgress, userSearch, performanceFilter])
 
+  React.useEffect(() => {
+    setLearnerCurrentPage(1)
+  }, [userSearch, performanceFilter])
+
+  const ITEMS_PER_PAGE = 5
+  const totalLearnerPages = Math.ceil(filteredUserProgress.length / ITEMS_PER_PAGE) || 1
+  const paginatedUsers = filteredUserProgress.slice(
+    (learnerCurrentPage - 1) * ITEMS_PER_PAGE,
+    learnerCurrentPage * ITEMS_PER_PAGE
+  )
+
   if (loading && !overview.totalUsers) {
     return (
       <div className="flex flex-col items-center justify-center py-60">
@@ -675,7 +687,7 @@ const AdminDashboardPage = () => {
                 </div>
               </div>
               <div className="px-4 py-2 rounded-xl bg-slate-50 border-[2px] border-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-[2px_2px_0_#1f2937]">
-                Realtime Logs
+                Nhật ký trực tiếp
               </div>
             </div>
           </div>
@@ -698,14 +710,22 @@ const AdminDashboardPage = () => {
             </p>
           </div>
           
-          <div className="flex-1 relative w-full h-[280px] mt-4 flex items-center justify-center">
+          <div className="flex-1 relative w-full h-[220px] mt-2 flex items-center justify-center">
             <Radar data={getRadarData(selectedUser)} options={radarOptions} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px] font-bold text-slate-500 mt-2 bg-slate-50 p-3 rounded-2xl border-[2px] border-slate-900/10">
+            <div><span className="text-slate-800 font-black">Tiến độ:</span> % Bài tập hoàn thành</div>
+            <div><span className="text-slate-800 font-black">Chất lượng:</span> Tỷ lệ điểm tối đa (3 sao)</div>
+            <div><span className="text-slate-800 font-black">Kỷ luật:</span> Chuỗi ngày học liên tục</div>
+            <div><span className="text-slate-800 font-black">Điểm TB:</span> Điểm trung bình các bài</div>
+            <div className="col-span-2"><span className="text-slate-800 font-black">Tích lũy:</span> Tổng sao so với mục tiêu chuẩn (50 sao)</div>
           </div>
 
           {selectedUser && (
             <button
               onClick={() => setSelectedUser(null)}
-              className="w-full mt-2 py-2 rounded-xl border-2 border-slate-900 bg-slate-50 text-[10px] font-black uppercase text-slate-500 shadow-[2px_2px_0_#1f2937] hover:bg-slate-100 transition-colors"
+              className="w-full mt-3 py-2 rounded-xl border-2 border-slate-900 bg-white text-[10px] font-black uppercase text-slate-500 shadow-[2px_2px_0_#1f2937] hover:bg-slate-50 hover:text-slate-900 transition-colors"
             >
               Hủy chọn học viên (Xem chung)
             </button>
@@ -730,10 +750,10 @@ const AdminDashboardPage = () => {
               <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#065f4630]">
                 <span className="text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Server Status
+                  Trạng thái máy chủ
                 </span>
                 <span className="font-black text-xs uppercase tracking-tighter text-emerald-700">
-                  {health.status || 'CONNECTED'}
+                  {health.status === 'UP' ? 'HOẠT ĐỘNG' : health.status === 'CONNECTED' ? 'ĐÃ KẾT NỐI' : health.status || 'HOẠT ĐỘNG'}
                 </span>
               </div>
 
@@ -741,19 +761,19 @@ const AdminDashboardPage = () => {
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#00000010]">
                   <div className="flex items-center gap-2 min-w-0">
                     <Brain size={16} className="text-[#49B6E5] flex-shrink-0" strokeWidth={3} />
-                    <span className="text-[9px] font-black uppercase text-slate-600 truncate">Parakeet Engine</span>
+                    <span className="text-[9px] font-black uppercase text-slate-600 truncate">Hệ thống Parakeet</span>
                   </div>
                   <span className="font-black text-[9px] text-emerald-600 uppercase flex-shrink-0">
-                    {health.parakeetStatus || 'ONLINE'}
+                    {health.parakeetStatus === 'ONLINE' ? 'TRỰC TUYẾN' : health.parakeetStatus || 'TRỰC TUYẾN'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white border-[2px] border-slate-900 shadow-[3px_3px_0_#00000010]">
                   <div className="flex items-center gap-2 min-w-0">
                     <Zap size={16} className="text-orange-500 flex-shrink-0" strokeWidth={3} />
-                    <span className="text-[9px] font-black uppercase text-slate-600 truncate">Gemini Cloud</span>
+                    <span className="text-[9px] font-black uppercase text-slate-600 truncate">Groq Llama</span>
                   </div>
                   <span className="font-black text-[9px] text-emerald-600 uppercase flex-shrink-0">
-                    CONNECTED
+                    ĐÃ KẾT NỐI
                   </span>
                 </div>
               </div>
@@ -780,7 +800,7 @@ const AdminDashboardPage = () => {
         <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-[#fffcf4] p-8 shadow-[8px_8px_0_#1f2937] flex flex-col justify-between">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-[#fef9c3] px-3 py-1 text-[10px] font-black uppercase text-slate-800 shadow-[2px_2px_0_#1f2937]">
-              Weekly Event
+              Sự kiện hàng tuần
             </div>
             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-none mb-3">Giải Đấu Hàng Tuần</h2>
             <p className="text-xs text-slate-600 leading-relaxed">
@@ -980,11 +1000,13 @@ const AdminDashboardPage = () => {
                         </div>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{t.type || 'WEEKLY'}</span>
+                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                          {t.type === 'WEEKLY' ? 'HÀNG TUẦN' : t.type || 'HÀNG TUẦN'}
+                        </span>
                       </td>
                       <td className="p-4 text-center">
                         <span className={`inline-block px-3 py-1 rounded-lg border-[1.5px] font-black text-xs uppercase ${statusBg}`}>
-                          {t.status}
+                          {t.status === 'ACTIVE' ? 'ĐANG DIỄN RA' : t.status === 'FINISHED' ? 'ĐÃ KẾT THÚC' : t.status === 'UPCOMING' ? 'SẮP DIỄN RA' : t.status}
                         </span>
                       </td>
                       <td className="p-4 text-center">
@@ -1060,19 +1082,17 @@ const AdminDashboardPage = () => {
               <option value="ATTENTION">CẦN CHÚ Ý (&lt; 70đ)</option>
             </select>
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#49B6E5] rounded-xl border-[2px] border-slate-900 text-white shadow-[2px_2px_0_#1f2937] text-[10px] font-black uppercase tracking-widest cursor-default group">
-              <TrendingUp size={12} className="group-hover:translate-x-0.5 transition-transform" strokeWidth={3} />
-              Live
-            </div>
+
           </div>
         </div>
 
         {/* Data Table */}
         {filteredUserProgress.length > 0 ? (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full min-w-[800px]">
-              <thead>
-                <tr className="border-b-[3px] border-slate-900/5 text-left">
+          <div className="flex flex-col gap-4">
+            <div className="overflow-x-auto custom-scrollbar max-h-[350px] overflow-y-auto">
+              <table className="w-full min-w-[800px] relative">
+                <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                  <tr className="border-b-[3px] border-slate-900/5 text-left">
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-1/4">Học viên</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Tổng Sao đạt</th>
@@ -1081,7 +1101,7 @@ const AdminDashboardPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y-[2px] divide-slate-100">
-                {filteredUserProgress.map((item) => {
+                {paginatedUsers.map((item) => {
                   const isSelected = selectedUser?.id === item.id
                   const progress = item.totalQuizzes > 0
                     ? Math.round((item.completedQuizzes / item.totalQuizzes) * 100)
@@ -1153,6 +1173,29 @@ const AdminDashboardPage = () => {
               </tbody>
             </table>
           </div>
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between pt-2 border-t-2 border-slate-100">
+            <span className="text-xs font-bold text-slate-500">
+              Trang {learnerCurrentPage} / {totalLearnerPages} ({filteredUserProgress.length} học viên)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLearnerCurrentPage(p => Math.max(1, p - 1))}
+                disabled={learnerCurrentPage === 1}
+                className="px-3 py-1.5 rounded-xl border-2 border-slate-900 bg-white text-xs font-black shadow-[2px_2px_0_#1f2937] disabled:opacity-50 active:translate-y-0.5 active:shadow-none hover:bg-slate-50 transition-colors"
+              >
+                TRƯỚC
+              </button>
+              <button
+                onClick={() => setLearnerCurrentPage(p => Math.min(totalLearnerPages, p + 1))}
+                disabled={learnerCurrentPage === totalLearnerPages}
+                className="px-3 py-1.5 rounded-xl border-2 border-slate-900 bg-white text-xs font-black shadow-[2px_2px_0_#1f2937] disabled:opacity-50 active:translate-y-0.5 active:shadow-none hover:bg-slate-50 transition-colors"
+              >
+                SAU
+              </button>
+            </div>
+          </div>
+        </div>
         ) : (
           <div className="py-14 rounded-2xl border-2 border-dashed border-slate-200 text-center bg-slate-50">
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Không có dữ liệu học viên trùng khớp</p>

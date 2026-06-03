@@ -10,7 +10,7 @@ export const API_BASE_URL = USE_DEPLOYED_BE
     : 'http://localhost:8082/api/v1';
 
 // 2. ASR (Speech-to-Text) URL
-const USE_DEPLOYED_ASR = true;
+const USE_DEPLOYED_ASR = false;
 export const ASR_BASE_URL = USE_DEPLOYED_ASR
     ? 'https://nguyenductuan-speak-journey-vn.hf.space/api/v1/transcribe'
     : 'http://localhost:8000/api/v1/transcribe';

@@ -335,7 +335,7 @@ const AchievementManagementPage: React.FC = () => {
                                             "absolute top-4 right-4 px-2.5 py-0.5 rounded-full border-[2px] border-slate-900 text-[8px] font-black uppercase tracking-tighter shadow-sm",
                                             item.linkedQuizName ? "bg-[#10b981] text-white" : "bg-white text-slate-400 border-slate-200 shadow-none"
                                         )}>
-                                            {item.linkedQuizName ? 'Assigned' : 'Free'}
+                                            {item.linkedQuizName ? 'Đã gán' : 'Chưa gán'}
                                         </div>
 
                                         {item.iconUrl ? (
@@ -492,6 +492,28 @@ const AchievementManagementPage: React.FC = () => {
                             <Zap size={20} className="text-yellow-400" fill="currentColor" />
                         </div>
                     )}
+
+                    <div className="flex gap-4 pt-2">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={() => { setIsModalOpen(false); setIconPreview(''); }}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_#1f293705]"
+                        >
+                            Hủy
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={handleSave}
+                            disabled={submitting}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_#1f2937] disabled:opacity-50"
+                        >
+                            {submitting ? 'Đang xử lý...' : editingAchievement ? 'Cập nhật' : 'Tạo mới'}
+                        </motion.button>
+                    </div>
                 </Form>
             </Modal>
 

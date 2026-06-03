@@ -16,7 +16,7 @@ import apiClient from '../../../services/apiClient'
 import { useAuth } from '../../../core/auth/AuthContext'
 import { useAudioRecorder } from '../../../hooks/useAudioRecorder'
 import { ASR_BASE_URL } from '../../../config'
-import { Globe, Play, ChevronRight, MapPin, Sparkles } from 'lucide-react'
+import { Globe, Play, ChevronRight, MapPin, Sparkles, LogOut } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────
 // Region metadata match RoadmapPage
@@ -137,7 +137,7 @@ interface StepResult {
 
 const EntryTestPage: React.FC = () => {
     const navigate = useNavigate()
-    const { session, updateSessionItem } = useAuth()
+    const { session, updateSessionItem, logout } = useAuth()
     const recorder = useAudioRecorder()
 
     const [questions, setQuestions] = useState<EntryTestQuestion[]>([])
@@ -378,6 +378,17 @@ const EntryTestPage: React.FC = () => {
     if (!regionSelected) {
         return (
             <div className="min-h-screen bg-[#fbf6ef] relative overflow-hidden flex flex-col items-center justify-center p-6 font-nunito">
+                {/* Logout button at top right */}
+                <div className="absolute top-6 right-6 z-50">
+                    <button
+                        onClick={logout}
+                        className="px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black text-rose-500 transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none flex items-center gap-2 hover:bg-rose-50"
+                    >
+                        <LogOut size={16} strokeWidth={3} />
+                        ĐĂNG XUẤT
+                    </button>
+                </div>
+
                 {/* Decorative background doodle-like faint shapes */}
                 <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-[#49B6E5]/5 rounded-full filter blur-[120px] pointer-events-none"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-orange-500/5 rounded-full filter blur-[120px] pointer-events-none"></div>

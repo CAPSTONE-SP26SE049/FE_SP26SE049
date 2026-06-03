@@ -9,9 +9,9 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const REGION_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    NORTH:   { label: 'NORTH',   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
-    CENTRAL: { label: 'CENTRAL', color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
-    SOUTH:   { label: 'SOUTH',   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    NORTH:   { label: 'BẮC',   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
+    CENTRAL: { label: 'TRUNG', color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
+    SOUTH:   { label: 'NAM',   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 };
 
 const ErrorTagManagementPage = () => {

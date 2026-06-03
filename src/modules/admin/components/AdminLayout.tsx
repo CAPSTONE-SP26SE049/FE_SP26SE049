@@ -33,7 +33,7 @@ const NAV_ITEMS = [
   { key: '/admin/entry-test', icon: FlaskConical, label: 'Quản lý Entry Test' },
   { key: '/admin/users', icon: Users, label: 'Người dùng' },
   { key: '/admin/achievements', icon: Medal, label: 'Thành tựu' },
-  { key: '/admin/minigames', icon: Gamepad2, label: 'Minigame' },
+  { key: '/admin/minigames', icon: Gamepad2, label: 'Minigames' },
   { key: '/admin/feedbacks', icon: MessageSquare, label: 'Phản hồi' },
   { key: '/admin/ai-config', icon: Cpu, label: 'Cấu hình AI' },
   { key: '/admin/settings', icon: Settings, label: 'Cài đặt' },
@@ -221,14 +221,6 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="hidden lg:flex flex-col items-end">
-              <span className="text-xs font-black text-slate-900 uppercase">Trạng thái máy chủ</span>
-              <span className="flex items-center gap-1.5 text-[9px] font-black uppercase text-green-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Đang hoạt động
-              </span>
-            </div>
-            <div className="w-[1px] h-10 bg-slate-100 hidden lg:block" />
             <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-50 border-[2px] border-slate-900 shadow-[3px_3px_0_#00000005]">
               <div className="w-9 h-9 rounded-xl bg-orange-400 border-[2px] border-slate-900 flex items-center justify-center text-white shadow-[2px_2px_0_#1f2937]">
                 <User size={18} strokeWidth={3} fill="currentColor" />

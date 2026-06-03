@@ -45,6 +45,7 @@ const AiMonitorPage = () => {
     const [loading, setLoading] = React.useState(true)
     const [selectedLog, setSelectedLog] = React.useState<AttemptLog | null>(null)
     const [limit, setLimit] = React.useState(50)
+    const [searchTerm, setSearchTerm] = React.useState('')
 
     const fetchLogs = React.useCallback(async () => {
         setLoading(true)
@@ -160,6 +161,16 @@ const AiMonitorPage = () => {
         SOUTH: { label: 'Nam', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
     }
 
+    const filteredLogs = React.useMemo(() => {
+        if (!searchTerm) return logs
+        const lower = searchTerm.toLowerCase()
+        return logs.filter(l => 
+            l.userFullName?.toLowerCase().includes(lower) || 
+            l.userEmail?.toLowerCase().includes(lower) ||
+            l.targetText?.toLowerCase().includes(lower)
+        )
+    }, [logs, searchTerm])
+
     return (
         <div className="min-h-screen bg-[#fbf6ef] font-nunito p-8 space-y-10">
             {/* Header */}
@@ -244,7 +255,7 @@ const AiMonitorPage = () => {
                                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-sm" /> Parakeet ASR
                             </span>
                             <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#49B6E5]">
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#49B6E5] shadow-sm" /> Cloud AI (Groq/Gemini)
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#49B6E5] shadow-sm" /> Cloud AI (Groq)
                             </span>
                         </div>
                     </div>
@@ -388,9 +399,21 @@ const AiMonitorPage = () => {
                             <List size={20} className="text-[#49B6E5]" strokeWidth={3} />
                             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Chi tiết hoạt động hệ thống</h2>
                         </div>
-                        <span className="px-4 py-1 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-                            {logs.length} Bản ghi
-                        </span>
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Tìm user, nội dung..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-4 py-1.5 text-xs font-bold bg-white border-[2px] border-slate-900 rounded-full shadow-[2px_2px_0_#1f293705] outline-none w-[200px] focus:w-[250px] transition-all"
+                                />
+                            </div>
+                            <span className="px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                                {filteredLogs.length} Bản ghi
+                            </span>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-x-auto max-h-[700px] custom-scrollbar">
@@ -422,7 +445,7 @@ const AiMonitorPage = () => {
                                             ) : null}
                                         </td>
                                     </tr>
-                                ) : logs.map((log) => {
+                                ) : filteredLogs.map((log) => {
                                     const isSelected = selectedLog?.id === log.id
                                     const region = dialectConfig[log.dialect?.toUpperCase() || ''] || { label: '—', color: 'text-slate-400', bg: 'bg-slate-50 border-slate-100' }
 

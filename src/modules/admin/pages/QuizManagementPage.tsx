@@ -245,13 +245,13 @@ const AdminQuizManagementPage: React.FC = () => {
         setIsRewardModalOpen(true);
         const currentBadgeId = quiz?.rewardCatalogId || quiz?.badgeId || null;
         setSelectedRewardId(currentBadgeId);
-        if (rewards.length === 0) {
-            setLoadingRewards(true);
-            try {
-                const res: any = await adminService.getBadgesForAdmin();
-                setRewards(res?.data || (Array.isArray(res) ? res : []));
-            } finally { setLoadingRewards(false); }
-        }
+        
+        // Luôn fetch lại để có trạng thái mới nhất thay vì dùng cache cũ
+        setLoadingRewards(true);
+        try {
+            const res: any = await adminService.getBadgesForAdmin();
+            setRewards(res?.data || (Array.isArray(res) ? res : []));
+        } finally { setLoadingRewards(false); }
     };
 
     // --- Batch Editing Logic ---
@@ -345,9 +345,9 @@ const AdminQuizManagementPage: React.FC = () => {
         setSubmittingBatchQuestions(true);
         try {
             const currentIds = displayQuestions.map((q: any) => q.id).filter(Boolean);
-            for (const id of currentIds) await adminService.removeChallengeFromQuiz(quiz.id, id).catch(() => { });
+            await Promise.all(currentIds.map((id: string) => adminService.removeChallengeFromQuiz(quiz.id, id).catch(() => {})));
 
-            const newBankIds: string[] = [];
+            const batchPayloads: any[] = [];
             for (const q of batchQuestions) {
                 let meta: any = {};
                 if (q.skillType === 'READING') {
@@ -364,16 +364,15 @@ const AdminQuizManagementPage: React.FC = () => {
                     meta = { transcript: correctSentence, correctSentence: correctSentence, hint: q.hint };
                 }
 
-                const payload = { contentText: q.contentText, skillType: q.skillType, metadataJson: meta };
+                const payload: any = { contentText: q.contentText, skillType: q.skillType, metadataJson: meta };
                 if (q.id && q.isExisting) {
-                    await adminService.updateChallengeBankItem(q.id, payload);
-                    newBankIds.push(q.id);
-                } else {
-                    const res: any = await adminService.createChallengeBankItem(payload);
-                    const nid = res?.data?.id || res?.id;
-                    if (nid) newBankIds.push(nid);
+                    payload.id = q.id;
                 }
+                batchPayloads.push(payload);
             }
+            
+            const batchRes: any = await adminService.batchUpsertChallengeBankItems(batchPayloads);
+            const newBankIds: string[] = (batchRes?.data || batchRes || []).map((item: any) => item.id);
             if (newBankIds.length > 0) await adminService.assignChallengesToQuiz(quiz.id, newBankIds);
             message.success('Đã lưu toàn bộ!');
             setIsBatchQuestionsModalOpen(false);
@@ -1366,8 +1365,10 @@ const AdminQuizManagementPage: React.FC = () => {
                                         <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight">{badge.name}</span>
                                         
                                         {/* Status Indicators */}
-                                        <div className="w-full flex justify-center">
-                                            {isCurrentQuiz ? (
+                                        <div className="w-full flex justify-center mt-1">
+                                            {selectedRewardId === badge.id ? (
+                                                <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-300 text-emerald-600 px-2 py-0.5 rounded-full shadow-[2px_2px_0_#49B6E5]">Đang chọn</span>
+                                            ) : isCurrentQuiz ? (
                                                 <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-300 text-emerald-600 px-2 py-0.5 rounded-full">Đang gán</span>
                                             ) : isOtherQuiz ? (
                                                 <span className="text-[8px] font-black uppercase bg-amber-50 border border-amber-300 text-amber-600 px-2 py-0.5 rounded-full truncate max-w-full text-center" title={`Gán cho: ${badge.linkedQuizName} (Level: ${badge.linkedLevelName})`}>

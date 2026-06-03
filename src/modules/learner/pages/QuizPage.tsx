@@ -780,7 +780,6 @@ const QuizPage: React.FC = () => {
   const goNext = () => {
     // Only clear timing/temporary state initially
     setTimeLeft(null)
-    setOllamaResult(null)
     setShowFullSuggestion(false)
     recorder.resetRecording()
 
@@ -789,6 +788,7 @@ const QuizPage: React.FC = () => {
       handleFinish()
     } else {
       // Middle of quiz: clear everything and move to next
+      setOllamaResult(null)
       setWritingInput('')
       setWordPicked(null)
       setSelected(null)
