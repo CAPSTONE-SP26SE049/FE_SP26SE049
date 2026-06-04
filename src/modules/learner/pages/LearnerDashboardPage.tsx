@@ -56,7 +56,7 @@ export default function Dashboard() {
     const [dailyLoading, setDailyLoading] = useState(true)
     const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null)
     const [dailyCompletedIds, setDailyCompletedIds] = useState<string[]>([])
-    
+
     // Recording & Speaking Evaluation States
     const recorder = useAudioRecorder()
     const [isEvaluating, setIsEvaluating] = useState(false)
@@ -116,43 +116,43 @@ export default function Dashboard() {
         if (!recorder.audioBlob) return;
         setIsEvaluating(true);
         setEvaluationFeedback(null);
-        
+
         try {
             const formData = new FormData();
             formData.append('audio', new File([recorder.audioBlob], 'recording.webm', { type: 'audio/webm' }));
-            
+
             const region = (user?.region || 'SOUTH').toUpperCase();
             let dialectStr = 'NAM';
             if (region === 'NORTH') dialectStr = 'BAC';
             else if (region === 'CENTRAL') dialectStr = 'TRUNG';
-            
+
             formData.append('dialect', dialectStr);
-            
+
             const res = await apiClient.post(`/daily-challenges/${challengeId}/submit`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
+
             const result = res?.data ?? res;
             if (result) {
                 setEvaluationFeedback(result);
-                
+
                 const evaluation = result.evaluation || {};
                 const isCorrect = evaluation.isCorrect || (evaluation.accuracy && evaluation.accuracy >= 80);
-                
+
                 if (isCorrect) {
                     const newCompleted = [...new Set([...dailyCompletedIds, challengeId])];
                     setDailyCompletedIds(newCompleted);
-                    
+
                     const todayStr = new Date().toISOString().split('T')[0];
                     localStorage.setItem('speakvn_daily_completed', JSON.stringify({
                         date: todayStr,
                         ids: newCompleted
                     }));
-                    
+
                     if (result.completedAllToday && result.xpAwarded > 0) {
                         setCelebrationXp(result.xpAwarded);
                         setCelebrationVisible(true);
-                        
+
                         apiClient.get('/users/me')
                             .then((meRes: any) => {
                                 const data = meRes?.data?.data ?? meRes?.data
@@ -163,7 +163,7 @@ export default function Dashboard() {
                                         totalExperience: data.totalXp ?? data.totalExperience ?? 0,
                                     })
                                 }
-                            }).catch(() => {});
+                            }).catch(() => { });
                     }
                 }
             }
@@ -185,7 +185,7 @@ export default function Dashboard() {
         const loadDailyChallenges = async () => {
             try {
                 const todayStr = new Date().toISOString().split('T')[0];
-                
+
                 // Try fetching from the database first
                 let completedIds: string[] = [];
                 let fetchedFromDb = false;
@@ -222,7 +222,7 @@ export default function Dashboard() {
                         }
                     }
                 }
-                
+
                 const res = await apiClient.get('/daily-challenges');
                 const list = res?.data ?? res?.data?.data ?? res ?? [];
                 setDailyChallenges(Array.isArray(list) ? list : []);
@@ -232,7 +232,7 @@ export default function Dashboard() {
                 setDailyLoading(false);
             }
         };
-        
+
         loadDailyChallenges();
     }, []);
 
@@ -273,13 +273,13 @@ export default function Dashboard() {
                 try {
                     const customPathRes = await apiClient.get('/learner/custom-path');
                     const customPath = customPathRes?.data ?? customPathRes;
-                    
+
                     if (customPath && customPath.isActive && customPath.levels && customPath.levels.length > 0) {
                         let activeQuiz: any = null;
                         let activeLevelName = '';
-                        
+
                         const hasQuizzes = customPath.levels.some((l: any) => l.quizzes && l.quizzes.length > 0);
-                        
+
                         if (hasQuizzes) {
                             for (const level of customPath.levels) {
                                 const incomplete = level.quizzes.find((q: any) => !q.isCompleted);
@@ -298,11 +298,11 @@ export default function Dashboard() {
                             };
                             activeLevelName = customPath.levels[0].levelName;
                         }
-                        
+
                         if (activeQuiz) {
                             let totalQuizzes = 0;
                             let completedQuizzes = 0;
-                            
+
                             customPath.levels.forEach((l: any) => {
                                 if (l.quizzes && l.quizzes.length > 0) {
                                     l.quizzes.forEach((q: any) => {
@@ -314,9 +314,9 @@ export default function Dashboard() {
                                     if (l.isCompleted) completedQuizzes++;
                                 }
                             });
-                            
+
                             const progressPercent = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
-                            
+
                             setCurrentLesson({
                                 title: activeQuiz.title,
                                 description: `Lộ trình cá nhân hóa • ${activeLevelName}`,
@@ -526,9 +526,8 @@ export default function Dashboard() {
                                 return (
                                     <div
                                         key={challenge.id || idx}
-                                        className={`flex flex-col justify-between rounded-[1.5rem] border-[3px] border-slate-900 p-5 shadow-[4px_4px_0_#1f2937] transition-all ${
-                                            isCompleted ? 'bg-[#f0fdf4]' : 'bg-[#fffaf2]'
-                                        }`}
+                                        className={`flex flex-col justify-between rounded-[1.5rem] border-[3px] border-slate-900 p-5 shadow-[4px_4px_0_#1f2937] transition-all ${isCompleted ? 'bg-[#f0fdf4]' : 'bg-[#fffaf2]'
+                                            }`}
                                     >
                                         <div>
                                             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -649,7 +648,7 @@ export default function Dashboard() {
                                 <h3 className="text-2xl font-black text-slate-900">Truy cập nhanh</h3>
                                 <p className="text-sm text-slate-600">Đi thẳng tới phần bạn cần mà không phải tìm lại.</p>
                             </div>
-                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {quickActions.map(({ icon: Icon, label, desc, path, tint, bg }) => (
                                     <motion.button key={label} whileHover={{ y: -2 }} onClick={() => navigate(path)} className="rounded-[1.25rem] border-2 border-slate-900 p-4 text-left shadow-[4px_4px_0_#1f2937] transition-transform" style={{ background: bg }}>
                                         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white">
@@ -777,9 +776,8 @@ export default function Dashboard() {
                             <div className="mt-6 rounded-2xl border-[3px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#1f2937] max-h-60 overflow-y-auto">
                                 <div className="flex items-center justify-between border-b-2 border-slate-100 pb-3">
                                     <span className="text-[10px] font-black uppercase text-slate-400">Kết quả đánh giá AI</span>
-                                    <span className={`rounded-full border-[2.5px] border-slate-900 px-3 py-1 text-sm font-black ${
-                                        (evaluationFeedback.evaluation?.accuracy || 0) >= 80 ? 'bg-[#d1fae5] text-emerald-700' : 'bg-[#fee2e2] text-rose-600'
-                                    }`}>
+                                    <span className={`rounded-full border-[2.5px] border-slate-900 px-3 py-1 text-sm font-black ${(evaluationFeedback.evaluation?.accuracy || 0) >= 80 ? 'bg-[#d1fae5] text-emerald-700' : 'bg-[#fee2e2] text-rose-600'
+                                        }`}>
                                         ĐỘ CHÍNH XÁC: {evaluationFeedback.evaluation?.accuracy || 0}%
                                     </span>
                                 </div>

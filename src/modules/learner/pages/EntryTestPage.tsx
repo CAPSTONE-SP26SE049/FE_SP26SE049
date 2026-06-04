@@ -663,7 +663,7 @@ const EntryTestPage: React.FC = () => {
                             />
                         </div>
                         <div className="bg-slate-900 text-white px-3 py-1 rounded-xl text-[10px] font-black shadow-[3px_3px_0_#49B6E5] italic">
-                            Câu {idx + 1}/{questions.length} ({progressPercent}%)
+                            Câu {idx + 1}/{questions.length}
                         </div>
                     </div>
                 </div>
