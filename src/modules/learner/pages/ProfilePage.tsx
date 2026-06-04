@@ -45,6 +45,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(isEducatorView)
 
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isBadgesModalOpen, setIsBadgesModalOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     const [avatarErr, setAvatarErr] = useState(false)
     const [form] = Form.useForm()
@@ -131,7 +132,7 @@ export default function ProfilePage() {
         return (
             <div className="flex h-[400px] items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-[4px] border-slate-200 border-t-BRAND_BLUE rounded-full animate-spin" />
+                    <div className="w-12 h-12 border-[4px] border-slate-200 border-t-[#49B6E5] rounded-full animate-spin" />
                     <span className="font-black text-slate-400 uppercase tracking-widest text-xs">Đang tải dữ liệu...</span>
                 </div>
             </div>
@@ -166,8 +167,8 @@ export default function ProfilePage() {
             {/* Header / Profile Info */}
             <div className="relative bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937] overflow-hidden">
                 {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-BRAND_BLUE/5 rounded-bl-full -z-0" />
-                <div className="absolute bottom-10 left-10 w-20 h-20 border-[3px] border-BRAND_ORANGE/10 rounded-full -z-0" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#49B6E5]/5 rounded-bl-full -z-0" />
+                <div className="absolute bottom-10 left-10 w-20 h-20 border-[3px] border-[#f97316]/10 rounded-full -z-0" />
 
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                     {/* Avatar */}
@@ -217,27 +218,30 @@ export default function ProfilePage() {
                         <div className="flex flex-wrap justify-center md:justify-start gap-3">
                             {isEducatorView ? (
                                 <>
-                                    <Button
-                                        className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
-                                        icon={<MessageSquare size={16} />}
+                                    <button
+                                        type="button"
+                                        className="h-12 px-6 bg-[#49B6E5] border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all flex items-center justify-center gap-2"
                                     >
+                                        <MessageSquare size={16} />
                                         Nhắn tin
-                                    </Button>
-                                    <Button
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => navigate('/educator/students')}
-                                        className="h-12 px-6 bg-white border-[3px] border-slate-900 text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                                        className="h-12 px-6 bg-white border-[3px] border-slate-900 text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all flex items-center justify-center"
                                     >
                                         Quay lại
-                                    </Button>
+                                    </button>
                                 </>
                             ) : (
-                                <Button
+                                <button
+                                    type="button"
                                     onClick={handleEdit}
-                                    className="h-12 px-6 bg-BRAND_BLUE border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
-                                    icon={<Edit size={16} />}
+                                    className="h-12 px-6 bg-[#49B6E5] border-[3px] border-slate-900 text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all flex items-center justify-center gap-2"
                                 >
+                                    <Edit size={16} />
                                     Chỉnh sửa hồ sơ
-                                </Button>
+                                </button>
                             )}
                         </div>
                     </div>
@@ -259,7 +263,7 @@ export default function ProfilePage() {
                     {isEducatorView ? (
                         <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
                             <div className="flex items-center gap-3 mb-8">
-                                <div className="w-1.5 h-8 bg-BRAND_BLUE rounded-full" />
+                                <div className="w-1.5 h-8 bg-[#49B6E5] rounded-full" />
                                 <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Phân tích năng lực</h2>
                             </div>
 
@@ -268,13 +272,13 @@ export default function ProfilePage() {
                                 <div className="p-6 rounded-3xl border-[3px] border-slate-900 bg-slate-50">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="text-sm font-black uppercase tracking-widest text-slate-400">Điểm phát âm</div>
-                                        <div className="text-2xl font-black text-BRAND_BLUE">{activeData?.pronunciationScore || 0}%</div>
+                                        <div className="text-2xl font-black text-[#49B6E5]">{activeData?.pronunciationScore || 0}%</div>
                                     </div>
                                     <div className="h-4 bg-white border-[2.5px] border-slate-900 rounded-full overflow-hidden mb-4">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${activeData?.pronunciationScore || 0}%` }}
-                                            className="h-full bg-BRAND_BLUE"
+                                            className="h-full bg-[#49B6E5]"
                                         />
                                     </div>
                                     <div className="text-[10px] font-bold text-slate-400 text-center">
@@ -311,7 +315,7 @@ export default function ProfilePage() {
                                 <div className="flex flex-wrap gap-2">
                                     {(activeData?.weakPhonemes || ['tr', 'ng', 'kh', 'th']).map((p: string, i: number) => (
                                         <div key={i} className="px-4 py-2 rounded-xl border-[2px] border-slate-900 bg-white shadow-[3px_3px_0_#1f2937] flex items-center gap-3">
-                                            <span className="font-black text-BRAND_ORANGE uppercase">/{p}/</span>
+                                            <span className="font-black text-[#f97316] uppercase">/{p}/</span>
                                             <div className="w-[1px] h-3 bg-slate-200" />
                                             <span className="text-[10px] font-bold text-slate-500">Tỷ lệ lỗi: 12%</span>
                                         </div>
@@ -323,7 +327,7 @@ export default function ProfilePage() {
                         /* Learner Progress Section */
                         <div className="bg-white border-[3px] border-slate-900 rounded-[2.5rem] p-8 shadow-[12px_12px_0_#1f2937]">
                             <div className="flex items-center gap-3 mb-8">
-                                <div className="w-1.5 h-8 bg-BRAND_BLUE rounded-full" />
+                                <div className="w-1.5 h-8 bg-[#49B6E5] rounded-full" />
                                 <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Tiến độ ngôn ngữ</h2>
                             </div>
 
@@ -333,7 +337,7 @@ export default function ProfilePage() {
                                         <div key={idx} className="p-6 rounded-3xl border-[3px] border-slate-900 bg-slate-50 shadow-[4px_4px_0_#1f2937]">
                                             <div className="flex justify-between items-center mb-4">
                                                 <span className="text-sm font-black uppercase tracking-widest text-slate-600">{key}</span>
-                                                <span className="text-lg font-black text-BRAND_BLUE">{pct}%</span>
+                                                <span className="text-lg font-black text-[#49B6E5]">{pct}%</span>
                                             </div>
                                             <Progress
                                                 percent={pct}
@@ -352,12 +356,13 @@ export default function ProfilePage() {
                                             <BookOpen size={32} className="text-slate-300" />
                                         </div>
                                         <p className="font-black text-slate-400 uppercase tracking-widest text-sm">Chưa có tiến độ ghi nhận</p>
-                                        <Button
+                                        <button
+                                            type="button"
                                             onClick={() => navigate('/learner/journey')}
-                                            className="mt-4 border-none text-BRAND_BLUE font-black uppercase text-[10px] tracking-widest hover:bg-BRAND_BLUE/5 px-4 h-8 rounded-lg"
+                                            className="mt-4 border-none text-[#49B6E5] font-black uppercase text-[10px] tracking-widest hover:bg-[#49B6E5]/5 px-4 h-8 rounded-lg flex items-center justify-center gap-1 mx-auto"
                                         >
-                                            Khám phá ngay <ArrowRight size={12} className="ml-1" />
-                                        </Button>
+                                            Khám phá ngay <ArrowRight size={12} />
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -393,6 +398,17 @@ export default function ProfilePage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* View all button if badges > 9 */}
+                        {!isEducatorView && badges.length > 9 && (
+                            <button
+                                type="button"
+                                onClick={() => setIsBadgesModalOpen(true)}
+                                className="mt-5 w-full py-2.5 rounded-xl border-[2.5px] border-slate-900 bg-white text-slate-900 font-black uppercase text-[10px] tracking-wider shadow-[3px_3px_0_#1f2937] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-1.5"
+                            >
+                                Xem tất cả thành tựu ({badges.length}) <ChevronRight size={14} strokeWidth={3} />
+                            </button>
+                        )}
                     </div>
 
                     {/* Recent Sessions (Educator Only) */}
@@ -450,7 +466,19 @@ export default function ProfilePage() {
                             <Input placeholder="Nguyễn Văn A" className="h-12 rounded-xl border-[2.5px] border-slate-900 font-bold" />
                         </Form.Item>
                         <Form.Item name="phone" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Số điện thoại</span>}
-                            rules={[{ pattern: /^(0|\+84)[0-9]{9,10}$/, message: 'Số điện thoại không hợp lệ' }]}>
+                            rules={[
+                                {
+                                    validator: (_, value) => {
+                                        if (!value || value.trim() === '') {
+                                            return Promise.resolve();
+                                        }
+                                        if (/^(0|\+84)[0-9]{9,10}$/.test(value)) {
+                                            return Promise.resolve();
+                                        }
+                                        return Promise.reject(new Error('Số điện thoại không hợp lệ'));
+                                    }
+                                }
+                            ]}>
                             <Input placeholder="0901234567" className="h-12 rounded-xl border-[2.5px] border-slate-900 font-bold" />
                         </Form.Item>
                     </div>
@@ -475,7 +503,7 @@ export default function ProfilePage() {
                         <button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="h-12 px-6 rounded-xl border-[3px] border-slate-900 bg-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                            className="h-12 px-6 rounded-xl border-[3px] border-slate-900 bg-white text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
                         >
                             Hủy
                         </button>
@@ -483,12 +511,65 @@ export default function ProfilePage() {
                             type="button"
                             disabled={saving}
                             onClick={handleSave}
-                            className="h-12 px-8 rounded-xl border-[3px] border-slate-900 bg-BRAND_ORANGE text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all disabled:opacity-50"
+                            className="h-12 px-8 rounded-xl border-[3px] border-slate-900 bg-[#f97316] text-white font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all disabled:opacity-50"
                         >
                             {saving ? 'Đang lưu…' : 'Lưu thay đổi'}
                         </button>
                     </div>
                 </Form>
+            </Modal>
+
+            {/* ══════ ALL BADGES MODAL ══════ */}
+            <Modal
+                title={
+                    <div className="flex items-center gap-3 pb-1">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center border-[2px] border-slate-900 bg-[#fefce8] shadow-[2px_2px_0_#1f2937]">
+                            <TrophyOutlined className="text-slate-900 text-lg" />
+                        </div>
+                        <div>
+                            <div className="font-black text-slate-900 uppercase tracking-tight">Tất cả thành tựu</div>
+                            <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Các huy hiệu đã đạt được ({badges.length})</div>
+                        </div>
+                    </div>
+                }
+                open={isBadgesModalOpen}
+                onCancel={() => setIsBadgesModalOpen(false)}
+                footer={null} centered width={650} destroyOnClose
+                className="neobrutalist-modal"
+            >
+                <div className="mt-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                    <style dangerouslySetInnerHTML={{
+                        __html: `
+                        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+                        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+                        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+                        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+                    `}} />
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-1">
+                        {badges.map((b, i) => (
+                            <Tooltip title={b?.badge?.description || b?.description} key={i}>
+                                <motion.div
+                                    whileHover={{ scale: 1.05, y: -2 }}
+                                    className="flex flex-col items-center p-3 rounded-2xl border-[2.5px] border-slate-900 bg-[#fefce8] shadow-[3px_3px_0_#1f2937] text-center"
+                                >
+                                    <img src={b?.badge?.iconUrl || b?.iconUrl} className="w-12 h-12 object-contain mb-2" alt="Badge" />
+                                    <div className="text-[9px] font-black text-slate-900 leading-tight line-clamp-2 uppercase">
+                                        {b?.badge?.name || b?.name}
+                                    </div>
+                                </motion.div>
+                            </Tooltip>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex justify-end mt-6">
+                    <button
+                        type="button"
+                        onClick={() => setIsBadgesModalOpen(false)}
+                        className="h-12 px-6 rounded-xl border-[3px] border-slate-900 bg-white text-slate-900 font-black uppercase text-xs shadow-[4px_4px_0_#1f2937] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1f2937] transition-all"
+                    >
+                        Đóng
+                    </button>
+                </div>
             </Modal>
 
             <style dangerouslySetInnerHTML={{

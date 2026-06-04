@@ -33,13 +33,10 @@ export function getLearnerOnboardingPath(user: LearnerOnboardingUser): string {
   if (user.hasDoneEntryTest) {
     return '/learner/roadmap'
   }
-  if (!hasRegionValue(user.region)) {
-    return '/learner/select-region'
-  }
-  return '/learner/entrytest'
+  return '/entry-test'
 }
 
-export const LEARNER_ONBOARDING_PATHS = ['/learner/select-region', '/learner/entrytest'] as const
+export const LEARNER_ONBOARDING_PATHS = ['/entry-test'] as const
 
 export function isLearnerOnboardingPath(pathname: string): boolean {
   return LEARNER_ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

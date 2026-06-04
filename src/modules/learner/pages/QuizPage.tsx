@@ -1073,7 +1073,7 @@ const QuizPage: React.FC = () => {
   if (finished) {
     const pct = result?.score ?? (total > 0 ? Math.round((score / total) * 100) : 0)
     const passed = result?.passed ?? (pct >= quiz.passingScore)
-    const stars = result?.starsEarned ?? 0
+    const stars = result?.starsEarned ?? (pct >= 80 ? 3 : (pct >= 60 ? 2 : (pct >= 40 ? 1 : 0)))
     const reward = result?.earnedReward
 
     return (
@@ -1438,7 +1438,54 @@ const QuizPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Lời khuyên từ AI đã được chuyển sang speech bubble bên phải */}
+                    {/* Aligned target words with colors (Word Details) */}
+                    {ollamaResult.wordDetails && ollamaResult.wordDetails.length > 0 && (
+                      <div className="bg-slate-50 border-[2px] border-slate-200 rounded-2xl p-3">
+                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2 italic">Từ/Câu mẫu đối chiếu:</p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {ollamaResult.wordDetails.map((item: any, i: number) => {
+                            const isWrong = item.status === 'wrong';
+                            const textColor = item.status === 'correct' ? 'text-green-600' :
+                              item.status === 'near' ? 'text-yellow-600' :
+                              'text-red-600';
+                            return (
+                              <span key={i} className={`font-black text-lg ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-4' : ''}`}>
+                                {item.word}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Detailed Feedback (NHẬN XÉT TỪ AI) synchronized with Entry Test */}
+                    {(ollamaResult.errorDetail || ollamaResult.suggestion) && (
+                      <div className="mt-4 p-4 bg-sky-50 rounded-[1.5rem] border-[2px] border-slate-900 text-slate-900 text-sm leading-relaxed shadow-[2px_2px_0_#1f2937]">
+                        <div className="flex items-center gap-2 mb-2 text-[#49B6E5] font-black">
+                          <Star size={16} fill="currentColor" strokeWidth={3} />
+                          <span>NHẬN XÉT TỪ AI</span>
+                        </div>
+
+                        {ollamaResult.errorDetail && ollamaResult.suggestion && ollamaResult.errorDetail === ollamaResult.suggestion ? (
+                          <p className="font-bold">{ollamaResult.suggestion}</p>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {ollamaResult.errorDetail && (
+                              <div>
+                                <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Chi tiết lỗi:</p>
+                                <p className="italic font-bold opacity-90">{ollamaResult.errorDetail}</p>
+                              </div>
+                            )}
+                            {ollamaResult.suggestion && (
+                              <div>
+                                <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Gợi ý cải thiện:</p>
+                                <p className="font-bold text-slate-800">{ollamaResult.suggestion}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1793,7 +1840,7 @@ const QuizPage: React.FC = () => {
           </div>
 
           {/* Interaction Area - expands only when answered */}
-          <div className={clsx("overflow-visible px-2 shrink-0 flex items-end", answered ? "h-1/3 pb-6" : "pb-0")}>
+          <div className={clsx("overflow-visible px-2 shrink-0 flex items-end", answered ? "h-auto pb-6" : "pb-0")}>
             {renderInteraction()}
           </div>
 
@@ -1839,7 +1886,13 @@ const QuizPage: React.FC = () => {
                           <DoodleLoading message="AI đang suy nghĩ..." />
                         </div>
                       ) : (
-                        <TypedText text={explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!")} />
+                        <TypedText
+                          text={
+                            ch.mode === 'SPEAKING_READ'
+                              ? (isCurrentAnswerCorrect ? "Bạn phát âm rất chuẩn! Tiếp tục phát huy nhé." : "Hãy xem chi tiết lỗi bên dưới và thử lại nhé!")
+                              : (explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!"))
+                          }
+                        />
                       )}
                     </div>
                   ) : (

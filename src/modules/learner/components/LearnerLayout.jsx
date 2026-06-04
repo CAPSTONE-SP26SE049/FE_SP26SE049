@@ -32,175 +32,11 @@ import {
   Star,
   LogOut,
   User,
-  Landmark,
-  Castle,
-  Building2,
   ChevronDown,
 } from "lucide-react";
-import mienbacImg from "../../../assets/mienbac.png";
-import mientrungImg from "../../../assets/mientrung.png";
-import miennamImg from "../../../assets/miennam.png";
 import logoImg from "../../../assets/logoSpeakVN.png";
 
-const REGION_CHOICES = [
-  {
-    value: "north",
-    label: "Giọng miền Bắc",
-    emoji: "",
-    icon: Landmark,
-    tagline: "Thanh lịch & Chuẩn mực",
-    description: "Chinh phục phát âm chuẩn — nền tảng tiếng Việt quy chuẩn.",
-    photo: mienbacImg,
-    gradient: "from-indigo-600 to-blue-700",
-  },
-  {
-    value: "central",
-    label: "Giọng miền Trung",
-    emoji: "🏯",
-    icon: Castle,
-    tagline: "Nồng hậu & Di sản",
-    description: "Khám phá giọng nói đặc trưng vùng đất cố đô và di sản văn hoá.",
-    photo: mientrungImg,
-    gradient: "from-amber-500 to-orange-600",
-  },
-  {
-    value: "south",
-    label: "Giọng miền Nam",
-    emoji: "🌆",
-    icon: Building2,
-    tagline: "Sôi động & Cởi mở",
-    description: "Làm quen với giọng Nam năng động, cởi mở và thân thiện.",
-    photo: miennamImg,
-    gradient: "from-emerald-500 to-teal-600",
-  },
-];
 
-/* ── Region Selection Overlay (blocks UI if no region) ── */
-const RegionSelectionOverlay = ({ onSelected, onLogout }) => {
-  const [selected, setSelected] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  const handleConfirm = async () => {
-    if (!selected) return;
-    setSaving(true);
-    try {
-      await apiClient.put("/users/me", { region: selected });
-      message.success("Đã chọn vùng miền thành công!");
-      onSelected(selected);
-    } catch (err) {
-      message.error("Không thể lưu vùng miền. Vui lòng thử lại.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 30 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
-        className="w-full max-w-3xl bg-[#fbf6ef] border-[3px] border-slate-900 rounded-[2.5rem] shadow-[10px_10px_0_#1f2937] overflow-hidden p-6 lg:p-8"
-      >
-        {/* Header */}
-        <div className="text-center pb-6">
-          <div className="w-16 h-16 bg-[#49B6E5]/20 border-[3px] border-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_0_#1f2937]">
-            <MapPin size={28} className="text-slate-900" />
-          </div>
-          <h2 className="text-2xl lg:text-3xl font-black text-slate-900 uppercase">
-            Chọn Vùng Miền Của Bạn
-          </h2>
-          <p className="text-slate-600 text-sm font-bold max-w-md mx-auto mt-2">
-            Hệ thống cần biết bạn muốn học giọng vùng nào để cá nhân hoá lộ trình phù hợp nhất
-          </p>
-        </div>
-
-        {/* Region Cards */}
-        <div className="pb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {REGION_CHOICES.map((r, idx) => {
-            const isChosen = selected === r.value;
-            return (
-              <motion.div
-                key={r.value}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1, type: "spring", stiffness: 120 }}
-                whileHover={{ y: -4 }}
-                onClick={() => setSelected(r.value)}
-                className={`relative cursor-pointer rounded-2xl overflow-hidden border-[3px] border-slate-900 transition-all duration-300 shadow-[4px_4px_0_#1f2937] group ${isChosen
-                  ? "bg-[#fef9c3] scale-105"
-                  : "bg-white hover:bg-slate-50"
-                  }`}
-              >
-                {/* Photo */}
-                <div className="relative h-28 overflow-hidden border-b-[3px] border-slate-900">
-                  <img
-                    src={r.photo}
-                    alt={r.label}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-                    <h3 className="text-base font-black text-white drop-shadow-[1px_1px_2px_rgba(0,0,0,0.8)] leading-none">{r.label}</h3>
-                    <div className="text-white bg-slate-900/80 p-1.5 rounded-lg border border-white/20">
-                      <r.icon size={16} strokeWidth={2.5} />
-                    </div>
-                  </div>
-                  {isChosen && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-7 h-7 bg-[#49B6E5] border-2 border-slate-900 rounded-full flex items-center justify-center shadow"
-                    >
-                      <span className="text-slate-900 text-xs font-black">✓</span>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="p-3.5">
-                  <p className="text-[10px] font-black text-[#49B6E5] tracking-widest mb-1 uppercase">{r.tagline}</p>
-                  <p className="text-[11px] text-slate-600 font-bold leading-relaxed line-clamp-2">{r.description}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* CTA */}
-        <div className="space-y-4">
-          <button
-            onClick={handleConfirm}
-            disabled={!selected || saving}
-            className={`w-full rounded-2xl border-[3px] border-slate-900 font-black text-base flex items-center justify-center gap-2 transition-all shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 ${selected
-              ? "bg-[#10b981] text-white"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            style={{ height: 52 }}
-          >
-            {saving ? (
-              <><Loader2 size={18} className="animate-spin" /> Đang lưu...</>
-            ) : (
-              <>Xác nhận & Bắt đầu 🚀</>
-            )}
-          </button>
-
-          <button
-            onClick={onLogout}
-            disabled={saving}
-            className="w-full h-12 rounded-xl font-black text-sm flex items-center justify-center gap-2 text-rose-500 bg-white border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none hover:-translate-y-0.5 transition-all"
-          >
-            <LogOut size={16} />
-            Đăng xuất
-          </button>
-
-          <p className="text-center text-[10px] text-slate-400 mt-4 font-bold">
-            Bạn có thể thay đổi vùng miền sau trong phần Hồ sơ cá nhân
-          </p>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
 
 export default function LearnerLayout() {
   const { session, logout, updateSessionItem } = useAuth();
@@ -242,12 +78,7 @@ export default function LearnerLayout() {
     setAvatarErr(false);
   }, [user?.avatar]);
 
-  // Check if region is missing
-  const hasRegion = Boolean(user?.region && user.region.trim() !== "");
 
-  const handleRegionSelected = (region) => {
-    updateSessionItem?.({ region });
-  };
 
   const handleLogout = () => {
     logout();
@@ -306,10 +137,7 @@ export default function LearnerLayout() {
   return (
     <div className="flex flex-col h-screen bg-[#fbfaff] font-nunito overflow-hidden">
 
-      {/* ── MANDATORY REGION SELECTION OVERLAY ── */}
-      {!hasRegion && user?.role !== 'ADMIN' && user?.role !== 'EDUCATOR' && (
-        <RegionSelectionOverlay onSelected={handleRegionSelected} onLogout={handleLogout} />
-      )}
+
 
       {/* ══════════════════════════════════════════════════════
           TOP NAVIGATION BAR (Doodle Minimalist Style)
@@ -334,11 +162,10 @@ export default function LearnerLayout() {
                   <Link
                     key={item.key}
                     to={item.key}
-                    className={`relative flex items-center justify-center px-4 py-1.5 rounded-full transition-all duration-100 ${
-                      isActive 
-                        ? 'bg-[#7dd3fc] text-slate-900 border border-slate-900 font-black shadow-[1px_1px_0_#1f2937]' 
+                    className={`relative flex items-center justify-center px-4 py-1.5 rounded-full transition-all duration-100 ${isActive
+                        ? 'bg-[#7dd3fc] text-slate-900 border border-slate-900 font-black shadow-[1px_1px_0_#1f2937]'
                         : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <span className="text-[12px] tracking-tight whitespace-nowrap">
                       {item.label}
@@ -357,11 +184,10 @@ export default function LearnerLayout() {
                           key={item.key}
                           to={item.key}
                           onClick={() => setDropdownOpen(false)}
-                          className={`flex items-center px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight transition-all duration-100 ${
-                            isSubActive
+                          className={`flex items-center px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight transition-all duration-100 ${isSubActive
                               ? "bg-[#7dd3fc] text-slate-900 border border-slate-900 shadow-[1px_1px_0_#1f2937]"
                               : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                          }`}
+                            }`}
                         >
                           {item.label}
                         </Link>
@@ -376,11 +202,10 @@ export default function LearnerLayout() {
               >
                 <button
                   type="button"
-                  className={`relative flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full transition-all duration-100 ${
-                    isDropdownActive
+                  className={`relative flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full transition-all duration-100 ${isDropdownActive
                       ? "bg-[#7dd3fc] text-slate-900 border border-slate-900 font-black shadow-[1px_1px_0_#1f2937]"
                       : "text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   <span className="text-[12px] tracking-tight whitespace-nowrap">
                     Xem thêm
@@ -470,8 +295,8 @@ export default function LearnerLayout() {
                 <div className="flex items-center gap-3">
                   <span className="font-black text-xl tracking-tight text-slate-800">SpeakVN</span>
                 </div>
-                <button 
-                  onClick={() => setMobileMenuOpen(false)} 
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
                   className="px-4 py-2 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 font-bold text-xs hover:bg-gray-200 transition-colors"
                 >
                   Đóng

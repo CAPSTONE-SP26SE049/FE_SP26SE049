@@ -137,7 +137,7 @@ interface StepResult {
 
 const EntryTestPage: React.FC = () => {
     const navigate = useNavigate()
-    const { session, updateSessionItem } = useAuth()
+    const { session, updateSessionItem, refreshUserProfile } = useAuth()
     const recorder = useAudioRecorder()
 
     const [questions, setQuestions] = useState<EntryTestQuestion[]>([])
@@ -365,7 +365,13 @@ const EntryTestPage: React.FC = () => {
 
             // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
             if (updateSessionItem) {
-                updateSessionItem({ hasDoneEntryTest: true })
+                updateSessionItem({
+                    hasDoneEntryTest: true,
+                    region: data?.detectedRegion || null
+                })
+            }
+            if (refreshUserProfile) {
+                await refreshUserProfile()
             }
         } catch (err) {
             message.error('Lỗi khi lưu kết quả bài test')

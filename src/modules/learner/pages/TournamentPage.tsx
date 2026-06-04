@@ -42,15 +42,15 @@ export default function TournamentPage() {
   const [error, setError] = useState(false)
   const [tournament, setTournament] = useState<any>(null)
   const [leaderboard, setLeaderboard] = useState<any[]>([])
-  
+
   // Tab Switcher and History states
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'history'>('leaderboard')
   const [history, setHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
-  
+
   // Timer countdown state
   const [timeLeftStr, setTimeLeftStr] = useState<string>('')
-  
+
   // Active challenge state for practice modal
   const [activeChallenge, setActiveChallenge] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -607,7 +607,7 @@ export default function TournamentPage() {
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="text-center mb-2">
                               <p className="font-black text-slate-800 text-[10px] md:text-xs truncate max-w-[90px] leading-tight">
                                 {e.fullName || 'Học viên'}
@@ -676,17 +676,17 @@ export default function TournamentPage() {
               ) : (
                 <div className="space-y-6 max-h-[500px] overflow-y-auto pr-1">
                   {history.map((season: any) => {
-                    const formattedDate = season.endsAt 
+                    const formattedDate = season.endsAt
                       ? new Date(season.endsAt).toLocaleDateString('vi-VN', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
                       : 'N/A'
 
                     return (
-                      <div 
-                        key={season.id} 
+                      <div
+                        key={season.id}
                         className="border-[2.5px] border-slate-900 rounded-[2rem] p-5 bg-[#FFFDF9] shadow-[4px_4px_0_#1f2937] space-y-3"
                       >
                         <div className="border-b-[1.5px] border-slate-100 pb-2">
@@ -802,12 +802,12 @@ export default function TournamentPage() {
                 >
                   <Mic size={40} className={clsx(recorder.isRecording && "scale-110")} />
                 </motion.button>
-                
+
                 <p className="text-xs font-black uppercase text-slate-500 tracking-wider">
-                  {recorder.isRecording 
-                    ? `Đang thu âm (${recorder.durationSeconds} giây) - Click để dừng` 
-                    : isAnalyzing 
-                      ? 'AI Đang phân tích phát âm...' 
+                  {recorder.isRecording
+                    ? `Đang thu âm (${recorder.durationSeconds} giây) - Click để dừng`
+                    : isAnalyzing
+                      ? 'AI Đang phân tích phát âm...'
                       : 'Bấm micro để bắt đầu phát âm'}
                 </p>
 
@@ -834,8 +834,8 @@ export default function TournamentPage() {
                   {submitStatus && (
                     <div className={clsx(
                       "p-4 rounded-[1.5rem] border-[2px] border-slate-900 flex items-center gap-3.5 shadow-[3px_3px_0_#1f2937]",
-                      submitStatus.updated 
-                        ? "bg-amber-100 text-amber-950 border-amber-500" 
+                      submitStatus.updated
+                        ? "bg-amber-100 text-amber-950 border-amber-500"
                         : "bg-sky-50 text-sky-950 border-sky-400"
                     )}>
                       <div className={clsx(
@@ -867,7 +867,7 @@ export default function TournamentPage() {
                   <div className="bg-slate-50 border-[2.5px] border-slate-900 rounded-[2rem] p-6 shadow-[4px_4px_0_#1f2937]">
                     <div className="flex items-center justify-between border-b-[2px] border-slate-200/50 pb-3 mb-4">
                       <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Kết quả phân tích từ AI</span>
-                      
+
                       <span className="text-xs font-black px-3.5 py-1 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937] uppercase bg-emerald-100 text-emerald-800">
                         Đã Hoàn Thành
                       </span>
@@ -916,7 +916,7 @@ export default function TournamentPage() {
           </div>
         )}
       </Modal>
-      
+
       {/* Global CSS custom settings for brutalist modals */}
       <style>{`
         .brutal-modal .ant-modal-content {

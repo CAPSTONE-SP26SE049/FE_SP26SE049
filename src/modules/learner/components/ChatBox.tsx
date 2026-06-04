@@ -97,7 +97,7 @@ export default function ChatBox({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#fbf6ef] relative"
-           style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(38,61,91,0.02) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+        style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(38,61,91,0.02) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
         {isLoadingHistory ? (
           <div className="text-center text-xs text-[#263D5B]/50 mt-8 font-black uppercase tracking-wider">
             Đang tải tin nhắn cũ...

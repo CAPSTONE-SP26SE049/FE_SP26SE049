@@ -6,7 +6,7 @@
 // 1. Backend URL
 const USE_DEPLOYED_BE = false;
 export const API_BASE_URL = USE_DEPLOYED_BE
-    ? 'https://speakvn-backend-221596280724.asia-southeast1.run.app/api/v1'
+    ? 'https://speakvn-backend-320664605573.asia-southeast1.run.app/api/v1'
     : 'http://localhost:8082/api/v1';
 
 // 2. ASR (Speech-to-Text) URL

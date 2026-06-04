@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
     // When VITE_API_URL points to an external host, proxy is not needed.
     // But for localhost dev we need the proxy to avoid CORS.
     const isLocalDev = !env.VITE_API_URL || env.VITE_API_URL.includes('localhost') || env.VITE_API_URL.includes('127.0.0.1')
-    const proxyTarget = isLocalDev ? 'https://speakvn-backend-221596280724.asia-southeast1.run.app' : env.VITE_API_URL?.replace('/api/v1', '') ?? 'https://speakvn-backend-221596280724.asia-southeast1.run.app'
+    const proxyTarget = isLocalDev ? 'https://speakvn-backend-320664605573.asia-southeast1.run.app' : env.VITE_API_URL?.replace('/api/v1', '') ?? 'https://speakvn-backend-320664605573.asia-southeast1.run.app'
 
     return {
         plugins: [react()],
