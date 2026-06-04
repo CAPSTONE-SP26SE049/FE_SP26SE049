@@ -268,12 +268,12 @@ function parseChallenge(raw: any): ParsedChallenge {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-/** Multiple choice (READING v1, LISTENING, ENTRY_TEST) */
+/** Multiple choice (READING v1, LISTENING, ENTRY_TEST) — 2×2 grid for up to 4 options */
 function MCOptions({ options, correct, answered, selected, onSelect }: {
   options: string[]; correct: string; answered: boolean; selected: string | null; onSelect: (o: string) => void
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl mx-auto">
       {options.map((opt, i) => {
         const isRight = answered && opt === correct
         const isWrong = answered && opt === selected && opt !== correct
@@ -1250,6 +1250,12 @@ const QuizPage: React.FC = () => {
 
   // ── Current question ──────────────────────────────────────────────────────
   const ch = challenges[idx]
+  const isListeningQuestion = ch?.skillType === 'LISTENING'
+  /** LISTENING: reveal target word only after the user picks the correct option */
+  const listeningRevealedWord =
+    isListeningQuestion && answered && selected === ch?.correctAnswer
+      ? (selected || ch.correctAnswer)
+      : null
   const isCurrentAnswerCorrect = (() => {
     if (!answered) return false
     if (!ch) return false
@@ -1753,7 +1759,7 @@ const QuizPage: React.FC = () => {
               ) : (
                 <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
                   {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
-                    : ch.skillType === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
+                    : isListeningQuestion ? 'Nghe và chọn đáp án đúng:'
                     : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
                     : 'Câu hỏi:'}
                 </p>
@@ -1761,14 +1767,23 @@ const QuizPage: React.FC = () => {
 
               {ch.mode !== 'WRITING_FILL' && (
                 <h4 className="text-4xl font-black text-slate-900 leading-snug max-w-2xl">
-                  {ch.content}
+                  {isListeningQuestion ? (
+                    <span>
+                      Đáp án đúng:{' '}
+                      <span className={listeningRevealedWord ? 'text-emerald-600' : 'text-slate-400 tracking-widest'}>
+                        {listeningRevealedWord ?? '......'}
+                      </span>
+                    </span>
+                  ) : (
+                    ch.content
+                  )}
                 </h4>
               )}
 
               {/* Nút mở popup mô hình phát âm 2.5D */}
-              {answered && (
+              {answered && (!isListeningQuestion || listeningRevealedWord) && (
                 <button
-                  onClick={() => { setPronWord(ch.content); setShowPronModel(true); }}
+                  onClick={() => { setPronWord(listeningRevealedWord || ch.content); setShowPronModel(true); }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#FDF5E6] border-[2px] border-slate-900 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
                 >
                   <Smile size={14} className="text-slate-700" /> Xem mô hình phát âm
