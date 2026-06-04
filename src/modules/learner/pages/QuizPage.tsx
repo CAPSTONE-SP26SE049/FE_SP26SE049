@@ -178,6 +178,7 @@ interface ParsedChallenge {
   hint: string | null
   timeLimit: number | null     // time for THIS question
   region?: string              // dialect/region of the challenge
+  listeningType?: 'basic' | 'advanced'
 }
 
 
@@ -258,6 +259,7 @@ function parseChallenge(raw: any): ParsedChallenge {
     hint: meta.hint || null,
     timeLimit: meta.timeLimit ?? meta.time_limit ?? meta.timeLimitSeconds ?? null,
     region: ch.region ?? meta.region ?? null,
+    listeningType: meta.listeningType ?? meta.listening_type ?? null,
   }
 }
 
@@ -1135,15 +1137,15 @@ const QuizPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Stats - chỉ hiện tỷ lệ, bỏ score */}
+            {/* Stats - Điểm số (thang điểm 10) */}
             <div className="flex justify-center mb-8">
               <motion.div
                 whileHover={{ y: -4 }}
                 className="bg-[#e0f2fe] rounded-2xl p-5 border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center text-center group transition-all w-48"
               >
                 <Activity size={28} className="text-[#0284c7] mb-3 group-hover:scale-110 transition-transform" strokeWidth={3} />
-                <p className="text-[11px] uppercase font-black tracking-widest text-[#0284c7] opacity-80 mb-1">Tỷ lệ</p>
-                <p className="text-4xl font-black text-slate-900">{pct}<span className="text-xl text-slate-400">%</span></p>
+                <p className="text-[11px] uppercase font-black tracking-widest text-[#0284c7] opacity-80 mb-1">Điểm số</p>
+                <p className="text-4xl font-black text-slate-900">{score}<span className="text-xl text-slate-400">/{total}</span></p>
               </motion.div>
             </div>
 
@@ -1706,6 +1708,7 @@ const QuizPage: React.FC = () => {
               ) : (
                 <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
                   {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
+                    : ch.skillType === 'LISTENING' ? (ch.listeningType === 'advanced' ? 'Nghe và chọn từ bị phát âm SAI:' : 'Nghe và chọn đáp án đúng:')
                     : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
                     : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
                     : 'Câu hỏi:'}
@@ -1714,7 +1717,19 @@ const QuizPage: React.FC = () => {
 
               {ch.mode !== 'WRITING_FILL' && (
                 <h4 className="text-4xl font-black text-slate-900 leading-snug max-w-2xl">
-                  {ch.content}
+                  {ch.skillType === 'LISTENING' ? (
+                    answered ? (
+                      ch.listeningType === 'advanced' ? (
+                        <span>Mẫu câu: <span className="underline decoration-wavy decoration-rose-500">{ch.correctSentence || ch.content}</span></span>
+                      ) : (
+                        <span>Đáp án đúng: <span className="text-emerald-600">{ch.correctAnswer}</span></span>
+                      )
+                    ) : (
+                      ch.listeningType === 'advanced' ? '......' : 'Đáp án đúng: ......'
+                    )
+                  ) : (
+                    ch.content
+                  )}
                 </h4>
               )}
 
@@ -1732,7 +1747,7 @@ const QuizPage: React.FC = () => {
                 (ch.mode === 'SPEAKING_READ' && consentGiven !== null && !answered && !isAnalyzing)) && (
                 <div className="absolute bottom-4 right-4 flex flex-col items-center gap-2">
                   <button
-                    disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS === 'banmai'}
+                    disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS !== null}
                     onClick={async () => {
                       try {
                         const plays = audioPlays[idx] || 0;
@@ -1740,7 +1755,10 @@ const QuizPage: React.FC = () => {
                           if (ch.audioUrl) {
                             new Audio(ch.audioUrl).play();
                           } else {
-                            await playRegionalTTS(ch.transcript || ch.content, 'banmai');
+                            const ttsVoice = ch.region === 'CENTRAL' ? 'myan'
+                              : ch.region === 'SOUTH' ? 'linhsan'
+                              : 'banmai';
+                            await playRegionalTTS(ch.transcript || ch.content, ttsVoice);
                           }
                           setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
                         }
@@ -1749,16 +1767,16 @@ const QuizPage: React.FC = () => {
                     className={clsx(
                       "w-16 h-16 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all group relative",
                       (answered || (audioPlays[idx] || 0) >= 2) ? "opacity-50 grayscale cursor-not-allowed shadow-none" : "",
-                      playingTTS === 'banmai' ? "animate-pulse" : ""
+                      playingTTS !== null ? "animate-pulse" : ""
                     )}
                   >
-                    <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS === 'banmai' ? "animate-spin" : "")} size={28} />
+                    <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS !== null ? "animate-spin" : "")} size={28} />
                     <div className="absolute -top-2 -right-2 bg-[#F43F5E] border-[2px] border-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-[1px_1px_0_#000]">
                       {2 - (audioPlays[idx] || 0)}
                     </div>
                   </button>
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border-[1.5px] border-slate-200 shadow-sm">
-                    {playingTTS === 'banmai' ? "đang phát..." : `nghe âm thanh (${2 - (audioPlays[idx] || 0)}/2)`}
+                    {playingTTS !== null ? "đang phát..." : `nghe âm thanh (${2 - (audioPlays[idx] || 0)}/2)`}
                   </span>
                 </div>
               )}
