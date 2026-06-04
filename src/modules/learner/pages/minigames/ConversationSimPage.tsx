@@ -374,8 +374,8 @@ const ConversationSimPage: React.FC = () => {
                         uploadFileName = 'recording.wav'
                     } catch (e) {
                         console.warn('WAV conversion failed, using WebM fallback:', e)
-                        audioForAsr = new Blob([blob], { type: 'audio/wav' })
-                        uploadFileName = 'recording.wav'
+                        audioForAsr = blob
+                        uploadFileName = 'recording.webm'
                     }
 
                     const asrFormData = new FormData()

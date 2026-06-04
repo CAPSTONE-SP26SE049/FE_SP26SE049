@@ -213,15 +213,28 @@ export default function TournamentPage() {
     try {
       // 1. Convert to WAV
       let wavBlob = recordedBlob
+      let uploadFileName = 'recording.wav'
+      let isWav = true
+
       try {
-        wavBlob = await convertWebmToWav(recordedBlob)
+        const mime = (recordedBlob.type || '').toLowerCase()
+        if (mime.includes('wav')) {
+          wavBlob = recordedBlob
+          uploadFileName = 'recording.wav'
+        } else {
+          wavBlob = await convertWebmToWav(recordedBlob)
+          uploadFileName = 'recording.wav'
+        }
       } catch (err) {
         console.warn('WAV conversion failed, using fallback:', err)
+        wavBlob = recordedBlob
+        uploadFileName = 'recording.webm'
+        isWav = false
       }
 
       // 2. Call ASR
       const asrFormData = new FormData()
-      asrFormData.append('audio', wavBlob, 'recording.wav')
+      asrFormData.append('audio', wavBlob, uploadFileName)
       asrFormData.append('target', activeChallenge.contentText)
 
       const asrStartTime = performance.now()
@@ -240,7 +253,9 @@ export default function TournamentPage() {
       // 3. Upload to Cloudinary for saving history
       let audioUrl = null
       try {
-        const file = new File([wavBlob], `tournament_${Date.now()}.wav`, { type: 'audio/wav' })
+        const fileExt = isWav ? 'wav' : 'webm'
+        const fileType = isWav ? 'audio/wav' : (recordedBlob.type || 'audio/webm')
+        const file = new File([wavBlob], `tournament_${Date.now()}.${fileExt}`, { type: fileType })
         audioUrl = await uploadToCloudinary(file, 'video')
       } catch (cloudinaryErr) {
         console.warn('Cloudinary upload failed:', cloudinaryErr)

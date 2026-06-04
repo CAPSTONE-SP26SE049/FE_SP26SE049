@@ -890,8 +890,8 @@ const QuizPage: React.FC = () => {
         }
       } catch (convertErr) {
         console.warn('[Speaking Quiz] Convert audio failed, fallback original blob:', convertErr)
-        audioForAsr = new Blob([blob], { type: 'audio/wav' })
-        uploadFileName = 'recording.wav'
+        audioForAsr = blob
+        uploadFileName = 'recording.webm'
       }
 
       // 2. Call ASR + Cloudinary upload in parallel (both only need audioForAsr)
@@ -1666,7 +1666,7 @@ const QuizPage: React.FC = () => {
               ) : (
                 <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
                   {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
-                    : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
+                    : ch.skillType === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
                     : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
                     : 'Câu hỏi:'}
                 </p>

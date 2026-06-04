@@ -24,7 +24,8 @@ gcloud run deploy ${SERVICE_NAME} \
   --region ${REGION} \
   --platform managed \
   --port 8080 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --min-instances 1
 
 if [ $? -eq 0 ]; then
   echo "Deployment successful!"
