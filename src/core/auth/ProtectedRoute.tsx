@@ -44,12 +44,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Ràng buộc Entry Test cho Learner mới
-  if (
-    session.user.role === 'USER' &&
-    !session.user.hasDoneEntryTest &&
-    location.pathname !== '/entry-test'
-  ) {
-    return <Navigate to="/entry-test" replace />
+  if (session.user.role === 'USER') {
+    if (!session.user.hasDoneEntryTest) {
+      if (location.pathname !== '/entry-test') {
+        return <Navigate to="/entry-test" replace />
+      }
+    } else {
+      if (location.pathname === '/entry-test') {
+        return <Navigate to="/learner/dashboard" replace />
+      }
+    }
   }
 
   return <Outlet />
