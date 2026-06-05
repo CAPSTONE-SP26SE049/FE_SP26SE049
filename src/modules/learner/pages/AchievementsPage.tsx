@@ -157,7 +157,7 @@ const AchievementsPage: React.FC = () => {
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1)
-    const PAGE_SIZE = 12
+    const PAGE_SIZE = 24
 
     useEffect(() => {
         const load = async () => {
