@@ -122,14 +122,14 @@ const UserManagementPage = () => {
         if (!editingUser) return
 
         const payload: Record<string, string> = {}
-        const fullName = values.fullName?.trim()
-        const phone = values.phone?.trim()
-        const originalName = (editingUser.fullName || '').trim()
-        const originalPhone = (editingUser.phone || editingUser.phoneNumber || '').trim()
+            const fullName = values.fullName?.trim()
+            const phone = values.phone?.trim()
+            const originalName = (editingUser.fullName || '').trim()
+            const originalPhone = (editingUser.phone || editingUser.phoneNumber || '').trim()
 
-        if (fullName !== undefined && fullName !== originalName) payload.fullName = fullName
-        if (phone !== undefined && phone !== originalPhone) payload.phone = phone
-        if (values.region !== undefined && values.region !== editingUser.region) payload.region = values.region
+            if (fullName !== undefined && fullName !== originalName) payload.fullName = fullName
+            if (phone !== undefined && phone !== originalPhone) payload.phone = phone
+            if (values.region !== undefined && values.region !== editingUser.region) payload.region = values.region
 
         if (Object.keys(payload).length === 0) {
             message.warning('Không có thay đổi nào để cập nhật')
@@ -178,26 +178,12 @@ const UserManagementPage = () => {
             message.loading({ content: 'Đang xuất file...', key: 'exp' })
             const blob = await adminExcelService.exportTeachers()
             downloadBlob(blob, `users_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
-                        rules={[
-                            { max: 100, message: 'Họ tên không quá 100 ký tự' },
-                            {
-                                validator: (_, value) => {
-                                    if (value === undefined || value === null || value === '') return Promise.resolve()
-                                    if (typeof value === 'string' && value.trim() === '') {
-                                        return Promise.reject(new Error('Họ tên không được chỉ chứa khoảng trắng'))
-                                    }
-                                    return Promise.resolve()
-                                },
-                            },
-                        ]}
-                    >
-                        <Input
-                            size="large"
-                            prefix={<User className="text-slate-300" size={18} strokeWidth={3} />}"
-                            className="doodle-input"
-                            maxLength={100}
-                            placeholder="Để trống nếu không đổi tên"
-                        />
+            message.success({ content: 'Xuất file thành công!', key: 'exp' })
+        } catch {
+            message.error({ content: 'Không thể xuất file', key: 'exp' })
+        } finally {
+            setExporting(false)
+        }
     }
 
     const handleImport = async () => {
@@ -210,23 +196,9 @@ const UserManagementPage = () => {
         setImportResult(null)
         try {
             const res: any = await adminExcelService.importTeachers(importFile)
-                        rules={[
-                            {
-                                validator: (_, value) => {
-                                    const v = (value ?? '').trim();
-                                    if (!v) return Promise.resolve();
-                                    if (/^(0|\+84)[3-9]\d{8}$/.test(v)) return Promise.resolve();
-                                    return Promise.reject(new Error('Số điện thoại không hợp lệ'));
-                                },
-                            },
-                        ]}
-                    >
-                        <Input
-                            size="large"
-                            prefix={<Phone className="text-slate-300" size={18} strokeWidth={3} />}"
-                            className="doodle-input"
-                            placeholder="0912345678"
-                        />
+            const result = res?.data ?? res
+            setImportResult(result)
+            message.success('Nhập file hoàn tất!')
             fetchUsers()
         } catch (e: any) {
             message.error(e?.response?.data?.message || 'Lỗi nhập file')
@@ -383,7 +355,7 @@ const UserManagementPage = () => {
                         className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <FileSpreadsheet size={16} strokeWidth={3} />
-                        Tải mẫu
+                        {templateDownloading ? 'Đang tải...' : 'Tải file mẫu'}
                     </motion.button>
 
                     <motion.button
@@ -486,8 +458,8 @@ const UserManagementPage = () => {
                             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Danh sách người dùng</h2>
                         </div>
                         <div className="flex items-center gap-4">
-                            <button onClick={handleExport} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">
-                                <FileSpreadsheet size={14} /> Xuất CSV
+                            <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50">
+                                <FileSpreadsheet size={14} /> {exporting ? 'Đang xuất...' : 'Xuất file'}
                             </button>
                         </div>
                     </div>
@@ -622,12 +594,13 @@ const UserManagementPage = () => {
                             },
                         ]}
                     >
-                        <Input
-                            prefix={<User className="text-slate-300" size={18} strokeWidth={3} />}
-                            className="doodle-input"
-                            maxLength={100}
-                            placeholder="Để trống nếu không đổi tên"
-                        />
+                            <Input
+                                size="large"
+                                prefix={<User className="text-slate-300" size={18} strokeWidth={3} />}
+                                className="doodle-input"
+                                maxLength={100}
+                                placeholder="Để trống nếu không đổi tên"
+                            />
                     </Form.Item>
 
                     <Form.Item
@@ -644,24 +617,26 @@ const UserManagementPage = () => {
                             },
                         ]}
                     >
-                        <Input
-                            prefix={<Phone className="text-slate-300" size={18} strokeWidth={3} />}
-                            className="doodle-input"
-                            placeholder="0912345678"
-                        />
+                            <Input
+                                size="large"
+                                prefix={<Phone className="text-slate-300" size={18} strokeWidth={3} />}
+                                className="doodle-input"
+                                placeholder="0912345678"
+                            />
                     </Form.Item>
 
                     <Form.Item
                         name="region"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Vùng miền</span>}
                     >
-                        <Select
-                            allowClear
-                            placeholder="Chọn vùng miền..."
-                            className="doodle-select"
-                            suffixIcon={<MapPin className="text-slate-300" size={16} strokeWidth={3} />}
-                            options={REGION_OPTIONS}
-                        />
+                            <Select
+                                size="large"
+                                allowClear
+                                placeholder="Chọn vùng miền..."
+                                className="doodle-select"
+                                suffixIcon={<MapPin className="text-slate-300" size={16} strokeWidth={3} />}
+                                options={REGION_OPTIONS}
+                            />
                     </Form.Item>
 
                     <div className="flex gap-4 pt-6">
@@ -743,7 +718,7 @@ const UserManagementPage = () => {
                             (!importFile || importing) && "opacity-50 grayscale"
                         )}
                     >
-                        {importing ? "Đang xử lý..." : "Xác nhận nhập"}
+                        {importing ? "Đang nhập file..." : "Nhập file"}
                     </motion.button>
                 </div>
             </Modal>

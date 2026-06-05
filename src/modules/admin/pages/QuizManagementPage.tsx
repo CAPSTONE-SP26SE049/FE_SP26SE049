@@ -156,7 +156,21 @@ const AdminQuizManagementPage: React.FC = () => {
         const initData = async () => {
             await fetchLevelsAndDialects();
             try {
-                                                  <Download size={14} strokeWidth={4} /> {exportingQuiz ? 'Đang xuất...' : 'Xuất file'}
+                const [lRes, dRes, rRes]: any[] = await Promise.all([
+                    adminService.getLevelsForSelection(),
+                    adminService.getDialects(),
+                    adminService.getBadgesForAdmin()
+                ]);
+                const toArray = (res: any) => {
+                    const raw = res?.data?.data ?? res?.data ?? res ?? [];
+                    return Array.isArray(raw) ? raw : [];
+                };
+                setLevels(toArray(lRes));
+                setDialects(toArray(dRes));
+                setRewards(toArray(rRes));
+            } catch (e) {
+                console.error('Init data failed', e);
+                message.error('Không thể tải dữ liệu khởi tạo. Vui lòng tải lại trang.');
             }
         };
         initData();
@@ -507,17 +521,26 @@ const AdminQuizManagementPage: React.FC = () => {
             const res: any = importChallengesSkillType === 'MIXED'
                 ? await excelService.importMixedToQuiz(quiz.id, importChallengesFile)
                 : await excelService.importChallengesToQuiz(importChallengesSkillType, quiz.id, importChallengesFile);
-                                {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                {importingChallenges ? 'Đang nhập file...' : 'Nhập file'}
+            const data = res?.data ?? res;
+            const successCount = data?.successCount ?? 0;
+            const errorCount = data?.errorCount ?? 0;
+            if (successCount > 0) {
+                message.success(`Nhập file thành công: ${successCount} câu`);
                 handleLevelChange(selectedLevelId!, true);
                 fetchQuizChallenges();
                 setIsImportChallengesModalOpen(false);
             } else {
-                message.warning(result?.message || 'Không có câu hỏi nào được import. Kiểm tra lại file Excel.');
+                message.warning('Nhập file hoàn tất nhưng không có câu nào được thêm');
+            }
+            if (errorCount > 0) {
+                const msgs = data?.messages ?? [];
+                message.error(`Có ${errorCount} lỗi khi nhập file${msgs.length ? `: ${msgs[0]}` : ''}`);
             }
         } catch (err: any) {
-            message.error(err?.response?.data?.message || 'Nhập câu hỏi thất bại');
-        } finally { setImportingChallenges(false); }
+            message.error(err?.message || err?.response?.data?.message || 'Nhập file thất bại');
+        } finally {
+            setImportingChallenges(false);
+        }
     };
 
     const handleExportTemplate = async () => {
@@ -545,7 +568,7 @@ const AdminQuizManagementPage: React.FC = () => {
             const blob = await excelService.exportQuizQuestions(quiz.id);
             const titleStr = quiz.title || quiz.name || 'quiz';
             downloadBlob(blob, `danh_sach_cau_hoi_${titleStr.toLowerCase().replace(/\s+/g, '_')}.xlsx`);
-            message.success({ content: 'Xuất câu hỏi thành công!', key: 'export-quiz' });
+            message.success({ content: 'Xuất file thành công!', key: 'export-quiz' });
         } catch (err: any) {
             message.error({ content: 'Lỗi xuất file!', key: 'export-quiz' });
         } finally {
@@ -1127,14 +1150,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <motion.button onClick={openImportChallengesModal} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-[#49B6E5] transition-all"><Upload size={14} strokeWidth={3} /> Nhập file</motion.button>
-                                            <motion.button onClick={handleExportTemplate} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-500 transition-all"><Download size={14} strokeWidth={3} /> Tải mẫu</motion.button>
+                                            <motion.button onClick={handleExportTemplate} disabled={exportingTemplate} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-500 transition-all disabled:opacity-50"><Download size={14} strokeWidth={3} /> {exportingTemplate ? 'Đang tải...' : 'Tải file mẫu'}</motion.button>
                                             <motion.button
                                                 whileHover={{ scale: 1.05 }}
                                                 onClick={handleExportQuizQuestions}
                                                 disabled={exportingQuiz}
                                                 className="px-4 py-2 bg-[#E2F5FC] text-[#49B6E5] border-[2px] border-[#49B6E5] rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
                                             >
-                                                <Download size={14} strokeWidth={4} /> Xuất file
+                                                <Download size={14} strokeWidth={4} /> {exportingQuiz ? 'Đang xuất...' : 'Xuất file'}
                                             </motion.button>
                                         </div>
                                     </div>
@@ -1439,7 +1462,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
             {/* --- Import Challenges Modal --- */}
             <Modal
-                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Upload className="text-[#49B6E5]" /> Nhập bài tập từ Excel</div>}
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Upload className="text-[#49B6E5]" /> Nhập file bài tập</div>}
                 open={isImportChallengesModalOpen}
                 onCancel={() => setIsImportChallengesModalOpen(false)}
                 footer={null}
@@ -1482,8 +1505,8 @@ const AdminQuizManagementPage: React.FC = () => {
                                 disabled={importingChallenges || !importChallengesFile}
                                 className="h-12 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#49B6E5] text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
                             >
-                                {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                                Bắt đầu nhập
+                                {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                {importingChallenges ? 'Đang nhập file...' : 'Nhập file'}
                             </motion.button>
                         </div>
                     </Form>

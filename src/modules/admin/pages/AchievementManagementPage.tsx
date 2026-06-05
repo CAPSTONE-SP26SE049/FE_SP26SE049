@@ -108,12 +108,12 @@ const AchievementManagementPage: React.FC = () => {
         if (exporting) return;
         setExporting(true);
         try {
-            message.loading({ content: 'Đang chuẩn bị tệp...', key: 'exp' });
-            const blob = await adminExcelService.exportRewards();
-            downloadBlob(blob, 'achievements_export.xlsx');
-            message.success({ content: 'Xuất Excel thành công!', key: 'exp' });
-        } catch (error) {
-            message.error({ content: 'Lỗi khi xuất Excel', key: 'exp' });
+                message.loading({ content: 'Đang xuất file...', key: 'exp' });
+                const blob = await adminExcelService.exportRewards();
+                downloadBlob(blob, 'achievements_export.xlsx');
+                message.success({ content: 'Xuất file thành công!', key: 'exp' });
+            } catch (error) {
+                message.error({ content: 'Lỗi khi xuất file', key: 'exp' });
         }
     };
 
@@ -121,11 +121,11 @@ const AchievementManagementPage: React.FC = () => {
         if (templateDownloading) return;
         setTemplateDownloading(true);
         try {
-            const blob = await adminExcelService.downloadRewardTemplate();
-            downloadBlob(blob, 'achievement_template.xlsx');
-            message.success('Tải file mẫu thành công');
-        } catch (error) {
-            message.error('Lỗi khi tải file mẫu');
+                const blob = await adminExcelService.downloadRewardTemplate();
+                downloadBlob(blob, 'achievement_template.xlsx');
+                message.success('Tải file mẫu thành công!');
+            } catch (error) {
+                message.error('Lỗi khi tải file mẫu');
         }
     };
 
@@ -142,14 +142,14 @@ const AchievementManagementPage: React.FC = () => {
         try {
             const res: any = await adminExcelService.importRewards(importFile);
             const result = res?.data ?? res;
-            message.success(`Nhập hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
+            message.success(`Nhập file hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
             if (result.errorCount > 0) {
                 Modal.error({
-                    title: 'Lỗi khi nhập dữ liệu',
+                    title: 'Lỗi khi nhập file',
                     content: (
                         <div className="max-h-60 overflow-y-auto mt-2">
                             {(result.messages ?? []).map((msg: string, i: number) => (
-                                <p key={i} className="text-xs text-red-500 mb-1">Dòng {i}: {msg}</p>
+                                <p key={i} className="text-xs text-red-500 mb-1">Dòng {i + 1}: {msg}</p>
                             ))}
                         </div>
                     ),
@@ -160,7 +160,7 @@ const AchievementManagementPage: React.FC = () => {
             setImportFile(null);
             fetchAchievements();
         } catch (error) {
-            message.error('Lỗi khi nhập Excel');
+            message.error('Lỗi nhập file');
         } finally {
             setImporting(false);
         }

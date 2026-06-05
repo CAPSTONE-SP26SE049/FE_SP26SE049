@@ -169,9 +169,9 @@ export default function ChallengeBankManagementPage() {
     if (templateDownloading) return
     setTemplateDownloading(true)
     try {
-      const blob = await adminExcelService.downloadChallengeBankTemplate()
-      downloadBlob(blob, 'template_challenge_bank.xlsx')
-      showToast('Tải file mẫu thành công!', 'success')
+          const blob = await adminExcelService.downloadChallengeBankTemplate()
+          downloadBlob(blob, 'template_challenge_bank.xlsx')
+          showToast('Tải file mẫu thành công!', 'success')
     } catch (err) {
       console.error('Failed to download template:', err)
       showToast('Lỗi tải file mẫu.', 'error')
@@ -187,8 +187,8 @@ export default function ChallengeBankManagementPage() {
       const blob = await adminExcelService.exportChallengeBank(
         filterSkill !== 'ALL' ? filterSkill : undefined
       )
-      downloadBlob(blob, `challenge_bank_${filterSkill.toLowerCase()}.xlsx`)
-      showToast('Xuất file thành công!', 'success')
+          downloadBlob(blob, `challenge_bank_${filterSkill.toLowerCase()}.xlsx`)
+          showToast('Xuất file thành công!', 'success')
     } catch (err) {
       console.error('Failed to export Excel:', err)
       showToast('Lỗi xuất file.', 'error')
@@ -273,7 +273,7 @@ export default function ChallengeBankManagementPage() {
             type="file"
             ref={fileInputRef}
             onChange={handleImportExcel}
-            accept=".xlsx, .xls"
+            accept=".xlsx,.xls,.csv"
             className="hidden"
           />
           <button
@@ -343,7 +343,6 @@ export default function ChallengeBankManagementPage() {
               <option value="LISTENING">NGHE</option>
               <option value="READING">ĐỌC</option>
               <option value="WRITING">VIẾT</option>
-              <option value="ENTRY_TEST">BÀI TEST ĐẦU VÀO</option>
             </select>
 
             {/* Region Filter */}
