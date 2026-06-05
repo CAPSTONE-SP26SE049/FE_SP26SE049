@@ -500,23 +500,27 @@ const AchievementManagementPage: React.FC = () => {
                     )}
 
                     <div className="flex gap-4 pt-4">
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             type="button"
                             onClick={() => { setIsModalOpen(false); setIconPreview(''); form.resetFields(); }}
-                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705] hover:-translate-y-0.5 transition-all"
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705]"
                         >
                             Hủy
-                        </button>
-                        <button
+                        </motion.button>
+                        <motion.button
+                            whileHover={submitting || isUploading ? {} : { scale: 1.02, y: -2 }}
+                            whileTap={submitting || isUploading ? {} : { scale: 0.98 }}
                             type="submit"
                             disabled={submitting || isUploading}
                             className={clsx(
-                                'flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5',
+                                'flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937] transition-all',
                                 (submitting || isUploading) && 'opacity-50 cursor-not-allowed',
                             )}
                         >
-                            {submitting ? 'Đang lưu...' : 'Lưu huy hiệu'}
-                        </button>
+                            {submitting ? 'Đang lưu...' : editingAchievement ? 'Cập nhật' : 'Lưu huy hiệu'}
+                        </motion.button>
                     </div>
                 </Form>
             </Modal>

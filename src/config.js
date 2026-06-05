@@ -4,16 +4,14 @@
  */
 
 // 1. Backend URL
-const USE_DEPLOYED_BE = false;
-export const API_BASE_URL = USE_DEPLOYED_BE
-    ? 'https://speakvn-backend-320664605573.asia-southeast1.run.app/api/v1'
-    : 'http://localhost:8082/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api/v1';
 
 // 2. ASR (Speech-to-Text) URL
-const USE_DEPLOYED_ASR = true;
-export const ASR_BASE_URL = USE_DEPLOYED_ASR
-    ? 'https://nguyenductuan-speak-journey-vn.hf.space/api/v1/transcribe'
-    : 'http://localhost:8000/api/v1/transcribe';
+// original ASR for Entry Test
+export const ENTRY_TEST_ASR_URL = import.meta.env.VITE_ASR_URL || 'https://nguyenductuan-speak-journey-vn.hf.space/api/v1/transcribe';
+
+// new ASR for the rest of the application (Quiz, Tournament, etc.)
+export const ASR_BASE_URL = import.meta.env.VITE_NEW_ASR_URL || 'https://hangulonline-speakvn-asr.hf.space/api/v1/transcribe';
 
 // 3. ASR Model Configuration
 export const ASR_MODEL = 'NguyenDucTuan/Speak_Journey_VN';

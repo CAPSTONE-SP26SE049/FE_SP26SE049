@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { Form, Input, message, Spin, Alert } from 'antd'
-import { Cpu, Save, Loader2, Key } from 'lucide-react'
+import { Form, Input, message, Spin, Alert, Tooltip } from 'antd'
+import { Cpu, Save, Loader2, Key, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { fetchConfigsAPI, updateConfigsAPI } from '../../../services/systemConfigService'
+import { fetchConfigsAPI, updateConfigsAPI, fetchErrorTagsAPI } from '../../../services/systemConfigService'
 
 const AiConfigManagementPage: React.FC = () => {
     const [aiForm] = Form.useForm()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [errorTags, setErrorTags] = useState<any[]>([])
+    const [isDraggingOver, setIsDraggingOver] = useState(false)
 
-    // ─── Fetch configurations on mount ─────────────────────────────
+    // ─── Fetch configurations & error tags on mount ─────────────────────────────
     useEffect(() => {
         let cancelled = false
         setLoading(true)
         setError(null)
 
+        // Fetch configs
         fetchConfigsAPI()
             .then((res: any) => {
                 if (cancelled) return
@@ -35,6 +38,17 @@ const AiConfigManagementPage: React.FC = () => {
                 if (!cancelled) setLoading(false)
             })
 
+        // Fetch error tags
+        fetchErrorTagsAPI()
+            .then((res: any) => {
+                if (cancelled) return
+                const list = res?.data?.data ?? res?.data ?? []
+                setErrorTags(list)
+            })
+            .catch(err => {
+                console.error('Failed to fetch error tags:', err)
+            })
+
         return () => { cancelled = true }
     }, [])
 
@@ -49,6 +63,90 @@ const AiConfigManagementPage: React.FC = () => {
         } finally {
             setSaving(false)
         }
+    }
+
+    const handleInsertTag = (tagCode: string) => {
+        const textarea = document.getElementById('pronunciation-system-instruction') as HTMLTextAreaElement
+        if (!textarea) return
+
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const text = textarea.value
+        const before = text.substring(0, start)
+        const after = text.substring(end, text.length)
+        
+        const newValue = before + tagCode + after
+        aiForm.setFieldsValue({
+            'prompt.pronunciation-system-instruction': newValue
+        })
+        
+        // Restore focus and selection
+        setTimeout(() => {
+            textarea.focus()
+            textarea.setSelectionRange(start + tagCode.length, start + tagCode.length)
+        }, 10)
+    }
+
+    const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+        e.preventDefault()
+        setIsDraggingOver(false)
+        const tagCode = e.dataTransfer.getData('text/plain')
+        if (!tagCode) return
+
+        const textarea = e.currentTarget
+        let insertPos = textarea.selectionStart
+
+        // Drag coordinates character offset detection
+        const documentObj = document as any
+        if (documentObj.caretRangeFromPoint) {
+            const range = documentObj.caretRangeFromPoint(e.clientX, e.clientY)
+            if (range && range.startContainer === textarea.firstChild) {
+                insertPos = range.startOffset
+            }
+        } else if (documentObj.caretPositionFromPoint) {
+            const position = documentObj.caretPositionFromPoint(e.clientX, e.clientY)
+            if (position && position.offsetNode === textarea.firstChild) {
+                insertPos = position.offset
+            }
+        }
+
+        const text = textarea.value
+        const before = text.substring(0, insertPos)
+        const after = text.substring(insertPos, text.length)
+        const newValue = before + tagCode + after
+
+        aiForm.setFieldsValue({
+            'prompt.pronunciation-system-instruction': newValue
+        })
+
+        // Restore focus and position selection range
+        setTimeout(() => {
+            textarea.focus()
+            textarea.setSelectionRange(insertPos + tagCode.length, insertPos + tagCode.length)
+        }, 10)
+    }
+
+    const handleProposePrompt = () => {
+        if (errorTags.length === 0) {
+            message.warning('Không tìm thấy tag lỗi nào từ database để sinh mẫu.')
+            return
+        }
+
+        const tagsText = errorTags
+            .map(t => `- Lỗi ${t.name} (Mã lỗi: ${t.tagCode})`)
+            .join('\n')
+
+        const proposedPrompt = `Bạn là chuyên gia phân tích phát âm tiếng Việt. QUAN TRỌNG: rawText là những gì người học THỰC SỰ ĐÃ NÓI (do ASR nhận diện). targetText là từ/câu CHUẨN mà người học CẦN phát âm đúng. Nhiệm vụ: đánh giá xem người học có phát âm đúng targetText không, dựa trên rawText. Nếu rawText khác targetText, hãy giải thích người học đã nói sai chỗ nào so với targetText.
+
+Hệ thống hỗ trợ chẩn đoán các lỗi phát âm/vùng miền sau:
+${tagsText}
+
+Hãy ưu tiên đối chiếu phát hiện lỗi xem người học có mắc phải lỗi nào trong danh sách trên hay không. Không được trả lời chung chung, không được lặp lại nguyên văn targetText, và không được dùng câu ngắn kiểu 'Phát âm chưa chính xác' nếu chưa giải thích vì sao.`
+
+        aiForm.setFieldsValue({
+            'prompt.pronunciation-system-instruction': proposedPrompt
+        })
+        message.success('Đã đề xuất chỉ thị prompt chuẩn theo danh sách tag từ cơ sở dữ liệu!')
     }
 
     return (
@@ -146,10 +244,89 @@ const AiConfigManagementPage: React.FC = () => {
                                 <div className="space-y-8">
                                     <Form.Item
                                         name="prompt.pronunciation-system-instruction"
-                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">System Instruction chấm điểm phát âm</span>}
-                                    >
-                                        <Input.TextArea className="doodle-input min-h-[120px] py-4" placeholder="Nhập chỉ thị hệ thống..." />
-                                    </Form.Item>
+                                        label={
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-2">
+                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">System Instruction chấm điểm phát âm</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleProposePrompt}
+                                                    className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all"
+                                                >
+                                                    <Sparkles size={12} />
+                                                    Đề xuất Prompt theo DB
+                                                </button>
+                                            </div>
+                                        }
+                                         extra={
+                                             <div className="mt-3 space-y-2">
+                                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                                                     Nhấn hoặc Kéo thả các thẻ lỗi bên dưới để chèn Tag Code vào vị trí con trỏ:
+                                                 </span>
+                                                 <div className="flex flex-wrap gap-2">
+                                                     {/* Utility 1: Placeholder tag */}
+                                                     <Tooltip title="Chèn mã tự động {availableErrorTags} để hệ thống tự động tải và thay thế bằng danh sách lỗi từ cơ sở dữ liệu khi gửi prompt">
+                                                         <span
+                                                             draggable
+                                                             onDragStart={(e) => e.dataTransfer.setData('text/plain', '{availableErrorTags}')}
+                                                             onClick={() => handleInsertTag('{availableErrorTags}')}
+                                                             className="cursor-pointer select-none bg-sky-50 hover:bg-sky-100 hover:text-sky-600 hover:border-sky-400 border-[2px] border-sky-300 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wide text-sky-700 transition-all shadow-[2px_2px_0_#0000000d] active:translate-y-px"
+                                                         >
+                                                             Tự động tải danh sách lỗi
+                                                         </span>
+                                                     </Tooltip>
+
+                                                     {/* Utility 2: Comma-separated tags */}
+                                                     {errorTags.length > 0 && (
+                                                         <Tooltip title="Chèn toàn bộ các mã lỗi đang có trong hệ thống dưới dạng chữ cách nhau bởi dấu phẩy">
+                                                             <span
+                                                                 draggable
+                                                                 onDragStart={(e) => e.dataTransfer.setData('text/plain', errorTags.map(t => t.tagCode).filter(Boolean).join(', '))}
+                                                                 onClick={() => handleInsertTag(errorTags.map(t => t.tagCode).filter(Boolean).join(', '))}
+                                                                 className="cursor-pointer select-none bg-violet-50 hover:bg-violet-100 hover:text-violet-600 hover:border-violet-400 border-[2px] border-violet-300 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wide text-violet-700 transition-all shadow-[2px_2px_0_#0000000d] active:translate-y-px"
+                                                             >
+                                                                 Chèn tất cả mã lỗi hiện có
+                                                             </span>
+                                                         </Tooltip>
+                                                     )}
+
+                                                     {/* Dynamic Tags */}
+                                                     {errorTags.map(tag => (
+                                                         <Tooltip key={tag.id} title={`${tag.name}: ${tag.description || 'Chưa có mô tả'}`}>
+                                                             <span
+                                                                 draggable
+                                                                 onDragStart={(e) => e.dataTransfer.setData('text/plain', tag.tagCode)}
+                                                                 onClick={() => handleInsertTag(tag.tagCode)}
+                                                                 className="cursor-pointer select-none bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-300 border-[2px] border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wide text-slate-700 transition-all shadow-[2px_2px_0_#0000000d] hover:shadow-[2px_2px_0_#10b98133] active:translate-y-px"
+                                                             >
+                                                                 {tag.name} ({tag.tagCode})
+                                                             </span>
+                                                         </Tooltip>
+                                                     ))}
+                                                     {errorTags.length === 0 && (
+                                                         <span className="text-[9px] font-bold text-slate-300 uppercase italic">
+                                                             Đang tải tag lỗi từ database...
+                                                         </span>
+                                                     )}
+                                                 </div>
+                                             </div>
+                                         }
+                                     >
+                                         <Input.TextArea
+                                             id="pronunciation-system-instruction"
+                                             className={`doodle-input min-h-[140px] py-4 transition-all duration-200 ${
+                                                 isDraggingOver 
+                                                     ? 'border-[#10b981] border-dashed shadow-[0_0_0_4px_#10b98122] bg-emerald-50/20' 
+                                                     : ''
+                                             }`}
+                                             placeholder="Nhập chỉ thị hệ thống..."
+                                             onDragOver={(e) => {
+                                                 e.preventDefault()
+                                                 setIsDraggingOver(true)
+                                             }}
+                                             onDragLeave={() => setIsDraggingOver(false)}
+                                             onDrop={handleDrop}
+                                         />
+                                     </Form.Item>
 
                                     <Form.Item
                                         name="prompt.pronunciation-schema-instruction"

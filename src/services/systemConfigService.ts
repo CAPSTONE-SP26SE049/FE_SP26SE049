@@ -14,3 +14,10 @@ export const fetchConfigsAPI = async () => {
 export const updateConfigsAPI = async (configMap: Record<string, string>) => {
     return apiClient.put('/admin/configs', configMap)
 }
+
+/**
+ * Fetch all error tags from the database
+ */
+export const fetchErrorTagsAPI = async () => {
+    return apiClient.get('/public/error-tags')
+}

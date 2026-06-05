@@ -390,7 +390,8 @@ export default function ChallengeBankManagementPage() {
             <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b-[3px] border-slate-900/5 text-left">
-                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-[60%]">Mẫu câu phát âm (Tiếng Việt)</th>
+                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 w-[45%]">Mẫu câu phát âm (Tiếng Việt)</th>
+                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Kỹ năng</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Giọng vùng miền</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Độ khó</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right pr-4">Thao tác</th>
@@ -408,6 +409,13 @@ export default function ChallengeBankManagementPage() {
                     regionColor = 'bg-yellow-50 border-yellow-200 text-yellow-600'
                   }
 
+                  let skillLabel = 'Nói'
+                  const skillType = (item.skillType || '').toUpperCase()
+                  if (skillType === 'LISTENING') skillLabel = 'Nghe'
+                  else if (skillType === 'READING') skillLabel = 'Đọc'
+                  else if (skillType === 'WRITING') skillLabel = 'Viết'
+                  else if (skillType === 'ENTRY_TEST') skillLabel = 'Entry Test'
+
                   let diffColor = 'bg-emerald-50 border-emerald-200 text-emerald-600'
                   if (item.difficultyTag === 'KHÓ' || item.difficultyTag === 'HARD') {
                     diffColor = 'bg-rose-50 border-rose-200 text-rose-600'
@@ -418,12 +426,14 @@ export default function ChallengeBankManagementPage() {
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 pr-4">
-                        <div className="font-serif text-base font-bold text-slate-900">
-                          "{item.contentText}"
+                        <div className="text-base font-bold text-slate-900">
+                          "{item.contentText?.normalize('NFC')}"
                         </div>
-                        <div className="text-[10px] font-black uppercase text-slate-400 mt-1">
-                          Kỹ năng: {item.skillType || 'SPEAKING'}
-                        </div>
+                      </td>
+                      <td className="py-4 text-center">
+                        <span className="inline-block px-2.5 py-0.5 rounded-lg border-[1.5px] border-indigo-200 bg-indigo-50 text-[10px] font-black uppercase text-indigo-600">
+                          {skillLabel}
+                        </span>
                       </td>
                       <td className="py-4 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-lg border-[1.5px] text-[10px] font-black uppercase ${regionColor}`}>

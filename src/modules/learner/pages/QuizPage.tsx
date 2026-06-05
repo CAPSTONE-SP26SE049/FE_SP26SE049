@@ -601,6 +601,10 @@ const QuizPage: React.FC = () => {
   const [audioPlays, setAudioPlays] = useState<Record<number, number>>({})
   const [playingTTS, setPlayingTTS] = useState<string | null>(null)
 
+  // Draft resume states
+  const [showResumeModal, setShowResumeModal] = useState(false)
+  const [draftToResume, setDraftToResume] = useState<{ idx: number; score: number } | null>(null)
+
 
   const playRegionalTTS = async (text: string, voice: string) => {
     setPlayingTTS(voice)
@@ -645,6 +649,9 @@ const QuizPage: React.FC = () => {
   const handleFinish = async () => {
     if (!quiz || saving) return
     setSaving(true)
+
+    // Clear draft from localStorage on completion
+    localStorage.removeItem(`speakvn_quiz_draft_${quiz.id}`)
 
     const total = quiz.challenges.length
     const pct = total > 0 ? Math.round((score / total) * 100) : 0
@@ -739,6 +746,8 @@ const QuizPage: React.FC = () => {
     setConsentGiven(null)
     setExplanation(null)
     setExplaining(false)
+    setShowResumeModal(false)
+    setDraftToResume(null)
   }, [quizId])
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -771,17 +780,38 @@ const QuizPage: React.FC = () => {
         dialect: qData.dialect,
       })
 
-
+      // Check if draft exists
+      const savedDraft = localStorage.getItem(`speakvn_quiz_draft_${qData.id ?? quizId}`)
+      if (savedDraft) {
+        try {
+          const parsedDraft = JSON.parse(savedDraft)
+          if (parsedDraft && (parsedDraft.idx > 0 || parsedDraft.score > 0)) {
+            setDraftToResume(parsedDraft)
+            setShowResumeModal(true)
+          }
+        } catch (e) {
+          console.warn('Failed to parse quiz draft:', e)
+        }
+      }
     }).finally(() => setLoading(false))
   }, [quizId])
 
-
+  // ── Auto-save quiz draft to localStorage ──────────────────────────────────
+  useEffect(() => {
+    if (!quiz || !quiz.id || finished) return
+    if (idx > 0 || score > 0 || answered) {
+      const draftData = {
+        idx,
+        score,
+      }
+      localStorage.setItem(`speakvn_quiz_draft_${quiz.id}`, JSON.stringify(draftData))
+    }
+  }, [idx, score, answered, quiz, finished])
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = () => {
     // Only clear timing/temporary state initially
     setTimeLeft(null)
-    setOllamaResult(null)
     setShowFullSuggestion(false)
     recorder.resetRecording()
 
@@ -790,6 +820,7 @@ const QuizPage: React.FC = () => {
       handleFinish()
     } else {
       // Middle of quiz: clear everything and move to next
+      setOllamaResult(null)
       setWritingInput('')
       setWordPicked(null)
       setSelected(null)
@@ -891,8 +922,8 @@ const QuizPage: React.FC = () => {
         }
       } catch (convertErr) {
         console.warn('[Speaking Quiz] Convert audio failed, fallback original blob:', convertErr)
-        audioForAsr = new Blob([blob], { type: 'audio/wav' })
-        uploadFileName = 'recording.wav'
+        audioForAsr = blob
+        uploadFileName = 'recording.webm'
       }
 
       // 2. Call ASR + Cloudinary upload in parallel (both only need audioForAsr)
@@ -1499,6 +1530,62 @@ const QuizPage: React.FC = () => {
   return (
     <div className="quiz-page h-screen w-screen bg-[#FDF5E6] overflow-hidden flex flex-col p-4 md:p-5 gap-4 md:gap-5 relative">
       <style>{PAGE_STYLES}</style>
+
+      {/* ─── Resume Quiz Draft Modal ─── */}
+      <AnimatePresence>
+        {showResumeModal && draftToResume && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="bg-white rounded-[2rem] border-[3.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-md flex flex-col overflow-hidden p-6 gap-6 text-center"
+            >
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-amber-400 border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex items-center justify-center rotate-3 shrink-0">
+                  <Trophy size={32} className="text-white fill-white stroke-[2.5px]" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mt-2">Tiếp tục bài học?</h3>
+                <p className="text-sm font-bold text-slate-500">
+                  Hệ thống tìm thấy một bài làm dở trước đó của bạn ở **câu {draftToResume.idx + 1}** với điểm số hiện tại là **{draftToResume.score}**. Bạn có muốn tiếp tục làm tiếp không?
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => {
+                    if (quiz?.id) {
+                      localStorage.removeItem(`speakvn_quiz_draft_${quiz.id}`)
+                    }
+                    setDraftToResume(null)
+                    setShowResumeModal(false)
+                  }}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none transition-all uppercase text-xs tracking-wider"
+                >
+                  Làm lại
+                </button>
+                <button
+                  onClick={() => {
+                    setIdx(draftToResume.idx)
+                    setScore(draftToResume.score)
+                    setDraftToResume(null)
+                    setShowResumeModal(false)
+                  }}
+                  className="flex-1 py-3 bg-[#49B6E5] hover:bg-[#3FA1CD] text-white font-black rounded-2xl border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] active:translate-y-0.5 active:shadow-none transition-all uppercase text-xs tracking-wider"
+                >
+                  Tiếp tục
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── Pronunciation Model Popup ─── */}
       <AnimatePresence>

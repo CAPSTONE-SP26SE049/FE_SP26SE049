@@ -14,20 +14,13 @@ const PAIR_LABELS: Record<string, string> = {
 
 const GAME_TYPES = [
     { key: 'WORD_CHALLENGE',        label: 'Thử thách từ vựng',    desc: 'Chọn từ đúng / xếp chữ' },
-    { key: 'SENTENCE_COMPLETION',   label: 'Hoàn thành câu',       desc: 'Điền từ vào câu' },
-    { key: 'MATCHING_PAIRS',        label: 'Nối cặp âm',           desc: 'Nối cặp âm' },
-    { key: 'WORD_GUESS',            label: 'Đoán từ',              desc: 'Đoán từ qua gợi ý' },
-    { key: 'CONVERSATION_SCENARIO', label: 'Kịch bản hội thoại',   desc: 'Kịch bản hội thoại' },
+    { key: 'SENTENCE_COMPLETION',   label: 'Hoàn thành câu', desc: 'Điền từ vào câu' },
+    { key: 'MATCHING_PAIRS',        label: 'Nối cặp âm',    desc: 'Nối cặp âm' },
+    { key: 'WORD_GUESS',            label: 'Đoán từ',        desc: 'Đoán từ qua gợi ý' },
+    { key: 'CONVERSATION_SCENARIO', label: 'Hội thoại',      desc: 'Kịch bản hội thoại' },
 ]
 
-// JSON templates for each game type
-const JSON_TEMPLATES: Record<string, string> = {
-    WORD_CHALLENGE: JSON.stringify({ prompt: 'Chọn từ đúng: ___ nước', options: ['lấy', 'nấy', 'lấy', 'nấy'], correctIndex: 0, explanation: 'Dùng L' }, null, 2),
-    SENTENCE_COMPLETION: JSON.stringify({ context: 'Thời tiết', sentence: '___ trời hôm nay rất đẹp', options: ['Nắng', 'Lắng', 'Nắng', 'Lắng'], correctIndex: 0 }, null, 2),
-    MATCHING_PAIRS: JSON.stringify({ word1: 'nón', word2: 'lón' }, null, 2),
-    WORD_GUESS: JSON.stringify({ word: 'nắng', hint: 'Ánh mặt trời chiếu xuống', category: 'Thời tiết' }, null, 2),
-    CONVERSATION_SCENARIO: JSON.stringify({ scenario: 'Bạn đang mua nước mắm ở chợ' }, null, 2),
-}
+// Dynamic form implementation removes the need for JSON_TEMPLATES
 
 const PAIR_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
     N_L:    { color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200' },
@@ -46,8 +39,6 @@ const MinigameManagementPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<MinigameChallengeResponse | null>(null)
     const [submitting, setSubmitting] = useState(false)
-    const [jsonValue, setJsonValue] = useState('')
-    const [jsonError, setJsonError] = useState('')
     const [form] = Form.useForm()
 
     const fetchData = async (gameType: string) => {
@@ -72,33 +63,34 @@ const MinigameManagementPage: React.FC = () => {
 
     const handleOpenCreate = () => {
         setEditingItem(null)
-        form.setFieldsValue({ pairType: 'N_L' })
-        setJsonValue(JSON_TEMPLATES[activeTab] || '{}')
-        setJsonError('')
+        form.resetFields()
+        form.setFieldsValue({ pairType: 'N_L', options: ['', '', '', ''], correctIndex: 0 })
         setIsModalOpen(true)
     }
 
     const handleOpenEdit = (item: MinigameChallengeResponse) => {
         setEditingItem(item)
-        form.setFieldsValue({ pairType: item.pairType })
-        setJsonValue(JSON.stringify(item.questionData, null, 2))
-        setJsonError('')
+        form.resetFields()
+        form.setFieldsValue({ pairType: item.pairType, ...item.questionData })
         setIsModalOpen(true)
-    }
-
-    const handleJsonChange = (val: string) => {
-        setJsonValue(val)
-        try { JSON.parse(val); setJsonError('') }
-        catch { setJsonError('JSON không hợp lệ') }
     }
 
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields()
-            if (jsonError) { message.error('Vui lòng sửa lỗi JSON trước'); return }
-            let questionData: Record<string, any>
-            try { questionData = JSON.parse(jsonValue) }
-            catch { message.error('JSON không hợp lệ'); return }
+            
+            let questionData: Record<string, any> = {}
+            if (activeTab === 'WORD_CHALLENGE') {
+                questionData = { prompt: values.prompt, options: values.options, correctIndex: values.correctIndex, explanation: values.explanation }
+            } else if (activeTab === 'SENTENCE_COMPLETION') {
+                questionData = { context: values.context, sentence: values.sentence, options: values.options, correctIndex: values.correctIndex }
+            } else if (activeTab === 'MATCHING_PAIRS') {
+                questionData = { word1: values.word1, word2: values.word2 }
+            } else if (activeTab === 'WORD_GUESS') {
+                questionData = { word: values.word, hint: values.hint, category: values.category }
+            } else if (activeTab === 'CONVERSATION_SCENARIO') {
+                questionData = { scenario: values.scenario }
+            }
 
             setSubmitting(true)
             const payload: MinigameChallengeRequest = {
@@ -207,8 +199,8 @@ const MinigameManagementPage: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-2 h-10 bg-[#49B6E5] rounded-full" />
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý trò chơi mini</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Quản lý câu hỏi cho tất cả trò chơi mini</p>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý Minigames</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Quản lý câu hỏi cho tất cả minigames</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -333,28 +325,95 @@ const MinigameManagementPage: React.FC = () => {
                         </Form.Item>
                     </div>
 
-                    <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Dữ liệu câu hỏi (JSON)</span>
-                            {jsonError && <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{jsonError}</span>}
+                    {activeTab === 'WORD_CHALLENGE' && (
+                        <>
+                            <Form.Item name="prompt" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Câu hỏi (Prompt)</span>} rules={[{ required: true, message: 'Nhập câu hỏi' }]}>
+                                <Input className="doodle-input-mg" placeholder="VD: Chọn từ đúng: ___ nước" />
+                            </Form.Item>
+                            <div className="grid grid-cols-2 gap-4">
+                                {[0, 1, 2, 3].map(idx => (
+                                    <Form.Item key={idx} name={['options', idx]} label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>} rules={[{ required: true, message: 'Nhập lựa chọn' }]}>
+                                        <Input className="doodle-input-mg" />
+                                    </Form.Item>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Form.Item name="correctIndex" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>} rules={[{ required: true, message: 'Chọn đáp án' }]}>
+                                    <Select className="doodle-select-mg">
+                                        {[0, 1, 2, 3].map(idx => <Select.Option key={idx} value={idx}>Lựa chọn {['A', 'B', 'C', 'D'][idx]}</Select.Option>)}
+                                    </Select>
+                                </Form.Item>
+                                <Form.Item name="explanation" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Giải thích (Tùy chọn)</span>}>
+                                    <Input className="doodle-input-mg" placeholder="VD: Dùng L vì..." />
+                                </Form.Item>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'SENTENCE_COMPLETION' && (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Form.Item name="context" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Ngữ cảnh</span>} rules={[{ required: true, message: 'Nhập ngữ cảnh' }]}>
+                                    <Input className="doodle-input-mg" placeholder="VD: Thời tiết" />
+                                </Form.Item>
+                                <Form.Item name="correctIndex" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>} rules={[{ required: true, message: 'Chọn đáp án' }]}>
+                                    <Select className="doodle-select-mg">
+                                        {[0, 1, 2, 3].map(idx => <Select.Option key={idx} value={idx}>Lựa chọn {['A', 'B', 'C', 'D'][idx]}</Select.Option>)}
+                                    </Select>
+                                </Form.Item>
+                            </div>
+                            <Form.Item name="sentence" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Câu hỏi (Sentence)</span>} rules={[{ required: true, message: 'Nhập câu hỏi' }]}>
+                                <Input className="doodle-input-mg" placeholder="VD: ___ trời hôm nay rất đẹp" />
+                            </Form.Item>
+                            <div className="grid grid-cols-2 gap-4">
+                                {[0, 1, 2, 3].map(idx => (
+                                    <Form.Item key={idx} name={['options', idx]} label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>} rules={[{ required: true, message: 'Nhập lựa chọn' }]}>
+                                        <Input className="doodle-input-mg" />
+                                    </Form.Item>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'MATCHING_PAIRS' && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <Form.Item name="word1" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Từ thứ nhất</span>} rules={[{ required: true, message: 'Nhập từ' }]}>
+                                <Input className="doodle-input-mg" placeholder="VD: nón" />
+                            </Form.Item>
+                            <Form.Item name="word2" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Từ thứ hai</span>} rules={[{ required: true, message: 'Nhập từ' }]}>
+                                <Input className="doodle-input-mg" placeholder="VD: lón" />
+                            </Form.Item>
                         </div>
-                        <TextArea
-                            value={jsonValue}
-                            onChange={e => handleJsonChange(e.target.value)}
-                            rows={8}
-                            className={clsx('border-[2.5px] rounded-xl font-mono text-xs resize-none', jsonError ? 'border-rose-400' : 'border-slate-900/20 focus:border-[#49B6E5]')}
-                        />
-                        <div className="mt-1.5 text-[9px] font-bold text-slate-400">
-                            Mẫu: {JSON_TEMPLATES[activeTab]?.slice(0, 80)}...
-                        </div>
-                    </div>
+                    )}
+
+                    {activeTab === 'WORD_GUESS' && (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Form.Item name="word" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Từ khóa</span>} rules={[{ required: true, message: 'Nhập từ khóa' }]}>
+                                    <Input className="doodle-input-mg" placeholder="VD: nắng" />
+                                </Form.Item>
+                                <Form.Item name="category" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Chủ đề</span>} rules={[{ required: true, message: 'Nhập chủ đề' }]}>
+                                    <Input className="doodle-input-mg" placeholder="VD: Thời tiết" />
+                                </Form.Item>
+                            </div>
+                            <Form.Item name="hint" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Gợi ý</span>} rules={[{ required: true, message: 'Nhập gợi ý' }]}>
+                                <Input className="doodle-input-mg" placeholder="VD: Ánh mặt trời chiếu xuống" />
+                            </Form.Item>
+                        </>
+                    )}
+
+                    {activeTab === 'CONVERSATION_SCENARIO' && (
+                        <Form.Item name="scenario" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Kịch bản hội thoại</span>} rules={[{ required: true, message: 'Nhập kịch bản' }]}>
+                            <TextArea rows={4} className="border-[2.5px] border-slate-900/20 rounded-xl font-bold p-3 focus:border-[#49B6E5] resize-none" placeholder="VD: Bạn đang mua nước mắm ở chợ..." />
+                        </Form.Item>
+                    )}
 
                     <div className="flex gap-4 pt-2">
                         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => setIsModalOpen(false)}
                             className="flex-1 h-12 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_#1f293705]">
                             Hủy
                         </motion.button>
-                        <motion.button whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }} type="submit" disabled={submitting || !!jsonError}
+                        <motion.button whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }} type="submit" disabled={submitting}
                             className="flex-1 h-12 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_#1f2937] disabled:opacity-50">
                             {submitting ? 'Đang lưu...' : editingItem ? 'Cập nhật' : 'Tạo mới'}
                         </motion.button>
@@ -368,6 +427,8 @@ const MinigameManagementPage: React.FC = () => {
                 .doodle-modal-mg .ant-modal-content { border: 4px solid #1f2937 !important; border-radius: 3rem !important; box-shadow: 12px 12px 0 #1f2937 !important; background: #fbf6ef !important; padding: 2.5rem !important; }
                 .doodle-modal-mg .ant-modal-header { background: transparent !important; border: none !important; margin-bottom: 1rem !important; }
                 .doodle-select-mg .ant-select-selector { height: 44px !important; border: 2.5px solid rgba(15,23,42,0.2) !important; border-radius: 0.75rem !important; display: flex !important; align-items: center !important; font-weight: 700 !important; }
+                .doodle-input-mg { height: 44px !important; border: 2.5px solid rgba(15,23,42,0.2) !important; border-radius: 0.75rem !important; font-weight: 700 !important; font-size: 14px !important; }
+                .doodle-input-mg:focus { border-color: #49B6E5 !important; box-shadow: none !important; }
             `}} />
         </div>
     )

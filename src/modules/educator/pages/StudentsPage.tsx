@@ -59,7 +59,7 @@ const StudentsPage = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-1.5 h-6 bg-[#49B6E5] rounded-full" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#49B6E5]">Student Directory</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#49B6E5]">Danh bạ học viên</span>
           </div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Quản lý học viên</h1>
           <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
@@ -139,7 +139,7 @@ const StudentsPage = () => {
             </div>
           </div>
           <div className="px-5 py-2.5 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-[10px] uppercase tracking-widest text-slate-600 shadow-[4px_4px_0_#1f2937]">
-            Live Database
+            Dữ liệu trực tiếp
           </div>
         </div>
 
@@ -153,7 +153,7 @@ const StudentsPage = () => {
               <thead>
                 <tr className="border-b-[3px] border-slate-900/5 text-left bg-slate-50/30 rounded-t-2xl">
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Học viên</th>
-                  <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Dialect</th>
+                  <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Vùng miền</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Tiến trình học</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-center">Độ chính xác</th>
                   <th className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-10">Hành động</th>
@@ -185,13 +185,13 @@ const StudentsPage = () => {
                       </td>
                       <td className="px-6 py-6 text-center">
                         <div className="inline-block px-4 py-1 rounded-xl border-[2.2px] border-slate-900 bg-white font-black text-[10px] shadow-[2px_2px_0_#1f2937] uppercase">
-                          {((s as any).dialect || 'SOUTH').toUpperCase()}
+                          {((s as any).dialect || 'SOUTH').toUpperCase() === 'NORTH' ? 'MIỀN BẮC' : ((s as any).dialect || 'SOUTH').toUpperCase() === 'CENTRAL' ? 'MIỀN TRUNG' : 'MIỀN NAM'}
                         </div>
                       </td>
                       <td className="px-6 py-6">
                         <div className="w-40 space-y-2">
                           <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                            <span>Completing</span>
+                            <span>Hoàn thành</span>
                             <span>{s.progressPercent || 0}%</span>
                           </div>
                           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
@@ -208,7 +208,7 @@ const StudentsPage = () => {
                           <span className={clsx("text-sm font-black italic", (s.pronunciationScore || 0) >= 80 ? "text-emerald-500" : (s.pronunciationScore || 0) >= 50 ? "text-[#49B6E5]" : "text-rose-500")}>
                             {s.pronunciationScore || 0}%
                           </span>
-                          <span className="text-[8px] font-black uppercase text-slate-300 tracking-widest mt-1">Score</span>
+                          <span className="text-[8px] font-black uppercase text-slate-300 tracking-widest mt-1">Điểm</span>
                         </div>
                       </td>
                       <td className="px-6 py-6 text-right pr-10">
@@ -222,7 +222,7 @@ const StudentsPage = () => {
                             onClick={() => navigate(`/educator/students/profile/${s.id}`)}
                             className="h-10 px-5 rounded-xl border-[2.5px] border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all active:translate-y-0 text-slate-900"
                           >
-                            Profile
+                            Hồ sơ
                           </button>
                         </div>
                       </td>
@@ -257,19 +257,19 @@ const StudentsPage = () => {
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="p-3 rounded-2xl bg-slate-50 border-[2px] border-slate-100 group-hover:border-slate-900/10 transition-all text-center">
-                    <div className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em] mb-1">Score</div>
+                    <div className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em] mb-1">Điểm</div>
                     <div className={clsx("text-lg font-black italic", (s.pronunciationScore || 0) >= 80 ? "text-emerald-500" : "text-[#49B6E5]")}>{s.pronunciationScore || 0}%</div>
                   </div>
                   <div className="p-3 rounded-2xl bg-slate-50 border-[2px] border-slate-100 group-hover:border-slate-900/10 transition-all text-center">
-                    <div className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em] mb-1">Dialect</div>
-                    <div className="text-xs font-black uppercase text-slate-900 tracking-tight">{((s as any).dialect || 'SOUTH')}</div>
+                    <div className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em] mb-1">Vùng miền</div>
+                    <div className="text-xs font-black uppercase text-slate-900 tracking-tight">{((s as any).dialect || 'SOUTH').toUpperCase() === 'NORTH' ? 'MIỀN BẮC' : ((s as any).dialect || 'SOUTH').toUpperCase() === 'CENTRAL' ? 'MIỀN TRUNG' : 'MIỀN NAM'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-4 mb-6">
                   <div>
                     <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 px-1">
-                      <span>Progress</span>
+                      <span>Tiến độ</span>
                       <span>{s.progressPercent || 0}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full border border-slate-200 overflow-hidden">
@@ -283,7 +283,7 @@ const StudentsPage = () => {
                     onClick={() => navigate(`/educator/students/profile/${s.id}`)}
                     className="flex-1 py-3.5 rounded-2xl border-[2.5px] border-slate-900 bg-[#49B6E5] text-white font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all"
                   >
-                    Profile
+                    Hồ sơ
                   </button>
                   <Tooltip title="Gửi lời khuyên">
                     <button className="w-12 rounded-2xl border-[2.5px] border-slate-900 bg-white text-slate-400 hover:text-blue-500 shadow-[4px_4px_0_#1f2937] hover:-translate-y-1 hover:shadow-[6px_6px_0_#1f2937] transition-all flex items-center justify-center">

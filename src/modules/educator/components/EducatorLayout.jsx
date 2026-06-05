@@ -9,10 +9,8 @@ import {
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
-  { key: '/educator', icon: BookOpen, label: 'Tổng quan' },
   { key: '/educator/students', icon: Users, label: 'Quản lý học viên' },
   { key: '/educator/design-path', icon: Sparkles, label: 'Thiết kế lộ trình' },
-  { key: '/educator/progress', icon: ChartNoAxesCombined, label: 'Theo dõi tiến độ' },
   { key: '/educator/messages', icon: MessageSquareMore, label: 'Tương tác & phản hồi' },
   { key: '/educator/roadmap-rules', icon: Map, label: 'Quy tắc lộ trình' },
   { key: '/educator/settings', icon: Settings, label: 'Cài đặt' },
