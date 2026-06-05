@@ -1472,34 +1472,6 @@ const QuizPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* AI Detailed Feedback (NHẬN XÉT TỪ AI) synchronized with Entry Test */}
-                    {(ollamaResult.errorDetail || ollamaResult.suggestion) && (
-                      <div className="mt-4 p-4 bg-sky-50 rounded-[1.5rem] border-[2px] border-slate-900 text-slate-900 text-sm leading-relaxed shadow-[2px_2px_0_#1f2937]">
-                        <div className="flex items-center gap-2 mb-2 text-[#49B6E5] font-black">
-                          <Star size={16} fill="currentColor" strokeWidth={3} />
-                          <span>NHẬN XÉT TỪ AI</span>
-                        </div>
-
-                        {ollamaResult.errorDetail && ollamaResult.suggestion && ollamaResult.errorDetail === ollamaResult.suggestion ? (
-                          <p className="font-bold">{ollamaResult.suggestion}</p>
-                        ) : (
-                          <div className="space-y-2.5">
-                            {ollamaResult.errorDetail && (
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Chi tiết lỗi:</p>
-                                <p className="italic font-bold opacity-90">{ollamaResult.errorDetail}</p>
-                              </div>
-                            )}
-                            {ollamaResult.suggestion && (
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Gợi ý cải thiện:</p>
-                                <p className="font-bold text-slate-800">{ollamaResult.suggestion}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               )}
@@ -1919,7 +1891,18 @@ const QuizPage: React.FC = () => {
                         <TypedText
                           text={
                             ch.mode === 'SPEAKING_READ'
-                              ? (isCurrentAnswerCorrect ? "Bạn phát âm rất chuẩn! Tiếp tục phát huy nhé." : "Hãy xem chi tiết lỗi bên dưới và thử lại nhé!")
+                              ? (isCurrentAnswerCorrect 
+                                  ? "Bạn phát âm rất chuẩn! Tiếp tục phát huy nhé." 
+                                  : (() => {
+                                      const err = ollamaResult?.errorDetail?.trim();
+                                      const sug = ollamaResult?.suggestion?.trim();
+                                      if (err && sug) {
+                                        if (err === sug) return err;
+                                        return `${err}\n\nGợi ý cải thiện: ${sug}`;
+                                      }
+                                      return err || sug || "Hãy xem chi tiết lỗi bên dưới và thử lại nhé!";
+                                    })()
+                                )
                               : (explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!"))
                           }
                         />
