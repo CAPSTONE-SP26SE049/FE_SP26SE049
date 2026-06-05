@@ -1708,7 +1708,7 @@ const QuizPage: React.FC = () => {
               ) : (
                 <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
                   {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
-                    : ch.skillType === 'LISTENING' ? (ch.listeningType === 'advanced' ? 'Nghe và chọn từ bị phát âm SAI:' : 'Nghe và chọn đáp án đúng:')
+                    : ch.skillType === 'LISTENING' ? (ch.listeningType === 'advanced' ? 'Nghe và chọn từ viết đúng của từ bị đọc sai:' : 'Nghe và chọn đáp án đúng:')
                     : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
                     : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
                     : 'Câu hỏi:'}
@@ -1720,7 +1720,7 @@ const QuizPage: React.FC = () => {
                   {ch.skillType === 'LISTENING' ? (
                     answered ? (
                       ch.listeningType === 'advanced' ? (
-                        <span>Mẫu câu: <span className="underline decoration-wavy decoration-rose-500">{ch.correctSentence || ch.content}</span></span>
+                        <span>Mẫu câu: <span className="underline decoration-wavy decoration-rose-500">{ch.content}</span></span>
                       ) : (
                         <span>Đáp án đúng: <span className="text-emerald-600">{ch.correctAnswer}</span></span>
                       )
@@ -1755,8 +1755,8 @@ const QuizPage: React.FC = () => {
                           if (ch.audioUrl) {
                             new Audio(ch.audioUrl).play();
                           } else {
-                            const ttsVoice = ch.region === 'CENTRAL' ? 'myan'
-                              : ch.region === 'SOUTH' ? 'linhsan'
+                            const ttsVoice = (ch.region === 'TRUNG' || ch.region === 'CENTRAL') ? 'myan'
+                              : (ch.region === 'NAM' || ch.region === 'SOUTH') ? 'linhsan'
                               : 'banmai';
                             await playRegionalTTS(ch.transcript || ch.content, ttsVoice);
                           }
@@ -1858,7 +1858,7 @@ const QuizPage: React.FC = () => {
           </div>
 
           {/* Interaction Area - expands only when answered */}
-          <div className={clsx("overflow-visible px-2 shrink-0 flex items-end", answered ? "h-auto pb-6" : "pb-0")}>
+          <div className={clsx("w-full overflow-visible px-2 shrink-0", answered ? "h-auto pb-6" : "pb-0")}>
             {renderInteraction()}
           </div>
 

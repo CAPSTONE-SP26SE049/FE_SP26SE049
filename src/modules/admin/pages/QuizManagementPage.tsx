@@ -609,7 +609,13 @@ const AdminQuizManagementPage: React.FC = () => {
                 meta = { words, error_index: errIdx === -1 ? 0 : errIdx, correct_word: values.correctWord.trim(), hint: values.hint || "" };
             } else if (skill === 'LISTENING') {
                 const correctSentence = values.correctSentence || values.correctAnswer || "";
-                meta = { options: values.options?.split('\n').filter((o: string) => o.trim()) || [], correctAnswer: values.correctAnswer, answer: values.correctAnswer, transcript: correctSentence, correctSentence: correctSentence };
+                meta = { 
+                    options: values.options?.split('\n').filter((o: string) => o.trim()) || [], 
+                    correctAnswer: values.correctAnswer, 
+                    answer: values.correctAnswer, 
+                    transcript: values.contentText || correctSentence, 
+                    correctSentence: correctSentence 
+                };
             } else if (skill === 'WRITING') {
                 meta = { blankSentence: values.blankSentence, correctAnswer: values.correctAnswer, alternatives: values.alternatives?.split(/[,;]+/).map((s: string) => s.trim()).filter(Boolean) || [], hint: values.hint || "", transcript: values.transcript || "", correctSentence: values.transcript || "" };
             } else if (skill === 'SPEAKING') {
@@ -1130,7 +1136,10 @@ const AdminQuizManagementPage: React.FC = () => {
                             }
                         }
                         if (activeSkillType === 'LISTENING' && changedValues.correctAnswer !== undefined) {
-                            createForm.setFieldsValue({ correctSentence: changedValues.correctAnswer });
+                            const curSentence = createForm.getFieldValue('correctSentence') || '';
+                            if (!curSentence.trim().includes(' ')) {
+                                createForm.setFieldsValue({ correctSentence: changedValues.correctAnswer });
+                            }
                         }
                     }}
                 >
