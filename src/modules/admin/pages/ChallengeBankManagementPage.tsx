@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { adminService, type ChallengeBank } from '../services/adminService'
+import { adminExcelService, downloadBlob } from '../services/adminExcelService'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ChallengeBankManagementPage() {
@@ -39,7 +40,11 @@ export default function ChallengeBankManagementPage() {
 
   // Excel Batch States
   const [importing, setImporting] = React.useState(false)
+  const [templateDownloading, setTemplateDownloading] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name)
 
   // Custom Delete Confirm & Notification States
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
@@ -108,7 +113,7 @@ export default function ChallengeBankManagementPage() {
       if (rawError.includes('fk_dca_challenge') || rawError.includes('daily_challenge_attempt')) {
         friendlyMessage = 'Câu hỏi này đang được sử dụng trong các lượt tham gia Thử Thách Hàng Ngày (Mùa Giải của học viên). Không thể xóa!'
       } else if (rawError.includes('quiz_challenge_item') || rawError.includes('fk_quiz_challenge_item') || rawError.includes('quiz_challenge')) {
-        friendlyMessage = 'Câu hỏi này đang được sử dụng trong các Bài Luyện Tập (Quiz). Vui lòng gỡ câu hỏi khỏi Quiz trước khi xóa!'
+        friendlyMessage = 'Câu hỏi này đang được sử dụng trong các bài luyện tập. Vui lòng gỡ câu hỏi khỏi bài kiểm tra trước khi xóa!'
       } else if (rawError.includes('speaking_attempt') || rawError.includes('fk_speaking_attempt')) {
         friendlyMessage = 'Câu hỏi này đã có học viên thực hiện bài làm (phát âm). Không thể xóa để bảo toàn lịch sử học tập!'
       } else if (rawError.includes('foreign key constraint') || rawError.includes('violates foreign key')) {
@@ -161,53 +166,54 @@ export default function ChallengeBankManagementPage() {
 
   // --- Excel Import/Export/Template ---
   const handleDownloadTemplate = async () => {
+    if (templateDownloading) return
+    setTemplateDownloading(true)
     try {
-      const data = await adminService.downloadChallengeBankTemplate()
-      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'template_challenge_bank.xlsx')
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode?.removeChild(link)
+          const blob = await adminExcelService.downloadChallengeBankTemplate()
+          downloadBlob(blob, 'template_challenge_bank.xlsx')
+          showToast('Tải file mẫu thành công!', 'success')
     } catch (err) {
       console.error('Failed to download template:', err)
-      showToast('Lỗi tải file mẫu Excel.', 'error')
+      showToast('Lỗi tải file mẫu.', 'error')
+    } finally {
+      setTemplateDownloading(false)
     }
   }
 
   const handleExportExcel = async () => {
+    if (exporting) return
+    setExporting(true)
     try {
-      const data = await adminService.exportChallengeBankToExcel(
+      const blob = await adminExcelService.exportChallengeBank(
         filterSkill !== 'ALL' ? filterSkill : undefined
       )
-      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `challenge_bank_${filterSkill.toLowerCase()}.xlsx`)
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode?.removeChild(link)
+          downloadBlob(blob, `challenge_bank_${filterSkill.toLowerCase()}.xlsx`)
+          showToast('Xuất file thành công!', 'success')
     } catch (err) {
       console.error('Failed to export Excel:', err)
-      showToast('Lỗi xuất dữ liệu Excel.', 'error')
+      showToast('Lỗi xuất file.', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!isValidExcelFile(file)) {
+      showToast('Chỉ chấp nhận file .xlsx, .xls hoặc .csv', 'error')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
 
     setImporting(true)
     try {
-      await adminService.importChallengeBankFromExcel(file)
+      await adminExcelService.importChallengeBank(file)
       showToast('Nhập dữ liệu kho câu hỏi bằng file Excel thành công!', 'success')
       loadChallenges()
     } catch (err: any) {
       console.error('Failed to import Excel:', err)
-      showToast('Lỗi nhập Excel: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'), 'error')
+      showToast('Lỗi nhập file: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'), 'error')
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -238,79 +244,68 @@ export default function ChallengeBankManagementPage() {
   }, [searchTerm, filterRegion, filterDifficulty, filterSkill])
 
   return (
-    <div className="space-y-8 pb-10 text-slate-800">
-      
-      {/* Excel Batch controls in a beautiful top row card */}
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <article className="lg:col-span-2 rounded-[2rem] border-[3px] border-slate-900 bg-[#fffcf4] p-6 shadow-[6px_6px_0_#1f2937] flex flex-col justify-between">
-          <div>
-            <span className="inline-flex rounded-full border-2 border-slate-900 bg-[#fef9c3] px-3 py-1 text-[10px] font-black uppercase text-slate-700 shadow-[2px_2px_0_#1f2937] mb-3">
-              Excel Batch Engine
-            </span>
-            <h2 className="text-xl font-black text-slate-900 uppercase">Nhập/Xuất Dữ Liệu Hàng Loạt</h2>
-            <p className="text-xs text-slate-600 mt-2">
-              Quản trị viên có thể cập nhật nhanh hàng trăm câu hỏi bằng cách tải file Excel mẫu tiêu chuẩn, điền dữ liệu, và tải lên hệ thống. An toàn, đồng bộ và nhanh chóng.
+    <div className="space-y-5 pb-10 text-slate-800">
+
+      {/* Excel batch — compact bar */}
+      <section className="rounded-[1.5rem] border-[3px] border-slate-900 bg-[#fffcf4] px-4 py-3 shadow-[4px_4px_0_#1f2937] flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
+          <span className="inline-flex shrink-0 rounded-full border-2 border-slate-900 bg-[#fef9c3] px-2.5 py-0.5 text-[9px] font-black uppercase text-slate-700 shadow-[2px_2px_0_#1f2937]">
+            Excel
+          </span>
+          <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Nhập/Xuất hàng loạt</h2>
+          <span className="hidden xl:inline text-[10px] font-bold text-slate-500 max-w-md truncate">
+            Tải mẫu → điền → nhập file .xlsx
+          </span>
+          <div
+            className="flex items-center gap-3 ml-0 lg:ml-3 shrink-0 bg-white px-4 py-2 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0_#1f2937]"
+            title="Tổng số câu hỏi trong kho (sau lần tải dữ liệu gần nhất)"
+          >
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none whitespace-nowrap">
+              Tổng câu hỏi
+            </p>
+            <p className="text-lg font-black text-slate-900 leading-none tabular-nums min-w-[2ch] text-center">
+              {challenges.length}
             </p>
           </div>
-          <div className="mt-6 flex flex-wrap gap-4">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImportExcel}
-              accept=".xlsx, .xls"
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              className="rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] px-6 py-3 text-xs font-black text-slate-900 shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
-            >
-              <Upload size={14} className="inline mr-2" strokeWidth={3} />
-              {importing ? 'ĐANG NHẬP FILE...' : 'NHẬP BẰNG FILE EXCEL'}
-            </button>
-            <button
-              onClick={handleDownloadTemplate}
-              className="rounded-2xl border-[3px] border-slate-900 bg-white px-5 py-3 text-xs font-black text-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-            >
-              <Download size={14} className="inline mr-2" strokeWidth={3} />
-              TẢI FILE MẪU
-            </button>
-            <button
-              onClick={handleExportExcel}
-              className="rounded-2xl border-[3px] border-slate-900 bg-white px-5 py-3 text-xs font-black text-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-            >
-              <FileSpreadsheet size={14} className="inline mr-2" strokeWidth={3} />
-              XUẤT FILE EXCEL
-            </button>
-          </div>
-        </article>
-
-        {/* Quick info status block */}
-        <article className="rounded-[2rem] border-[3px] border-slate-900 bg-[#eef9fe] p-6 shadow-[6px_6px_0_#1f2937] flex flex-col justify-between">
-          <div>
-            <span className="inline-flex rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[10px] font-black uppercase text-[#49B6E5] shadow-[2px_2px_0_#1f2937] mb-3">
-              Question Stats
-            </span>
-            <h2 className="text-xl font-black text-slate-900 uppercase">Tổng Quan Câu Hỏi</h2>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="bg-white p-3 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0_#1f2937]">
-                <p className="text-[9px] font-black text-slate-400 uppercase">Tổng câu</p>
-                <p className="text-2xl font-black text-slate-900">{challenges.length}</p>
-              </div>
-              <div className="bg-white p-3 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0_#1f2937]">
-                <p className="text-[9px] font-black text-slate-400 uppercase">Khớp bộ lọc</p>
-                <p className="text-2xl font-black text-[#49B6E5]">{filteredChallenges.length}</p>
-              </div>
-            </div>
-          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="rounded-xl border-[2.5px] border-slate-900 bg-[#49B6E5] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 transition-all disabled:opacity-50"
+          >
+            <Upload size={12} className="inline mr-1.5" strokeWidth={3} />
+            {importing ? 'Đang nhập...' : 'Nhập file'}
+          </button>
+          <button
+            onClick={handleDownloadTemplate}
+            className="rounded-xl border-[2.5px] border-slate-900 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 transition-all"
+          >
+            <Download size={12} className="inline mr-1.5" strokeWidth={3} />
+            Tải mẫu
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="rounded-xl border-[2.5px] border-slate-900 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-[2px_2px_0_#1f2937] hover:-translate-y-0.5 transition-all"
+          >
+            <FileSpreadsheet size={12} className="inline mr-1.5" strokeWidth={3} />
+            Xuất file
+          </button>
           <button
             onClick={handleOpenAddModal}
-            className="w-full mt-6 rounded-2xl border-[3px] border-slate-900 bg-[#10b981] py-3.5 text-xs font-black text-white shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+            className="rounded-xl border-[2.5px] border-slate-900 bg-[#10b981] px-4 py-2 text-[10px] font-black text-white shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 transition-all"
           >
-            <Plus size={14} className="inline mr-2" strokeWidth={3} />
-            THÊM CÂU HỎI MỚI
+            <Plus size={12} className="inline mr-1.5" strokeWidth={3} />
+            Thêm câu
           </button>
-        </article>
+        </div>
       </section>
 
       {/* Main Table and filters section */}
@@ -348,7 +343,6 @@ export default function ChallengeBankManagementPage() {
               <option value="LISTENING">NGHE</option>
               <option value="READING">ĐỌC</option>
               <option value="WRITING">VIẾT</option>
-              <option value="ENTRY_TEST">ENTRY TEST</option>
             </select>
 
             {/* Region Filter */}
@@ -400,7 +394,7 @@ export default function ChallengeBankManagementPage() {
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Kỹ năng</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Giọng vùng miền</th>
                   <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-center">Độ khó</th>
-                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right pr-4">Hành động</th>
+                  <th className="pb-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-400 text-right pr-4">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y-[2px] divide-slate-100">
@@ -576,7 +570,7 @@ export default function ChallengeBankManagementPage() {
                       <option value="LISTENING">NGHE</option>
                       <option value="READING">ĐỌC</option>
                       <option value="WRITING">VIẾT</option>
-                      <option value="ENTRY_TEST">ENTRY TEST</option>
+                      <option value="ENTRY_TEST">BÀI TEST ĐẦU VÀO</option>
                     </select>
                   </div>
 

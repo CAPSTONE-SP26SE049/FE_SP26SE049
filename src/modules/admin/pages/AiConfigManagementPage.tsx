@@ -337,7 +337,7 @@ Hãy ưu tiên đối chiếu phát hiện lỗi xem người học có mắc ph
 
                                     <Form.Item
                                         name="prompt.quiz-explanation"
-                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Template Giải thích câu hỏi Quiz (Quiz Explanation)</span>}
+                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Mẫu giải thích câu hỏi bài kiểm tra</span>}
                                         extra={<span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mt-1">Các từ khóa hỗ trợ: &#123;status&#125;, &#123;timeoutDetail&#125;, &#123;question&#125;, &#123;selectedAnswer&#125;, &#123;correctAnswer&#125;, &#123;skillType&#125;, &#123;hearingDetail&#125;, &#123;correctDetail&#125;</span>}
                                     >
                                         <Input.TextArea className="doodle-input min-h-[140px] py-4" placeholder="Nhập template giải thích câu hỏi..." />
@@ -345,7 +345,7 @@ Hãy ưu tiên đối chiếu phát hiện lỗi xem người học có mắc ph
 
                                     <Form.Item
                                         name="prompt.entry-test-feedback"
-                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Template nhận xét Đánh giá năng lực đầu vào (Entry Test Feedback)</span>}
+                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Mẫu nhận xét đánh giá năng lực đầu vào</span>}
                                         extra={<span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mt-1">Từ khóa hỗ trợ: &#123;errorDetails&#125;</span>}
                                     >
                                         <Input.TextArea className="doodle-input min-h-[120px] py-4" placeholder="Nhập template nhận xét..." />

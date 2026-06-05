@@ -15,7 +15,7 @@ const PAIR_LABELS: Record<string, string> = {
 const GAME_TYPES = [
     { key: 'WORD_CHALLENGE',        label: 'Thử thách từ vựng',    desc: 'Chọn từ đúng / xếp chữ' },
     { key: 'SENTENCE_COMPLETION',   label: 'Hoàn thành câu', desc: 'Điền từ vào câu' },
-    { key: 'MATCHING_PAIRS',        label: 'Nối cặp',    desc: 'Nối cặp âm' },
+    { key: 'MATCHING_PAIRS',        label: 'Nối cặp âm',    desc: 'Nối cặp âm' },
     { key: 'WORD_GUESS',            label: 'Đoán từ',        desc: 'Đoán từ qua gợi ý' },
     { key: 'CONVERSATION_SCENARIO', label: 'Hội thoại',      desc: 'Kịch bản hội thoại' },
 ]

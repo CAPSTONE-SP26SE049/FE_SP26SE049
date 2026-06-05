@@ -8,10 +8,16 @@ import { errorTagService, ErrorTagResponse, ErrorTagCreateRequest } from '../ser
 const { Option } = Select;
 const { TextArea } = Input;
 
+const REGION_MAP: Record<string, string> = {
+    NORTH: 'Miền Bắc',
+    CENTRAL: 'Miền Trung',
+    SOUTH: 'Miền Nam',
+};
+
 const REGION_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    NORTH:   { label: 'BẮC',   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
-    CENTRAL: { label: 'TRUNG', color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
-    SOUTH:   { label: 'NAM',   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    NORTH:   { label: REGION_MAP.NORTH,   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
+    CENTRAL: { label: REGION_MAP.CENTRAL, color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
+    SOUTH:   { label: REGION_MAP.SOUTH,   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 };
 
 const ErrorTagManagementPage = () => {
@@ -27,9 +33,10 @@ const ErrorTagManagementPage = () => {
         try {
             setLoading(true);
             const data = await errorTagService.getAll();
-            setTags(data);
+            const list = (data as any)?.data ?? data ?? [];
+            setTags(Array.isArray(list) ? list : []);
         } catch {
-            message.error('Không thể tải danh sách Error Tags');
+            message.error('Không thể tải danh sách lỗi phát âm');
         } finally {
             setLoading(false);
         }
@@ -38,9 +45,9 @@ const ErrorTagManagementPage = () => {
     useEffect(() => { fetchTags(); }, []);
 
     const filteredTags = tags.filter(t =>
-        t.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        t.tagCode?.toLowerCase().includes(searchText.toLowerCase()) ||
-        t.description?.toLowerCase().includes(searchText.toLowerCase())
+        (t.name ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+        (t.tagCode ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+        (t.description ?? '').toLowerCase().includes(searchText.toLowerCase())
     );
 
     const handleOpenModal = (tag?: ErrorTagResponse) => {
@@ -66,7 +73,7 @@ const ErrorTagManagementPage = () => {
                 message.success('Cập nhật thành công');
             } else {
                 await errorTagService.create(payload);
-                message.success('Tạo Error Tag thành công');
+                message.success('Tạo lỗi phát âm thành công');
             }
             fetchTags();
             handleCloseModal();
@@ -81,7 +88,7 @@ const ErrorTagManagementPage = () => {
     const handleDelete = async (id: string) => {
         try {
             await errorTagService.delete(id);
-            message.success('Đã xóa Error Tag');
+            message.success('Đã xóa lỗi phát âm');
             fetchTags();
         } catch (error: any) {
             message.error(error?.response?.data?.message || 'Không thể xóa (đang được sử dụng)');
@@ -118,7 +125,7 @@ const ErrorTagManagementPage = () => {
                         const cfg = REGION_CONFIG[r] || { label: r, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' };
                         return (
                             <span key={r} className={clsx('px-2.5 py-0.5 rounded-lg border-[2px] font-black text-[9px] uppercase tracking-widest', cfg.bg, cfg.color, cfg.border)}>
-                                {cfg.label}
+                                {REGION_MAP[r] || r}
                             </span>
                         );
                     })}
@@ -134,7 +141,7 @@ const ErrorTagManagementPage = () => {
             ),
         },
         {
-            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Hành động</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Thao tác</span>,
             key: 'action',
             align: 'right' as const,
             render: (_: any, record: ErrorTagResponse) => (

@@ -137,7 +137,7 @@ interface StepResult {
 
 const EntryTestPage: React.FC = () => {
     const navigate = useNavigate()
-    const { session, updateSessionItem, logout } = useAuth()
+    const { session, updateSessionItem, refreshUserProfile } = useAuth()
     const recorder = useAudioRecorder()
 
     const [questions, setQuestions] = useState<EntryTestQuestion[]>([])
@@ -278,12 +278,13 @@ const EntryTestPage: React.FC = () => {
             const wordDetails = apiResult.word_details || []
 
             // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
+            const isConsent = localStorage.getItem('speakvn_consent_given') !== 'false'
             const feedbackResponse = await apiClient.post('/ai/feedback', {
                 transcribedText,
                 targetText,
                 challengeId: questions[idx]?.id || null,
                 dialect: questions[idx]?.regionCategory || '',
-                consentGiven: false,
+                consentGiven: isConsent,
                 asrProcessingTimeMs
             })
 
@@ -365,7 +366,13 @@ const EntryTestPage: React.FC = () => {
 
             // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
             if (updateSessionItem) {
-                updateSessionItem({ hasDoneEntryTest: true })
+                updateSessionItem({
+                    hasDoneEntryTest: true,
+                    region: data?.detectedRegion || null
+                })
+            }
+            if (refreshUserProfile) {
+                await refreshUserProfile()
             }
         } catch (err) {
             message.error('Lỗi khi lưu kết quả bài test')

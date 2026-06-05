@@ -30,7 +30,7 @@ const NAV_ITEMS = [
   { key: '/admin/chapters', icon: BookOpen, label: 'Quản lý bài tập' },
   { key: '/admin/error-tags', icon: Tag, label: 'Lỗi vùng miền' },
   { key: '/admin/ai-monitor', icon: Bot, label: 'Giám sát AI' },
-  { key: '/admin/entry-test', icon: FlaskConical, label: 'Quản lý Entry Test' },
+  { key: '/admin/entry-test', icon: FlaskConical, label: 'Bài test đầu vào' },
   { key: '/admin/users', icon: Users, label: 'Người dùng' },
   { key: '/admin/achievements', icon: Medal, label: 'Thành tựu' },
   { key: '/admin/minigames', icon: Gamepad2, label: 'Minigames' },

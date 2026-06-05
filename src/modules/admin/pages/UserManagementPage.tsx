@@ -10,8 +10,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { adminService } from '../services/adminService'
-import { adminExcelService } from '../services/adminExcelService'
-import { downloadBlob } from '../../educator/services/excelService'
+import { adminExcelService, downloadBlob } from '../services/adminExcelService'
 import clsx from 'clsx'
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -19,6 +18,13 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; bo
     USER: { label: 'Học viên', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
     ADMIN: { label: 'Quản trị', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
 }
+
+/** Giá trị region khớp BE (UserProfileService.normalizeRegionForStorage). */
+const REGION_OPTIONS = [
+    { value: 'NORTH', label: 'Miền Bắc' },
+    { value: 'CENTRAL', label: 'Miền Trung' },
+    { value: 'SOUTH', label: 'Miền Nam' },
+]
 
 const UserManagementPage = () => {
     const [searchText, setSearchText] = useState('')
@@ -44,6 +50,9 @@ const UserManagementPage = () => {
     const [importing, setImporting] = useState(false)
     const [importResult, setImportResult] = useState<any>(null)
     const [templateDownloading, setTemplateDownloading] = useState(false)
+    const [exporting, setExporting] = useState(false)
+
+    const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name)
     const templateInFlight = useRef(false)
 
     const fetchUsers = async () => {
@@ -93,17 +102,45 @@ const UserManagementPage = () => {
 
     const handleOpenEdit = (user: any) => {
         setEditingUser(user)
-        editForm.setFieldsValue({ fullName: user.fullName, phone: user.phone || '', region: user.region || '' })
         setIsEditOpen(true)
+        setTimeout(() => {
+            editForm.setFieldsValue({
+                fullName: user?.fullName || '',
+                phone: user?.phone || user?.phoneNumber || '',
+                region: undefined,
+            })
+        }, 0)
+    }
+
+    const handleCloseEditModal = () => {
+        setIsEditOpen(false)
+        setEditingUser(null)
+        editForm.resetFields()
     }
 
     const handleUpdateUser = async (values: any) => {
         if (!editingUser) return
+
+        const payload: Record<string, string> = {}
+            const fullName = values.fullName?.trim()
+            const phone = values.phone?.trim()
+            const originalName = (editingUser.fullName || '').trim()
+            const originalPhone = (editingUser.phone || editingUser.phoneNumber || '').trim()
+
+            if (fullName !== undefined && fullName !== originalName) payload.fullName = fullName
+            if (phone !== undefined && phone !== originalPhone) payload.phone = phone
+            if (values.region !== undefined && values.region !== editingUser.region) payload.region = values.region
+
+        if (Object.keys(payload).length === 0) {
+            message.warning('Không có thay đổi nào để cập nhật')
+            return
+        }
+
         try {
             setSubmitting(true)
-            await adminService.updateUser(editingUser.id, values)
+            await adminService.updateUser(editingUser.id, payload)
             message.success('Cập nhật thông tin thành công')
-            setIsEditOpen(false)
+            handleCloseEditModal()
             fetchUsers()
         } catch (err: any) {
             message.error(err?.response?.data?.message || 'Cập nhật thất bại')
@@ -129,31 +166,42 @@ const UserManagementPage = () => {
             message.loading({ content: 'Đang tải template...', key: 'tpl' })
             const blob = await adminExcelService.downloadTeacherTemplate()
             downloadBlob(blob, 'template_teachers.xlsx')
-            message.success({ content: 'Tải template thành công!', key: 'tpl' })
-        } catch { message.error({ content: 'Không thể tải template', key: 'tpl' }) }
+            message.success({ content: 'Tải file mẫu thành công!', key: 'tpl' })
+        } catch { message.error({ content: 'Không thể tải file mẫu', key: 'tpl' }) }
         finally { templateInFlight.current = false; setTemplateDownloading(false) }
     }
 
     const handleExport = async () => {
+        if (exporting) return
+        setExporting(true)
         try {
-            message.loading({ content: 'Đang export...', key: 'exp' })
+            message.loading({ content: 'Đang xuất file...', key: 'exp' })
             const blob = await adminExcelService.exportTeachers()
             downloadBlob(blob, `users_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
-            message.success({ content: 'Export thành công!', key: 'exp' })
-        } catch { message.error({ content: 'Không thể export', key: 'exp' }) }
+            message.success({ content: 'Xuất file thành công!', key: 'exp' })
+        } catch {
+            message.error({ content: 'Không thể xuất file', key: 'exp' })
+        } finally {
+            setExporting(false)
+        }
     }
 
     const handleImport = async () => {
         if (!importFile) { message.warning('Vui lòng chọn file Excel'); return }
+        if (!isValidExcelFile(importFile)) {
+            message.error('Chỉ chấp nhận file .xlsx, .xls hoặc .csv')
+            return
+        }
         setImporting(true)
         setImportResult(null)
         try {
             const res: any = await adminExcelService.importTeachers(importFile)
-            setImportResult(res?.data || res)
-            message.success('Import hoàn tất!')
+            const result = res?.data ?? res
+            setImportResult(result)
+            message.success('Nhập file hoàn tất!')
             fetchUsers()
         } catch (e: any) {
-            message.error(e?.response?.data?.message || 'Lỗi khi import')
+            message.error(e?.response?.data?.message || 'Lỗi nhập file')
         } finally { setImporting(false) }
     }
 
@@ -303,20 +351,22 @@ const UserManagementPage = () => {
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={downloadTemplate}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all"
+                        disabled={templateDownloading}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <FileSpreadsheet size={16} strokeWidth={3} />
-                        Template
+                        {templateDownloading ? 'Đang tải...' : 'Tải file mẫu'}
                     </motion.button>
 
                     <motion.button
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => { setImportResult(null); setImportFile(null); setIsImportOpen(true) }}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
+                        disabled={importing}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <UploadIcon size={16} strokeWidth={3} />
-                        Import
+                        Nhập file
                     </motion.button>
 
                     <motion.button
@@ -396,7 +446,7 @@ const UserManagementPage = () => {
 
                     <div className="ml-auto hidden lg:flex items-center gap-3 px-6 py-2 bg-slate-50 border-[2px] border-slate-900/10 rounded-2xl italic">
                         <div className="w-2 h-2 rounded-full bg-[#49B6E5] animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Records: {filtered.length}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bản ghi hiện có: {filtered.length}</span>
                     </div>
                 </div>
 
@@ -408,8 +458,8 @@ const UserManagementPage = () => {
                             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Danh sách người dùng</h2>
                         </div>
                         <div className="flex items-center gap-4">
-                            <button onClick={handleExport} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">
-                                <FileSpreadsheet size={14} /> Export CSV
+                            <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50">
+                                <FileSpreadsheet size={14} /> {exporting ? 'Đang xuất...' : 'Xuất file'}
                             </button>
                         </div>
                     </div>
@@ -459,7 +509,10 @@ const UserManagementPage = () => {
                     <Form.Item
                         name="fullName"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
-                        rules={[{ required: true, message: 'Nhập họ tên' }]}
+                        rules={[
+                            { required: true, whitespace: true, message: 'Nhập họ tên' },
+                            { max: 100, message: 'Họ tên không quá 100 ký tự' },
+                        ]}
                     >
                         <div className="relative group">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
@@ -484,9 +537,9 @@ const UserManagementPage = () => {
                         initialValue="USER"
                     >
                         <Select className="doodle-select">
-                            <Select.Option value="USER">Học viên (User)</Select.Option>
-                            <Select.Option value="EDUCATOR">Giáo viên (Educator)</Select.Option>
-                            <Select.Option value="ADMIN">Quản trị viên (Admin)</Select.Option>
+                            <Select.Option value="USER">Học viên</Select.Option>
+                            <Select.Option value="EDUCATOR">Giáo viên</Select.Option>
+                            <Select.Option value="ADMIN">Quản trị viên</Select.Option>
                         </Select>
                     </Form.Item>
 
@@ -517,45 +570,73 @@ const UserManagementPage = () => {
             <Modal
                 title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Cập nhật thông tin</div>}
                 open={isEditOpen}
-                onCancel={() => { setIsEditOpen(false); setEditingUser(null); editForm.resetFields() }}
+                onCancel={handleCloseEditModal}
                 footer={null}
                 centered
                 width={500}
+                destroyOnClose
                 className="doodle-modal"
             >
                 <Form form={editForm} layout="vertical" onFinish={handleUpdateUser} className="mt-8 space-y-5">
                     <Form.Item
                         name="fullName"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
+                        rules={[
+                            { max: 100, message: 'Họ tên không quá 100 ký tự' },
+                            {
+                                validator: (_, value) => {
+                                    if (value === undefined || value === null || value === '') return Promise.resolve()
+                                    if (typeof value === 'string' && value.trim() === '') {
+                                        return Promise.reject(new Error('Họ tên không được chỉ chứa khoảng trắng'))
+                                    }
+                                    return Promise.resolve()
+                                },
+                            },
+                        ]}
                     >
-                        <div className="relative">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Input className="doodle-input pl-12" />
-                        </div>
+                            <Input
+                                size="large"
+                                prefix={<User className="text-slate-300" size={18} strokeWidth={3} />}
+                                className="doodle-input"
+                                maxLength={100}
+                                placeholder="Để trống nếu không đổi tên"
+                            />
                     </Form.Item>
 
                     <Form.Item
                         name="phone"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
+                        rules={[
+                            {
+                                validator: (_, value) => {
+                                    const v = (value ?? '').trim();
+                                    if (!v) return Promise.resolve();
+                                    if (/^(0|\+84)[3-9]\d{8}$/.test(v)) return Promise.resolve();
+                                    return Promise.reject(new Error('Số điện thoại không hợp lệ'));
+                                },
+                            },
+                        ]}
                     >
-                        <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Input className="doodle-input pl-12" />
-                        </div>
+                            <Input
+                                size="large"
+                                prefix={<Phone className="text-slate-300" size={18} strokeWidth={3} />}
+                                className="doodle-input"
+                                placeholder="0912345678"
+                            />
                     </Form.Item>
 
                     <Form.Item
                         name="region"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Vùng miền</span>}
                     >
-                        <div className="relative">
-                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Select placeholder="Chọn vùng miền" className="doodle-select pl-8">
-                                {dialects.map(d => (
-                                    <Select.Option key={d.id} value={d.name}>{d.description || d.name}</Select.Option>
-                                ))}
-                            </Select>
-                        </div>
+                            <Select
+                                size="large"
+                                allowClear
+                                placeholder="Chọn vùng miền..."
+                                className="doodle-select"
+                                suffixIcon={<MapPin className="text-slate-300" size={16} strokeWidth={3} />}
+                                options={REGION_OPTIONS}
+                            />
                     </Form.Item>
 
                     <div className="flex gap-4 pt-6">
@@ -563,7 +644,7 @@ const UserManagementPage = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             type="button"
-                            onClick={() => { setIsEditOpen(false); editForm.resetFields() }}
+                            onClick={handleCloseEditModal}
                             className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705]"
                         >
                             Hủy
@@ -583,7 +664,7 @@ const UserManagementPage = () => {
 
             {/* Import Excel Modal */}
             <Modal
-                title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Import người dùng Excel</div>}
+                title={<div className="text-xl font-black text-slate-900 uppercase tracking-tight">Nhập người dùng bằng Excel</div>}
                 open={isImportOpen}
                 onCancel={() => { setIsImportOpen(false); setImportFile(null); setImportResult(null) }}
                 onOk={handleImport}
@@ -598,13 +679,13 @@ const UserManagementPage = () => {
                             <span className="text-xs font-black uppercase tracking-widest text-[#49B6E5]">Cấu trúc tệp</span>
                             <button onClick={downloadTemplate} className="text-[10px] font-black uppercase underline text-slate-400 hover:text-slate-900">Tải tệp mẫu</button>
                         </div>
-                        <p className="text-[11px] font-bold text-slate-500 italic">File cần có cột 'Email' và 'Họ và tên'. Hệ thống sẽ tự động tạo tài khoản EDUCATOR.</p>
+                        <p className="text-[11px] font-bold text-slate-500 italic">File cần có cột Email và Họ và tên. Hệ thống sẽ tự động tạo tài khoản giáo viên.</p>
                     </div>
 
                     <div className="relative group p-10 border-[3px] border-dashed border-slate-900/10 rounded-[2.5rem] bg-slate-50 hover:bg-white hover:border-[#49B6E5] transition-all text-center">
                         <input
                             type="file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.csv"
                             onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
@@ -637,7 +718,7 @@ const UserManagementPage = () => {
                             (!importFile || importing) && "opacity-50 grayscale"
                         )}
                     >
-                        {importing ? "Đang xử lý..." : "Xác nhận Import"}
+                        {importing ? "Đang nhập file..." : "Nhập file"}
                     </motion.button>
                 </div>
             </Modal>

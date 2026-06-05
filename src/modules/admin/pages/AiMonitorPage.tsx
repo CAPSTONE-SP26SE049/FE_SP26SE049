@@ -178,7 +178,7 @@ const AiMonitorPage = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-2 h-10 bg-[#49B6E5] rounded-full shadow-[2px_2px_0_#1f293705]" />
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">AI performance Monitor</h1>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Giám sát hiệu năng AI</h1>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Giám sát hạ tầng ASR & Cloud AI theo thời gian thực</p>
                     </div>
                 </div>
@@ -217,8 +217,8 @@ const AiMonitorPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                     { label: 'Tổng lượt luyện tập', value: logs.length, icon: Activity, color: '#8b5cf6', bg: 'bg-violet-50' },
-                    { label: 'Avg Latency Parakeet', value: avgAsr != null ? `${avgAsr}ms` : '---', icon: Mic, color: '#6366f1', bg: 'bg-indigo-50' },
-                    { label: 'Avg Latency Groq AI', value: avgGroq != null ? `${avgGroq}ms` : '---', icon: Brain, color: '#49B6E5', bg: 'bg-blue-50' },
+                    { label: 'Độ trễ TB Parakeet', value: avgAsr != null ? `${avgAsr}ms` : '---', icon: Mic, color: '#6366f1', bg: 'bg-indigo-50' },
+                    { label: 'Độ trễ TB Groq AI', value: avgGroq != null ? `${avgGroq}ms` : '---', icon: Brain, color: '#49B6E5', bg: 'bg-blue-50' },
                     { label: 'Tỷ lệ chính xác', value: accuracy != null ? `${accuracy}%` : '---', icon: CheckCircle2, color: '#10b981', bg: 'bg-emerald-50' },
                 ].map((card) => {
                     const Icon = card.icon
@@ -249,7 +249,7 @@ const AiMonitorPage = () => {
             <article className="rounded-[2.5rem] border-[3px] border-slate-900 bg-white p-8 shadow-[8px_8px_0_#1f2937] overflow-hidden">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Biểu đồ Latency hệ thống</h2>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Biểu đồ độ trễ hệ thống</h2>
                         <div className="flex items-center gap-4 mt-2">
                             <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-violet-500">
                                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-sm" /> Parakeet ASR
@@ -273,7 +273,7 @@ const AiMonitorPage = () => {
                         <div className="flex h-full flex-col items-center justify-center text-slate-300 space-y-4">
                             <Activity size={48} className="animate-pulse" />
                             <p className="font-black uppercase tracking-widest text-sm text-slate-400">
-                                {loading ? 'Đang đồng bộ dữ liệu...' : 'Chưa có bản ghi latency nào'}
+                                {loading ? 'Đang đồng bộ dữ liệu...' : 'Chưa có bản ghi độ trễ nào'}
                             </p>
                         </div>
                     )}
@@ -469,7 +469,7 @@ const AiMonitorPage = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className={clsx("text-sm font-black uppercase tracking-tight truncate max-w-[120px]", isSelected ? 'text-[#49B6E5]' : 'text-slate-900')}>
-                                                            {log.userFullName || 'Unknown'}
+                                                            {log.userFullName || 'Không xác định'}
                                                         </div>
                                                         <div className="text-[10px] font-bold text-slate-300 truncate max-w-[140px] italic">{log.userEmail}</div>
                                                     </div>
@@ -482,7 +482,7 @@ const AiMonitorPage = () => {
                                                     </div>
                                                     <div className={clsx("text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5", log.isCorrect ? 'text-emerald-500' : 'text-rose-500')}>
                                                         <Mic size={12} strokeWidth={3} />
-                                                        {log.asrTranscription || 'FAILED'}
+                                                        {log.asrTranscription || 'Thất bại'}
                                                     </div>
                                                 </div>
                                             </td>

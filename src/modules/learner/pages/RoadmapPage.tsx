@@ -311,7 +311,6 @@ const ChapterStep = ({
               ? ch.description
               : `Khám phá giọng ${meta.viName}`
             const isCompleted = !!ch.isCompleted
-            const stars = ch.starsEarned || 0
 
             return (
               <motion.div
@@ -362,15 +361,6 @@ const ChapterStep = ({
                   </div>
 
                   <div className="flex items-center gap-4 flex-shrink-0">
-                    {isCompleted && stars > 0 && !ch.isLocked && (
-                      <div className="flex gap-1">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className={clsx('w-6 h-6 rounded-lg border-[1.5px] border-slate-900 flex items-center justify-center shadow-[1px_1px_0_#1f2937]', i < stars ? 'bg-yellow-400' : 'bg-white')}>
-                            <Star size={12} className="fill-slate-900 text-slate-900" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     <div
                       className={clsx(
                         'w-10 h-10 rounded-xl border-[2px] border-slate-900 flex items-center justify-center shadow-[2px_2px_0_#1f2937] transition-all duration-300',

@@ -62,11 +62,10 @@ export default function Dashboard() {
     const [isEvaluating, setIsEvaluating] = useState(false)
     const [evaluationFeedback, setEvaluationFeedback] = useState<any | null>(null)
     const [celebrationVisible, setCelebrationVisible] = useState(false)
-    const [celebrationXp, setCelebrationXp] = useState(0)
 
     const badgesFetched = useRef(false)
     const lessonFetched = useRef(false)
-    const BADGES_PER_PAGE = 8
+    const BADGES_PER_PAGE = 16
 
     const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -148,13 +147,11 @@ export default function Dashboard() {
                         date: todayStr,
                         ids: newCompleted
                     }));
-
-                    if (result.completedAllToday && result.xpAwarded > 0) {
-                        setCelebrationXp(result.xpAwarded);
+                    if (result.completedAllToday) {
                         setCelebrationVisible(true);
 
                         apiClient.get('/users/me')
-                            .then((meRes: any) => {
+                            .then((meRes) => {
                                 const data = meRes?.data?.data ?? meRes?.data
                                 if (data && updateSessionItem) {
                                     updateSessionItem({
@@ -167,6 +164,7 @@ export default function Dashboard() {
                     }
                 }
             }
+
         } catch (err) {
             console.error('Failed to submit daily challenge:', err);
             setEvaluationFeedback({
@@ -185,19 +183,26 @@ export default function Dashboard() {
         const loadDailyChallenges = async () => {
             try {
                 const todayStr = new Date().toISOString().split('T')[0];
-
-                // Try fetching from the database first
+                // Fetch completed challenges and list in parallel
+                const [completedRes, res] = await Promise.all([
+                    apiClient.get('/daily-challenges/completed').catch(err => {
+                        console.warn('Failed to load completed challenges from database, falling back to localStorage:', err);
+                        return null;
+                    }),
+                    apiClient.get('/daily-challenges').catch(err => {
+                        console.error('Failed to load daily challenges:', err);
+                        return null;
+                    })
+                ]);
                 let completedIds: string[] = [];
                 let fetchedFromDb = false;
-                try {
-                    const completedRes = await apiClient.get('/daily-challenges/completed');
+                
+                if (completedRes) {
                     const dbIds = completedRes?.data?.data ?? completedRes?.data ?? completedRes ?? [];
                     if (Array.isArray(dbIds)) {
                         completedIds = dbIds.map(String);
                         fetchedFromDb = true;
                     }
-                } catch (dbErr) {
-                    console.warn('Failed to load completed challenges from database, falling back to localStorage:', dbErr);
                 }
 
                 if (fetchedFromDb) {
@@ -222,10 +227,10 @@ export default function Dashboard() {
                         }
                     }
                 }
-
-                const res = await apiClient.get('/daily-challenges');
-                const list = res?.data ?? res?.data?.data ?? res ?? [];
-                setDailyChallenges(Array.isArray(list) ? list : []);
+                if (res) {
+                    const list = res?.data ?? res?.data?.data ?? res ?? [];
+                    setDailyChallenges(Array.isArray(list) ? list : []);
+                }
             } catch (err) {
                 console.error('Failed to load daily challenges:', err);
             } finally {
@@ -262,7 +267,6 @@ export default function Dashboard() {
                             updateSessionItem({
                                 totalStars: data.totalStars ?? data.totalStar ?? 0,
                                 streak: data.streak ?? data.currentStreakDays ?? 0,
-                                totalExperience: data.totalXp ?? data.totalExperience ?? 0,
                             })
                         }
                     })
@@ -505,7 +509,7 @@ export default function Dashboard() {
                                 Nhiệm vụ hàng ngày
                             </div>
                             <h2 className="mt-2 text-2xl font-black text-slate-900 uppercase">Thử thách phát âm hôm nay</h2>
-                            <p className="text-sm text-slate-600">Đọc to các mẫu câu dưới đây. Đạt độ chính xác từ 80% trở lên để vượt qua. Hoàn thành 3 câu nhận +50 XP!</p>
+                            <p className="text-sm text-slate-600">Đọc to các mẫu câu dưới đây. Đạt độ chính xác từ 80% trở lên để vượt qua.</p>
                         </div>
                         <div className="rounded-2xl border-[2px] border-slate-900 bg-[#7dd3fc] px-4 py-2 text-center shadow-[3px_3px_0_#1f2937]">
                             <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Tiến độ thử thách</p>
@@ -853,9 +857,7 @@ export default function Dashboard() {
                         <p className="mt-4 text-base font-bold text-slate-700">
                             Tuyệt vời! Bạn đã xuất sắc hoàn thành trọn bộ 3 thử thách phát âm của ngày hôm nay.
                         </p>
-                        <div className="my-6 inline-block rounded-2xl border-[3px] border-slate-900 bg-[#7dd3fc] px-6 py-3 font-black text-slate-900 shadow-[4px_4px_0_#1f2937]">
-                            +{celebrationXp} XP THƯỞNG HÀNG NGÀY
-                        </div>
+
                         <button
                             onClick={() => {
                                 setCelebrationVisible(false);

@@ -86,7 +86,7 @@ const QuizManagement: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-lg font-bold m-0">Danh sách bài kiểm tra (Quizzes)</h3>
+                    <h3 className="text-lg font-bold m-0">Danh sách bài kiểm tra</h3>
                     <p className="text-gray-400 text-xs mt-0.5">Danh sách tổng hợp — Phê duyệt nội dung mới tại tab <strong>Chờ phê duyệt</strong>.</p>
                 </div>
             </div>

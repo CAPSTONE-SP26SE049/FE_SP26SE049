@@ -16,9 +16,7 @@ export interface AuthUser {
   phone?: string
   phoneNumber?: string
   streak?: number
-  totalXp?: number
   totalStars?: number
-  totalExperience?: number
   completedLessons?: number
   createdAt?: string
 }
@@ -135,8 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             phoneNumber: data.user.phoneNumber || data.user.phone,
             streak: data.user.currentStreakDays ?? 0,
             totalStars: data.user.totalStars ?? 0,
-            totalExperience: data.user.totalExperience ?? 0,
-            totalXp: data.user.totalExperience ?? 0,
             createdAt: data.user.createdAt || data.user.created_at,
           },
 
@@ -165,8 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             phoneNumber: data.user.phoneNumber || data.user.phone,
             streak: data.user.currentStreakDays ?? 0,
             totalStars: data.user.totalStars ?? 0,
-            totalExperience: data.user.totalExperience ?? 0,
-            totalXp: data.user.totalExperience ?? 0,
             createdAt: data.user.createdAt || data.user.created_at,
           },
 

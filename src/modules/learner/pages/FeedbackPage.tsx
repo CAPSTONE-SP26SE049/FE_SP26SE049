@@ -105,13 +105,13 @@ const FeedbackPage: React.FC = () => {
                         <Form form={form} layout="vertical" onFinish={handleSubmit} className="space-y-3">
                             <Form.Item
                                 name="category"
-                                label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Loại phản hồi</span>}
+                                label={<span className="text-[10px] font-black uppercase text-slate-400 !text-slate-500 tracking-[0.15em]">Loại phản hồi</span>}
                                 rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
                                 className="!mb-0"
                             >
                                 <Select
                                     placeholder="Chọn loại phản hồi"
-                                    className="doodle-select-fb"
+                                    className="doodle-select-fb w-full"
                                     suffixIcon={<ChevronRight className="rotate-90 text-slate-400" size={12} strokeWidth={4} />}
                                 >
                                     {CATEGORIES.map(c => (
@@ -122,32 +122,32 @@ const FeedbackPage: React.FC = () => {
 
                             <Form.Item
                                 name="title"
-                                label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Tiêu đề</span>}
+                                label={<span className="text-[10px] font-black uppercase text-slate-400 !text-slate-500 tracking-[0.15em]">Tiêu đề</span>}
                                 rules={[{ required: true, message: 'Nhập tiêu đề' }, { max: 255 }]}
                                 className="!mb-0"
                             >
                                 <Input
                                     placeholder="Mô tả ngắn gọn vấn đề..."
-                                    className="h-10 border-[2px] border-slate-900/20 rounded-xl font-bold text-sm focus:border-[#49B6E5]"
+                                    className="doodle-input-fb h-11"
                                 />
                             </Form.Item>
 
                             <Form.Item
                                 name="content"
-                                label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Nội dung chi tiết</span>}
+                                label={<span className="text-[10px] font-black uppercase text-slate-400 !text-slate-500 tracking-[0.15em]">Nội dung chi tiết</span>}
                                 rules={[{ required: true, message: 'Nhập nội dung' }, { min: 10 }]}
                                 className="!mb-0"
                             >
                                 <TextArea
                                     rows={4}
                                     placeholder="Mô tả chi tiết vấn đề..."
-                                    className="border-[2px] border-slate-900/20 rounded-xl font-bold text-sm focus:border-[#49B6E5] resize-none"
+                                    className="doodle-input-fb p-3 resize-none"
                                 />
                             </Form.Item>
 
                             {/* Screenshot */}
                             <div>
-                                <div className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] mb-1.5">Ảnh đính kèm (tuỳ chọn)</div>
+                                <div className="text-[10px] font-black uppercase text-slate-400 !text-slate-500 tracking-[0.15em] mb-1.5">Ảnh đính kèm (tuỳ chọn)</div>
                                 <label className={clsx(
                                     'relative flex items-center gap-3 p-3 rounded-xl border-[2px] border-dashed cursor-pointer transition-all',
                                     screenshotUrl ? 'border-emerald-400 bg-emerald-50' : 'border-slate-900/15 bg-slate-50 hover:border-[#49B6E5]'
@@ -220,9 +220,9 @@ const FeedbackPage: React.FC = () => {
                                 return (
                                     <motion.div
                                         key={fb.id}
-                                        whileHover={{ x: 3 }}
+                                        whileHover={{ y: -2, scale: 1.01 }}
                                         onClick={() => setDetailItem(fb)}
-                                        className="p-4 bg-slate-50/60 border-[2px] border-slate-900/10 hover:border-slate-900/30 rounded-2xl cursor-pointer transition-all"
+                                        className="p-4 bg-white border-[2.5px] border-slate-900 hover:shadow-[4px_4px_0_#1f2937] rounded-2xl cursor-pointer transition-all duration-200"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1 min-w-0">
@@ -270,7 +270,7 @@ const FeedbackPage: React.FC = () => {
                     const Icon = cfg.icon
                     return (
                         <div className="space-y-4 pt-2">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between pr-10">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
                                     {CATEGORIES.find(c => c.value === detailItem.category)?.label || detailItem.category}
                                 </span>
@@ -280,7 +280,7 @@ const FeedbackPage: React.FC = () => {
                                 </div>
                             </div>
                             <div className="font-black text-slate-900 text-base uppercase tracking-tight">{detailItem.title}</div>
-                            <div className="p-4 bg-slate-50 rounded-2xl border-[2px] border-slate-200 text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">{detailItem.content}</div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border-[2px] border-slate-900/15 text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">{detailItem.content}</div>
                             {detailItem.screenshotUrl && (
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
@@ -301,9 +301,9 @@ const FeedbackPage: React.FC = () => {
                                 </div>
                             )}
                             {detailItem.adminNote && (
-                                <div className="p-3 bg-blue-50 border-[2px] border-blue-300 rounded-2xl">
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-1">Phản hồi từ Admin</div>
-                                    <div className="text-sm font-bold text-blue-700">{detailItem.adminNote}</div>
+                                <div className="p-4 bg-blue-50/50 border-[2px] border-blue-200 rounded-2xl">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1">Phản hồi từ Admin</div>
+                                    <div className="text-sm font-bold text-blue-700 leading-relaxed">{detailItem.adminNote}</div>
                                 </div>
                             )}
                             <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
@@ -316,29 +316,66 @@ const FeedbackPage: React.FC = () => {
 
             <style dangerouslySetInnerHTML={{ __html: `
                 .doodle-select-fb .ant-select-selector {
-                    height: 40px !important;
-                    border: 2px solid rgba(15,23,42,0.2) !important;
+                    height: 44px !important;
+                    border: 2.5px solid #1f2937 !important;
                     border-radius: 0.75rem !important;
                     display: flex !important;
                     align-items: center !important;
                     font-weight: 700 !important;
                     font-size: 0.875rem !important;
+                    background: #ffffff !important;
+                    transition: all 0.15s ease-in-out !important;
                 }
-                .doodle-select-fb.ant-select-focused .ant-select-selector {
+                .doodle-select-fb.ant-select-focused .ant-select-selector,
+                .doodle-select-fb:hover .ant-select-selector {
                     border-color: #49B6E5 !important;
                     box-shadow: none !important;
+                }
+                .doodle-input-fb {
+                    border: 2.5px solid #1f2937 !important;
+                    border-radius: 0.75rem !important;
+                    font-weight: 700 !important;
+                    font-size: 0.875rem !important;
+                    background: #ffffff !important;
+                    transition: all 0.15s ease-in-out !important;
+                }
+                .doodle-input-fb:focus, .doodle-input-fb:hover {
+                    border-color: #49B6E5 !important;
+                    box-shadow: none !important;
+                    outline: none !important;
                 }
                 .doodle-modal-fb .ant-modal-content {
                     border: 4px solid #1f2937 !important;
                     border-radius: 2.5rem !important;
                     box-shadow: 12px 12px 0 #1f2937 !important;
                     background: #fbf6ef !important;
-                    padding: 2rem !important;
+                    padding: 2.25rem 2rem 2rem 2rem !important;
+                    position: relative !important;
+                }
+                .doodle-modal-fb .ant-modal-close {
+                    top: 1.5rem !important;
+                    right: 1.5rem !important;
+                    width: 2.2rem !important;
+                    height: 2.2rem !important;
+                    border: 2.5px solid #1f2937 !important;
+                    background: #ffffff !important;
+                    box-shadow: 2px 2px 0 #1f2937 !important;
+                    border-radius: 0.75rem !important;
+                    color: #1f2937 !important;
+                    transition: all 0.15s ease-in-out !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                .doodle-modal-fb .ant-modal-close:hover {
+                    background: #fecdd3 !important;
+                    transform: translate(1px, 1px) !important;
+                    box-shadow: 1px 1px 0 #1f2937 !important;
                 }
                 .doodle-modal-fb .ant-modal-header { background: transparent !important; border: none !important; }
-                .custom-scrollbar-fb::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar-fb::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar-fb::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar-fb::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar-fb::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
             `}} />
         </div>
     )

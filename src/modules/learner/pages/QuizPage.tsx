@@ -178,6 +178,7 @@ interface ParsedChallenge {
   hint: string | null
   timeLimit: number | null     // time for THIS question
   region?: string              // dialect/region of the challenge
+  listeningType?: 'basic' | 'advanced'
 }
 
 
@@ -258,6 +259,7 @@ function parseChallenge(raw: any): ParsedChallenge {
     hint: meta.hint || null,
     timeLimit: meta.timeLimit ?? meta.time_limit ?? meta.timeLimitSeconds ?? null,
     region: ch.region ?? meta.region ?? null,
+    listeningType: meta.listeningType ?? meta.listening_type ?? null,
   }
 }
 
@@ -678,8 +680,6 @@ const QuizPage: React.FC = () => {
         if (typeof updateSessionItem === 'function' && actualData) {
           updateSessionItem({
             totalStars: actualData.newTotalStars,
-            totalXp: actualData.newTotalXP,
-            totalExperience: actualData.newTotalXP
           })
         }
       }
@@ -712,7 +712,8 @@ const QuizPage: React.FC = () => {
     // Speaking questions are self-paced — no countdown timer
     if (currentCh?.mode === 'SPEAKING_READ') return
 
-    const perQLimit = currentCh?.timeLimit ?? (total > 0 && quiz.timeLimitSeconds > 0 ? Math.round(quiz.timeLimitSeconds / total) : 0)
+    const totalQ = quiz.challenges.length
+    const perQLimit = currentCh?.timeLimit ?? (totalQ > 0 && quiz.timeLimitSeconds > 0 ? Math.round(quiz.timeLimitSeconds / totalQ) : 0)
 
     if (perQLimit > 0 && timeLeft === null && !answered) {
       setTimeLeft(perQLimit)
@@ -723,7 +724,7 @@ const QuizPage: React.FC = () => {
       return () => clearInterval(timer)
     } else if (timeLeft === 0 && !answered) {
       setAnswered(true)
-      explainAnswer(ch, 'Người dùng chưa chọn đáp án (Hết thời gian)', false)
+      if (currentCh) explainAnswer(currentCh, 'Người dùng chưa chọn đáp án (Hết thời gian)', false)
     }
   }, [idx, timeLeft, answered, finished, loading, quiz])
 
@@ -1111,7 +1112,7 @@ const QuizPage: React.FC = () => {
   if (finished) {
     const pct = result?.score ?? (total > 0 ? Math.round((score / total) * 100) : 0)
     const passed = result?.passed ?? (pct >= quiz.passingScore)
-    const stars = result?.starsEarned ?? 0
+    const stars = result?.starsEarned ?? (pct >= 80 ? 3 : (pct >= 60 ? 2 : (pct >= 40 ? 1 : 0)))
     const reward = result?.earnedReward
 
     return (
@@ -1173,15 +1174,15 @@ const QuizPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Stats - chỉ hiện tỷ lệ, bỏ score */}
+            {/* Stats - Điểm số (thang điểm 10) */}
             <div className="flex justify-center mb-8">
               <motion.div
                 whileHover={{ y: -4 }}
                 className="bg-[#e0f2fe] rounded-2xl p-5 border-[3px] border-slate-900 shadow-[4px_4px_0_#1f2937] flex flex-col items-center justify-center text-center group transition-all w-48"
               >
                 <Activity size={28} className="text-[#0284c7] mb-3 group-hover:scale-110 transition-transform" strokeWidth={3} />
-                <p className="text-[11px] uppercase font-black tracking-widest text-[#0284c7] opacity-80 mb-1">Tỷ lệ</p>
-                <p className="text-4xl font-black text-slate-900">{pct}<span className="text-xl text-slate-400">%</span></p>
+                <p className="text-[11px] uppercase font-black tracking-widest text-[#0284c7] opacity-80 mb-1">Điểm số</p>
+                <p className="text-4xl font-black text-slate-900">{score}<span className="text-xl text-slate-400">/{total}</span></p>
               </motion.div>
             </div>
 
@@ -1482,7 +1483,26 @@ const QuizPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Lời khuyên từ AI đã được chuyển sang speech bubble bên phải */}
+                    {/* Aligned target words with colors (Word Details) */}
+                    {ollamaResult.wordDetails && ollamaResult.wordDetails.length > 0 && (
+                      <div className="bg-slate-50 border-[2px] border-slate-200 rounded-2xl p-3">
+                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2 italic">Từ/Câu mẫu đối chiếu:</p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {ollamaResult.wordDetails.map((item: any, i: number) => {
+                            const isWrong = item.status === 'wrong';
+                            const textColor = item.status === 'correct' ? 'text-green-600' :
+                              item.status === 'near' ? 'text-yellow-600' :
+                              'text-red-600';
+                            return (
+                              <span key={i} className={`font-black text-lg ${textColor} ${isWrong ? 'underline decoration-[3px] underline-offset-4' : ''}`}>
+                                {item.word}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </motion.div>
               )}
@@ -1759,7 +1779,8 @@ const QuizPage: React.FC = () => {
               ) : (
                 <p className="text-base font-black uppercase tracking-[0.15em] text-slate-700">
                   {ch.mode === 'SPEAKING_READ' ? 'Hãy phát âm từ / câu sau:'
-                    : isListeningQuestion ? 'Nghe và chọn đáp án đúng:'
+                    : ch.skillType === 'LISTENING' ? (ch.listeningType === 'advanced' ? 'Nghe và chọn từ viết đúng của từ bị đọc sai:' : 'Nghe và chọn đáp án đúng:')
+                    : ch.mode === 'LISTENING' ? 'Nghe và chọn đáp án đúng:'
                     : ch.mode === 'MULTIPLE_CHOICE' ? 'Chọn đáp án đúng:'
                     : 'Câu hỏi:'}
                 </p>
@@ -1767,13 +1788,16 @@ const QuizPage: React.FC = () => {
 
               {ch.mode !== 'WRITING_FILL' && (
                 <h4 className="text-4xl font-black text-slate-900 leading-snug max-w-2xl">
-                  {isListeningQuestion ? (
-                    <span>
-                      Đáp án đúng:{' '}
-                      <span className={listeningRevealedWord ? 'text-emerald-600' : 'text-slate-400 tracking-widest'}>
-                        {listeningRevealedWord ?? '......'}
-                      </span>
-                    </span>
+                  {ch.skillType === 'LISTENING' ? (
+                    answered ? (
+                      ch.listeningType === 'advanced' ? (
+                        <span>Mẫu câu: <span className="underline decoration-wavy decoration-rose-500">{ch.content}</span></span>
+                      ) : (
+                        <span>Đáp án đúng: <span className="text-emerald-600">{ch.correctAnswer}</span></span>
+                      )
+                    ) : (
+                      ch.listeningType === 'advanced' ? '......' : 'Đáp án đúng: ......'
+                    )
                   ) : (
                     ch.content
                   )}
@@ -1781,9 +1805,9 @@ const QuizPage: React.FC = () => {
               )}
 
               {/* Nút mở popup mô hình phát âm 2.5D */}
-              {answered && (!isListeningQuestion || listeningRevealedWord) && (
+              {answered && (
                 <button
-                  onClick={() => { setPronWord(listeningRevealedWord || ch.content); setShowPronModel(true); }}
+                  onClick={() => { setPronWord(ch.content); setShowPronModel(true); }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#FDF5E6] border-[2px] border-slate-900 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
                 >
                   <Smile size={14} className="text-slate-700" /> Xem mô hình phát âm
@@ -1794,7 +1818,7 @@ const QuizPage: React.FC = () => {
                 (ch.mode === 'SPEAKING_READ' && consentGiven !== null && !answered && !isAnalyzing)) && (
                 <div className="absolute bottom-4 right-4 flex flex-col items-center gap-2">
                   <button
-                    disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS === 'banmai'}
+                    disabled={answered || (audioPlays[idx] || 0) >= 2 || playingTTS !== null}
                     onClick={async () => {
                       try {
                         const plays = audioPlays[idx] || 0;
@@ -1802,7 +1826,10 @@ const QuizPage: React.FC = () => {
                           if (ch.audioUrl) {
                             new Audio(ch.audioUrl).play();
                           } else {
-                            await playRegionalTTS(ch.transcript || ch.content, 'banmai');
+                            const ttsVoice = (ch.region === 'TRUNG' || ch.region === 'CENTRAL') ? 'myan'
+                              : (ch.region === 'NAM' || ch.region === 'SOUTH') ? 'linhsan'
+                              : 'banmai';
+                            await playRegionalTTS(ch.transcript || ch.content, ttsVoice);
                           }
                           setAudioPlays(prev => ({ ...prev, [idx]: plays + 1 }));
                         }
@@ -1811,16 +1838,16 @@ const QuizPage: React.FC = () => {
                     className={clsx(
                       "w-16 h-16 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] flex items-center justify-center hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all group relative",
                       (answered || (audioPlays[idx] || 0) >= 2) ? "opacity-50 grayscale cursor-not-allowed shadow-none" : "",
-                      playingTTS === 'banmai' ? "animate-pulse" : ""
+                      playingTTS !== null ? "animate-pulse" : ""
                     )}
                   >
-                    <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS === 'banmai' ? "animate-spin" : "")} size={28} />
+                    <Volume2 className={clsx("text-slate-900 group-hover:scale-110 transition-transform", playingTTS !== null ? "animate-spin" : "")} size={28} />
                     <div className="absolute -top-2 -right-2 bg-[#F43F5E] border-[2px] border-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-[1px_1px_0_#000]">
                       {2 - (audioPlays[idx] || 0)}
                     </div>
                   </button>
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border-[1.5px] border-slate-200 shadow-sm">
-                    {playingTTS === 'banmai' ? "đang phát..." : `nghe âm thanh (${2 - (audioPlays[idx] || 0)}/2)`}
+                    {playingTTS !== null ? "đang phát..." : `nghe âm thanh (${2 - (audioPlays[idx] || 0)}/2)`}
                   </span>
                 </div>
               )}
@@ -1902,7 +1929,7 @@ const QuizPage: React.FC = () => {
           </div>
 
           {/* Interaction Area - expands only when answered */}
-          <div className={clsx("overflow-visible px-2 shrink-0 flex items-end", answered ? "h-1/3 pb-6" : "pb-0")}>
+          <div className={clsx("w-full overflow-visible px-2 shrink-0", answered ? "h-auto pb-6" : "pb-0")}>
             {renderInteraction()}
           </div>
 
@@ -1948,7 +1975,24 @@ const QuizPage: React.FC = () => {
                           <DoodleLoading message="AI đang suy nghĩ..." />
                         </div>
                       ) : (
-                        <TypedText text={explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!")} />
+                        <TypedText
+                          text={
+                            ch.mode === 'SPEAKING_READ'
+                              ? (isCurrentAnswerCorrect 
+                                  ? "Bạn phát âm rất chuẩn! Tiếp tục phát huy nhé." 
+                                  : (() => {
+                                      const err = ollamaResult?.errorDetail?.trim();
+                                      const sug = ollamaResult?.suggestion?.trim();
+                                      if (err && sug) {
+                                        if (err === sug) return err;
+                                        return `${err}\n\nGợi ý cải thiện: ${sug}`;
+                                      }
+                                      return err || sug || "Hãy xem chi tiết lỗi bên dưới và thử lại nhé!";
+                                    })()
+                                )
+                              : (explanation || (isCurrentAnswerCorrect ? "Tiếp tục phát huy nhé." : "Hãy cố gắng ở các câu sau nhé!"))
+                          }
+                        />
                       )}
                     </div>
                   ) : (

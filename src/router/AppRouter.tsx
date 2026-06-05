@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+
 import { ProtectedRoute, AnonymousRoute } from '../core/auth/ProtectedRoute'
 
 // Layouts - Keep eagerly loaded to avoid layouts flashing during routing transitions
@@ -56,8 +57,6 @@ const LearnerFriendsPage = lazy(() => import('../modules/learner/pages/LearnerFr
 const PronunciationModelPage = lazy(() => import('../modules/learner/pages/PronunciationModelPage'))
 const QuizPage = lazy(() => import('../modules/learner/pages/QuizPage'))
 const EntryTestPage = lazy(() => import('../modules/learner/pages/EntryTestPage'))
-const Entrytest = lazy(() => import('../pages/Entrytest'))
-const SelectRegionPage = lazy(() => import('../pages/SelectRegionPage'))
 const LearnerLeaderboardPage = lazy(() => import('../modules/learner/pages/LearnerLeaderboardPage'))
 const AchievementsPage = lazy(() => import('../modules/learner/pages/AchievementsPage'))
 const TournamentPage = lazy(() => import('../modules/learner/pages/TournamentPage'))
@@ -137,8 +136,6 @@ export const AppRoutes: React.FC = () => {
         <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
           <Route path="/entry-test" element={<EntryTestPage />} />
           <Route path="/learner/quiz/:quizId" element={<QuizPage />} />
-          <Route path="/learner/select-region" element={<SelectRegionPage />} />
-          <Route path="/learner/entrytest" element={<Entrytest />} />
           <Route path="/learner" element={<LearnerLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<LearnerDashboardPage />} />
