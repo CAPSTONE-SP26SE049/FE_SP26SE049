@@ -8,10 +8,16 @@ import { errorTagService, ErrorTagResponse, ErrorTagCreateRequest } from '../ser
 const { Option } = Select;
 const { TextArea } = Input;
 
+const REGION_MAP: Record<string, string> = {
+    NORTH: 'Miền Bắc',
+    CENTRAL: 'Miền Trung',
+    SOUTH: 'Miền Nam',
+};
+
 const REGION_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    NORTH:   { label: 'NORTH',   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
-    CENTRAL: { label: 'CENTRAL', color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
-    SOUTH:   { label: 'SOUTH',   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    NORTH:   { label: REGION_MAP.NORTH,   color: 'text-blue-600',    bg: 'bg-blue-50',   border: 'border-blue-200' },
+    CENTRAL: { label: REGION_MAP.CENTRAL, color: 'text-amber-600',   bg: 'bg-amber-50',  border: 'border-amber-200' },
+    SOUTH:   { label: REGION_MAP.SOUTH,   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 };
 
 const ErrorTagManagementPage = () => {
@@ -118,7 +124,7 @@ const ErrorTagManagementPage = () => {
                         const cfg = REGION_CONFIG[r] || { label: r, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' };
                         return (
                             <span key={r} className={clsx('px-2.5 py-0.5 rounded-lg border-[2px] font-black text-[9px] uppercase tracking-widest', cfg.bg, cfg.color, cfg.border)}>
-                                {cfg.label}
+                                {REGION_MAP[r] || r}
                             </span>
                         );
                     })}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { message, Input, Select, Upload, Form, Popconfirm, Modal, Pagination, Empty, Spin } from 'antd';
+import { message, Input, Select, Upload, Form, Popconfirm, Modal, Pagination, Empty, Spin, Button } from 'antd';
 import {
     Plus, Search, Trophy, Edit3,
     Trash2, Filter, LayoutGrid,
@@ -21,7 +21,11 @@ const AchievementManagementPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [templateDownloading, setTemplateDownloading] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
+
+    const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name);
     const [editingAchievement, setEditingAchievement] = useState<any>(null);
     const [submitting, setSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -67,7 +71,7 @@ const AchievementManagementPage: React.FC = () => {
             const url = await uploadToCloudinary(file, 'image');
             setIconPreview(url);
             form.setFieldsValue({ iconUrl: url });
-            message.success('Upload ảnh thành công!');
+            message.success('Tải ảnh lên thành công!');
             onSuccess("ok");
         } catch (e: any) {
             message.error('Upload thất bại');
@@ -100,8 +104,10 @@ const AchievementManagementPage: React.FC = () => {
     };
 
     const handleExportExcel = async () => {
+        if (exporting) return;
+        setExporting(true);
         try {
-            message.loading({ content: 'Đang chuẩn bị tệp...', key: 'exp' });
+            message.loading({ content: 'Đang xuất file...', key: 'exp' });
             const blob: any = await adminService.exportRewardsToExcel();
             const url = window.URL.createObjectURL(new Blob([blob]));
             const link = document.createElement('a');
@@ -110,13 +116,17 @@ const AchievementManagementPage: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-            message.success({ content: 'Export Excel thành công!', key: 'exp' });
+            message.success({ content: 'Xuất file thành công!', key: 'exp' });
         } catch (error) {
-            message.error({ content: 'Lỗi khi export Excel', key: 'exp' });
+            message.error({ content: 'Lỗi xuất file', key: 'exp' });
+        } finally {
+            setExporting(false);
         }
     };
 
     const handleDownloadTemplate = async () => {
+        if (templateDownloading) return;
+        setTemplateDownloading(true);
         try {
             const blob: any = await adminService.downloadRewardTemplate();
             const url = window.URL.createObjectURL(new Blob([blob]));
@@ -126,8 +136,11 @@ const AchievementManagementPage: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
+            message.success('Tải file mẫu thành công!');
         } catch (error) {
-            message.error('Lỗi khi tải template');
+            message.error('Lỗi tải file mẫu');
+        } finally {
+            setTemplateDownloading(false);
         }
     };
 
@@ -136,18 +149,22 @@ const AchievementManagementPage: React.FC = () => {
             message.warning('Vui lòng chọn file Excel');
             return;
         }
+        if (!isValidExcelFile(importFile)) {
+            message.error('Chỉ chấp nhận file .xlsx, .xls hoặc .csv');
+            return;
+        }
         setImporting(true);
         try {
             const res: any = await adminService.importRewardsFromExcel(importFile);
-            const result = res.data;
-            message.success(`Import hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
-            if (result.errorCount > 0) {
+            const result = res?.data ?? res;
+            message.success(`Nhập file hoàn tất: ${result?.successCount ?? 0} thành công, ${result?.errorCount ?? 0} lỗi`);
+            if ((result?.errorCount ?? 0) > 0) {
                 Modal.error({
-                    title: 'Lỗi khi import',
+                    title: 'Lỗi khi nhập file',
                     content: (
                         <div className="max-h-60 overflow-y-auto mt-2">
-                            {result.messages.map((msg: string, i: number) => (
-                                <p key={i} className="text-xs text-red-500 mb-1">Dòng {i}: {msg}</p>
+                            {(result?.messages ?? []).map((msg: string, i: number) => (
+                                <p key={i} className="text-xs text-red-500 mb-1">Dòng {i + 1}: {msg}</p>
                             ))}
                         </div>
                     ),
@@ -158,7 +175,7 @@ const AchievementManagementPage: React.FC = () => {
             setImportFile(null);
             fetchAchievements();
         } catch (error) {
-            message.error('Lỗi khi import Excel');
+            message.error('Lỗi nhập file');
         } finally {
             setImporting(false);
         }
@@ -204,20 +221,22 @@ const AchievementManagementPage: React.FC = () => {
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleExportExcel}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all"
+                        disabled={exporting}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <FileSpreadsheet size={16} strokeWidth={3} />
-                        Xuất Excel
+                        {exporting ? 'Đang xuất...' : 'Xuất file'}
                     </motion.button>
 
                     <motion.button
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsImportModalOpen(true)}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
+                        disabled={importing}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <UploadIcon size={16} strokeWidth={3} />
-                        Import
+                        Nhập file
                     </motion.button>
 
                     <motion.button
@@ -403,14 +422,13 @@ const AchievementManagementPage: React.FC = () => {
                     </div>
                 }
                 open={isModalOpen}
-                onOk={handleSave}
                 onCancel={() => { setIsModalOpen(false); setIconPreview('') }}
-                confirmLoading={submitting}
+                footer={null}
                 width={560}
                 centered
                 className="doodle-modal"
             >
-                <Form form={form} layout="vertical" className="mt-8 space-y-6">
+                <Form form={form} layout="vertical" onFinish={handleSave} className="mt-8 space-y-6">
                     <Form.Item name="code" hidden><Input /></Form.Item>
 
                     <Form.Item
@@ -492,6 +510,24 @@ const AchievementManagementPage: React.FC = () => {
                             <Zap size={20} className="text-yellow-400" fill="currentColor" />
                         </div>
                     )}
+
+                    <div className="flex gap-4 pt-4">
+                        <Button
+                            type="default"
+                            onClick={() => { setIsModalOpen(false); setIconPreview('') }}
+                            className="flex-1 h-12 rounded-2xl border-[3px] border-slate-900 font-black uppercase tracking-widest"
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={submitting}
+                            className="flex-1 h-12 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] font-black uppercase tracking-widest"
+                        >
+                            Lưu huy hiệu
+                        </Button>
+                    </div>
                 </Form>
             </Modal>
 
@@ -509,7 +545,7 @@ const AchievementManagementPage: React.FC = () => {
                     <div className="relative group p-12 border-[3px] border-dashed border-slate-900/10 rounded-[2.5rem] bg-slate-100/50 hover:bg-white hover:border-[#49B6E5] transition-all text-center">
                         <input
                             type="file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.csv"
                             onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
@@ -529,7 +565,7 @@ const AchievementManagementPage: React.FC = () => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between px-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Yêu cầu cấu trúc</span>
-                            <button onClick={handleDownloadTemplate} className="text-[10px] font-black uppercase tracking-widest text-[#49B6E5] hover:underline underline-offset-4">Tải tệp mẫu</button>
+                            <button onClick={handleDownloadTemplate} disabled={templateDownloading} className="text-[10px] font-black uppercase tracking-widest text-[#49B6E5] hover:underline underline-offset-4 disabled:opacity-50">{templateDownloading ? 'Đang tải...' : 'Tải file mẫu'}</button>
                         </div>
                         <div className="p-5 bg-blue-50 border-[2.5px] border-slate-900/5 rounded-3xl">
                             <div className="flex items-start gap-4">
@@ -558,7 +594,7 @@ const AchievementManagementPage: React.FC = () => {
                                 (!importFile || importing) && "opacity-50 grayscale cursor-not-allowed"
                             )}
                         >
-                            {importing ? "Đang xử lý..." : "🚀 Bắt đầu"}
+                            {importing ? "Đang nhập file..." : "Nhập file"}
                         </button>
                     </div>
                 </div>

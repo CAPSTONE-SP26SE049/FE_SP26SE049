@@ -438,7 +438,7 @@ const AdminDashboardPage = () => {
         labels: ['Tiến độ', 'Chất lượng', 'Kỷ luật', 'Điểm TB', 'Tích lũy'],
         datasets: [
           {
-            label: 'Trung bình toàn trường',
+            label: 'Trung bình chung',
             data: [avg.progress, avg.accuracy, avg.consistency, avg.avgScore, avg.totalStarsNorm],
             backgroundColor: 'rgba(249, 115, 22, 0.1)',
             borderColor: '#f97316',
@@ -474,7 +474,7 @@ const AdminDashboardPage = () => {
           pointRadius: 4,
         },
         {
-          label: 'Trung bình toàn trường',
+          label: 'Trung bình chung',
           data: [avg.progress, avg.accuracy, avg.consistency, avg.avgScore, avg.totalStarsNorm],
           backgroundColor: 'rgba(249, 115, 22, 0.05)',
           borderColor: '#f97316',
@@ -691,7 +691,7 @@ const AdminDashboardPage = () => {
               Năng lực học tập
             </div>
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mt-2 truncate">
-              {selectedUser ? selectedUser.fullName : 'Học Lực Toàn Trường'}
+              {selectedUser ? selectedUser.fullName : 'Học lực chung'}
             </h3>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
               {selectedUser ? 'So sánh với trung bình hệ thống' : 'Chỉ số trung bình của tất cả học viên'}

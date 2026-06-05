@@ -44,6 +44,9 @@ const UserManagementPage = () => {
     const [importing, setImporting] = useState(false)
     const [importResult, setImportResult] = useState<any>(null)
     const [templateDownloading, setTemplateDownloading] = useState(false)
+    const [exporting, setExporting] = useState(false)
+
+    const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name)
     const templateInFlight = useRef(false)
 
     const fetchUsers = async () => {
@@ -93,15 +96,34 @@ const UserManagementPage = () => {
 
     const handleOpenEdit = (user: any) => {
         setEditingUser(user)
-        editForm.setFieldsValue({ fullName: user.fullName, phone: user.phone || '', region: user.region || '' })
         setIsEditOpen(true)
+        setTimeout(() => {
+            editForm.setFieldsValue({ fullName: user.fullName, phone: user.phone || '', region: undefined })
+        }, 0)
     }
 
     const handleUpdateUser = async (values: any) => {
         if (!editingUser) return
+
+        const payload: Record<string, string> = {}
+        if (values.fullName !== undefined && values.fullName !== editingUser.fullName) {
+            payload.fullName = values.fullName
+        }
+        if (values.phone !== undefined && values.phone !== (editingUser.phone || '')) {
+            payload.phone = values.phone
+        }
+        if (values.region !== undefined && values.region !== editingUser.region) {
+            payload.region = values.region
+        }
+
+        if (Object.keys(payload).length === 0) {
+            message.warning('Không có thay đổi nào để cập nhật')
+            return
+        }
+
         try {
             setSubmitting(true)
-            await adminService.updateUser(editingUser.id, values)
+            await adminService.updateUser(editingUser.id, payload)
             message.success('Cập nhật thông tin thành công')
             setIsEditOpen(false)
             fetchUsers()
@@ -129,31 +151,42 @@ const UserManagementPage = () => {
             message.loading({ content: 'Đang tải template...', key: 'tpl' })
             const blob = await adminExcelService.downloadTeacherTemplate()
             downloadBlob(blob, 'template_teachers.xlsx')
-            message.success({ content: 'Tải template thành công!', key: 'tpl' })
-        } catch { message.error({ content: 'Không thể tải template', key: 'tpl' }) }
+            message.success({ content: 'Tải file mẫu thành công!', key: 'tpl' })
+        } catch { message.error({ content: 'Không thể tải file mẫu', key: 'tpl' }) }
         finally { templateInFlight.current = false; setTemplateDownloading(false) }
     }
 
     const handleExport = async () => {
+        if (exporting) return
+        setExporting(true)
         try {
-            message.loading({ content: 'Đang export...', key: 'exp' })
+            message.loading({ content: 'Đang xuất file...', key: 'exp' })
             const blob = await adminExcelService.exportTeachers()
             downloadBlob(blob, `users_export_${new Date().toISOString().slice(0, 10)}.xlsx`)
-            message.success({ content: 'Export thành công!', key: 'exp' })
-        } catch { message.error({ content: 'Không thể export', key: 'exp' }) }
+            message.success({ content: 'Xuất file thành công!', key: 'exp' })
+        } catch {
+            message.error({ content: 'Không thể xuất file', key: 'exp' })
+        } finally {
+            setExporting(false)
+        }
     }
 
     const handleImport = async () => {
         if (!importFile) { message.warning('Vui lòng chọn file Excel'); return }
+        if (!isValidExcelFile(importFile)) {
+            message.error('Chỉ chấp nhận file .xlsx, .xls hoặc .csv')
+            return
+        }
         setImporting(true)
         setImportResult(null)
         try {
             const res: any = await adminExcelService.importTeachers(importFile)
-            setImportResult(res?.data || res)
-            message.success('Import hoàn tất!')
+            const result = res?.data ?? res
+            setImportResult(result)
+            message.success('Nhập file hoàn tất!')
             fetchUsers()
         } catch (e: any) {
-            message.error(e?.response?.data?.message || 'Lỗi khi import')
+            message.error(e?.response?.data?.message || 'Lỗi nhập file')
         } finally { setImporting(false) }
     }
 
@@ -303,20 +336,22 @@ const UserManagementPage = () => {
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={downloadTemplate}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all"
+                        disabled={templateDownloading}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <FileSpreadsheet size={16} strokeWidth={3} />
-                        Template
+                        {templateDownloading ? 'Đang tải...' : 'Tải file mẫu'}
                     </motion.button>
 
                     <motion.button
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => { setImportResult(null); setImportFile(null); setIsImportOpen(true) }}
-                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
+                        disabled={importing}
+                        className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50"
                     >
                         <UploadIcon size={16} strokeWidth={3} />
-                        Import
+                        Nhập file
                     </motion.button>
 
                     <motion.button
@@ -408,8 +443,8 @@ const UserManagementPage = () => {
                             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Danh sách người dùng</h2>
                         </div>
                         <div className="flex items-center gap-4">
-                            <button onClick={handleExport} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">
-                                <FileSpreadsheet size={14} /> Export CSV
+                            <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50">
+                                <FileSpreadsheet size={14} /> {exporting ? 'Đang xuất...' : 'Xuất file'}
                             </button>
                         </div>
                     </div>
@@ -528,34 +563,25 @@ const UserManagementPage = () => {
                         name="fullName"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
                     >
-                        <div className="relative">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Input className="doodle-input pl-12" />
-                        </div>
+                        <Input size="large" prefix={<User size={18} strokeWidth={3} className="text-slate-300" />} />
                     </Form.Item>
 
                     <Form.Item
                         name="phone"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
                     >
-                        <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Input className="doodle-input pl-12" />
-                        </div>
+                        <Input size="large" prefix={<Phone size={18} strokeWidth={3} className="text-slate-300" />} />
                     </Form.Item>
 
                     <Form.Item
                         name="region"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Vùng miền</span>}
                     >
-                        <div className="relative">
-                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                            <Select placeholder="Chọn vùng miền" className="doodle-select pl-8">
+                        <Select size="large" placeholder="Chọn vùng miền">
                                 {dialects.map(d => (
                                     <Select.Option key={d.id} value={d.name}>{d.description || d.name}</Select.Option>
                                 ))}
-                            </Select>
-                        </div>
+                        </Select>
                     </Form.Item>
 
                     <div className="flex gap-4 pt-6">
@@ -604,7 +630,7 @@ const UserManagementPage = () => {
                     <div className="relative group p-10 border-[3px] border-dashed border-slate-900/10 rounded-[2.5rem] bg-slate-50 hover:bg-white hover:border-[#49B6E5] transition-all text-center">
                         <input
                             type="file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.csv"
                             onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
@@ -637,7 +663,7 @@ const UserManagementPage = () => {
                             (!importFile || importing) && "opacity-50 grayscale"
                         )}
                     >
-                        {importing ? "Đang xử lý..." : "Xác nhận Import"}
+                        {importing ? "Đang nhập file..." : "Nhập file"}
                     </motion.button>
                 </div>
             </Modal>

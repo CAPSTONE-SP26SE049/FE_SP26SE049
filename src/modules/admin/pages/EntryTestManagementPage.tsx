@@ -33,6 +33,19 @@ interface TestResult {
     details?: string
 }
 
+const ERROR_TYPE_MAP: Record<string, string> = {
+    MISSING_INPUT: 'Không có âm thanh',
+    REGIONAL_ERROR: 'Lỗi vùng miền',
+    PRONUNCIATION_ERROR: 'Lỗi phát âm',
+    CORRECT: 'Phát âm chuẩn',
+}
+
+const formatErrorType = (item: { errorType?: string; detectedError?: string }) => {
+    const raw = item.errorType || item.detectedError
+    if (!raw) return 'Không phát hiện lỗi đặc thù'
+    return ERROR_TYPE_MAP[raw] ?? raw
+}
+
 const REGION_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
     NORTH_NL: { label: 'Bắc (N/L)', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
     CENTRAL_DGIR: { label: 'Trung (D/GI/R)', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
@@ -514,7 +527,7 @@ const EntryTestManagementPage: React.FC = () => {
                                     <div className="grid grid-cols-3 gap-6 mb-8">
                                         <div className="p-6 bg-emerald-50 border-[3px] border-slate-900 rounded-[2rem] shadow-[4px_4px_0_#1f293705] text-center">
                                             <div className="text-3xl font-black text-emerald-600 italic">{Math.round(selectedResult?.overallScore || 0)}%</div>
-                                            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-700/50 mt-1">Accuracy</div>
+                                            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-700/50 mt-1">ĐỘ CHÍNH XÁC</div>
                                         </div>
                                         <div className="p-6 bg-blue-50 border-[3px] border-slate-900 rounded-[2rem] shadow-[4px_4px_0_#1f293705] text-center">
                                             <div className="text-3xl font-black text-[#49B6E5] italic">{details.length}</div>
@@ -522,7 +535,7 @@ const EntryTestManagementPage: React.FC = () => {
                                         </div>
                                         <div className="p-6 bg-orange-50 border-[3px] border-slate-900 rounded-[2rem] shadow-[4px_4px_0_#1f293705] text-center">
                                             <div className="text-2xl font-black text-orange-500 uppercase tracking-tighter truncate">{selectedResult?.detectedRegion || 'N/A'}</div>
-                                            <div className="text-[9px] font-black uppercase tracking-widest text-orange-700/50 mt-1">Detected Region</div>
+                                            <div className="text-[9px] font-black uppercase tracking-widest text-orange-700/50 mt-1">VÙNG MIỀN</div>
                                         </div>
                                     </div>
 
@@ -565,7 +578,7 @@ const EntryTestManagementPage: React.FC = () => {
                                                             {item.isRegional && <Zap size={11} className="text-rose-500" fill="currentColor" />}
                                                         </div>
                                                         <div className={clsx("font-black text-xs uppercase tracking-tight", item.isRegional ? 'text-rose-500' : 'text-slate-500')}>
-                                                            {item.detectedError || 'Không phát hiện lỗi đặc thù'}
+                                                            {formatErrorType(item)}
                                                         </div>
                                                         {item.isRegional && (
                                                             <div className="mt-2 inline-flex px-2 py-0.5 rounded-lg bg-rose-500 text-white text-[8px] font-black uppercase tracking-widest">

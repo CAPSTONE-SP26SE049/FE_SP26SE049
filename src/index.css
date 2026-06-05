@@ -187,3 +187,27 @@ a {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* Fix invisible Popconfirm OK button */
+.ant-popover .ant-popover-buttons .ant-btn-primary {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-block !important;
+}
+
+/* FORCE VISIBILITY FOR ANT DESIGN POPCONFIRM PRIMARY BUTTONS */
+.ant-popconfirm .ant-btn-primary,
+.ant-popover .ant-btn-primary {
+  background-color: #1677ff !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-flex !important;
+  border: none !important;
+}
+
+.ant-popconfirm .ant-btn-primary:hover,
+.ant-popover .ant-btn-primary:hover {
+  background-color: #4096ff !important;
+  opacity: 0.8 !important;
+}
