@@ -36,7 +36,7 @@ export function getLearnerOnboardingPath(user: LearnerOnboardingUser): string {
   return '/entry-test'
 }
 
-export const LEARNER_ONBOARDING_PATHS = ['/entry-test', '/learner/select-region', '/learner/entrytest'] as const
+export const LEARNER_ONBOARDING_PATHS = ['/entry-test'] as const
 
 export function isLearnerOnboardingPath(pathname: string): boolean {
   return LEARNER_ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

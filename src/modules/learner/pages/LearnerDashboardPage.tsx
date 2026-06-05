@@ -162,9 +162,9 @@ export default function Dashboard() {
                                 }
                             }).catch(() => { });
                     }
-                    }
                 }
             }
+
         } catch (err) {
             console.error('Failed to submit daily challenge:', err);
             setEvaluationFeedback({
