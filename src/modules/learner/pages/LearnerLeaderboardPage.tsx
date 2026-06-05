@@ -150,10 +150,6 @@ const Row = ({ e, idx, userId }: { e: LeaderboardEntry; idx: number; userId?: st
                         <Flame size={10} className="text-orange-500 fill-orange-500" />
                         <span className="text-slate-700">{e.currentStreakDays || 0}d</span>
                     </p>
-                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
-                        <Award size={10} className="text-purple-500" />
-                        <span className="text-slate-700">{e.badgeCount || 0} trophies</span>
-                    </p>
                 </div>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex-shrink-0">

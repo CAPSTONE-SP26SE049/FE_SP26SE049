@@ -13,11 +13,11 @@ const PAIR_LABELS: Record<string, string> = {
 }
 
 const GAME_TYPES = [
-    { key: 'WORD_CHALLENGE',        label: 'Word Challenge',    desc: 'Chọn từ đúng / xếp chữ' },
-    { key: 'SENTENCE_COMPLETION',   label: 'Sentence Completion', desc: 'Điền từ vào câu' },
-    { key: 'MATCHING_PAIRS',        label: 'Matching Pairs',    desc: 'Nối cặp âm' },
-    { key: 'WORD_GUESS',            label: 'Word Guess',        desc: 'Đoán từ qua gợi ý' },
-    { key: 'CONVERSATION_SCENARIO', label: 'Conversation',      desc: 'Kịch bản hội thoại' },
+    { key: 'WORD_CHALLENGE',        label: 'Thử thách từ vựng',    desc: 'Chọn từ đúng / xếp chữ' },
+    { key: 'SENTENCE_COMPLETION',   label: 'Hoàn thành câu',       desc: 'Điền từ vào câu' },
+    { key: 'MATCHING_PAIRS',        label: 'Nối cặp âm',           desc: 'Nối cặp âm' },
+    { key: 'WORD_GUESS',            label: 'Đoán từ',              desc: 'Đoán từ qua gợi ý' },
+    { key: 'CONVERSATION_SCENARIO', label: 'Kịch bản hội thoại',   desc: 'Kịch bản hội thoại' },
 ]
 
 // JSON templates for each game type
@@ -207,8 +207,8 @@ const MinigameManagementPage: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-2 h-10 bg-[#49B6E5] rounded-full" />
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý Minigame</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">CRUD câu hỏi cho tất cả minigame</p>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Quản lý trò chơi mini</h1>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Quản lý câu hỏi cho tất cả trò chơi mini</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -335,7 +335,7 @@ const MinigameManagementPage: React.FC = () => {
 
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Question Data (JSON)</span>
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Dữ liệu câu hỏi (JSON)</span>
                             {jsonError && <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{jsonError}</span>}
                         </div>
                         <TextArea
@@ -345,7 +345,7 @@ const MinigameManagementPage: React.FC = () => {
                             className={clsx('border-[2.5px] rounded-xl font-mono text-xs resize-none', jsonError ? 'border-rose-400' : 'border-slate-900/20 focus:border-[#49B6E5]')}
                         />
                         <div className="mt-1.5 text-[9px] font-bold text-slate-400">
-                            Template: {JSON_TEMPLATES[activeTab]?.slice(0, 80)}...
+                            Mẫu: {JSON_TEMPLATES[activeTab]?.slice(0, 80)}...
                         </div>
                     </div>
 

@@ -187,3 +187,21 @@ a {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* --- URGENT FIX: Prevent Popconfirm OK buttons from being hidden --- */
+.ant-popover .ant-popover-buttons .ant-btn-primary,
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-block !important;
+  background-color: #1677ff !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.ant-popover .ant-popover-buttons .ant-btn-primary:hover,
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary:hover {
+  opacity: 0.8 !important;
+  background-color: #4096ff !important;
+  color: #ffffff !important;
+}

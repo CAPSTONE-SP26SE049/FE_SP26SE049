@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Send, MessageCircle, Loader2, RotateCcw, Star } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Loader2, RotateCcw, Star, Mic, Square } from 'lucide-react'
 import { message } from 'antd'
 import clsx from 'clsx'
 import { minigameService } from '../../services/minigameService'
 import GameRulesModal from '../../components/GameRulesModal'
+import { useAudioRecorder } from '../../../../hooks/useAudioRecorder'
+import { ASR_BASE_URL } from '../../../../config'
 
 interface ChatMessage {
     role: 'user' | 'assistant' | 'system'
@@ -94,6 +96,70 @@ function highlightText(text: string, targetWords: string[], incorrectWords: stri
     })
 }
 
+// ── WebM to WAV Converter (Fixes missing FFmpeg on Windows Backend) ─────────
+const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const arrayBuffer = await webmBlob.arrayBuffer()
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+    const numOfChan = audioBuffer.numberOfChannels
+    const length = audioBuffer.length * numOfChan * 2 + 44
+    const buffer = new ArrayBuffer(length)
+    const view = new DataView(buffer)
+    let pos = 0
+
+    const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
+    const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
+
+    setUint32(0x46464952) // "RIFF"
+    setUint32(length - 8) // file length - 8
+    setUint32(0x45564157) // "WAVE"
+    setUint32(0x20746d66) // "fmt " chunk
+    setUint32(16) // length = 16
+    setUint16(1) // PCM (uncompressed)
+    setUint16(numOfChan)
+    setUint32(audioBuffer.sampleRate)
+    setUint32(audioBuffer.sampleRate * 2 * numOfChan) // avg. bytes/sec
+    setUint16(numOfChan * 2) // block-align
+    setUint16(16) // 16-bit
+    setUint32(0x61746164) // "data" - chunk
+    setUint32(length - pos - 4) // chunk length
+
+    const channels = []
+    for (let i = 0; i < numOfChan; i++) channels.push(audioBuffer.getChannelData(i))
+
+    let offset = 0
+    while (pos < length) {
+      for (let i = 0; i < numOfChan; i++) {
+        let sample = Math.max(-1, Math.min(1, channels[i][offset]))
+        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
+        view.setInt16(pos, sample, true)
+        pos += 2
+      }
+      offset++
+    }
+    return new Blob([buffer], { type: "audio/wav" })
+}
+
+const extractTranscribedText = (asrData: any): string => {
+    if (!asrData || typeof asrData !== 'object') return ''
+
+    const apiResult = asrData.success ? asrData.data : asrData.data ?? asrData
+
+    const rawText =
+        apiResult?.transcribed ??
+        apiResult?.transcript ??
+        apiResult?.transcription ??
+        apiResult?.text ??
+        asrData?.transcribed ??
+        asrData?.transcript ??
+        asrData?.transcription ??
+        asrData?.text ??
+        ''
+
+    return typeof rawText === 'string' ? rawText.trim() : ''
+}
+
 const ConversationSimPage: React.FC = () => {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -110,6 +176,9 @@ const ConversationSimPage: React.FC = () => {
     const [scoreEffect, setScoreEffect] = useState<{ text: string; id: number; isNegative?: boolean } | null>(null)
     const [apiScenarios, setApiScenarios] = useState<string[]>([])
     const messagesEndRef = useRef<HTMLDivElement>(null)
+
+    const recorder = useAudioRecorder()
+    const [isTranscribing, setIsTranscribing] = useState(false)
 
     useEffect(() => {
         minigameService.getScenarios(pairType).then(data => {
@@ -151,14 +220,14 @@ const ConversationSimPage: React.FC = () => {
         }
     }
 
-    const handleSend = async () => {
-        const trimmed = inputValue.trim()
+    const handleSend = async (customText?: string) => {
+        const textToSend = customText !== undefined ? customText : inputValue
+        const trimmed = textToSend.trim()
         if (!trimmed || loading) return
 
-        // Push the user message with empty highlights first while waiting for AI validation
+            // Push the user message with empty highlights first while waiting for AI validation
         const newMessages = [...messages, { role: 'user' as const, content: trimmed, highlightedWords: [] }]
         setMessages(newMessages)
-        setInputValue('')
         setLoading(true)
 
         try {
@@ -232,6 +301,116 @@ const ConversationSimPage: React.FC = () => {
             message.error('Lỗi kết nối AI')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 })
+        const arrayBuffer = await webmBlob.arrayBuffer()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+        const numOfChan = 1 // Force mono
+        const length = audioBuffer.length * numOfChan * 2 + 44
+        const buffer = new ArrayBuffer(length)
+        const view = new DataView(buffer)
+        let pos = 0
+
+        const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
+        const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
+
+        setUint32(0x46464952) // "RIFF"
+        setUint32(length - 8) // file length - 8
+        setUint32(0x45564157) // "WAVE"
+        setUint32(0x20746d66) // "fmt " chunk
+        setUint32(16) // length = 16
+        setUint16(1) // PCM (uncompressed)
+        setUint16(numOfChan)
+        setUint32(16000)
+        setUint32(16000 * 2 * numOfChan) // avg. bytes/sec
+        setUint16(numOfChan * 2) // block-align
+        setUint16(16) // 16-bit
+        setUint32(0x61746164) // "data" - chunk
+        setUint32(length - pos - 4) // chunk length
+
+        const channelData = audioBuffer.numberOfChannels > 1 
+            ? new Float32Array(audioBuffer.length)
+            : audioBuffer.getChannelData(0)
+        
+        if (audioBuffer.numberOfChannels > 1) {
+            const left = audioBuffer.getChannelData(0)
+            const right = audioBuffer.getChannelData(1)
+            for (let i = 0; i < audioBuffer.length; i++) {
+                channelData[i] = (left[i] + right[i]) / 2
+            }
+        }
+
+        let offset = 0
+        while (pos < length) {
+            let sample = Math.max(-1, Math.min(1, channelData[offset]))
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
+            view.setInt16(pos, sample, true)
+            pos += 2
+            offset++
+        }
+        return new Blob([buffer], { type: "audio/wav" })
+    }
+
+    const handleMicToggle = async () => {
+        if (recorder.isRecording) {
+            setIsTranscribing(true)
+            try {
+                const blob = await recorder.stopRecording()
+                if (blob) {
+                    if (blob.size < 100) {
+                        message.warning('Âm thanh quá ngắn, vui lòng nói rõ hơn và thử lại!')
+                        return
+                    }
+
+                    let audioForAsr = blob
+                    let uploadFileName = 'recording.webm'
+
+                    try {
+                        audioForAsr = await convertWebmToWav(blob)
+                        uploadFileName = 'recording.wav'
+                    } catch (e) {
+                        console.warn('WAV conversion failed, using WebM fallback:', e)
+                        audioForAsr = new Blob([blob], { type: 'audio/wav' })
+                        uploadFileName = 'recording.wav'
+                    }
+
+                    const asrFormData = new FormData()
+                    asrFormData.append('audio', audioForAsr, uploadFileName)
+                    asrFormData.append('target', 'hội thoại')
+
+                    const asrResponse = await fetch(ASR_BASE_URL, {
+                        method: 'POST',
+                        body: asrFormData,
+                    })
+
+                    if (!asrResponse.ok) {
+                        throw new Error(`ASR Server error: ${asrResponse.status}`)
+                    }
+
+                    const asrData = await asrResponse.json()
+                    const transcribedText = extractTranscribedText(asrData)
+                    
+                    if (transcribedText) {
+                        setInputValue(transcribedText)
+                        message.success('Đã nhận diện thành công! Đang gửi nội dung cho AI...')
+                        await handleSend(transcribedText)
+                    } else {
+                        message.warning('Không nhận diện được giọng nói, vui lòng thử lại!')
+                    }
+                }
+            } catch (err) {
+                console.error('ASR error:', err)
+                message.error('Lỗi nhận diện giọng nói. Hãy chắc chắn rằng máy chủ ASR đang chạy.')
+            } finally {
+                setIsTranscribing(false)
+            }
+        } else {
+            setInputValue('')
+            await recorder.startRecording()
         }
     }
 
@@ -409,22 +588,41 @@ const ConversationSimPage: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="flex gap-2 items-center">
-                                    <input
-                                        value={inputValue}
-                                        onChange={e => setInputValue(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                        disabled={loading}
-                                        placeholder={`Dùng từ có âm ${PAIR_LABELS[pairType]} để ghi điểm...`}
-                                        className="flex-1 h-11 px-4 rounded-xl border-[2px] border-slate-200 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:border-[#49B6E5] disabled:opacity-50 transition-all font-medium text-sm"
-                                    />
+                                    {recorder.isRecording ? (
+                                        <div className="flex-1 h-11 px-4 rounded-xl border-[2px] border-rose-500 bg-rose-50 flex items-center justify-between text-rose-700 text-xs font-black animate-pulse">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                                                ĐANG GHI ÂM HỘI THOẠI... {recorder.durationSeconds}s
+                                            </div>
+                                            <span className="text-[10px] text-rose-400">Ấn nút đỏ để DỪNG</span>
+                                        </div>
+                                    ) : isTranscribing ? (
+                                        <div className="flex-1 h-11 px-4 rounded-xl border-[2px] border-[#49B6E5] bg-[#E1F5FE] flex items-center gap-2 text-slate-800 text-xs font-black">
+                                            <Loader2 size={14} className="animate-spin text-[#49B6E5]" />
+                                            ĐANG DỊCH GIỌNG NÓI (ASR)...
+                                        </div>
+                                    ) : (
+                                        <div className="flex-1 h-11 px-4 rounded-xl border-[2px] border-slate-200 bg-slate-50 flex items-center text-slate-700 text-xs font-black truncate">
+                                            {inputValue
+                                                ? `Đã nhận diện: "${inputValue}" (tự gửi)`
+                                                : `Chỉ hỗ trợ nói bằng Mic để luyện âm ${PAIR_LABELS[pairType]}`}
+                                        </div>
+                                    )}
+
+                                    {/* Mic recording button */}
                                     <motion.button
                                         whileHover={{ y: -2 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={handleSend}
-                                        disabled={loading || !inputValue.trim()}
-                                        className="h-11 w-11 rounded-xl bg-[#49B6E5] border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] text-white flex items-center justify-center disabled:opacity-50 transition-all"
+                                        onClick={handleMicToggle}
+                                        disabled={loading || isTranscribing}
+                                        className={clsx(
+                                            "h-11 w-11 rounded-xl border-[2px] border-slate-900 shadow-[3px_3px_0_#1f2937] flex items-center justify-center transition-all",
+                                            recorder.isRecording
+                                                ? "bg-rose-500 text-white shadow-none translate-y-0.5"
+                                                : "bg-[#fde047] text-slate-900 hover:bg-yellow-400"
+                                        )}
                                     >
-                                        <Send size={16} />
+                                        {recorder.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
                                     </motion.button>
                                 </div>
                             )}

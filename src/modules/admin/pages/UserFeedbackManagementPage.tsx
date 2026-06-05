@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Table, Modal, Form, Input, Select, message } from 'antd'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Table, Modal, Form, Input, Select, message, Empty } from 'antd'
 import { motion } from 'framer-motion'
 import {
     MessageSquare, Search, CheckCircle2, Clock, AlertCircle,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { userFeedbackService, UserFeedbackResponse } from '../../learner/services/userFeedbackService'
+import { ADMIN_TABLE_LOCALE } from '../constants/tableLocale'
 
 const { TextArea } = Input
 
@@ -42,27 +43,46 @@ const UserFeedbackManagementPage: React.FC = () => {
     const [isUpdateOpen, setIsUpdateOpen] = useState(false)
     const [updating, setUpdating] = useState(false)
     const [updateForm] = Form.useForm()
+    const [loadFailed, setLoadFailed] = useState(false)
+    const fetchInFlight = useRef(false)
 
-    const fetchFeedbacks = async (p = 0) => {
+    const fetchFeedbacks = useCallback(async (p: number) => {
+        if (fetchInFlight.current) return
+        fetchInFlight.current = true
         try {
             setLoading(true)
+            setLoadFailed(false)
             const res = await userFeedbackService.getAllFeedbacks({
                 status: statusFilter || undefined,
                 category: categoryFilter || undefined,
                 page: p,
                 size: pageSize,
             })
-            setFeedbacks(res.content)
-            setTotalElements(res.totalElements)
+            setFeedbacks(res?.content ?? [])
+            setTotalElements(res?.totalElements ?? 0)
         } catch {
-            message.error('Không thể tải danh sách phản hồi')
+            setFeedbacks([])
+            setTotalElements(0)
+            setLoadFailed(true)
         } finally {
             setLoading(false)
+            fetchInFlight.current = false
         }
+    }, [statusFilter, categoryFilter, pageSize])
+
+    useEffect(() => {
+        fetchFeedbacks(page)
+    }, [page, fetchFeedbacks])
+
+    const handleStatusFilterChange = (value: string) => {
+        setStatusFilter(value)
+        setPage(0)
     }
 
-    useEffect(() => { setPage(0); fetchFeedbacks(0) }, [statusFilter, categoryFilter])
-    useEffect(() => { fetchFeedbacks(page) }, [page])
+    const handleCategoryFilterChange = (value: string) => {
+        setCategoryFilter(value)
+        setPage(0)
+    }
 
     const filtered = useMemo(() => {
         if (!searchText) return feedbacks
@@ -254,7 +274,7 @@ const UserFeedbackManagementPage: React.FC = () => {
                     <div className="relative w-48">
                         <select
                             value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
+                            onChange={e => handleStatusFilterChange(e.target.value)}
                             className="w-full h-12 pl-4 pr-8 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
                         >
                             <option value="">Tất cả trạng thái</option>
@@ -267,7 +287,7 @@ const UserFeedbackManagementPage: React.FC = () => {
                     <div className="relative w-48">
                         <select
                             value={categoryFilter}
-                            onChange={e => setCategoryFilter(e.target.value)}
+                            onChange={e => handleCategoryFilterChange(e.target.value)}
                             className="w-full h-12 pl-4 pr-8 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
                         >
                             <option value="">Tất cả loại</option>
@@ -293,6 +313,19 @@ const UserFeedbackManagementPage: React.FC = () => {
                             columns={columns}
                             dataSource={filtered}
                             rowKey="id"
+                            locale={{
+                                ...ADMIN_TABLE_LOCALE,
+                                emptyText: (
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description={
+                                            loadFailed
+                                                ? 'Chưa có phản hồi nào (không thể kết nối máy chủ)'
+                                                : 'Chưa có phản hồi nào'
+                                        }
+                                    />
+                                ),
+                            }}
                             loading={{
                                 spinning: loading,
                                 indicator: (
@@ -379,7 +412,7 @@ const UserFeedbackManagementPage: React.FC = () => {
                             )}
                             {detailItem.adminNote && (
                                 <div className="p-4 bg-blue-50 border-[2px] border-blue-300 rounded-2xl">
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-2">Ghi chú Admin</div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-2">Ghi chú quản trị viên</div>
                                     <div className="text-sm font-bold text-blue-700">{detailItem.adminNote}</div>
                                 </div>
                             )}

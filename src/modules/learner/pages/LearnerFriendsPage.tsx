@@ -38,6 +38,8 @@ interface Friend {
     avatar_url?: string;
     status: string;
     createdAt: string;
+    isOnline?: boolean;
+    lastActiveAt?: string;
 }
 
 interface SearchUser {
@@ -70,6 +72,22 @@ const regionLabel = (code: string | null) => {
         BAC: 'Miền Bắc', TRUNG: 'Miền Trung', NAM: 'Miền Nam',
     };
     return map[code.toUpperCase()] ?? code;
+};
+
+/* ─── Format Last Active Time ─────────────────────── */
+const formatLastActive = (isoString: string | undefined) => {
+    if (!isoString) return 'Chưa hoạt động';
+    const d = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Vừa hoạt động';
+    if (diffMins < 60) return `Hoạt động ${diffMins} phút trước`;
+    if (diffHours < 24) return `Hoạt động ${diffHours} giờ trước`;
+    return `Hoạt động ${diffDays} ngày trước`;
 };
 
 /* ─── Friend Profile Modal ─────────────────────────── */
@@ -237,16 +255,29 @@ const FriendCard = ({
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </div>
                 )}
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-[2.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]" />
+                <div className={clsx(
+                    "absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-[2.5px] border-slate-900 shadow-[1px_1px_0_#1f2937]",
+                    item.isOnline ? "bg-green-400 animate-pulse" : "bg-slate-300"
+                )} />
             </div>
             <div className="flex-1 min-w-0">
                 <div className="font-black text-slate-900 text-lg lg:text-xl font-nunito truncate uppercase tracking-tight">
                     {item.fullName || 'Người dùng'}
                 </div>
-                <div className="flex items-center gap-1.5 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                     <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-lg border-[1.5px] border-slate-200">
                         Bạn từ {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
                     </div>
+                    {item.isOnline ? (
+                        <div className="text-[10px] text-emerald-600 font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-lg border-[1.5px] border-emerald-250 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                            Đang online
+                        </div>
+                    ) : (
+                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-lg border-[1.5px] border-slate-200">
+                            {formatLastActive(item.lastActiveAt)}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -563,8 +594,25 @@ export default function LearnerFriendsPage() {
                             senderId?: string;
                             recipientId?: string;
                             content?: string;
+                            status?: string;
+                            timestamp?: string;
                         };
                         if (String(newMessage.type ?? '') === 'READ_RECEIPT') return;
+
+                        if (String(newMessage.type ?? '') === 'USER_STATUS') {
+                            const friendId = String(newMessage.senderId ?? '');
+                            const isOnline = newMessage.content === 'ONLINE';
+                            const lastActive = newMessage.timestamp || new Date().toISOString();
+                            setFriends((prev) =>
+                                prev.map((f) =>
+                                    f.userId === friendId
+                                        ? { ...f, isOnline, lastActiveAt: lastActive }
+                                        : f
+                                )
+                            );
+                            return;
+                        }
+
                         const senderId = String(newMessage.senderId ?? '');
                         if (!senderId) return;
                         if (String(newMessage.recipientId ?? '') !== String(currentUserId)) return;

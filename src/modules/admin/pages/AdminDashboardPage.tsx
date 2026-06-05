@@ -928,7 +928,7 @@ const AdminDashboardPage = () => {
                   <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Bắt đầu</th>
                   <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Kết thúc</th>
                   <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-center">Số câu hỏi</th>
-                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-right pr-6">Hành động</th>
+                  <th className="p-4 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 text-right pr-6">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-slate-100">
@@ -1262,14 +1262,14 @@ const AdminDashboardPage = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời Gian Kết Thúc (ISO UTC)</label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời gian kết thúc (định dạng ISO UTC)</label>
                     <input
                       type="text"
                       value={tournamentForm.endsAt}
                       onChange={(e) => setTournamentForm({ ...tournamentForm, endsAt: e.target.value })}
                       disabled={activeTournamentStatus === 'ACTIVE'}
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-900 bg-white text-slate-805 font-bold focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-300"
-                      placeholder="e.g. 2026-06-02T15:53:51Z"
+                      placeholder="VD: 2026-06-02T15:53:51Z"
                     />
                   </div>
                   <div className="space-y-1 md:col-span-2">
@@ -1354,7 +1354,7 @@ const AdminDashboardPage = () => {
                                 <span className="rounded-full px-2 py-0.5 bg-slate-100 border text-[9px] font-bold text-slate-500">
                                   {c.region === 'BAC' ? 'BẮC' : c.region === 'TRUNG' ? 'TRUNG' : 'NAM'}
                                 </span>
-                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || 'N/A'}/</span>
+                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || '—'}/</span>
                               </div>
                             </div>
                           </div>
@@ -1533,7 +1533,7 @@ const AdminDashboardPage = () => {
                                 <span className="rounded-full px-2 py-0.5 bg-slate-100 border text-[9px] font-bold text-slate-500">
                                   {c.region === 'BAC' ? 'BẮC' : c.region === 'TRUNG' ? 'TRUNG' : 'NAM'}
                                 </span>
-                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || 'N/A'}/</span>
+                                <span className="text-[9px] font-bold text-slate-400">IPA: /{c.metadataJson?.ipa || c.metadataJson?.transcript || '—'}/</span>
                               </div>
                             </div>
                           </div>

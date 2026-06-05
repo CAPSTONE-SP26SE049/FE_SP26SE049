@@ -278,12 +278,13 @@ const EntryTestPage: React.FC = () => {
             const wordDetails = apiResult.word_details || []
 
             // Bước 3: gọi BE /ai/feedback với đầy đủ metadata để đồng bộ logic
+            const isConsent = localStorage.getItem('speakvn_consent_given') !== 'false'
             const feedbackResponse = await apiClient.post('/ai/feedback', {
                 transcribedText,
                 targetText,
                 challengeId: questions[idx]?.id || null,
                 dialect: questions[idx]?.regionCategory || '',
-                consentGiven: false,
+                consentGiven: isConsent,
                 asrProcessingTimeMs
             })
 

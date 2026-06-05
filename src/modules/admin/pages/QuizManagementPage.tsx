@@ -36,6 +36,25 @@ const SECOND_OPTIONS = [
     { label: '90 giây', value: 90 }, { label: '120 giây', value: 120 }
 ];
 
+/** Chuẩn hóa options LISTENING: [0]=đúng, [1..3]=nhiễu (từ DB có thể xáo trộn). */
+function normalizeListeningOptions(
+    correctAnswer: string,
+    options?: string[],
+): [string, string, string, string] {
+    const correct = (correctAnswer || '').trim();
+    const distractors = (options || []).filter((o) => o.trim() && o !== correct);
+    return [correct, distractors[0] || '', distractors[1] || '', distractors[2] || ''];
+}
+
+function buildListeningOptionsArray(
+    correctAns: string,
+    d1: string,
+    d2: string,
+    d3: string,
+): string[] {
+    return [correctAns, d1, d2, d3].filter((o) => o.trim());
+}
+
 interface BatchQuestion {
     tempId: string; id: string; relationId: string; isExisting: boolean;
     skillType: string; contentText: string;
@@ -105,11 +124,16 @@ const AdminQuizManagementPage: React.FC = () => {
                     adminService.getDialects(),
                     adminService.getBadgesForAdmin()
                 ]);
-                setLevels(lRes?.data || (Array.isArray(lRes) ? lRes : []));
-                setDialects(dRes?.data || (Array.isArray(dRes) ? dRes : []));
-                setRewards(rRes?.data || (Array.isArray(rRes) ? rRes : []));
+                const toArray = (res: any) => {
+                    const raw = res?.data?.data ?? res?.data ?? res ?? [];
+                    return Array.isArray(raw) ? raw : [];
+                };
+                setLevels(toArray(lRes));
+                setDialects(toArray(dRes));
+                setRewards(toArray(rRes));
             } catch (e) {
                 console.error('Init data failed', e);
+                message.error('Không thể tải dữ liệu khởi tạo. Vui lòng tải lại trang.');
             }
         };
         initData();
@@ -316,6 +340,9 @@ const AdminQuizManagementPage: React.FC = () => {
         }
         if (q.skillType === 'LISTENING' && f === 'correctAnswer') {
             nextQ.correctSentence = v;
+            const opts = [...(nextQ.options || ['', '', '', ''])];
+            opts[0] = v;
+            nextQ.options = opts;
         }
         return nextQ;
     }));
@@ -333,10 +360,10 @@ const AdminQuizManagementPage: React.FC = () => {
 
     const handleAutoGenerateAudioBatch = async (tid: string) => {
         const q = batchQuestions.find(i => i.tempId === tid);
-        if (!q?.transcript) { message.warning('Nhập transcript trước!'); return; }
+        if (!q?.transcript) { message.warning('Nhập bản ghi phát âm trước!'); return; }
         setUploadingBatch(prev => ({ ...prev, [tid]: true }));
         try {
-            message.success('Đã nhận transcript!');
+            message.success('Đã nhận bản ghi phát âm!');
         } finally { setUploadingBatch(prev => ({ ...prev, [tid]: false })); }
     };
 
@@ -345,7 +372,9 @@ const AdminQuizManagementPage: React.FC = () => {
         setSubmittingBatchQuestions(true);
         try {
             const currentIds = displayQuestions.map((q: any) => q.id).filter(Boolean);
-            for (const id of currentIds) await adminService.removeChallengeFromQuiz(quiz.id, id).catch(() => { });
+            for (const id of currentIds) {
+                await adminService.removeChallengeFromQuiz(quiz.id, id);
+            }
 
             const newBankIds: string[] = [];
             for (const q of batchQuestions) {
@@ -355,8 +384,22 @@ const AdminQuizManagementPage: React.FC = () => {
                     const eIdx = words.findIndex(w => w.toLowerCase().replace(/[.,!?;:]/g, '') === q.wrongWord.toLowerCase().replace(/[.,!?;:]/g, ''));
                     meta = { words, error_index: eIdx === -1 ? 0 : eIdx, correct_word: q.correctWord, hint: q.hint };
                 } else if (q.skillType === 'LISTENING') {
-                    const correctSentence = q.correctSentence || q.correctAnswer || "";
-                    meta = { options: q.options.filter(o => o.trim()), correctAnswer: q.correctAnswer, transcript: correctSentence, correctSentence: correctSentence, hint: q.hint };
+                    const correctAns = (q.correctAnswer || q.options[0] || '').trim();
+                    const optionsArr = buildListeningOptionsArray(
+                        correctAns,
+                        q.options[1] || '',
+                        q.options[2] || '',
+                        q.options[3] || '',
+                    );
+                    const correctSentence = q.correctSentence || correctAns;
+                    meta = {
+                        options: optionsArr,
+                        correctAnswer: correctAns,
+                        answer: correctAns,
+                        transcript: correctSentence,
+                        correctSentence,
+                        hint: q.hint,
+                    };
                 } else if (q.skillType === 'WRITING') {
                     meta = { blankSentence: q.blankSentence, correctAnswer: q.correctAnswer, alternatives: (q.alternatives || '').split(',').map(s => s.trim()).filter(Boolean), hint: q.hint, transcript: q.transcript || "", correctSentence: q.transcript || "" };
                 } else if (q.skillType === 'SPEAKING') {
@@ -379,6 +422,8 @@ const AdminQuizManagementPage: React.FC = () => {
             setIsBatchQuestionsModalOpen(false);
             handleLevelChange(selectedLevelId!, true);
             fetchQuizChallenges();
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Không thể lưu câu hỏi hàng loạt');
         } finally { setSubmittingBatchQuestions(false); }
     };
 
@@ -394,7 +439,10 @@ const AdminQuizManagementPage: React.FC = () => {
                     fullSentence: Array.isArray(meta.words) ? meta.words.join(' ') : (p.contentText || ''),
                     wrongWord: (Array.isArray(meta.words) && meta.error_index != null) ? meta.words[meta.error_index] : '',
                     correctWord: meta.correct_word || meta.correctWord || '',
-                    options: Array.isArray(meta.options) ? [...meta.options, '', '', ''].slice(0, 4) : ['', '', '', ''],
+                    options: normalizeListeningOptions(
+                        meta.correctAnswer || meta.answer || '',
+                        meta.options,
+                    ),
                     correctAnswer: meta.correctAnswer || meta.answer || '',
                     transcript: meta.transcript || meta.correctSentence || '',
                     correctSentence: meta.correctSentence || meta.transcript || '',
@@ -420,12 +468,17 @@ const AdminQuizManagementPage: React.FC = () => {
             const res: any = importChallengesSkillType === 'MIXED'
                 ? await excelService.importMixedToQuiz(quiz.id, importChallengesFile)
                 : await excelService.importChallengesToQuiz(importChallengesSkillType, quiz.id, importChallengesFile);
-            if ((res?.data || res)?.successCount > 0) {
-                message.success('Import thành công!');
+            const result = res?.data ?? res;
+            if (result?.successCount > 0) {
+                message.success('Nhập thành công!');
                 handleLevelChange(selectedLevelId!, true);
                 fetchQuizChallenges();
                 setIsImportChallengesModalOpen(false);
+            } else {
+                message.warning(result?.message || 'Không có câu hỏi nào được import. Kiểm tra lại file Excel.');
             }
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Nhập câu hỏi thất bại');
         } finally { setImportingChallenges(false); }
     };
 
@@ -450,32 +503,48 @@ const AdminQuizManagementPage: React.FC = () => {
             const blob = await excelService.exportQuizQuestions(quiz.id);
             const titleStr = quiz.title || quiz.name || 'quiz';
             downloadBlob(blob, `danh_sach_cau_hoi_${titleStr.toLowerCase().replace(/\s+/g, '_')}.xlsx`);
-            message.success({ content: 'Export câu hỏi thành công!', key: 'export-quiz' });
+            message.success({ content: 'Xuất câu hỏi thành công!', key: 'export-quiz' });
         } catch (err: any) {
             console.error('Export quiz questions error:', err);
             message.error({ content: 'Lỗi export câu hỏi!', key: 'export-quiz' });
         }
     };
 
+    const DEFAULT_PASSING_SCORE = 80;
+
+    const handleOpenCreateQuiz = () => {
+        newQuizForm.setFieldsValue({
+            skillType: 'LISTENING',
+            secondsPerQuestion: 60,
+        });
+        setIsCreateQuizModalOpen(true);
+    };
+
     // --- Quiz Ops ---
     const handleCreateQuiz = async (values: any) => {
-        if (!selectedLevelId) return;
+        if (!selectedLevelId) {
+            message.error('Vui lòng chọn chương trước khi tạo màn học!');
+            return;
+        }
         setCreatingQuiz(true);
         try {
             await adminService.createQuiz({
                 levelId: selectedLevelId,
-                title: values.title,
+                title: values.title?.trim(),
                 description: values.description,
                 instructions: values.instructions,
+                passingScore: DEFAULT_PASSING_SCORE,
                 timeLimitSeconds: values.secondsPerQuestion || 90,
                 skillType: values.skillType || 'MIXED',
                 questionCount: 0,
-                questions: []
+                questions: [],
             });
             message.success('Tạo màn học thành công');
             setIsCreateQuizModalOpen(false);
             newQuizForm.resetFields();
             handleLevelChange(selectedLevelId);
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Không thể tạo màn học');
         } finally { setCreatingQuiz(false); }
     };
 
@@ -486,18 +555,21 @@ const AdminQuizManagementPage: React.FC = () => {
             const qCount = quiz.questions?.length || 0;
             await adminService.updateQuiz(quiz.id, {
                 levelId: selectedLevelId,
-                title: values.title,
+                title: values.title?.trim(),
                 description: values.description,
                 instructions: values.instructions,
+                passingScore: quiz.passingScore ?? DEFAULT_PASSING_SCORE,
                 timeLimitSeconds: values.secondsPerQuestion || 90,
                 skillType: values.skillType,
                 questionCount: qCount,
                 orderIndex: values.orderIndex,
-                questions: quiz.questions || []
+                questions: quiz.questions || [],
             });
             message.success('Cập nhật thành công');
             setIsEditQuizModalOpen(false);
             handleLevelChange(selectedLevelId, true);
+        } catch (err: any) {
+            message.error(err?.response?.data?.message || 'Không thể cập nhật màn học');
         } finally { setUpdatingQuiz(false); }
     };
 
@@ -551,13 +623,21 @@ const AdminQuizManagementPage: React.FC = () => {
                 vals.wrongWord = meta.words && meta.error_index != null ? meta.words[meta.error_index] : '';
                 vals.correctWord = meta.correct_word || meta.correctWord;
                 vals.hint = meta.hint;
-            } else if (skill === 'LISTENING' || skill === 'SPEAKING') {
+            } else if (skill === 'SPEAKING') {
                 vals.transcript = meta.transcript || meta.correctSentence || '';
                 vals.correctSentence = meta.correctSentence || meta.transcript || '';
-                if (skill === 'LISTENING') {
-                    vals.options = meta.options?.join('\n');
-                    vals.correctAnswer = meta.correctAnswer;
-                }
+                vals.hint = meta.hint;
+            } else if (skill === 'LISTENING') {
+                const correct = meta.correctAnswer || meta.answer || '';
+                vals.correctAnswer = correct;
+                const distractors = (meta.options || []).filter(
+                    (o: string) => o.trim() && o !== correct,
+                );
+                vals.distractor1 = distractors[0] || '';
+                vals.distractor2 = distractors[1] || '';
+                vals.distractor3 = distractors[2] || '';
+                vals.correctSentence =
+                    meta.correctSentence || meta.transcript || vals.correctAnswer;
                 vals.hint = meta.hint;
             } else if (skill === 'WRITING') {
                 vals.blankSentence = meta.blankSentence || meta.correctSentence;
@@ -635,15 +715,18 @@ const AdminQuizManagementPage: React.FC = () => {
             createForm.resetFields();
             setEditingChallengeId(null);
             handleLevelChange(selectedLevelId!, true);
+        } catch (err: any) {
+            if (err?.errorFields) return;
+            message.error(err?.response?.data?.message || 'Không thể lưu câu hỏi');
         } finally { setSubmittingCreate(false); }
     };
 
     const handleAutoGenerateAudio = async () => {
         const transcript = createForm.getFieldValue('transcript');
-        if (!transcript) { message.warning('Vui lòng nhập Transcript!'); return; }
+        if (!transcript) { message.warning('Vui lòng nhập bản ghi phát âm!'); return; }
         setUploadingSingle(true);
         try {
-            message.success({ content: 'Không cần tạo Audio URL nữa theo yêu cầu!', key: 'tts' });
+            message.success({ content: 'Không cần tạo liên kết âm thanh nữa theo yêu cầu!', key: 'tts' });
         } catch { message.error({ content: 'Lỗi TTS', key: 'tts' }); }
         finally { setUploadingSingle(false); }
     };
@@ -656,7 +739,12 @@ const AdminQuizManagementPage: React.FC = () => {
         return quiz?.questions || [];
     }, [quizChallenges, quiz?.questions, loadingQuizChallenges]);
 
-    const filteredLevels = useMemo(() => levels.filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()) && (!regionFilter || l.dialectId === regionFilter)), [levels, searchTerm, regionFilter]);
+    const filteredLevels = useMemo(() => (
+        (Array.isArray(levels) ? levels : []).filter(l =>
+            (l.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+            && (!regionFilter || l.dialectId === regionFilter)
+        )
+    ), [levels, searchTerm, regionFilter]);
     const filteredQuizzes = useMemo(() => (localQuizOrder ?? quizzes).filter(q => (q.title || q.name || '').toLowerCase().includes(quizSearchTerm.toLowerCase()) && (!quizSkillFilter || q.skillType === quizSkillFilter)), [quizzes, localQuizOrder, quizSearchTerm, quizSkillFilter]);
 
     const getRegionKey = (dialectId: string) => {
@@ -727,7 +815,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         <motion.button
                             whileHover={{ scale: 1.05, y: -2 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => setIsCreateQuizModalOpen(true)}
+                            onClick={handleOpenCreateQuiz}
                             className="flex items-center gap-2 px-6 py-3 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl shadow-[5px_5px_0_#1f2937] text-[10px] font-black uppercase tracking-widest text-white transition-all"
                         >
                             <Plus size={18} strokeWidth={4} />
@@ -975,14 +1063,14 @@ const AdminQuizManagementPage: React.FC = () => {
                                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Danh sách câu đố ({displayQuestions.length})</h3>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <motion.button onClick={openImportChallengesModal} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-[#49B6E5] transition-all"><Upload size={14} strokeWidth={3} /> Import</motion.button>
-                                            <motion.button onClick={handleExportTemplate} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-500 transition-all"><Download size={14} strokeWidth={3} /> Template</motion.button>
+                                            <motion.button onClick={openImportChallengesModal} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-[#49B6E5] transition-all"><Upload size={14} strokeWidth={3} /> Nhập file</motion.button>
+                                            <motion.button onClick={handleExportTemplate} whileHover={{ y: -1 }} className="flex items-center gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-500 transition-all"><Download size={14} strokeWidth={3} /> Tải mẫu</motion.button>
                                             <motion.button
                                                 whileHover={{ scale: 1.05 }}
                                                 onClick={handleExportQuizQuestions}
                                                 className="px-4 py-2 bg-[#E2F5FC] text-[#49B6E5] border-[2px] border-[#49B6E5] rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest flex items-center gap-2"
                                             >
-                                                <Download size={14} strokeWidth={4} /> Export
+                                                <Download size={14} strokeWidth={4} /> Xuất file
                                             </motion.button>
                                         </div>
                                     </div>
@@ -1031,7 +1119,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                                             <div className="mt-auto pt-2 border-t-[1.5px] border-slate-900/5 flex items-center justify-between">
                                                                 <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 overflow-hidden">
-                                                                    {q.skillType === 'LISTENING' && meta.transcript && <div className="truncate shrink-0"><span className="text-[#49B6E5] text-[7px] uppercase">Audio</span></div>}
+                                                                    {q.skillType === 'LISTENING' && meta.transcript && <div className="truncate shrink-0"><span className="text-[#49B6E5] text-[7px] uppercase">Âm thanh</span></div>}
                                                                     {q.skillType === 'READING' && (meta.correct_word || meta.correctWord) && <div className="truncate"><span className="text-emerald-500 text-[7px] uppercase">Đáp án:</span> {meta.correct_word || meta.correctWord}</div>}
                                                                     {q.skillType === 'WRITING' && meta.correctAnswer && <div className="truncate"><span className="text-violet-500 text-[7px] uppercase">Điền:</span> {meta.correctAnswer}</div>}
                                                                 </div>
@@ -1070,21 +1158,52 @@ const AdminQuizManagementPage: React.FC = () => {
                     onFinish={isEditQuizModalOpen ? handleUpdateQuiz : handleCreateQuiz}
                     className="mt-6 space-y-4"
                 >
-                    <Form.Item name="title" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Tiêu đề bài tập</span>} rules={[{ required: true, message: 'Nhập tiêu đề' }]}>
-                        <Input className="doodle-input" placeholder="Ví dụ: Luyện âm n - l" />
+                    <Form.Item
+                        name="title"
+                        label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Tiêu đề bài tập</span>}
+                        rules={[
+                            { required: true, whitespace: true, message: 'Vui lòng nhập tiêu đề bài tập!' },
+                            { max: 100, message: 'Tiêu đề không được vượt quá 100 ký tự!' },
+                        ]}
+                    >
+                        <Input className="doodle-input" placeholder="Ví dụ: Luyện âm n - l" maxLength={100} showCount />
                     </Form.Item>
 
                     <Row gutter={16}>
                         <Col span={14}>
-                            <Form.Item name="skillType" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Loại kỹ năng</span>} initialValue="LISTENING">
-                                <Select className="doodle-select">
+                            <Form.Item
+                                name="skillType"
+                                label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Loại kỹ năng</span>}
+                                initialValue="LISTENING"
+                                rules={[{ required: true, message: 'Vui lòng chọn loại kỹ năng!' }]}
+                            >
+                                <Select className="doodle-select" placeholder="Chọn loại kỹ năng">
                                     {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
                                 </Select>
                             </Form.Item>
                         </Col>
                         <Col span={10}>
-                            <Form.Item name="secondsPerQuestion" label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Thời gian / câu</span>} initialValue={60}>
-                                <Select className="doodle-select">
+                            <Form.Item
+                                name="secondsPerQuestion"
+                                label={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Thời gian / câu</span>}
+                                initialValue={60}
+                                rules={[
+                                    { required: true, message: 'Vui lòng nhập thời gian!' },
+                                    {
+                                        validator: (_, value) => {
+                                            if (value === undefined || value === null || value === '') {
+                                                return Promise.reject(new Error('Vui lòng nhập thời gian!'));
+                                            }
+                                            const num = Number(value);
+                                            if (!Number.isFinite(num) || num < 5 || num > 300) {
+                                                return Promise.reject(new Error('Thời gian hợp lệ là từ 5 đến 300 giây!'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    },
+                                ]}
+                            >
+                                <Select className="doodle-select" placeholder="Chọn giây">
                                     {SECOND_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
                                 </Select>
                             </Form.Item>
@@ -1171,15 +1290,41 @@ const AdminQuizManagementPage: React.FC = () => {
 
                     <div className="bg-[#fafafa] p-6 rounded-[2rem] border-[2.5px] border-dashed border-slate-200">
                         {activeSkillType === 'LISTENING' && (
-                            <div className="space-y-4">
-                                <Form.Item name="correctSentence" label={<span className="text-[9px] font-black uppercase text-slate-400">Nội dung câu đọc chuẩn</span>} rules={[{ required: true }]}>
-                                    <Input.TextArea rows={2} className="doodle-input border-emerald-200 text-xs font-bold" placeholder="Ví dụ: Trời nồm nên nhà bị nồm..." />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Form.Item
+                                    name="correctAnswer"
+                                    label={<span className="text-[9px] font-black uppercase text-emerald-600">Đáp án đúng (Từ chuẩn)</span>}
+                                    rules={[{ required: true, message: 'Nhập đáp án đúng' }]}
+                                    className="md:col-span-2"
+                                >
+                                    <Input
+                                        className="doodle-input border-emerald-500 bg-emerald-50/30 font-bold"
+                                        placeholder="Ví dụ: giỗ"
+                                    />
                                 </Form.Item>
-                                <Form.Item name="options" label={<span className="text-[9px] font-black uppercase text-slate-400">Danh sách đáp án (Mỗi dòng 1 câu)</span>} rules={[{ required: true }]}>
-                                    <Input.TextArea rows={4} className="doodle-input" placeholder="Đáp án A&#10;Đáp án B&#10;..." />
+                                <Form.Item
+                                    name="distractor1"
+                                    label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án nhiễu 1</span>}
+                                    rules={[{ required: true, message: 'Nhập đáp án nhiễu 1' }]}
+                                >
+                                    <Input className="doodle-input" placeholder="Đáp án sai thứ 1..." />
                                 </Form.Item>
-                                <Form.Item name="correctAnswer" label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án đúng (Phải khớp chính xác một dòng trên)</span>} rules={[{ required: true }]}>
-                                    <Input className="doodle-input border-emerald-200" />
+                                <Form.Item
+                                    name="distractor2"
+                                    label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án nhiễu 2</span>}
+                                    rules={[{ required: true, message: 'Nhập đáp án nhiễu 2' }]}
+                                >
+                                    <Input className="doodle-input" placeholder="Đáp án sai thứ 2..." />
+                                </Form.Item>
+                                <Form.Item
+                                    name="distractor3"
+                                    label={<span className="text-[9px] font-black uppercase text-slate-400">Đáp án nhiễu 3</span>}
+                                    rules={[{ required: true, message: 'Nhập đáp án nhiễu 3' }]}
+                                >
+                                    <Input className="doodle-input" placeholder="Đáp án sai thứ 3..." />
+                                </Form.Item>
+                                <Form.Item name="correctSentence" hidden>
+                                    <Input />
                                 </Form.Item>
                             </div>
                         )}
@@ -1230,7 +1375,7 @@ const AdminQuizManagementPage: React.FC = () => {
 
             {/* --- Import Challenges Modal --- */}
             <Modal
-                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Upload className="text-[#49B6E5]" /> Import bài tập từ Excel</div>}
+                title={<div className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-3"><Upload className="text-[#49B6E5]" /> Nhập bài tập từ Excel</div>}
                 open={isImportChallengesModalOpen}
                 onCancel={() => setIsImportChallengesModalOpen(false)}
                 footer={null}
@@ -1247,7 +1392,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 onChange={setImportChallengesSkillType}
                                 disabled={quiz?.skillType !== 'MIXED'}
                             >
-                                <Select.Option value="MIXED">Tổng hợp (Mixed)</Select.Option>
+                                <Select.Option value="MIXED">Tổng hợp</Select.Option>
                                 {Object.entries(SKILL_CONFIG).map(([k, v]) => <Select.Option key={k} value={k}>{v.label}</Select.Option>)}
                             </Select>
                         </Form.Item>
@@ -1274,7 +1419,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                 className="h-12 px-10 bg-slate-900 border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#49B6E5] text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
                             >
                                 {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                                Bắt đầu Import
+                                Bắt đầu nhập
                             </motion.button>
                         </div>
                     </Form>
@@ -1379,7 +1524,7 @@ const AdminQuizManagementPage: React.FC = () => {
                                             {isCurrentQuiz ? (
                                                 <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-300 text-emerald-600 px-2 py-0.5 rounded-full">Đang gán</span>
                                             ) : isOtherQuiz ? (
-                                                <span className="text-[8px] font-black uppercase bg-amber-50 border border-amber-300 text-amber-600 px-2 py-0.5 rounded-full truncate max-w-full text-center" title={`Gán cho: ${badge.linkedQuizName} (Level: ${badge.linkedLevelName})`}>
+                                                <span className="text-[8px] font-black uppercase bg-amber-50 border border-amber-300 text-amber-600 px-2 py-0.5 rounded-full truncate max-w-full text-center" title={`Gán cho: ${badge.linkedQuizName} (Cấp độ: ${badge.linkedLevelName})`}>
                                                     Gán: {badge.linkedQuizName}
                                                 </span>
                                             ) : (
@@ -1478,34 +1623,113 @@ const AdminQuizManagementPage: React.FC = () => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 {/* Skill Specific Inputs */}
-                                                {(q.skillType === 'LISTENING' || q.skillType === 'SPEAKING') && (
-                                                    <>
-                                                        <Form.Item className="md:col-span-2 mb-0" label={
-                                                            <div className="flex items-center justify-between w-full pr-1">
-                                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Nội dung câu đọc chuẩn</span>
+                                                {q.skillType === 'SPEAKING' && (
+                                                    <Form.Item
+                                                        className="md:col-span-2 mb-0"
+                                                        label={
+                                                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                                                                Nội dung câu đọc chuẩn
+                                                            </span>
+                                                        }
+                                                    >
+                                                        <Input.TextArea
+                                                            rows={2}
+                                                            className="doodle-input text-xs border-emerald-200 font-bold"
+                                                            placeholder="Nội dung câu đọc chuẩn..."
+                                                            value={q.correctSentence}
+                                                            onChange={(e) =>
+                                                                updateBatchQuestionField(
+                                                                    q.tempId,
+                                                                    'correctSentence',
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                        />
+                                                    </Form.Item>
+                                                )}
+                                                {q.skillType === 'LISTENING' && (
+                                                    <div className="md:col-span-2 mt-4">
+                                                        <div className="flex flex-wrap items-center gap-2 mb-2 ml-1">
+                                                            <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                                                                Thiết lập đáp án
+                                                            </span>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                            <div className="relative">
+                                                                <p className="text-[8px] font-bold text-emerald-600 mb-1 ml-1">
+                                                                    Đáp án đúng
+                                                                </p>
+                                                                <Input
+                                                                    className="doodle-input text-xs border-emerald-500 bg-emerald-50 font-black text-emerald-800"
+                                                                    placeholder="Đáp án đúng..."
+                                                                    value={q.correctAnswer}
+                                                                    onChange={(e) => {
+                                                                        updateBatchQuestionField(
+                                                                            q.tempId,
+                                                                            'correctAnswer',
+                                                                            e.target.value,
+                                                                        );
+                                                                        updateBatchOption(
+                                                                            q.tempId,
+                                                                            0,
+                                                                            e.target.value,
+                                                                        );
+                                                                    }}
+                                                                />
                                                             </div>
-                                                        }>
-                                                            <Input.TextArea rows={2} className="doodle-input text-xs border-emerald-200 font-bold" placeholder="Nội dung câu đọc chuẩn..." value={q.correctSentence} onChange={e => updateBatchQuestionField(q.tempId, 'correctSentence', e.target.value)} />
-                                                        </Form.Item>
-                                                        {q.skillType === 'LISTENING' && (
-                                                            <div className="md:col-span-2 mt-4">
-                                                                <div className="flex flex-wrap items-center gap-2 mb-2 ml-1">
-                                                                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Danh sách đáp án</span>
-                                                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">Tích chọn vòng tròn bên phải của đáp án để đặt làm đáp án đúng!</span>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                                                    {q.options.map((opt: string, oi: number) => (
-                                                                        <div key={oi} className="relative">
-                                                                            <Input className={clsx("doodle-input text-xs pr-8", q.correctAnswer === opt && opt !== "" ? "border-emerald-500 bg-emerald-50 font-black text-emerald-800" : "")} placeholder={`Đáp án ${oi + 1}`} value={opt} onChange={e => updateBatchOption(q.tempId, oi, e.target.value)} />
-                                                                            <Tooltip title="Đặt làm đáp án đúng">
-                                                                                <button onClick={() => updateBatchQuestionField(q.tempId, 'correctAnswer', opt)} className={clsx("absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 transition-colors", q.correctAnswer === opt && opt !== "" ? "bg-emerald-500 border-emerald-500 cursor-default" : "border-slate-300 hover:border-emerald-500")} />
-                                                                            </Tooltip>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                                            <div>
+                                                                <p className="text-[8px] font-bold text-slate-400 mb-1 ml-1">
+                                                                    Đáp án nhiễu 1
+                                                                </p>
+                                                                <Input
+                                                                    className="doodle-input text-xs"
+                                                                    placeholder="Đáp án nhiễu 1..."
+                                                                    value={q.options[1] || ''}
+                                                                    onChange={(e) =>
+                                                                        updateBatchOption(
+                                                                            q.tempId,
+                                                                            1,
+                                                                            e.target.value,
+                                                                        )
+                                                                    }
+                                                                />
                                                             </div>
-                                                        )}
-                                                    </>
+                                                            <div>
+                                                                <p className="text-[8px] font-bold text-slate-400 mb-1 ml-1">
+                                                                    Đáp án nhiễu 2
+                                                                </p>
+                                                                <Input
+                                                                    className="doodle-input text-xs"
+                                                                    placeholder="Đáp án nhiễu 2..."
+                                                                    value={q.options[2] || ''}
+                                                                    onChange={(e) =>
+                                                                        updateBatchOption(
+                                                                            q.tempId,
+                                                                            2,
+                                                                            e.target.value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[8px] font-bold text-slate-400 mb-1 ml-1">
+                                                                    Đáp án nhiễu 3
+                                                                </p>
+                                                                <Input
+                                                                    className="doodle-input text-xs"
+                                                                    placeholder="Đáp án nhiễu 3..."
+                                                                    value={q.options[3] || ''}
+                                                                    onChange={(e) =>
+                                                                        updateBatchOption(
+                                                                            q.tempId,
+                                                                            3,
+                                                                            e.target.value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 )}
 
                                                 {q.skillType === 'WRITING' && (

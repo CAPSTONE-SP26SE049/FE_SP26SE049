@@ -27,9 +27,10 @@ const ErrorTagManagementPage = () => {
         try {
             setLoading(true);
             const data = await errorTagService.getAll();
-            setTags(data);
+            const list = (data as any)?.data ?? data ?? [];
+            setTags(Array.isArray(list) ? list : []);
         } catch {
-            message.error('Không thể tải danh sách Error Tags');
+            message.error('Không thể tải danh sách lỗi phát âm');
         } finally {
             setLoading(false);
         }
@@ -38,9 +39,9 @@ const ErrorTagManagementPage = () => {
     useEffect(() => { fetchTags(); }, []);
 
     const filteredTags = tags.filter(t =>
-        t.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        t.tagCode?.toLowerCase().includes(searchText.toLowerCase()) ||
-        t.description?.toLowerCase().includes(searchText.toLowerCase())
+        (t.name ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+        (t.tagCode ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+        (t.description ?? '').toLowerCase().includes(searchText.toLowerCase())
     );
 
     const handleOpenModal = (tag?: ErrorTagResponse) => {
@@ -66,7 +67,7 @@ const ErrorTagManagementPage = () => {
                 message.success('Cập nhật thành công');
             } else {
                 await errorTagService.create(payload);
-                message.success('Tạo Error Tag thành công');
+                message.success('Tạo lỗi phát âm thành công');
             }
             fetchTags();
             handleCloseModal();
@@ -81,7 +82,7 @@ const ErrorTagManagementPage = () => {
     const handleDelete = async (id: string) => {
         try {
             await errorTagService.delete(id);
-            message.success('Đã xóa Error Tag');
+            message.success('Đã xóa lỗi phát âm');
             fetchTags();
         } catch (error: any) {
             message.error(error?.response?.data?.message || 'Không thể xóa (đang được sử dụng)');
@@ -134,7 +135,7 @@ const ErrorTagManagementPage = () => {
             ),
         },
         {
-            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Hành động</span>,
+            title: <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Thao tác</span>,
             key: 'action',
             align: 'right' as const,
             render: (_: any, record: ErrorTagResponse) => (

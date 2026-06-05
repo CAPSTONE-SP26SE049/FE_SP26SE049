@@ -11,8 +11,7 @@ import {
     LayoutGrid, Zap
 } from 'lucide-react';
 import { adminService } from '../services/adminService';
-import { adminExcelService } from '../services/adminExcelService';
-import { downloadBlob } from '../../educator/services/excelService';
+import { adminExcelService, downloadBlob } from '../services/adminExcelService';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
@@ -225,7 +224,12 @@ const AdminChapterManagementPage: React.FC = () => {
             fetchLevels();
         } catch (error: any) {
             console.error('Error deleting level:', error);
-            message.error(error?.response?.data?.message || 'Không thể xóa chương học');
+            const errorMsg =
+                error?.response?.data?.message ||
+                error?.response?.data?.error ||
+                error?.message ||
+                'Không thể xóa chương học này vì đang có dữ liệu (Màn học) liên kết bên trong.';
+            message.error(errorMsg);
         }
     };
 
@@ -275,7 +279,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 comment: values.comment,
                 questions,
             });
-            message.success('Tạo quiz thành công');
+            message.success('Tạo bài kiểm tra thành công');
             quizForm.resetFields();
             setIsCreateQuizModalOpen(false);
             setSelectedLevelForQuiz(null);
@@ -336,7 +340,7 @@ const AdminChapterManagementPage: React.FC = () => {
 
     const handleRemoveAssignment = async (assignmentId: string) => {
         if (!assignmentId) {
-            message.error('Không tìm thấy ID assignment');
+            message.error('Không tìm thấy ID phân công');
             return;
         }
         try {
@@ -453,10 +457,10 @@ const AdminChapterManagementPage: React.FC = () => {
                 errors: data?.messages || [],
             });
             if ((data?.successCount ?? 0) > 0) {
-                message.success(`Import thành công ${data.successCount} chương học`);
+                message.success(`Nhập thành công ${data.successCount} chương học`);
                 fetchLevels();
             } else {
-                message.info('Import hoàn tất');
+                message.info('Nhập hoàn tất');
             }
             if ((data?.errorCount ?? 0) > 0) message.warning(`${data.errorCount} dòng bị lỗi`);
         } catch (err: any) {
@@ -472,7 +476,7 @@ const AdminChapterManagementPage: React.FC = () => {
             message.loading({ content: 'Đang export...', key: 'exp' });
             const blob = await adminExcelService.exportLevels();
             downloadBlob(blob, `levels_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-            message.success({ content: 'Export thành công!', key: 'exp' });
+            message.success({ content: 'Xuất dữ liệu thành công!', key: 'exp' });
         } catch (err) {
             console.error('[Levels Excel] Export error:', err);
             message.error({ content: 'Không thể export', key: 'exp' });
@@ -500,7 +504,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all"
                         >
                             <Download size={16} strokeWidth={3} />
-                            Template
+                            Tải mẫu
                         </motion.button>
 
                         <motion.button
@@ -510,7 +514,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all"
                         >
                             <Upload size={16} strokeWidth={3} />
-                            Import
+                            Nhập file
                         </motion.button>
 
                         <motion.button
@@ -520,7 +524,7 @@ const AdminChapterManagementPage: React.FC = () => {
                             className="flex items-center gap-2 px-5 py-3 bg-white border-[2.5px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-50 transition-all"
                         >
                             <FileSpreadsheet size={16} strokeWidth={3} />
-                            Export
+                            Xuất file
                         </motion.button>
 
                         <motion.button
@@ -756,7 +760,7 @@ const AdminChapterManagementPage: React.FC = () => {
                         name="name"
                         rules={[{ required: true, message: 'Vui lòng nhập tên chương' }]}
                     >
-                        <Input className="doodle-input" placeholder="Ví dụ: Level 1" />
+                        <Input className="doodle-input" placeholder="Ví dụ: Chương 1" />
                     </Form.Item>
 
                     <Form.Item
@@ -788,15 +792,15 @@ const AdminChapterManagementPage: React.FC = () => {
                             placeholder="Chọn độ khó"
                             className="doodle-select"
                             options={[
-                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
-                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
-                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
+                                { value: 'BEGINNER', label: 'Cơ bản' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình' },
+                                { value: 'ADVANCED', label: 'Nâng cao' }
                             ]}
                         />
                     </Form.Item>
 
                     <Form.Item
-                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi phát âm</span>}
                         name="errorTagId"
                         rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
                     >
@@ -844,6 +848,7 @@ const AdminChapterManagementPage: React.FC = () => {
                     <Form.Item
                         label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Phương ngữ</span>}
                         name="dialectId"
+                        rules={[{ required: true, message: 'Vui lòng chọn vùng miền' }]}
                     >
                         <Select
                             placeholder="Chọn vùng miền"
@@ -869,15 +874,15 @@ const AdminChapterManagementPage: React.FC = () => {
                             placeholder="Chọn độ khó"
                             className="doodle-select"
                             options={[
-                                { value: 'BEGINNER', label: 'Cơ bản (Beginner)' },
-                                { value: 'INTERMEDIATE', label: 'Trung bình (Intermediate)' },
-                                { value: 'ADVANCED', label: 'Nâng cao (Advanced)' }
+                                { value: 'BEGINNER', label: 'Cơ bản' },
+                                { value: 'INTERMEDIATE', label: 'Trung bình' },
+                                { value: 'ADVANCED', label: 'Nâng cao' }
                             ]}
                         />
                     </Form.Item>
 
                     <Form.Item
-                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi (Error Tag)</span>}
+                        label={<span className="text-xs font-black uppercase text-slate-500 tracking-widest">Loại lỗi phát âm</span>}
                         name="errorTagId"
                         rules={[{ required: true, message: 'Vui lòng chọn loại lỗi' }]}
                     >
@@ -910,7 +915,7 @@ const AdminChapterManagementPage: React.FC = () => {
                 title={
                     <div className="flex items-center gap-3 text-slate-900 font-black uppercase tracking-tight">
                         <Rocket size={24} className="text-[#49B6E5]" strokeWidth={3} />
-                        Import chương học
+                        Nhập chương học
                     </div>
                 }
                 open={isImportModalOpen}

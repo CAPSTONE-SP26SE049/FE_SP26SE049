@@ -35,6 +35,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import logoImg from "../../../assets/logoSpeakVN.png";
+import NotificationDropdown from "./NotificationDropdown";
 
 
 
@@ -228,6 +229,14 @@ export default function LearnerLayout() {
                   <span className="text-slate-900 text-xs font-black">{user?.totalStars || 0}</span>
                 </div>
               </div>
+
+              {/* Notification Dropdown */}
+              {user?.id && (
+                <NotificationDropdown
+                  currentUserId={String(user.id)}
+                  token={session?.accessToken || window.sessionStorage.getItem('ACCESS_TOKEN') || window.localStorage.getItem('ACCESS_TOKEN')}
+                />
+              )}
 
               {/* User Dropdown */}
               <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>

@@ -270,12 +270,12 @@ function parseChallenge(raw: any): ParsedChallenge {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-/** Multiple choice (READING v1, LISTENING, ENTRY_TEST) */
+/** Multiple choice (READING v1, LISTENING, ENTRY_TEST) — 2×2 grid for up to 4 options */
 function MCOptions({ options, correct, answered, selected, onSelect }: {
   options: string[]; correct: string; answered: boolean; selected: string | null; onSelect: (o: string) => void
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl mx-auto">
       {options.map((opt, i) => {
         const isRight = answered && opt === correct
         const isWrong = answered && opt === selected && opt !== correct
@@ -673,8 +673,6 @@ const QuizPage: React.FC = () => {
         if (typeof updateSessionItem === 'function' && actualData) {
           updateSessionItem({
             totalStars: actualData.newTotalStars,
-            totalXp: actualData.newTotalXP,
-            totalExperience: actualData.newTotalXP
           })
         }
       }
@@ -707,7 +705,8 @@ const QuizPage: React.FC = () => {
     // Speaking questions are self-paced — no countdown timer
     if (currentCh?.mode === 'SPEAKING_READ') return
 
-    const perQLimit = currentCh?.timeLimit ?? (total > 0 && quiz.timeLimitSeconds > 0 ? Math.round(quiz.timeLimitSeconds / total) : 0)
+    const totalQ = quiz.challenges.length
+    const perQLimit = currentCh?.timeLimit ?? (totalQ > 0 && quiz.timeLimitSeconds > 0 ? Math.round(quiz.timeLimitSeconds / totalQ) : 0)
 
     if (perQLimit > 0 && timeLeft === null && !answered) {
       setTimeLeft(perQLimit)
@@ -718,7 +717,7 @@ const QuizPage: React.FC = () => {
       return () => clearInterval(timer)
     } else if (timeLeft === 0 && !answered) {
       setAnswered(true)
-      explainAnswer(ch, 'Người dùng chưa chọn đáp án (Hết thời gian)', false)
+      if (currentCh) explainAnswer(currentCh, 'Người dùng chưa chọn đáp án (Hết thời gian)', false)
     }
   }, [idx, timeLeft, answered, finished, loading, quiz])
 
@@ -821,11 +820,11 @@ const QuizPage: React.FC = () => {
 
   // ── WebM to WAV Converter (Fixes missing FFmpeg on Windows Backend) ─────────
   const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 })
     const arrayBuffer = await webmBlob.arrayBuffer()
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
-    const numOfChan = audioBuffer.numberOfChannels
+    const numOfChan = 1 // Force mono
     const length = audioBuffer.length * numOfChan * 2 + 44
     const buffer = new ArrayBuffer(length)
     const view = new DataView(buffer)
@@ -841,24 +840,31 @@ const QuizPage: React.FC = () => {
     setUint32(16) // length = 16
     setUint16(1) // PCM (uncompressed)
     setUint16(numOfChan)
-    setUint32(audioBuffer.sampleRate)
-    setUint32(audioBuffer.sampleRate * 2 * numOfChan) // avg. bytes/sec
+    setUint32(16000)
+    setUint32(16000 * 2 * numOfChan) // avg. bytes/sec
     setUint16(numOfChan * 2) // block-align
     setUint16(16) // 16-bit
     setUint32(0x61746164) // "data" - chunk
     setUint32(length - pos - 4) // chunk length
 
-    const channels = []
-    for (let i = 0; i < numOfChan; i++) channels.push(audioBuffer.getChannelData(i))
+    const channelData = audioBuffer.numberOfChannels > 1 
+      ? new Float32Array(audioBuffer.length)
+      : audioBuffer.getChannelData(0)
+    
+    if (audioBuffer.numberOfChannels > 1) {
+      const left = audioBuffer.getChannelData(0)
+      const right = audioBuffer.getChannelData(1)
+      for (let i = 0; i < audioBuffer.length; i++) {
+        channelData[i] = (left[i] + right[i]) / 2
+      }
+    }
 
     let offset = 0
     while (pos < length) {
-      for (let i = 0; i < numOfChan; i++) {
-        let sample = Math.max(-1, Math.min(1, channels[i][offset]))
-        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
-        view.setInt16(pos, sample, true)
-        pos += 2
-      }
+      let sample = Math.max(-1, Math.min(1, channelData[offset]))
+      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
+      view.setInt16(pos, sample, true)
+      pos += 2
       offset++
     }
     return new Blob([buffer], { type: "audio/wav" })
@@ -885,8 +891,8 @@ const QuizPage: React.FC = () => {
         }
       } catch (convertErr) {
         console.warn('[Speaking Quiz] Convert audio failed, fallback original blob:', convertErr)
-        audioForAsr = blob
-        uploadFileName = 'recording.webm'
+        audioForAsr = new Blob([blob], { type: 'audio/wav' })
+        uploadFileName = 'recording.wav'
       }
 
       // 2. Call ASR + Cloudinary upload in parallel (both only need audioForAsr)
@@ -1214,6 +1220,12 @@ const QuizPage: React.FC = () => {
 
   // ── Current question ──────────────────────────────────────────────────────
   const ch = challenges[idx]
+  const isListeningQuestion = ch?.skillType === 'LISTENING'
+  /** LISTENING: reveal target word only after the user picks the correct option */
+  const listeningRevealedWord =
+    isListeningQuestion && answered && selected === ch?.correctAnswer
+      ? (selected || ch.correctAnswer)
+      : null
   const isCurrentAnswerCorrect = (() => {
     if (!answered) return false
     if (!ch) return false
