@@ -40,7 +40,11 @@ export default function ChallengeBankManagementPage() {
 
   // Excel Batch States
   const [importing, setImporting] = React.useState(false)
+  const [templateDownloading, setTemplateDownloading] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name)
 
   // Custom Delete Confirm & Notification States
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
@@ -162,30 +166,45 @@ export default function ChallengeBankManagementPage() {
 
   // --- Excel Import/Export/Template ---
   const handleDownloadTemplate = async () => {
+    if (templateDownloading) return
+    setTemplateDownloading(true)
     try {
       const blob = await adminExcelService.downloadChallengeBankTemplate()
       downloadBlob(blob, 'template_challenge_bank.xlsx')
+      showToast('Tải file mẫu thành công!', 'success')
     } catch (err) {
       console.error('Failed to download template:', err)
-      showToast('Lỗi tải file mẫu Excel.', 'error')
+      showToast('Lỗi tải file mẫu.', 'error')
+    } finally {
+      setTemplateDownloading(false)
     }
   }
 
   const handleExportExcel = async () => {
+    if (exporting) return
+    setExporting(true)
     try {
       const blob = await adminExcelService.exportChallengeBank(
         filterSkill !== 'ALL' ? filterSkill : undefined
       )
       downloadBlob(blob, `challenge_bank_${filterSkill.toLowerCase()}.xlsx`)
+      showToast('Xuất file thành công!', 'success')
     } catch (err) {
       console.error('Failed to export Excel:', err)
-      showToast('Lỗi xuất dữ liệu Excel.', 'error')
+      showToast('Lỗi xuất file.', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!isValidExcelFile(file)) {
+      showToast('Chỉ chấp nhận file .xlsx, .xls hoặc .csv', 'error')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
 
     setImporting(true)
     try {
@@ -194,7 +213,7 @@ export default function ChallengeBankManagementPage() {
       loadChallenges()
     } catch (err: any) {
       console.error('Failed to import Excel:', err)
-      showToast('Lỗi nhập Excel: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'), 'error')
+      showToast('Lỗi nhập file: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định.'), 'error')
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''

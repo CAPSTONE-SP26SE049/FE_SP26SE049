@@ -112,32 +112,67 @@ const AdminQuizManagementPage: React.FC = () => {
     const [isImportChallengesModalOpen, setIsImportChallengesModalOpen] = useState(false);
     const [importChallengesFile, setImportChallengesFile] = useState<File | null>(null);
     const [importingChallenges, setImportingChallenges] = useState(false);
+    const [exportingTemplate, setExportingTemplate] = useState(false);
+    const [exportingQuiz, setExportingQuiz] = useState(false);
     const [importChallengesSkillType, setImportChallengesSkillType] = useState<string>('MIXED');
+
+    const isValidExcelFile = (file: File) => /\.(xlsx|xls|csv)$/i.test(file.name);
     const [viewMode, setViewMode] = useState<'roadmap' | 'skill_groups'>('roadmap');
+    const [levelsMetaLoading, setLevelsMetaLoading] = useState(true);
+    const levelsLookupRetriedRef = useRef(false);
+
+    const unwrapList = useCallback((res: any): any[] => {
+        if (!res) return [];
+        if (Array.isArray(res)) return res;
+        if (res.status === 'success' || res.data !== undefined) {
+            const inner = res.data ?? res;
+            if (Array.isArray(inner)) return inner;
+            if (Array.isArray(inner?.data)) return inner.data;
+        }
+        const raw = res?.data ?? res;
+        if (Array.isArray(raw)) return raw;
+        if (Array.isArray(raw?.data)) return raw.data;
+        return [];
+    }, []);
+
+    const fetchLevelsAndDialects = useCallback(async () => {
+        setLevelsMetaLoading(true);
+        try {
+            const [lRes, dRes]: any[] = await Promise.all([
+                adminService.getLevels(),
+                adminService.getDialects(),
+            ]);
+            setLevels(unwrapList(lRes));
+            setDialects(unwrapList(dRes));
+        } catch (e) {
+            console.error('Failed to fetch levels/dialects', e);
+        } finally {
+            setLevelsMetaLoading(false);
+        }
+    }, [unwrapList]);
 
     // --- Data Fetching ---
     useEffect(() => {
         const initData = async () => {
+            await fetchLevelsAndDialects();
             try {
-                const [lRes, dRes, rRes]: any[] = await Promise.all([
-                    adminService.getLevelsForSelection(),
-                    adminService.getDialects(),
-                    adminService.getBadgesForAdmin()
-                ]);
-                const toArray = (res: any) => {
-                    const raw = res?.data?.data ?? res?.data ?? res ?? [];
-                    return Array.isArray(raw) ? raw : [];
-                };
-                setLevels(toArray(lRes));
-                setDialects(toArray(dRes));
-                setRewards(toArray(rRes));
-            } catch (e) {
-                console.error('Init data failed', e);
-                message.error('Không thể tải dữ liệu khởi tạo. Vui lòng tải lại trang.');
+                                                  <Download size={14} strokeWidth={4} /> {exportingQuiz ? 'Đang xuất...' : 'Xuất file'}
             }
         };
         initData();
-    }, []);
+    }, [fetchLevelsAndDialects]);
+
+    useEffect(() => {
+        levelsLookupRetriedRef.current = false;
+    }, [selectedLevelId]);
+
+    useEffect(() => {
+        if (!selectedLevelId || levelsMetaLoading) return;
+        const isResolved = levels.some(l => String(l.id) === String(selectedLevelId));
+        if (isResolved || levelsLookupRetriedRef.current) return;
+        levelsLookupRetriedRef.current = true;
+        fetchLevelsAndDialects();
+    }, [selectedLevelId, levels, levelsMetaLoading, fetchLevelsAndDialects]);
 
     const fetchQuizChallenges = useCallback(async () => {
         if (!quiz?.id) { setQuizChallenges([]); return; }
@@ -463,14 +498,17 @@ const AdminQuizManagementPage: React.FC = () => {
 
     const handleImportChallengesToQuiz = async () => {
         if (!importChallengesFile || !quiz?.id) return;
+        if (!isValidExcelFile(importChallengesFile)) {
+            message.error('Chỉ chấp nhận file .xlsx, .xls hoặc .csv');
+            return;
+        }
         setImportingChallenges(true);
         try {
             const res: any = importChallengesSkillType === 'MIXED'
                 ? await excelService.importMixedToQuiz(quiz.id, importChallengesFile)
                 : await excelService.importChallengesToQuiz(importChallengesSkillType, quiz.id, importChallengesFile);
-            const result = res?.data ?? res;
-            if (result?.successCount > 0) {
-                message.success('Nhập thành công!');
+                                {importingChallenges ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                {importingChallenges ? 'Đang nhập file...' : 'Nhập file'}
                 handleLevelChange(selectedLevelId!, true);
                 fetchQuizChallenges();
                 setIsImportChallengesModalOpen(false);
@@ -483,30 +521,35 @@ const AdminQuizManagementPage: React.FC = () => {
     };
 
     const handleExportTemplate = async () => {
-        if (!quiz) return;
+        if (!quiz || exportingTemplate) return;
+        setExportingTemplate(true);
         try {
-            message.loading({ content: 'Đang chuẩn bị form mẫu...', key: 'export-template', duration: 0 });
+            message.loading({ content: 'Đang tải file mẫu...', key: 'export-template', duration: 0 });
             const blob = quiz.skillType === 'MIXED'
                 ? await excelService.downloadMixedTemplate()
                 : await excelService.downloadChallengeTemplate(quiz.skillType);
             downloadBlob(blob, `form_mau_${quiz.skillType.toLowerCase()}_quiz.xlsx`);
-            message.success({ content: 'Tải form mẫu thành công!', key: 'export-template' });
+            message.success({ content: 'Tải file mẫu thành công!', key: 'export-template' });
         } catch (err) {
-            message.error({ content: 'Lỗi tải form mẫu!', key: 'export-template' });
+            message.error({ content: 'Lỗi tải file mẫu!', key: 'export-template' });
+        } finally {
+            setExportingTemplate(false);
         }
     };
 
     const handleExportQuizQuestions = async () => {
-        if (!quiz) return;
+        if (!quiz || exportingQuiz) return;
+        setExportingQuiz(true);
         try {
-            message.loading({ content: 'Đang export câu hỏi...', key: 'export-quiz', duration: 0 });
+            message.loading({ content: 'Đang xuất file...', key: 'export-quiz', duration: 0 });
             const blob = await excelService.exportQuizQuestions(quiz.id);
             const titleStr = quiz.title || quiz.name || 'quiz';
             downloadBlob(blob, `danh_sach_cau_hoi_${titleStr.toLowerCase().replace(/\s+/g, '_')}.xlsx`);
             message.success({ content: 'Xuất câu hỏi thành công!', key: 'export-quiz' });
         } catch (err: any) {
-            console.error('Export quiz questions error:', err);
-            message.error({ content: 'Lỗi export câu hỏi!', key: 'export-quiz' });
+            message.error({ content: 'Lỗi xuất file!', key: 'export-quiz' });
+        } finally {
+            setExportingQuiz(false);
         }
     };
 
@@ -756,8 +799,28 @@ const AdminQuizManagementPage: React.FC = () => {
         return 'NORTH';
     };
 
-    const selectedLevel = levels.find(l => l.id === selectedLevelId);
-    const regionInfo = selectedLevel ? REGION_LABEL[getRegionKey(selectedLevel.dialectId)] : null;
+    const currentLevel = useMemo(() => {
+        if (!selectedLevelId) return null;
+        return levels.find(l => String(l.id) === String(selectedLevelId)) ?? null;
+    }, [levels, selectedLevelId]);
+
+    const currentDialectLabel = useMemo(() => {
+        if (!currentLevel?.dialectId) return null;
+        const dialect = dialects.find(d => String(d.id) === String(currentLevel.dialectId));
+        if (dialect?.description || dialect?.name) {
+            return dialect.description || dialect.name;
+        }
+        const regionKey = getRegionKey(currentLevel.dialectId);
+        return REGION_LABEL[regionKey]?.label ?? null;
+    }, [currentLevel, dialects]);
+
+    const chapterDisplayName = useMemo(() => {
+        if (!selectedLevelId) return '';
+        const name = currentLevel?.name || currentLevel?.levelName;
+        if (name) return name;
+        if (levelsMetaLoading) return 'Đang tải...';
+        return 'Không tìm thấy dữ liệu chương';
+    }, [selectedLevelId, currentLevel, levelsMetaLoading]);
 
     const filteredRewards = rewards.filter(badge => {
         if (rewardSearchTerm) {
@@ -798,12 +861,12 @@ const AdminQuizManagementPage: React.FC = () => {
                                 {quiz ? quiz.name || quiz.title : (selectedLevelId ? "Dòng thời gian luyện tập" : "Quản lý màn học")}
                             </h1>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
-                                {selectedLevelId ? `Chương: ${selectedLevel?.name || '...'} • ${regionInfo?.label || '...'}` : "Nội dung học tập theo cấp độ"}
+                                {selectedLevelId ? `CHƯƠNG: ${chapterDisplayName} • ${currentDialectLabel || '...'}` : "Nội dung học tập theo cấp độ"}
                             </p>
-                            {selectedLevelId && selectedLevel?.description && (
+                            {selectedLevelId && currentLevel?.description && (
                                 <p className="text-xs font-bold text-slate-500 mt-2 line-clamp-2 max-w-2xl bg-slate-100/60 border border-slate-200/40 rounded-xl px-3 py-1.5 shadow-[2px_2px_0_#1f293705]">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mr-1">Mô tả:</span>
-                                    {selectedLevel.description}
+                                    {currentLevel.description}
                                 </p>
                             )}
                         </div>
@@ -1068,7 +1131,8 @@ const AdminQuizManagementPage: React.FC = () => {
                                             <motion.button
                                                 whileHover={{ scale: 1.05 }}
                                                 onClick={handleExportQuizQuestions}
-                                                className="px-4 py-2 bg-[#E2F5FC] text-[#49B6E5] border-[2px] border-[#49B6E5] rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest flex items-center gap-2"
+                                                disabled={exportingQuiz}
+                                                className="px-4 py-2 bg-[#E2F5FC] text-[#49B6E5] border-[2px] border-[#49B6E5] rounded-xl shadow-[3px_3px_0_#1f2937] text-[9px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
                                             >
                                                 <Download size={14} strokeWidth={4} /> Xuất file
                                             </motion.button>
@@ -1400,7 +1464,7 @@ const AdminQuizManagementPage: React.FC = () => {
                         <div className="p-10 border-[3px] border-dashed border-slate-200 rounded-[2rem] bg-slate-50/50 flex flex-col items-center gap-4 group hover:border-[#49B6E5] transition-all cursor-pointer relative overflow-hidden">
                             <input
                                 type="file"
-                                accept=".xlsx, .xls"
+                                accept=".xlsx,.xls,.csv"
                                 onChange={(e) => setImportChallengesFile(e.target.files?.[0] || null)}
                                 className="absolute inset-0 opacity-0 cursor-pointer z-10"
                             />
