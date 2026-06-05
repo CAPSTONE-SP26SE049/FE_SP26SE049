@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '../services/adminService';
+import { adminExcelService, downloadBlob } from '../services/adminExcelService';
 import { uploadToCloudinary } from '../../../services/cloudinaryService';
 import clsx from 'clsx';
 
@@ -32,8 +33,8 @@ const AchievementManagementPage: React.FC = () => {
         setLoading(true);
         try {
             const response: any = await adminService.getBadgesForAdmin();
-            const data = response?.data || (Array.isArray(response) ? response : []);
-            setAchievements(data);
+            const raw = response?.data?.data ?? response?.data ?? response ?? [];
+            setAchievements(Array.isArray(raw) ? raw : []);
         } catch (error: any) {
             message.error('Không thể tải danh sách thành tựu');
         } finally { setLoading(false); }
@@ -67,10 +68,10 @@ const AchievementManagementPage: React.FC = () => {
             const url = await uploadToCloudinary(file, 'image');
             setIconPreview(url);
             form.setFieldsValue({ iconUrl: url });
-            message.success('Upload ảnh thành công!');
+            message.success('Tải ảnh lên thành công!');
             onSuccess("ok");
         } catch (e: any) {
-            message.error('Upload thất bại');
+            message.error('Tải ảnh thất bại');
             onError(e);
         } finally {
             setIsUploading(false);
@@ -102,32 +103,21 @@ const AchievementManagementPage: React.FC = () => {
     const handleExportExcel = async () => {
         try {
             message.loading({ content: 'Đang chuẩn bị tệp...', key: 'exp' });
-            const blob: any = await adminService.exportRewardsToExcel();
-            const url = window.URL.createObjectURL(new Blob([blob]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'achievements_export.xlsx');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            message.success({ content: 'Export Excel thành công!', key: 'exp' });
+            const blob = await adminExcelService.exportRewards();
+            downloadBlob(blob, 'achievements_export.xlsx');
+            message.success({ content: 'Xuất Excel thành công!', key: 'exp' });
         } catch (error) {
-            message.error({ content: 'Lỗi khi export Excel', key: 'exp' });
+            message.error({ content: 'Lỗi khi xuất Excel', key: 'exp' });
         }
     };
 
     const handleDownloadTemplate = async () => {
         try {
-            const blob: any = await adminService.downloadRewardTemplate();
-            const url = window.URL.createObjectURL(new Blob([blob]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'achievement_template.xlsx');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const blob = await adminExcelService.downloadRewardTemplate();
+            downloadBlob(blob, 'achievement_template.xlsx');
+            message.success('Tải file mẫu thành công');
         } catch (error) {
-            message.error('Lỗi khi tải template');
+            message.error('Lỗi khi tải file mẫu');
         }
     };
 
@@ -138,15 +128,15 @@ const AchievementManagementPage: React.FC = () => {
         }
         setImporting(true);
         try {
-            const res: any = await adminService.importRewardsFromExcel(importFile);
-            const result = res.data;
-            message.success(`Import hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
+            const res: any = await adminExcelService.importRewards(importFile);
+            const result = res?.data ?? res;
+            message.success(`Nhập hoàn tất: ${result.successCount} thành công, ${result.errorCount} lỗi`);
             if (result.errorCount > 0) {
                 Modal.error({
-                    title: 'Lỗi khi import',
+                    title: 'Lỗi khi nhập dữ liệu',
                     content: (
                         <div className="max-h-60 overflow-y-auto mt-2">
-                            {result.messages.map((msg: string, i: number) => (
+                            {(result.messages ?? []).map((msg: string, i: number) => (
                                 <p key={i} className="text-xs text-red-500 mb-1">Dòng {i}: {msg}</p>
                             ))}
                         </div>
@@ -158,7 +148,7 @@ const AchievementManagementPage: React.FC = () => {
             setImportFile(null);
             fetchAchievements();
         } catch (error) {
-            message.error('Lỗi khi import Excel');
+            message.error('Lỗi khi nhập Excel');
         } finally {
             setImporting(false);
         }
@@ -217,7 +207,7 @@ const AchievementManagementPage: React.FC = () => {
                         className="flex items-center gap-2 h-12 px-6 bg-white border-[3px] border-slate-900 rounded-2xl shadow-[4px_4px_0_#1f2937] text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
                     >
                         <UploadIcon size={16} strokeWidth={3} />
-                        Import
+                        Nhập file
                     </motion.button>
 
                     <motion.button
@@ -236,7 +226,7 @@ const AchievementManagementPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                     { label: 'Tổng số huy hiệu', value: achievements.length, icon: Trophy, color: '#f59e0b', bg: 'bg-orange-50' },
-                    { label: 'Đã gán cho Quiz', value: assigned, icon: CheckCircle2, color: '#10b981', bg: 'bg-emerald-50' },
+                    { label: 'Đã gán cho bài kiểm tra', value: assigned, icon: CheckCircle2, color: '#10b981', bg: 'bg-emerald-50' },
                     { label: 'Đang treo (Chưa gán)', value: unassigned, icon: Zap, color: '#ef4444', bg: 'bg-rose-50' },
                     { label: 'Tỷ lệ gán', value: achievements.length > 0 ? `${Math.round((assigned / achievements.length) * 100)}%` : '0%', icon: LayoutGrid, color: '#8b5cf6', bg: 'bg-violet-50' },
                 ].map((card) => {
@@ -285,7 +275,7 @@ const AchievementManagementPage: React.FC = () => {
                         className="w-full h-12 pl-12 pr-4 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
                     >
                         <option value="">Tất cả trạng thái</option>
-                        <option value="assigned">Đã gán cho Quiz</option>
+                        <option value="assigned">Đã gán cho bài kiểm tra</option>
                         <option value="unassigned">Chưa gán (Tự do)</option>
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -335,7 +325,7 @@ const AchievementManagementPage: React.FC = () => {
                                             "absolute top-4 right-4 px-2.5 py-0.5 rounded-full border-[2px] border-slate-900 text-[8px] font-black uppercase tracking-tighter shadow-sm",
                                             item.linkedQuizName ? "bg-[#10b981] text-white" : "bg-white text-slate-400 border-slate-200 shadow-none"
                                         )}>
-                                            {item.linkedQuizName ? 'Assigned' : 'Free'}
+                                            {item.linkedQuizName ? 'Đã gán' : 'Chưa gán'}
                                         </div>
 
                                         {item.iconUrl ? (
@@ -368,7 +358,7 @@ const AchievementManagementPage: React.FC = () => {
                                     <div className="mt-4 text-center">
                                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight truncate max-w-[150px]">{item.name}</h4>
                                         <p className="text-[9px] font-bold text-slate-400 italic mt-1 leading-none truncate max-w-[150px]">
-                                            {item.linkedQuizName ? `Gán: ${item.linkedQuizName}` : 'Chưa thiết lập Quiz'}
+                                            {item.linkedQuizName ? `Gán: ${item.linkedQuizName}` : 'Chưa thiết lập bài kiểm tra'}
                                         </p>
                                     </div>
                                 </motion.article>
@@ -403,24 +393,26 @@ const AchievementManagementPage: React.FC = () => {
                     </div>
                 }
                 open={isModalOpen}
-                onOk={handleSave}
-                onCancel={() => { setIsModalOpen(false); setIconPreview('') }}
-                confirmLoading={submitting}
+                footer={null}
+                onCancel={() => { setIsModalOpen(false); setIconPreview(''); form.resetFields(); }}
                 width={560}
                 centered
                 className="doodle-modal"
             >
-                <Form form={form} layout="vertical" className="mt-8 space-y-6">
+                <Form form={form} layout="vertical" onFinish={handleSave} className="mt-8 space-y-6">
                     <Form.Item name="code" hidden><Input /></Form.Item>
 
                     <Form.Item
                         name="name"
                         label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Tên hiển thị huy hiệu</span>}
-                        rules={[{ required: true, whitespace: true, message: 'Nhập tên thành tựu' }]}
+                        rules={[
+                            { required: true, whitespace: true, message: 'Nhập tên thành tựu' },
+                            { max: 100, message: 'Tên không quá 100 ký tự' },
+                        ]}
                     >
                         <div className="relative group">
                             <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                            <Input placeholder="Ví dụ: Chiến thần phát âm 🛡️" className="doodle-input pl-12" />
+                            <Input placeholder="Ví dụ: Chiến thần phát âm 🛡️" className="doodle-input pl-12" maxLength={100} />
                         </div>
                     </Form.Item>
 
@@ -485,13 +477,33 @@ const AchievementManagementPage: React.FC = () => {
                                 <Bot size={24} />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Hợp đồng liên kết Quiz</div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Liên kết bài kiểm tra</div>
                                 <div className="text-xs font-black text-slate-900 uppercase truncate mb-0.5">{editingAchievement.linkedQuizName}</div>
-                                <div className="text-[9px] font-bold text-slate-400 italic">Level: {editingAchievement.linkedLevelName}</div>
+                                <div className="text-[9px] font-bold text-slate-400 italic">Cấp độ: {editingAchievement.linkedLevelName}</div>
                             </div>
                             <Zap size={20} className="text-yellow-400" fill="currentColor" />
                         </div>
                     )}
+
+                    <div className="flex gap-4 pt-4">
+                        <button
+                            type="button"
+                            onClick={() => { setIsModalOpen(false); setIconPreview(''); form.resetFields(); }}
+                            className="flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-white text-slate-400 font-black uppercase tracking-widest shadow-[4px_4px_0_#1f293705] hover:-translate-y-0.5 transition-all"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting || isUploading}
+                            className={clsx(
+                                'flex-1 h-14 rounded-2xl border-[3px] border-slate-900 bg-[#49B6E5] text-white font-black uppercase tracking-widest shadow-[4px_4px_0_#1f2937] transition-all hover:-translate-y-0.5',
+                                (submitting || isUploading) && 'opacity-50 cursor-not-allowed',
+                            )}
+                        >
+                            {submitting ? 'Đang lưu...' : 'Lưu huy hiệu'}
+                        </button>
+                    </div>
                 </Form>
             </Modal>
 

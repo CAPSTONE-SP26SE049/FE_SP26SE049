@@ -31,7 +31,7 @@ const ErrorTagManagement: React.FC = () => {
                 setErrorTags(res.data || []);
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách lỗi phát âm (Error Tags)');
+            message.error('Lỗi khi tải danh sách lỗi phát âm');
         } finally {
             setLoading(false);
         }
@@ -98,7 +98,7 @@ const ErrorTagManagement: React.FC = () => {
             align: 'center' as const,
             render: (_: any, __: any, index: number) => index + 1,
         },
-        { title: 'Mã lỗi (Code)', dataIndex: 'tagCode', key: 'tagCode', render: (text: string) => <strong>{text}</strong> },
+        { title: 'Mã lỗi', dataIndex: 'tagCode', key: 'tagCode', render: (text: string) => <strong>{text}</strong> },
         { title: 'Tên lỗi', dataIndex: 'name', key: 'name' },
         { title: 'Mô tả', dataIndex: 'description', key: 'description' },
         {
@@ -119,7 +119,7 @@ const ErrorTagManagement: React.FC = () => {
             )
         },
         {
-            title: 'Hành động',
+            title: 'Thao tác',
             key: 'action',
             render: (_: any, record: any) => (
                 <Space size="middle">
@@ -153,7 +153,7 @@ const ErrorTagManagement: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">Danh sách lỗi phát âm (Error Tags)</h3>
+                <h3 className="text-lg font-bold">Danh sách lỗi phát âm</h3>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}

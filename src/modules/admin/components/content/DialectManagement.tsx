@@ -81,7 +81,7 @@ const DialectManagement: React.FC = () => {
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
-            title: 'Mã Vùng (Code)',
+            title: 'Mã vùng',
             dataIndex: 'name',
             key: 'name',
             render: (text: string) => <strong>{text}</strong>
@@ -93,7 +93,7 @@ const DialectManagement: React.FC = () => {
             render: (text: string) => <span className="text-blue-600 font-medium">{text}</span>
         },
         {
-            title: 'Hành động',
+            title: 'Thao tác',
             key: 'action',
             render: (_: any, record: any) => (
                 <Space size="middle">
@@ -128,7 +128,7 @@ const DialectManagement: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold">Danh sách vùng miền (Dialects)</h3>
+                    <h3 className="text-lg font-bold">Danh sách vùng miền</h3>
                 </div>
                 <Button
                     type="primary"

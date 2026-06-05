@@ -86,5 +86,41 @@ export const adminExcelService = {
     })
     return res.data
   },
+
+  // ===== Rewards / Achievements =====
+  downloadRewardTemplate: async (): Promise<Blob> => {
+    const res = await axios.get(`${ADMIN_EXCEL_BASE}/rewards/template`, {
+      responseType: 'blob',
+      headers: authHeaders(),
+    })
+    return res.data
+  },
+  exportRewards: async (): Promise<Blob> => {
+    const res = await axios.get(`${ADMIN_EXCEL_BASE}/rewards/export`, {
+      responseType: 'blob',
+      headers: authHeaders(),
+    })
+    return res.data
+  },
+  importRewards: async (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await axios.post(`${ADMIN_EXCEL_BASE}/rewards/import`, form, {
+      headers: { 'Content-Type': 'multipart/form-data', ...authHeaders() },
+    })
+    return res.data
+  },
+}
+
+/** Tải blob Excel từ API admin (dùng chung cho mọi nút Template / Xuất file). */
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
