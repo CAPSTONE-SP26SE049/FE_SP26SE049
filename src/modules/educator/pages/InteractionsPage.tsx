@@ -25,6 +25,12 @@ const InteractionsPage = () => {
     const [messageInput, setMessageInput] = useState('');
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [avatarErrors, setAvatarErrors] = useState<Record<string, boolean>>({});
+    const [expandedAttempts, setExpandedAttempts] = useState<Record<string, boolean>>({});
+
+    const toggleExpandAttempt = (id: string) => {
+        setExpandedAttempts(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
 
     const getAvatarUrl = (s: any) => {
         if (!s) return '';
@@ -98,6 +104,7 @@ const InteractionsPage = () => {
 
     const handleSelectStudent = async (student: StudentAccount) => {
         setSelectedStudent(student);
+        setExpandedAttempts({});
         await Promise.all([
             fetchAttempts(student.id),
             fetchConversation(student.id)
@@ -138,17 +145,34 @@ const InteractionsPage = () => {
         s.email?.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const highlightErrors = (original: string, asr: string) => {
+    const highlightErrors = (original: string, asr: string, maxWords?: number) => {
         const oWords = (original || '').split(' ');
         const aWords = (asr || '').split(' ');
-        return oWords.map((word, i) => {
+        const limit = maxWords && oWords.length > maxWords ? maxWords : oWords.length;
+        const slicedWords = oWords.slice(0, limit);
+        
+        const rendered = slicedWords.map((word, i) => {
             const isWrong = aWords[i]?.toLowerCase().replace(/[.,!?;:]/g, '') !== word.toLowerCase().replace(/[.,!?;:]/g, '');
             return (
-                <span key={i} className={clsx(isWrong ? 'text-rose-500 font-black underline underline-offset-2' : 'text-slate-700', 'mr-1')}>
+                <span key={i} className={clsx(isWrong ? 'text-rose-500 font-black underline underline-offset-2' : 'text-slate-700', 'mr-1', 'break-words')}>
                     {word}
                 </span>
             );
         });
+
+        if (maxWords && oWords.length > maxWords) {
+            rendered.push(<span key="dots" className="text-slate-400 font-bold">...</span>);
+        }
+
+        return rendered;
+    };
+
+    const formatTargetText = (text: string, maxWords?: number) => {
+        const words = (text || '').split(' ');
+        if (maxWords && words.length > maxWords) {
+            return words.slice(0, maxWords).join(' ') + '...';
+        }
+        return text;
     };
 
     return (
@@ -400,9 +424,13 @@ const InteractionsPage = () => {
                                                             {attempts.map((attempt, idx) => {
                                                                 const educatorComment = feedbacks.find(f => f.attemptId === attempt.id);
                                                                 const score = (attempt as any).groqScore || (attempt as any).geminiScore || (attempt as any).score || 0;
+                                                                const targetWords = (attempt.targetText || '').split(' ');
+                                                                const isLongText = targetWords.length > 20;
+                                                                const isExpanded = !!expandedAttempts[attempt.id];
                                                                 return (
                                                                     <motion.div
                                                                         key={attempt.id}
+                                                                        layout="position"
                                                                         initial={{ opacity: 0, y: 10 }}
                                                                         animate={{ opacity: 1, y: 0 }}
                                                                         transition={{ delay: idx * 0.05 }}
@@ -430,14 +458,28 @@ const InteractionsPage = () => {
                                                                         </div>
 
                                                                         <div className="space-y-3">
-                                                                            <div className="p-3 bg-slate-50 rounded-xl border-[1.5px] border-slate-900/10">
+                                                                            <div className="p-3 bg-slate-50 rounded-xl border-[1.5px] border-slate-900/10 transition-all duration-300">
                                                                                 <div className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Mục tiêu âm đọc</div>
-                                                                                <div className="text-xs font-black text-slate-800 leading-relaxed italic">"{attempt.targetText}"</div>
+                                                                                <div className="text-xs font-black text-slate-800 leading-relaxed italic break-words">
+                                                                                    "{isExpanded ? attempt.targetText : formatTargetText(attempt.targetText, 20)}"
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="p-3 bg-slate-50/50 rounded-xl border-[1.5px] border-slate-900/10">
+                                                                            <div className="p-3 bg-slate-50/50 rounded-xl border-[1.5px] border-slate-900/10 transition-all duration-300">
                                                                                 <div className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Thực tế học viên đọc</div>
-                                                                                <div className="text-xs font-bold leading-relaxed">{highlightErrors(attempt.targetText, attempt.asrTranscription)}</div>
+                                                                                <div className="text-xs font-bold leading-relaxed break-words">
+                                                                                    {highlightErrors(attempt.targetText, attempt.asrTranscription, isExpanded ? undefined : 20)}
+                                                                                </div>
                                                                             </div>
+                                                                            {isLongText && (
+                                                                                <div className="flex justify-end">
+                                                                                    <button
+                                                                                        onClick={() => toggleExpandAttempt(attempt.id)}
+                                                                                        className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[#49B6E5] hover:text-[#38a1d0] transition-colors focus:outline-none"
+                                                                                    >
+                                                                                        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
                                                                             {educatorComment && (
                                                                                 <div className="p-3 bg-emerald-50/30 rounded-xl border-[1.5px] border-slate-900 border-dashed">
                                                                                     <div className="flex items-center gap-1.5 mb-1">
