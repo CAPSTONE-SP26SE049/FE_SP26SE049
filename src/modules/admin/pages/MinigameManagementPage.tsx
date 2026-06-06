@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Table, Modal, Form, Input, Select, message, Popconfirm, Tabs } from 'antd'
+import { Table, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
 import { motion } from 'framer-motion'
 import { Plus, Edit3, Trash2, Search, Gamepad2, Zap, ChevronRight, RefreshCw } from 'lucide-react'
 import clsx from 'clsx'
-import { minigameService, MinigameChallengeResponse, MinigameChallengeRequest } from '../../learner/services/minigameService'
+import { minigameService } from '../../learner/services/minigameService'
+import type { MinigameChallengeResponse, MinigameChallengeRequest } from '../../learner/services/minigameService'
+import { errorTagService } from '../services/errorTagService'
 
 const { TextArea } = Input
-
-const PAIR_TYPES = ['N_L', 'S_X', 'D_GI_R', 'TR_CH']
-const PAIR_LABELS: Record<string, string> = {
-    N_L: 'N / L', S_X: 'S / X', D_GI_R: 'D / GI / R', TR_CH: 'TR / CH'
-}
 
 const GAME_TYPES = [
     { key: 'WORD_CHALLENGE',        label: 'Thử thách từ vựng',    desc: 'Chọn từ đúng / xếp chữ' },
@@ -23,10 +20,14 @@ const GAME_TYPES = [
 // Dynamic form implementation removes the need for JSON_TEMPLATES
 
 const PAIR_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
-    N_L:    { color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200' },
-    S_X:    { color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200' },
-    D_GI_R: { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    TR_CH:  { color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200' },
+    L_N:               { color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200' },
+    N_L:               { color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200' },
+    S_X:               { color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+    D_GI_R:            { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    TR_CH:             { color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200' },
+    CH_TR:             { color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-200' },
+    V_D_CONFUSION:     { color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-200' },
+    TONE_INTERROGATIVE:{ color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 }
 
 const MinigameManagementPage: React.FC = () => {
@@ -35,6 +36,7 @@ const MinigameManagementPage: React.FC = () => {
     const [loading, setLoading] = useState(false)
     const [searchText, setSearchText] = useState('')
     const [pairFilter, setPairFilter] = useState('')
+    const [errorTags, setErrorTags] = useState<any[]>([])
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<MinigameChallengeResponse | null>(null)
@@ -55,6 +57,26 @@ const MinigameManagementPage: React.FC = () => {
 
     useEffect(() => { fetchData(activeTab) }, [activeTab, pairFilter])
 
+    useEffect(() => {
+        const fetchErrorTags = async () => {
+            try {
+                const res = await errorTagService.getAll()
+                const list = (res as any)?.data ?? res ?? []
+                setErrorTags(list)
+            } catch (err) {
+                console.error('Failed to fetch error tags:', err)
+            }
+        }
+        fetchErrorTags()
+    }, [])
+
+    const pairOptions = useMemo(() => {
+        return errorTags.map(tag => ({
+            value: tag.tagCode,
+            label: tag.name
+        }))
+    }, [errorTags])
+
     const filtered = useMemo(() => {
         if (!searchText) return data
         const q = searchText.toLowerCase()
@@ -64,7 +86,8 @@ const MinigameManagementPage: React.FC = () => {
     const handleOpenCreate = () => {
         setEditingItem(null)
         form.resetFields()
-        form.setFieldsValue({ pairType: 'N_L', options: ['', '', '', ''], correctIndex: 0 })
+        const defaultPair = pairOptions[0]?.value || ''
+        form.setFieldsValue({ pairType: defaultPair, options: ['', '', '', ''], correctIndex: 0 })
         setIsModalOpen(true)
     }
 
@@ -141,9 +164,11 @@ const MinigameManagementPage: React.FC = () => {
             key: 'pairType',
             render: (pt: string) => {
                 const cfg = PAIR_CONFIG[pt] || { color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' }
+                const found = errorTags.find(t => t.tagCode === pt)
+                const label = found ? found.name : pt
                 return (
                     <span className={clsx('px-2.5 py-1 rounded-xl border-[2px] font-black text-[9px] uppercase tracking-widest', cfg.bg, cfg.color, cfg.border)}>
-                        {PAIR_LABELS[pt] || pt}
+                        {label}
                     </span>
                 )
             },
@@ -257,7 +282,7 @@ const MinigameManagementPage: React.FC = () => {
                         className="w-full h-12 pl-4 pr-8 bg-white border-[2.5px] border-slate-900/10 rounded-2xl focus:border-[#49B6E5] appearance-none focus:outline-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
                     >
                         <option value="">Tất cả cặp âm</option>
-                        {PAIR_TYPES.map(pt => <option key={pt} value={pt}>{PAIR_LABELS[pt]}</option>)}
+                        {pairOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                     <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none text-slate-400" size={12} strokeWidth={4} />
                 </div>
@@ -320,7 +345,7 @@ const MinigameManagementPage: React.FC = () => {
                         </div>
                         <Form.Item name="pairType" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Cặp âm</span>} rules={[{ required: true }]} className="!mb-0">
                             <Select className="doodle-select-mg">
-                                {PAIR_TYPES.map(pt => <Select.Option key={pt} value={pt}>{PAIR_LABELS[pt]}</Select.Option>)}
+                                {pairOptions.map(opt => <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>)}
                             </Select>
                         </Form.Item>
                     </div>
