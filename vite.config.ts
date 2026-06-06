@@ -15,9 +15,6 @@ export default defineConfig(({ mode }) => {
             global: 'window',
         },
         server: {
-            headers: {
-                'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-            },
             proxy: {
                 '/api': {
                     target: proxyTarget,

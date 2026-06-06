@@ -851,7 +851,7 @@ const QuizPage: React.FC = () => {
 
   // ── WebM to WAV Converter (Fixes missing FFmpeg on Windows Backend) ─────────
   const convertWebmToWav = async (webmBlob: Blob): Promise<Blob> => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 })
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     const arrayBuffer = await webmBlob.arrayBuffer()
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
@@ -864,6 +864,8 @@ const QuizPage: React.FC = () => {
     const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
     const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
 
+    const sampleRate = audioBuffer.sampleRate
+
     setUint32(0x46464952) // "RIFF"
     setUint32(length - 8) // file length - 8
     setUint32(0x45564157) // "WAVE"
@@ -871,8 +873,8 @@ const QuizPage: React.FC = () => {
     setUint32(16) // length = 16
     setUint16(1) // PCM (uncompressed)
     setUint16(numOfChan)
-    setUint32(16000)
-    setUint32(16000 * 2 * numOfChan) // avg. bytes/sec
+    setUint32(sampleRate)
+    setUint32(sampleRate * 2 * numOfChan) // avg. bytes/sec
     setUint16(numOfChan * 2) // block-align
     setUint16(16) // 16-bit
     setUint32(0x61746164) // "data" - chunk

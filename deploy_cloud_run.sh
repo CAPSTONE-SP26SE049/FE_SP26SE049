@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Cloud Run Deployment Script for Frontend
-PROJECT_ID=${GCP_PROJECT_ID:-"speakvn-sp26se049-v2"}
+PROJECT_ID=${GCP_PROJECT_ID:-"project-07dedc9b-9720-4f02-89a"}
 REGION=${GCP_REGION:-"asia-southeast1"}
 SERVICE_NAME="speakvn-frontend"
-IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/speakvn-repo/${SERVICE_NAME}:latest"
 
 echo "Deploying ${SERVICE_NAME} to Google Cloud Run in project ${PROJECT_ID}..."
 
