@@ -137,7 +137,7 @@ interface StepResult {
 
 const EntryTestPage: React.FC = () => {
     const navigate = useNavigate()
-    const { session, updateSessionItem, refreshUserProfile } = useAuth()
+    const { session, updateSessionItem, refreshUserProfile, logout } = useAuth()
     const recorder = useAudioRecorder()
 
     const [questions, setQuestions] = useState<EntryTestQuestion[]>([])
@@ -363,17 +363,6 @@ const EntryTestPage: React.FC = () => {
 
             // Cập nhật trạng thái xong
             setFinished(true)
-
-            // Cập nhật session sau khi đã đổi state 'finished' để không bị redirect sớm
-            if (updateSessionItem) {
-                updateSessionItem({
-                    hasDoneEntryTest: true,
-                    region: data?.detectedRegion || null
-                })
-            }
-            if (refreshUserProfile) {
-                await refreshUserProfile()
-            }
         } catch (err) {
             message.error('Lỗi khi lưu kết quả bài test')
         } finally {
@@ -622,7 +611,18 @@ const EntryTestPage: React.FC = () => {
                         {/* Large call to action button */}
                         <button
                             className="w-full h-16 rounded-2xl bg-[#10b981] hover:bg-[#059669] border-[3px] border-slate-900 shadow-[8px_8px_0_#1f2937] text-white font-black text-lg transition-all active:translate-y-0.5 active:shadow-[4px_4px_0_#1f2937] uppercase tracking-wider flex items-center justify-center gap-3"
-                            onClick={() => navigate('/learner/dashboard')}
+                            onClick={async () => {
+                                if (updateSessionItem) {
+                                    updateSessionItem({
+                                        hasDoneEntryTest: true,
+                                        region: finalData?.detectedRegion || null
+                                    })
+                                }
+                                if (refreshUserProfile) {
+                                    await refreshUserProfile()
+                                }
+                                navigate('/learner/dashboard')
+                            }}
                         >
                             Bắt đầu lộ trình cá nhân hóa ngay
                         </button>

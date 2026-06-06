@@ -243,20 +243,22 @@ const AdminSettingsPage: React.FC = () => {
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Họ và tên</span>}
                                                     rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
                                                 >
-                                                    <div className="relative group">
-                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="Ví dụ: Nguyễn Văn A" />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<User className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input"
+                                                        placeholder="Ví dụ: Nguyễn Văn A"
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
                                                     name="email"
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Email xác thực</span>}
                                                 >
-                                                    <div className="relative">
-                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12 bg-slate-50 cursor-not-allowed opacity-70" disabled />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<Mail className="text-slate-400 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input bg-slate-50 cursor-not-allowed opacity-70"
+                                                        disabled
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
@@ -264,10 +266,11 @@ const AdminSettingsPage: React.FC = () => {
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Số điện thoại</span>}
                                                     rules={[{ pattern: /^(0|\+84)[3-9]\d{8}$/, message: 'Số điện thoại không hợp lệ' }]}
                                                 >
-                                                    <div className="relative group">
-                                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="09xx xxx xxx" />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<Phone className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input"
+                                                        placeholder="09xx xxx xxx"
+                                                    />
                                                 </Form.Item>
 
                                                 <div className="pt-4">
@@ -327,10 +330,11 @@ const AdminSettingsPage: React.FC = () => {
                                             label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Mật khẩu hiện tại</span>}
                                             rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}
                                         >
-                                            <div className="relative group">
-                                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
-                                            </div>
+                                            <Input.Password
+                                                prefix={<Key className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                className="doodle-input"
+                                                placeholder="••••••••"
+                                            />
                                         </Form.Item>
 
                                         <Form.Item
@@ -341,10 +345,11 @@ const AdminSettingsPage: React.FC = () => {
                                                 { min: 8, message: 'Tối thiểu 8 ký tự' }
                                             ]}
                                         >
-                                            <div className="relative group">
-                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
-                                            </div>
+                                            <Input.Password
+                                                prefix={<Lock className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                className="doodle-input"
+                                                placeholder="••••••••"
+                                            />
                                         </Form.Item>
 
                                         <Form.Item
@@ -361,10 +366,11 @@ const AdminSettingsPage: React.FC = () => {
                                                 })
                                             ]}
                                         >
-                                            <div className="relative group">
-                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                <Input.Password className="doodle-input pl-12" placeholder="••••••••" />
-                                            </div>
+                                            <Input.Password
+                                                prefix={<Lock className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                className="doodle-input"
+                                                placeholder="••••••••"
+                                            />
                                         </Form.Item>
 
                                         <div className="pt-4">
@@ -394,8 +400,10 @@ const AdminSettingsPage: React.FC = () => {
                     height: 54px; border: 2.5px solid #1f293720 !important; border-radius: 1.25rem !important;
                     font-weight: 700 !important; font-family: 'Nunito' !important;
                     transition: all 0.2s ease !important;
+                    display: flex !important;
+                    align-items: center !important;
                 }
-                .doodle-input:focus, .doodle-input:hover { border-color: #49B6E5 !important; box-shadow: none !important; }
+                .doodle-input:focus, .doodle-input:hover, .doodle-input:focus-within, .ant-input-affix-wrapper-focused { border-color: #49B6E5 !important; box-shadow: none !important; }
                 
                 .ant-input-password .ant-input-suffix { font-size: 18px; color: #94a3b8; }
                 .ant-input-password-icon { color: #94a3b8 !important; }

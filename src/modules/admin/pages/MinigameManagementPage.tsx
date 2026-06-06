@@ -81,9 +81,11 @@ const MinigameManagementPage: React.FC = () => {
             
             let questionData: Record<string, any> = {}
             if (activeTab === 'WORD_CHALLENGE') {
-                questionData = { prompt: values.prompt, options: values.options, correctIndex: values.correctIndex, explanation: values.explanation }
+                const cleanedOptions = (values.options || []).filter((opt: any) => opt !== undefined && opt !== null && String(opt).trim() !== '')
+                questionData = { prompt: values.prompt, options: cleanedOptions, correctIndex: values.correctIndex, explanation: values.explanation }
             } else if (activeTab === 'SENTENCE_COMPLETION') {
-                questionData = { context: values.context, sentence: values.sentence, options: values.options, correctIndex: values.correctIndex }
+                const cleanedOptions = (values.options || []).filter((opt: any) => opt !== undefined && opt !== null && String(opt).trim() !== '')
+                questionData = { context: values.context, sentence: values.sentence, options: cleanedOptions, correctIndex: values.correctIndex }
             } else if (activeTab === 'MATCHING_PAIRS') {
                 questionData = { word1: values.word1, word2: values.word2 }
             } else if (activeTab === 'WORD_GUESS') {
@@ -332,13 +334,47 @@ const MinigameManagementPage: React.FC = () => {
                             </Form.Item>
                             <div className="grid grid-cols-2 gap-4">
                                 {[0, 1, 2, 3].map(idx => (
-                                    <Form.Item key={idx} name={['options', idx]} label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>} rules={[{ required: true, message: 'Nhập lựa chọn' }]}>
+                                    <Form.Item
+                                        key={idx}
+                                        name={['options', idx]}
+                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>}
+                                        rules={[
+                                            { required: idx < 2, message: 'Nhập lựa chọn' },
+                                            ({ getFieldValue }) => ({
+                                                validator(_, value) {
+                                                    if (value && idx > 0) {
+                                                        const prevVal = getFieldValue(['options', idx - 1]);
+                                                        if (!prevVal || String(prevVal).trim() === '') {
+                                                            return Promise.reject(new Error(`Hãy điền Lựa chọn ${['A', 'B', 'C', 'D'][idx - 1]} trước`));
+                                                        }
+                                                    }
+                                                    return Promise.resolve();
+                                                }
+                                            })
+                                        ]}
+                                        dependencies={idx > 0 ? [['options', idx - 1]] : []}
+                                    >
                                         <Input className="doodle-input-mg" />
                                     </Form.Item>
                                 ))}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <Form.Item name="correctIndex" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>} rules={[{ required: true, message: 'Chọn đáp án' }]}>
+                                <Form.Item
+                                    name="correctIndex"
+                                    label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>}
+                                    rules={[
+                                        { required: true, message: 'Chọn đáp án' },
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                const opts = getFieldValue('options') || [];
+                                                if (value !== undefined && (opts[value] === undefined || opts[value] === null || String(opts[value]).trim() === '')) {
+                                                    return Promise.reject(new Error('Đáp án đúng phải là một lựa chọn hợp lệ'));
+                                                }
+                                                return Promise.resolve();
+                                            },
+                                        }),
+                                    ]}
+                                >
                                     <Select className="doodle-select-mg">
                                         {[0, 1, 2, 3].map(idx => <Select.Option key={idx} value={idx}>Lựa chọn {['A', 'B', 'C', 'D'][idx]}</Select.Option>)}
                                     </Select>
@@ -356,7 +392,22 @@ const MinigameManagementPage: React.FC = () => {
                                 <Form.Item name="context" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Ngữ cảnh</span>} rules={[{ required: true, message: 'Nhập ngữ cảnh' }]}>
                                     <Input className="doodle-input-mg" placeholder="VD: Thời tiết" />
                                 </Form.Item>
-                                <Form.Item name="correctIndex" label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>} rules={[{ required: true, message: 'Chọn đáp án' }]}>
+                                <Form.Item
+                                    name="correctIndex"
+                                    label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Đáp án đúng</span>}
+                                    rules={[
+                                        { required: true, message: 'Chọn đáp án' },
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                const opts = getFieldValue('options') || [];
+                                                if (value !== undefined && (opts[value] === undefined || opts[value] === null || String(opts[value]).trim() === '')) {
+                                                    return Promise.reject(new Error('Đáp án đúng phải là một lựa chọn hợp lệ'));
+                                                }
+                                                return Promise.resolve();
+                                            },
+                                        }),
+                                    ]}
+                                >
                                     <Select className="doodle-select-mg">
                                         {[0, 1, 2, 3].map(idx => <Select.Option key={idx} value={idx}>Lựa chọn {['A', 'B', 'C', 'D'][idx]}</Select.Option>)}
                                     </Select>
@@ -367,7 +418,26 @@ const MinigameManagementPage: React.FC = () => {
                             </Form.Item>
                             <div className="grid grid-cols-2 gap-4">
                                 {[0, 1, 2, 3].map(idx => (
-                                    <Form.Item key={idx} name={['options', idx]} label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>} rules={[{ required: true, message: 'Nhập lựa chọn' }]}>
+                                    <Form.Item
+                                        key={idx}
+                                        name={['options', idx]}
+                                        label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Lựa chọn {['A', 'B', 'C', 'D'][idx]}</span>}
+                                        rules={[
+                                            { required: idx < 2, message: 'Nhập lựa chọn' },
+                                            ({ getFieldValue }) => ({
+                                                validator(_, value) {
+                                                    if (value && idx > 0) {
+                                                        const prevVal = getFieldValue(['options', idx - 1]);
+                                                        if (!prevVal || String(prevVal).trim() === '') {
+                                                            return Promise.reject(new Error(`Hãy điền Lựa chọn ${['A', 'B', 'C', 'D'][idx - 1]} trước`));
+                                                        }
+                                                    }
+                                                    return Promise.resolve();
+                                                }
+                                            })
+                                        ]}
+                                        dependencies={idx > 0 ? [['options', idx - 1]] : []}
+                                    >
                                         <Input className="doodle-input-mg" />
                                     </Form.Item>
                                 ))}

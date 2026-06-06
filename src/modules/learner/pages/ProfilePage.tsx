@@ -485,7 +485,7 @@ export default function ProfilePage() {
 
                     <Form.Item name="region" label={<span className="font-black text-slate-900 text-xs uppercase tracking-wider">Khu vực học</span>}
                         rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}>
-                        <Select placeholder="Chọn khu vực" className="h-12 rounded-xl border-[2.5px] border-slate-900">
+                        <Select placeholder="Chọn khu vực" className="h-12 rounded-xl border-[2.5px] border-slate-900" disabled={!!(user?.region)}>
                             {Object.entries(REGION_MAP).map(([val, o]) => (
                                 <Option key={val} value={val}>
                                     <div className="flex items-center gap-2 font-bold"><o.icon size={14} /> {o.label}</div>

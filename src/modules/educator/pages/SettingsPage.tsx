@@ -246,30 +246,33 @@ const SettingsPage: React.FC = () => {
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Họ và tên</span>}
                                                     rules={[{ required: true, message: 'Nhập họ và tên' }]}
                                                 >
-                                                    <div className="relative group/field">
-                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="Ví dụ: Nguyễn Văn A" />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<User className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input"
+                                                        placeholder="Ví dụ: Nguyễn Văn A"
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
                                                     name="email"
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Email đăng nhập</span>}
                                                 >
-                                                    <div className="relative opacity-60">
-                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} strokeWidth={3} />
-                                                        <Input disabled className="doodle-input pl-12 bg-slate-50 cursor-not-allowed" />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<Mail className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input bg-slate-50 cursor-not-allowed"
+                                                        disabled
+                                                    />
                                                 </Form.Item>
 
                                                 <Form.Item
                                                     name="phone"
                                                     label={<span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Số điện thoại liên hệ</span>}
                                                 >
-                                                    <div className="relative group/field">
-                                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-[#49B6E5] transition-colors" size={18} strokeWidth={3} />
-                                                        <Input className="doodle-input pl-12" placeholder="09xx xxx xxx" />
-                                                    </div>
+                                                    <Input
+                                                        prefix={<Phone className="text-slate-300 mr-2" size={18} strokeWidth={3} />}
+                                                        className="doodle-input"
+                                                        placeholder="09xx xxx xxx"
+                                                    />
                                                 </Form.Item>
 
                                                 <div className="pt-4 flex justify-end">
@@ -383,12 +386,16 @@ const SettingsPage: React.FC = () => {
                     font-family: 'Nunito' !important;
                     background: #fbfbfc !important;
                     transition: all 0.2s ease !important;
-                    padding-left: 1rem !important;
+                    display: flex !important;
+                    align-items: center !important;
                 }
-                .doodle-input:focus, .doodle-input:hover {
+                .doodle-input:focus, .doodle-input:hover, .doodle-input:focus-within, .ant-input-affix-wrapper-focused {
                     border-color: #1f2937 !important;
                     background: white !important;
                     box-shadow: none !important;
+                }
+                .doodle-input input {
+                    background: transparent !important;
                 }
                 .ant-form-item-label label { font-family: 'Nunito' !important; }
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }

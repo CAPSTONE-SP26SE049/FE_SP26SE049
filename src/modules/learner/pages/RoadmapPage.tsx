@@ -523,7 +523,7 @@ const QuizRoadmapStep = ({
           type = 'active'
         } else {
           const prev = sortedQuizzes[index - 1]
-          if (prev.isCompleted && (prev.starsEarned ?? 0) >= 2) {
+          if (prev.isCompleted && (prev.starsEarned ?? 0) >= 1) {
             type = 'active'
           }
         }
