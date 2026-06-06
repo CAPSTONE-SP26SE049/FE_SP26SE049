@@ -142,7 +142,8 @@ export default function Dashboard() {
                     const newCompleted = [...new Set([...dailyCompletedIds, challengeId])];
                     setDailyCompletedIds(newCompleted);
 
-                    const todayStr = new Date().toISOString().split('T')[0];
+                    const d = new Date();
+                    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                     localStorage.setItem('speakvn_daily_completed', JSON.stringify({
                         date: todayStr,
                         ids: newCompleted
@@ -182,7 +183,8 @@ export default function Dashboard() {
     useEffect(() => {
         const loadDailyChallenges = async () => {
             try {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const d = new Date();
+                const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 // Fetch completed challenges and list in parallel
                 const [completedRes, res] = await Promise.all([
                     apiClient.get('/daily-challenges/completed').catch(err => {

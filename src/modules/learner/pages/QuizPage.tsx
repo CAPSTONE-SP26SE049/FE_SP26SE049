@@ -36,7 +36,7 @@ import { uploadToCloudinary } from '../../../services/cloudinaryService'
 import characterImg from '../../../assets/4df21173-ac6f-458e-b5b2-2d31d39b0d39-Photoroom.png'
 import { ASR_BASE_URL } from '../../../config'
 import { DoodleLoading } from '../../../components/ui/DoodleLoading'
-import MouthViseme, { useWordAnimation } from '../components/MouthViseme'
+import MouthViseme, { useWordAnimation, textToVisemeKeys } from '../components/MouthViseme'
 import type { FaceType } from '../components/MouthViseme'
 
 const PAGE_STYLES = `
@@ -485,7 +485,7 @@ const QuizPage: React.FC = () => {
   const [selectedVoice, setSelectedVoice] = useState<string>('banmai')
   const popupAudioRef = useRef<HTMLAudioElement | null>(null)
   const modelViewerRef = useRef<any>(null)
-  const { currentViseme, isPlaying: pronIsPlaying, playWord: pronPlayWord, stop: pronStop } = useWordAnimation()
+  const { currentViseme, isPlaying: pronIsPlaying, playWord: pronPlayWord, stop: pronStop, currentPhonemeIndex } = useWordAnimation()
 
   const openPronModel = useCallback((word: string) => {
     setPronWord(word)
@@ -1589,124 +1589,148 @@ const QuizPage: React.FC = () => {
 
       {/* ─── Pronunciation Model Popup ─── */}
       <AnimatePresence>
-        {showPronModel && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => {
-              setShowPronModel(false)
-              pronStop()
-              if (popupAudioRef.current) {
-                popupAudioRef.current.pause()
-                popupAudioRef.current = null
+        {showPronModel && (() => {
+          const getActiveWordIndex = () => {
+            if (!pronIsPlaying || currentPhonemeIndex === -1) return -1
+            const phonemes = textToVisemeKeys(pronWord)
+            let restCount = 0
+            for (let i = 0; i <= currentPhonemeIndex; i++) {
+              if (phonemes[i] === 'rest') {
+                restCount++
               }
-              setPlayingTTS(null)
-            }}
-          >
+            }
+            return restCount
+          }
+          const activeWordIdx = getActiveWordIndex()
+          const words = pronWord.split(/\s+/)
+
+          return (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 20 }}
-              className="bg-white rounded-[2rem] border-[3.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden"
-              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => {
+                setShowPronModel(false)
+                pronStop()
+                if (popupAudioRef.current) {
+                  popupAudioRef.current.pause()
+                  popupAudioRef.current = null
+                }
+                setPlayingTTS(null)
+              }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 bg-[#49B6E5] border-b-[3px] border-slate-900">
-                <div>
-                  <p className="text-white/70 text-[10px] font-black uppercase tracking-widest">Mô hình phát âm</p>
-                  <h3 className="text-white font-black text-2xl italic">"{pronWord}"</h3>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 20 }}
+                className="bg-white rounded-[2rem] border-[3.5px] border-slate-900 shadow-[12px_12px_0_#1f2937] w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 bg-[#49B6E5] border-b-[3px] border-slate-900">
+                  <div>
+                    <p className="text-white/70 text-[10px] font-black uppercase tracking-widest">Mô hình phát âm</p>
+                    <h3 className="text-white font-black text-xl flex flex-wrap gap-x-1.5 leading-snug mt-1">
+                      {words.map((word, wordIdx) => {
+                        const isActive = wordIdx === activeWordIdx
+                        return (
+                          <span
+                            key={wordIdx}
+                            className={clsx(
+                              "transition-all duration-150 inline-block rounded px-1",
+                              isActive
+                                ? "bg-yellow-300 text-slate-900 font-extrabold scale-110 shadow-sm"
+                                : "text-white opacity-95"
+                            )}
+                          >
+                            {word}
+                          </span>
+                        )
+                      })}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowPronModel(false)
+                      pronStop()
+                      if (popupAudioRef.current) {
+                        popupAudioRef.current.pause()
+                        popupAudioRef.current = null
+                      }
+                      setPlayingTTS(null)
+                    }}
+                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all"
+                  >
+                    <X size={20} className="text-white" strokeWidth={3} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowPronModel(false)
-                    pronStop()
-                    if (popupAudioRef.current) {
-                      popupAudioRef.current.pause()
-                      popupAudioRef.current = null
-                    }
-                    setPlayingTTS(null)
-                  }}
-                  className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all"
-                >
-                  <X size={20} className="text-white" strokeWidth={3} />
-                </button>
-              </div>
 
-              {/* Viewport — 2D only */}
-              <div className="mx-6 mt-4 rounded-2xl border-[2.5px] border-slate-900 overflow-hidden bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center" style={{ height: 260 }}>
-                <div className="relative flex items-center justify-center w-full h-full">
-                  <MouthViseme
-                    viseme={pronIsPlaying ? currentViseme : 'rest'}
-                    faceType={pronFaceType}
-                    className="w-[220px] h-[220px]"
-                  />
-                  {pronIsPlaying && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/90 rounded-full border-[2px] border-slate-900 shadow-[2px_2px_0_#1f2937]"
-                    >
-                      <span className="font-black text-[#49B6E5] text-xs uppercase">{currentViseme}</span>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-
-              {/* Face type + controls */}
-              <div className="px-6 py-4 space-y-3">
-
-                {/* Phát âm 2D */}
-                <button
-                  onClick={handlePopupPronounce}
-                  className="w-full h-12 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl text-white font-black text-sm shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
-                >
-                  {(pronIsPlaying || playingTTS) ? <><RotateCcw size={16} strokeWidth={3} /> Dừng</> : <><Play size={16} strokeWidth={3} /> Phát âm</>}
-                </button>
-
-                {/* Nghe giọng 3 miền */}
-                <div className="border-t-[2px] border-slate-100 pt-3">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nghe giọng vùng miền</p>
-                  <div className="flex gap-2">
-                    {([
-                      { voice: 'banmai', label: 'BẮC', flag: '🔵' },
-                      { voice: 'myan',   label: 'TRUNG', flag: '🟡' },
-                      { voice: 'linhsan',label: 'NAM',  flag: '🔴' },
-                    ]).map(({ voice, label, flag }) => {
-                      const isSelected = selectedVoice === voice
-                      return (
-                        <button
-                          key={voice}
-                          onClick={() => {
-                            setSelectedVoice(voice)
-                            if (pronIsPlaying || playingTTS) {
-                              pronStop()
-                              if (popupAudioRef.current) {
-                                popupAudioRef.current.pause()
-                                popupAudioRef.current = null
-                              }
-                              setPlayingTTS(null)
-                            }
-                          }}
-                          className={clsx(
-                            "flex-1 py-2.5 rounded-xl border-[2px] border-slate-900 font-black text-xs flex items-center justify-center gap-1 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all",
-                            isSelected
-                              ? "bg-[#49B6E5] text-white shadow-[1px_1px_0_#1f2937] translate-y-0.5"
-                              : "bg-white text-slate-700 hover:bg-slate-50"
-                          )}
-                        >
-                          <span>{flag}</span> {label}
-                        </button>
-                      )
-                    })}
+                {/* Viewport — 2D only */}
+                <div className="mx-6 mt-4 rounded-2xl border-[2.5px] border-slate-900 overflow-hidden bg-gradient-to-b from-[#fef9f4] to-[#fdf0e8] flex items-center justify-center" style={{ height: 260 }}>
+                  <div className="relative flex items-center justify-center w-full h-full">
+                    <MouthViseme
+                      viseme={pronIsPlaying ? currentViseme : 'rest'}
+                      faceType={pronFaceType}
+                      className="w-[220px] h-[220px]"
+                    />
                   </div>
                 </div>
-              </div>
+
+                {/* Face type + controls */}
+                <div className="px-6 py-4 space-y-3">
+
+                  {/* Phát âm 2D */}
+                  <button
+                    onClick={handlePopupPronounce}
+                    className="w-full h-12 bg-[#49B6E5] border-[2.5px] border-slate-900 rounded-2xl text-white font-black text-sm shadow-[4px_4px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2"
+                  >
+                    {(pronIsPlaying || playingTTS) ? <><RotateCcw size={16} strokeWidth={3} /> Dừng</> : <><Play size={16} strokeWidth={3} /> Phát âm</>}
+                  </button>
+
+                  {/* Nghe giọng 3 miền */}
+                  <div className="border-t-[2px] border-slate-100 pt-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nghe giọng vùng miền</p>
+                    <div className="flex gap-2">
+                      {([
+                        { voice: 'banmai', label: 'BẮC', flag: '🔵' },
+                        { voice: 'myan',   label: 'TRUNG', flag: '🟡' },
+                        { voice: 'linhsan',label: 'NAM',  flag: '🔴' },
+                      ]).map(({ voice, label, flag }) => {
+                        const isSelected = selectedVoice === voice
+                        return (
+                          <button
+                            key={voice}
+                            onClick={() => {
+                              setSelectedVoice(voice)
+                              if (pronIsPlaying || playingTTS) {
+                                pronStop()
+                                if (popupAudioRef.current) {
+                                  popupAudioRef.current.pause()
+                                  popupAudioRef.current = null
+                                }
+                                setPlayingTTS(null)
+                              }
+                            }}
+                            className={clsx(
+                              "flex-1 py-2.5 rounded-xl border-[2px] border-slate-900 font-black text-xs flex items-center justify-center gap-1 shadow-[3px_3px_0_#1f2937] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all",
+                              isSelected
+                                ? "bg-[#49B6E5] text-white shadow-[1px_1px_0_#1f2937] translate-y-0.5"
+                                : "bg-white text-slate-700 hover:bg-slate-50"
+                            )}
+                          >
+                            <span>{flag}</span> {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          )
+        })()}
       </AnimatePresence>
 
       {/* ─── Top Header ─── */}

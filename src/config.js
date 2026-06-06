@@ -4,7 +4,7 @@
  */
 
 // 1. Backend URL
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://speakvn-backend-670338943429.asia-southeast1.run.app/api/v1';
 
 // 2. ASR (Speech-to-Text) URL
 // original ASR for Entry Test

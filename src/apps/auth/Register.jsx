@@ -75,20 +75,35 @@ export default function Register() {
       message.success('Đăng ký thành công! Vui lòng kiểm tra email để xác thực.')
       navigate('/verify-email', { replace: true, state: { email: allValues.email } })
     } catch (err) {
-      if (err?.errorFields) {
+      // 1. Ant Design frontend validation error (err.errorFields is an Array)
+      if (err?.errorFields && Array.isArray(err.errorFields)) {
+        const errorNames = err.errorFields.map(field => field.name[0])
+        if (errorNames.includes('email') || errorNames.includes('password') || errorNames.includes('confirmPassword')) {
+          setCurrent(0)
+        } else if (errorNames.includes('fullName') || errorNames.includes('phone')) {
+          setCurrent(1)
+        }
+        return
+      }
+
+      // 2. Backend validation error (err.errorFields is an Object)
+      if (err?.errorFields && typeof err.errorFields === 'object') {
         const fields = Object.keys(err.errorFields).map(key => ({
           name: key,
           errors: [err.errorFields[key]]
         }))
         form.setFields(fields)
 
-        if (err.errorFields.email || err.errorFields.password) {
+        const errorKeys = Object.keys(err.errorFields)
+        if (errorKeys.includes('email') || errorKeys.includes('password')) {
           setCurrent(0)
-        } else if (err.errorFields.fullName || err.errorFields.phone) {
+        } else if (errorKeys.includes('fullName') || errorKeys.includes('phone')) {
           setCurrent(1)
         }
         return
       }
+
+      // 3. General backend error
       const backendMsg = err?.response?.data?.message
       message.error(backendMsg ?? err?.message ?? 'Đăng ký thất bại. Vui lòng thử lại.')
     } finally {
@@ -96,123 +111,143 @@ export default function Register() {
     }
   }
 
-  const currentValues = current === 2 ? form.getFieldsValue(true) : {}
+  const currentValues = form.getFieldsValue(true)
 
   const renderStepContent = () => {
     return (
-      <AnimatePresence mode="wait">
+      <div className="relative min-h-[220px]">
+        {/* Step 1: Tai khoa */}
         <motion.div
-          key={current}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 1, x: 0, height: 'auto' }}
+          animate={{
+            opacity: current === 0 ? 1 : 0,
+            x: current === 0 ? 0 : -50,
+            height: current === 0 ? 'auto' : 0,
+          }}
           transition={{ duration: 0.3 }}
-          className="space-y-4"
+          className="space-y-4 overflow-hidden"
+          style={{ pointerEvents: current === 0 ? 'auto' : 'none' }}
         >
-          {current === 0 && (
-            <>
-              <Form.Item
-                name="email"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập email' },
-                  { type: 'email', message: 'Email không hợp lệ' },
-                ]}
-              >
-                <Input
-                  prefix={<Mail size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
-                  placeholder="Địa chỉ Email"
-                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
-                />
-              </Form.Item>
+          <Form.Item
+            name="email"
+            rules={[
+              { required: true, message: 'Vui lòng nhập email' },
+              { type: 'email', message: 'Email không hợp lệ' },
+            ]}
+          >
+            <Input
+              prefix={<Mail size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+              placeholder="Địa chỉ Email"
+              className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+            />
+          </Form.Item>
 
-              <Form.Item name="password" rules={passwordRules}>
-                <Input.Password
-                  prefix={<Lock size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
-                  placeholder="Mật khẩu"
-                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
-                />
-              </Form.Item>
+          <Form.Item name="password" rules={passwordRules}>
+            <Input.Password
+              prefix={<Lock size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+              placeholder="Mật khẩu"
+              className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+            />
+          </Form.Item>
 
-              <Form.Item
-                name="confirmPassword"
-                dependencies={['password']}
-                rules={[
-                  { required: true, message: 'Vui lòng xác nhận mật khẩu' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve()
-                      }
-                      return Promise.reject(new Error('Mật khẩu không khớp!'))
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password
-                  prefix={<ShieldCheck size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
-                  placeholder="Nhập lại mật khẩu"
-                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
-                />
-              </Form.Item>
-            </>
-          )}
+          <Form.Item
+            name="confirmPassword"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Vui lòng xác nhận mật khẩu' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve()
+                  }
+                  return Promise.reject(new Error('Mật khẩu không khớp!'))
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              prefix={<ShieldCheck size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+              placeholder="Nhập lại mật khẩu"
+              className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+            />
+          </Form.Item>
+        </motion.div>
 
-          {current === 1 && (
-            <>
-              <Form.Item
-                name="fullName"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập họ tên' },
-                  { min: 2, message: 'Họ tên tối thiểu 2 ký tự' },
-                  { max: 50, message: 'Họ tên tối đa 50 ký tự' }
-                ]}
-              >
-                <Input
-                  prefix={<User size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
-                  placeholder="Họ và Tên"
-                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
-                />
-              </Form.Item>
+        {/* Step 2: Thong tin */}
+        <motion.div
+          initial={{ opacity: 0, x: 50, height: 0 }}
+          animate={{
+            opacity: current === 1 ? 1 : 0,
+            x: current === 1 ? 0 : (current < 1 ? 50 : -50),
+            height: current === 1 ? 'auto' : 0,
+          }}
+          transition={{ duration: 0.3 }}
+          className="space-y-4 overflow-hidden"
+          style={{ pointerEvents: current === 1 ? 'auto' : 'none' }}
+        >
+          <Form.Item
+            name="fullName"
+            rules={[
+              { required: true, message: 'Vui lòng nhập họ tên' },
+              { min: 2, message: 'Họ tên tối thiểu 2 ký tự' },
+              { max: 50, message: 'Họ tên tối đa 50 ký tự' }
+            ]}
+          >
+            <Input
+              prefix={<User size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+              placeholder="Họ và Tên"
+              className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+            />
+          </Form.Item>
 
-              <Form.Item
-                name="phone"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập số điện thoại' },
-                  { pattern: /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])\d{7}$/, message: 'Số điện thoại Việt Nam không hợp lệ' },
-                ]}
-              >
-                <Input
-                  prefix={<Phone size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
-                  placeholder="Số điện thoại"
-                  className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
-                />
-              </Form.Item>
-            </>
-          )}
+          <Form.Item
+            name="phone"
+            rules={[
+              { required: true, message: 'Vui lòng nhập số điện thoại' },
+              { pattern: /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])\d{7}$/, message: 'Số điện thoại Việt Nam không hợp lệ' },
+            ]}
+          >
+            <Input
+              prefix={<Phone size={20} className="text-slate-400 mr-2" strokeWidth={2.5} />}
+              placeholder="Số điện thoại"
+              className="h-14 rounded-2xl border-[2.5px] border-slate-900 bg-slate-50 font-black text-sm shadow-[2px_2px_0_#1f2937] hover:shadow-[4px_4px_0_#1f2937]"
+            />
+          </Form.Item>
+        </motion.div>
 
-          {current === 2 && (
-            <div className="bg-orange-50 p-6 rounded-[2rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] mb-4">
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-                <CheckCircle className="text-green-500" size={20} strokeWidth={3} /> Xác nhận
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
-                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Email</span>
-                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.email}</span>
-                </div>
-                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
-                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Họ tên</span>
-                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.fullName}</span>
-                </div>
-                <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
-                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">SĐT</span>
-                  <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.phone}</span>
-                </div>
+        {/* Step 3: Hoan tat */}
+        <motion.div
+          initial={{ opacity: 0, x: 50, height: 0 }}
+          animate={{
+            opacity: current === 2 ? 1 : 0,
+            x: current === 2 ? 0 : 50,
+            height: current === 2 ? 'auto' : 0,
+          }}
+          transition={{ duration: 0.3 }}
+          className="overflow-hidden"
+          style={{ pointerEvents: current === 2 ? 'auto' : 'none' }}
+        >
+          <div className="bg-orange-50 p-6 rounded-[2rem] border-[2.5px] border-slate-900 shadow-[4px_4px_0_#1f2937] mb-4">
+            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
+              <CheckCircle className="text-green-500" size={20} strokeWidth={3} /> Xác nhận
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Email</span>
+                <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.email}</span>
+              </div>
+              <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Họ tên</span>
+                <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.fullName}</span>
+              </div>
+              <div className="flex justify-between items-center bg-white border-[2px] border-slate-900 p-3 rounded-xl shadow-[2px_2px_0_#1f2937]">
+                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">SĐT</span>
+                <span className="font-black text-slate-900 text-sm tracking-tight">{currentValues.phone}</span>
               </div>
             </div>
-          )}
+          </div>
         </motion.div>
-      </AnimatePresence>
+      </div>
     )
   }
 

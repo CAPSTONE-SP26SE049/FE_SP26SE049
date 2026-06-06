@@ -734,6 +734,7 @@ const AdminQuizManagementPage: React.FC = () => {
                     await adminService.removeChallengeFromQuiz(quiz.id, cid);
                     message.success('Đã gỡ câu hỏi');
                     handleLevelChange(selectedLevelId!, true);
+                    fetchQuizChallenges();
                 } catch { message.error('Lỗi khi gỡ'); }
             }
         });
@@ -778,6 +779,7 @@ const AdminQuizManagementPage: React.FC = () => {
             createForm.resetFields();
             setEditingChallengeId(null);
             handleLevelChange(selectedLevelId!, true);
+            fetchQuizChallenges();
         } catch (err: any) {
             if (err?.errorFields) return;
             message.error(err?.response?.data?.message || 'Không thể lưu câu hỏi');
